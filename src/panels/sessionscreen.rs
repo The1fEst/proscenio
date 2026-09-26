@@ -3,14 +3,25 @@ use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::core::scope::Scope;
 use crate::services::Services;
 use crate::services::session::Session;
+use crate::ui::anim::EXPRESSIVE_EFFECTS;
+use crate::ui::theme::{SharedTheme, rounding};
+use crate::ui::widgets::centred::Centred;
+use crate::ui::widgets::ripple::{Look, RippleButton, Token};
+use crate::ui::widgets::text;
+use crate::ui::widgets::tooltip::{self, Tooltip};
 
 const NAMESPACE: &str = "proscenio:session";
 const SIZE: i32 = 120;
+const RADIUS: f64 = rounding::VERYLARGE as f64;
+const FOCUSED_RADIUS: f64 = SIZE as f64 / 2.0;
+const RADIUS_MILLIS: f64 = 200.0;
+const ICON_SIZE: f64 = 45.0;
 const COLUMNS: i32 = 4;
 const SPACING: i32 = 15;
 
@@ -54,6 +65,7 @@ impl SessionScreen {
 
 pub fn build(
     app: &gtk4::Application,
+    theme: &SharedTheme,
     services: &Rc<Services>,
     monitor: &gdk::Monitor,
     scope: &Scope,
@@ -87,8 +99,11 @@ pub fn build(
 
     let mut entries: Vec<(&str, &str)> = ACTIONS.to_vec();
     entries.push(FIRMWARE);
+    let mut actions = Vec::new();
     for (index, (icon, label)) in entries.iter().enumerate() {
-        let button = action(icon, label);
+        let action = SessionAction::new(theme, icon, label);
+        let button = action.button.clone();
+        actions.push(action);
         button.connect_clicked({
             let session = services.session.clone();
             let window = window.clone();
@@ -152,22 +167,86 @@ pub fn build(
     let dismiss = gtk4::GestureClick::new();
     dismiss.connect_pressed({
         let window = window.clone();
-        move |_, _, _, _| window.set_visible(false)
+        let stack = stack.clone();
+        move |_, _, x, y| {
+            let on_button = stack
+                .pick(x, y, gtk4::PickFlags::DEFAULT)
+                .and_then(|target| target.ancestor(RippleButton::static_type()))
+                .is_some();
+            if !on_button {
+                window.set_visible(false);
+            }
+        }
     });
     stack.add_controller(dismiss);
 
-    let escape = gtk4::EventControllerKey::new();
-    escape.connect_key_pressed({
+    let actions = Rc::new(actions);
+    let keys = gtk4::EventControllerKey::new();
+    keys.set_propagation_phase(gtk4::PropagationPhase::Capture);
+    keys.connect_key_pressed({
         let window = window.clone();
+        let actions = actions.clone();
         move |_, key, _, _| {
-            if key != gdk::Key::Escape {
-                return glib::Propagation::Proceed;
+            if key == gdk::Key::Escape {
+                window.set_visible(false);
+                return glib::Propagation::Stop;
             }
-            window.set_visible(false);
+            let Some(index) = actions.iter().position(|action| action.focused.get()) else {
+                return glib::Propagation::Proceed;
+            };
+            let columns = COLUMNS as usize;
+            let (column, row) = (index % columns, index / columns);
+            let target = match key {
+                gdk::Key::Return | gdk::Key::KP_Enter => {
+                    let action = &actions[index];
+                    action.keyboard_down.set(true);
+                    action.show();
+                    action.button.emit_clicked();
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::Left => (column > 0).then(|| index - 1),
+                gdk::Key::Right => (column + 1 < columns).then(|| index + 1),
+                gdk::Key::Up => (row > 0).then(|| index - columns),
+                gdk::Key::Down => Some(index + columns).filter(|below| *below < actions.len()),
+                _ => return glib::Propagation::Proceed,
+            };
+            if let Some(target) = target {
+                actions[target].button.grab_focus();
+            }
             glib::Propagation::Stop
         }
     });
-    window.add_controller(escape);
+    keys.connect_key_released({
+        let actions = actions.clone();
+        move |_, key, _, _| {
+            if !matches!(key, gdk::Key::Return | gdk::Key::KP_Enter) {
+                return;
+            }
+            for action in actions.iter() {
+                if action.keyboard_down.replace(false) {
+                    action.show();
+                }
+            }
+        }
+    });
+    window.add_controller(keys);
+    window.connect_visible_notify({
+        let actions = actions.clone();
+        move |window| {
+            if !window.is_visible() {
+                return;
+            }
+            for action in actions.iter() {
+                action.keyboard_down.set(false);
+            }
+            if let Some(first) = actions.first() {
+                first.button.grab_focus();
+            }
+            for action in actions.iter() {
+                action.show();
+            }
+        }
+    });
 
     let warnings: Rc<dyn Fn()> = {
         let downloads = downloads.clone();
@@ -215,17 +294,107 @@ fn run(session: &Session, label: &str) {
     }
 }
 
-fn action(icon: &str, label: &str) -> gtk4::Button {
-    let symbol = gtk4::Label::new(Some(icon));
-    symbol.add_css_class("icon");
-    symbol.add_css_class("session-icon");
+struct SessionAction {
+    button: RippleButton,
+    icon: gtk4::Label,
+    focused: Cell<bool>,
+    hovered: Cell<bool>,
+    keyboard_down: Cell<bool>,
+}
 
-    let button = gtk4::Button::new();
-    button.add_css_class("session-action");
-    button.set_child(Some(&symbol));
-    button.set_size_request(SIZE, SIZE);
-    button.set_tooltip_text(Some(label));
-    button
+impl SessionAction {
+    fn new(theme: &SharedTheme, icon: &str, label: &str) -> Rc<Self> {
+        let symbol = text::symbol(icon, ICON_SIZE);
+        let button = RippleButton::new(theme);
+        button.set_size_request(SIZE, SIZE);
+        button.set_radius(RADIUS);
+        button.animate_radius(RADIUS_MILLIS, EXPRESSIVE_EFFECTS);
+        button.set_content(&Centred::new(&symbol), 0, 0);
+        let tip = Tooltip::new(&button, theme, tooltip::Kind::Styled);
+        tip.set_text(label);
+        tooltip::hover_delay(&button, &tip, 0);
+
+        let action = Rc::new(SessionAction {
+            button,
+            icon: symbol,
+            focused: Cell::new(false),
+            hovered: Cell::new(false),
+            keyboard_down: Cell::new(false),
+        });
+        let refresh = {
+            let action = Rc::downgrade(&action);
+            move || {
+                if let Some(action) = action.upgrade() {
+                    action.show();
+                }
+            }
+        };
+        let focus = gtk4::EventControllerFocus::new();
+        let follow_focus = |focused: bool| {
+            let action = Rc::downgrade(&action);
+            move |_: &gtk4::EventControllerFocus| {
+                if let Some(action) = action.upgrade() {
+                    action.focused.set(focused);
+                    action.show();
+                }
+            }
+        };
+        focus.connect_enter(follow_focus(true));
+        focus.connect_leave(follow_focus(false));
+        action.button.add_controller(focus);
+        let motion = gtk4::EventControllerMotion::new();
+        motion.connect_enter({
+            let action = Rc::downgrade(&action);
+            move |_, _, _| {
+                if let Some(action) = action.upgrade() {
+                    action.hovered.set(true);
+                    action.show();
+                }
+            }
+        });
+        motion.connect_leave({
+            let action = Rc::downgrade(&action);
+            move |_| {
+                if let Some(action) = action.upgrade() {
+                    action.hovered.set(false);
+                    action.show();
+                }
+            }
+        });
+        action.button.add_controller(motion);
+        action.button.connect_down(refresh.clone());
+        action.button.connect_release(refresh);
+        action.show();
+        action
+    }
+
+    fn show(&self) {
+        let focused = self.focused.get();
+        let down = self.button.down();
+        let keyboard_down = self.keyboard_down.get();
+        self.button.set_radius(if focused || down {
+            FOCUSED_RADIUS
+        } else {
+            RADIUS
+        });
+        let background: Token = if keyboard_down {
+            |theme| theme.colors.col_secondary_container_active
+        } else if focused {
+            |theme| theme.colors.col_primary
+        } else {
+            |theme| theme.colors.col_secondary_container
+        };
+        self.button.set_look(Look {
+            background,
+            hover: |theme| theme.colors.col_primary,
+            toggled: background,
+            toggled_hover: |theme| theme.colors.col_primary,
+            ripple: |theme| theme.colors.col_primary_active,
+            ripple_toggled: |theme| theme.colors.col_primary_active,
+        });
+        let lit = down || keyboard_down || focused || self.hovered.get();
+        text::set_color(&self.icon, if lit { "m3onPrimary" } else { "colOnLayer0" });
+    }
 }
 
 fn warning(text: &str) -> gtk4::Widget {

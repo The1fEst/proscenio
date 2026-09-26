@@ -455,7 +455,7 @@ impl Screens {
     fn panels(&self, monitor: &gdk::Monitor, config: &Rc<Config>, scope: &Scope) -> Panels {
         let shared = &self.shared;
         let (app, theme, services) = (&shared.app, &shared.theme, &shared.services);
-        let session = sessionscreen::build(app, services, monitor, scope);
+        let session = sessionscreen::build(app, theme, services, monitor, scope);
         let sidebar = sidebar::build(
             app,
             config,

@@ -86,10 +86,25 @@ pidof curl wget aria2c yt-dlp || ls ~/Downloads | grep -E '\.crdownload$|\.part$
 **Status (proscenio).** `src/panels/sessionscreen.rs` opens one surface per monitor
 anchored to all four edges, `Layer::Overlay`, exclusive keyboard,
 `exclusive_zone(-1)`, and the same translucent background. The title, the
-instruction, the four-column grid of eight 120 px buttons with their 30/60
-radii and the focus colors, the focused button's name in the caption under
-the grid, and the two warnings re-probed on every open are all there. It
-closes when the screen locks. The IPC target `session` (`toggle`, `open`,
+instruction, the four-column grid of eight 120 px buttons, the focused
+button's name in the caption under the grid, and the two warnings re-probed on
+every open are all there. It closes when the screen locks.
+
+Each button is a `RippleButton`, as `SessionActionButton` is:
+
+- background `colSecondaryContainer`, `colPrimary` while focused and
+  `colSecondaryContainerActive` while Enter is held;
+- hover `colPrimary`, ripple `colPrimaryActive`;
+- the 45 px symbol in `m3onPrimary` while down, Enter-held, focused or
+  hovered, else `colOnLayer0`;
+- radius `rounding.verylarge` (30), or 60 while focused or down, animated
+  over 200 ms of `expressiveEffects` (`RippleButton::animate_radius`);
+- a styled tooltip with the action's name.
+
+Opening focuses Lock. The arrow keys follow the QML's `KeyNavigation` map: a
+4×2 grid with no wrap, where an arrow at an edge keeps the focus. Enter clicks
+the focused button. A press on the background closes the screen; a press on a
+button does not. The IPC target `session` (`toggle`, `open`,
 `close`) and the shortcuts `sessionToggle`, `sessionOpen`, `sessionClose` act
 on the focused monitor's surface. The eight actions are in
 `src/services/session.rs`, `closeAllWindows` included, reading the pids out
@@ -97,6 +112,3 @@ of `hyprctl clients`.
 
 The power button in the sidebar's system row calls the screen's `open()`
 directly.
-
-Missing: the explicit arrow-key map (GTK's own focus chain walks the grid),
-the radius animation and the Enter-held color.

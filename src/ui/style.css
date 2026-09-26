@@ -486,30 +486,6 @@ entry.search-input > text > selection {
 .session-subtitle { font-size: 16px; color: var(--colOnTooltip); }
 .session-warning { background-color: var(--colError); }
 .session-warning-text { font-size: 16px; color: var(--colOnError); }
-.session-action {
-    background-color: var(--colSecondaryContainer);
-    border: none;
-    box-shadow: none;
-    padding: 0;
-    border-radius: 30px;
-}
-.session-action:hover { background-color: var(--colPrimary); }
-.session-action:focus {
-    background-color: var(--colPrimary);
-    border-radius: 60px;
-    outline: none;
-}
-.session-action:active {
-    background-color: var(--colSecondaryContainerActive);
-    border-radius: 60px;
-}
-.session-icon {
-    font-size: 45px;
-    font-variation-settings: "FILL" 0, "opsz" 48;
-    color: var(--colOnLayer0);
-}
-.session-action:hover .session-icon,
-.session-action:focus .session-icon { color: var(--colOnPrimary); }
 .osd {
     background-color: var(--colLayer0);
     border-radius: 9999px;

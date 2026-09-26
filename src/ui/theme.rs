@@ -19,6 +19,7 @@ pub mod rounding {
     pub const SMALL: i32 = 12;
     pub const NORMAL: i32 = 17;
     pub const LARGE: i32 = 23;
+    pub const VERYLARGE: i32 = 30;
     pub const FULL: i32 = 9999;
     pub const SCREEN_ROUNDING: i32 = LARGE;
     pub const WINDOW_ROUNDING: i32 = 18;

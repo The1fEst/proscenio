@@ -5,8 +5,9 @@ use gtk4::gsk;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
 use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
-use crate::ui::anim::{EXPRESSIVE_EFFECTS, STANDARD_DECEL};
+use crate::ui::anim::{EXPRESSIVE_EFFECTS, Ease, Motion, STANDARD_DECEL};
 use crate::ui::theme::{SharedTheme, Theme, rounding, transparentize};
 use crate::ui::widgets::trimmedbin::TrimmedBin;
 
@@ -58,6 +59,7 @@ mod imp {
         pub down: Cell<bool>,
         pub radius: Cell<f64>,
         pub radius_pressed: Cell<Option<f64>>,
+        pub radius_motion: RefCell<Option<Rc<Motion>>>,
         pub ripple_enabled: Cell<bool>,
         pub background_size: Cell<Option<(f32, f32)>>,
         pub background_inset: Cell<(f32, f32)>,
@@ -92,6 +94,7 @@ mod imp {
                 down: Cell::new(false),
                 radius: Cell::new(rounding::SMALL as f64),
                 radius_pressed: Cell::new(None),
+                radius_motion: RefCell::new(None),
                 ripple_enabled: Cell::new(true),
                 background_size: Cell::new(None),
                 background_inset: Cell::new((0.0, 0.0)),
@@ -309,10 +312,14 @@ mod imp {
         }
 
         pub fn effective_radius(&self) -> f64 {
+            let radius = match self.radius_motion.borrow().as_ref() {
+                Some(motion) => motion.get(),
+                None => self.radius.get(),
+            };
             if self.down.get() {
-                self.radius_pressed.get().unwrap_or(self.radius.get())
+                self.radius_pressed.get().unwrap_or(radius)
             } else {
-                self.radius.get()
+                radius
             }
         }
 
@@ -537,7 +544,15 @@ impl RippleButton {
 
     pub fn set_radius(&self, radius: f64) {
         self.imp().radius.set(radius);
+        if let Some(motion) = self.imp().radius_motion.borrow().as_ref() {
+            motion.to(radius);
+        }
         self.queue_draw();
+    }
+
+    pub fn animate_radius(&self, millis: f64, ease: Ease) {
+        let motion = Motion::new(self, self.imp().radius.get(), millis, ease);
+        self.imp().radius_motion.replace(Some(motion));
     }
 
     pub fn set_radius_pressed(&self, radius: f64) {
