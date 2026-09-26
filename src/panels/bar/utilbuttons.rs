@@ -81,6 +81,12 @@ pub fn build(
         row.append(&button);
     }
 
+    if config.util_keyboard {
+        let (button, _) = circle(theme, "keyboard", 0.0);
+        button.connect_clicked(|_| crate::core::actions::run("oskToggle"));
+        row.append(&button);
+    }
+
     if config.util_mic
         && let Some(audio) = &services.audio
     {

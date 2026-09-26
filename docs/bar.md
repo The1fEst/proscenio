@@ -717,10 +717,9 @@ and the percentage text. Hover opens `BatteryPopup` (§10.3).
 
 **Status (proscenio).** The clock, its Qt→strftime format translation, the
 group-wide press-to-open-sidebar, the hover popup (date, uptime, the first
-five unfinished to-dos read from the same `todo.json`), seven of the eight
-util buttons and the battery indicator are implemented. The keyboard toggle
-(`showKeyboardToggle`) is not built, and the settings page disables its
-switch. The clock follows `time.format`, `time.dateFormat` and
+five unfinished to-dos read from the same `todo.json`), the eight util
+buttons and the battery indicator are implemented. The keyboard toggle runs
+the `oskToggle` action ([osk.md](osk.md)). The clock follows `time.format`, `time.dateFormat` and
 `time.secondPrecision` as they change in `config.toml`, and re-arms its tick
 when the precision changes. `src/services/battery.rs` reads UPower's
 `DisplayDevice` and takes health from the first real battery's `Capacity`.
@@ -1233,7 +1232,7 @@ inside the rectangle. There is no open or close animation, as in the QML.
 | Workspaces: right-click overview | done |
 | Clock text and formats | done |
 | Calendar on click | done |
-| Util buttons | done but the keyboard toggle |
+| Util buttons | done |
 | Battery indicator | done |
 | Recording indicator | done |
 | Left region: brightness scroll + hint | done |

@@ -327,13 +327,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         let row = page.uniform_row(&buttons);
         for (icon, label, pointer, default) in pair {
             let switch = page.config_switch(&row, icon, label, pointer, default);
-            if icon == "keyboard" {
-                switch.set_enabled(false);
-                page.tip(
-                    &switch.button,
-                    "Needs the on-screen keyboard, which proscenio does not have yet",
-                );
-            }
             if pointer == UPDATES {
                 page.tip(
                     &switch.button,
