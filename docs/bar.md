@@ -639,8 +639,7 @@ image surface padded by three blur radii, blurred by three box passes of radius
 scaled by `1 − 0.08·blur`, with the name pill over it at `0.8 + 0.2·blur`
 scale. The widget is a `Paint` whose cairo node reaches 32 px past its
 allocation on every side, so the blur spreads past the 26 px strip as
-`MultiEffect`'s padding lets it in qs. The radius matches qs's blob width at
-half maximum.
+`MultiEffect`'s padding lets it in qs.
 Back-button toggles the special workspace.
 
 Super-hold follows `States.super_down` through the same delay timer, and
