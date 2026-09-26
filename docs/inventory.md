@@ -50,8 +50,11 @@ brightness and Hyprsunset, UPower battery, power profiles, updates, weather,
 to-do, the pomodoro timer, EasyEffects, Cloudflare WARP, system info, the
 Hyprland event stream, MPRIS, polkit, Ydotool, Persistent state (all of it
 but `cheatsheet.tabIndex`, as the cheatsheet has one tab), Idle, Cliphist, app
-search, emoji, the launcher search and Wallpapers. Missing: translations, and the
-icon service.
+search, emoji, the launcher search and Wallpapers. The four functions of
+`modules/common/Icons.qml` sit next to their users: `battery_icon` in
+`src/panels/bar/battery.rs`, `device_symbol` in `src/panels/sidebar/dialogs.rs`,
+`bars` in `src/services/net.rs` and `symbol` in `src/services/weather.rs`.
+Missing: translations.
 
 ## Scripts
 
