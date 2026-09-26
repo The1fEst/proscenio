@@ -1,14 +1,18 @@
 # proscenio
 
-proscenio is a desktop shell for Hyprland, written in Rust with GTK 4. It
-replaces the Quickshell `ii` shell from
-[dots-hyprland](https://github.com/The1fEst/dots-hyprland) and is built for
-speed and a small memory footprint:
+proscenio is a desktop shell for Hyprland, written in Rust with GTK 4. It is
+part of the [dots-hyprland](https://github.com/The1fEst/dots-hyprland)
+dotfiles, where it replaces the Quickshell `ii` shell, and is built for speed
+and a small memory footprint:
 
 - no QML or JavaScript engine: every panel is compiled Rust;
 - Cairo is the default renderer, so the shell's surfaces hold no GPU memory
   (OpenGL and Vulkan are a setting away);
 - a hidden panel is unrealized and gives back its surface and buffers.
+
+proscenio expects the environment dots-hyprland sets up: its Hyprland config
+and keybinds, its color pipeline and the packages its installer brings. It has
+never been tested outside that environment.
 
 It works only on Hyprland, because it depends on Hyprland in these places:
 
