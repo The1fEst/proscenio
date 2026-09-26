@@ -597,13 +597,8 @@ impl Lock {
     }
 
     pub fn start(self: &Rc<Self>) {
-        let key = ["hyprlandInstanceSignature"];
-        let previous = persistent::read(&key)
-            .and_then(|value| value.as_str().map(str::to_owned))
-            .unwrap_or_default();
-        let current = std::env::var("HYPRLAND_INSTANCE_SIGNATURE").unwrap_or_default();
-        persistent::write(&key, serde_json::Value::from(current.clone()));
-        if config::value_bool("/lock/launchOnStartup", false) && previous != current {
+        let new_instance = persistent::is_new_hyprland_instance();
+        if new_instance && config::value_bool("/lock/launchOnStartup", false) {
             self.lock();
         }
     }

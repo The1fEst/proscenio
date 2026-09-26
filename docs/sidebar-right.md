@@ -451,7 +451,12 @@ WireGuard and Cloudflare WARP both poll at `resources.updateInterval`
 text, tooltip, icon, `available`, main action and menu — with the `On`/`Off`
 fallback `QuickToggleModel` applies when a toggle sets no status text.
 `onScreenKeyboard` runs proscenio's `oskToggle` action, which toggles its own
-on-screen keyboard ([osk.md](osk.md)). `src/panels/sidebar/quickpanel.rs` is
+on-screen keyboard ([osk.md](osk.md)). `idleInhibitor` holds
+`systemd-inhibit --what=idle:sleep --who=proscenio cat` with `cat` reading a
+pipe from the shell, so the lock ends with the shell process, including a
+restart through `exec`. The state is `idle.inhibit` in `states.json`; within
+the same Hyprland instance a restarted shell takes the lock again, as qs's
+`Idle` does. `src/panels/sidebar/quickpanel.rs` is
 the panel: `colLayer1`, radius 17, padding 6, its height easing over 500 ms,
 and each row a `ButtonGroup` spaced 6 whose cells take the QML width. That
 includes the extra `spacing · columns` subtraction, so a full row stops one

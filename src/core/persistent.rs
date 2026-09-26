@@ -1,5 +1,24 @@
 use serde_json::Value;
+use std::cell::OnceCell;
 use std::path::PathBuf;
+
+thread_local! {
+    static NEW_HYPRLAND_INSTANCE: OnceCell<bool> = const { OnceCell::new() };
+}
+
+pub fn is_new_hyprland_instance() -> bool {
+    NEW_HYPRLAND_INSTANCE.with(|cell| {
+        *cell.get_or_init(|| {
+            let key = ["hyprlandInstanceSignature"];
+            let previous = read(&key)
+                .and_then(|value| value.as_str().map(str::to_owned))
+                .unwrap_or_default();
+            let current = std::env::var("HYPRLAND_INSTANCE_SIGNATURE").unwrap_or_default();
+            write(&key, Value::from(current.as_str()));
+            previous != current
+        })
+    })
+}
 
 pub fn read(keys: &[&str]) -> Option<Value> {
     let text = std::fs::read_to_string(path()).ok()?;

@@ -48,9 +48,9 @@ use; the others are not ported.
 51 files, 6347 lines. Ported: notifications, network, bluetooth, audio,
 brightness and Hyprsunset, UPower battery, power profiles, updates, weather,
 to-do, the pomodoro timer, EasyEffects, Cloudflare WARP, system info, the
-Hyprland event stream, MPRIS, polkit, Ydotool, and the calendar and timer
-parts of Persistent state, Cliphist, app search, emoji, the launcher search
-and Wallpapers. Missing: the rest of Persistent state, translations, and the
+Hyprland event stream, MPRIS, polkit, Ydotool, Persistent state (all of it
+but `cheatsheet.tabIndex`, as the cheatsheet has one tab), Idle, Cliphist, app
+search, emoji, the launcher search and Wallpapers. Missing: translations, and the
 icon service.
 
 ## Scripts

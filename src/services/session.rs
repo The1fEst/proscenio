@@ -7,7 +7,7 @@ use std::rc::Rc;
 use crate::core::config::{self, Config};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::detach;
-use crate::core::watch;
+use crate::core::{persistent, watch};
 
 #[derive(Clone)]
 pub struct Session {
@@ -32,6 +32,7 @@ struct Schedule {
 }
 
 const DEFAULT_TEMPERATURE: i32 = 6000;
+const INHIBIT: [&str; 2] = ["idle", "inhibit"];
 
 fn minutes(clock: &str) -> i32 {
     let mut parts = clock
@@ -77,6 +78,15 @@ impl Session {
         session.read_night();
         session.watch_mode();
         session.re_evaluate();
+        let kept_awake = !persistent::is_new_hyprland_instance()
+            && persistent::read(&INHIBIT)
+                .and_then(|value| value.as_bool())
+                .unwrap_or(false);
+        if kept_awake {
+            session.toggle_awake();
+        } else {
+            persistent::write(&INHIBIT, false.into());
+        }
         let follower = session.clone();
         session
             .following
@@ -225,11 +235,12 @@ impl Session {
                         "--what=idle:sleep",
                         "--who=proscenio",
                         "--why=Keep awake",
-                        "sleep",
-                        "infinity",
+                        "cat",
                     ]
                     .map(std::ffi::OsStr::new),
-                    gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
+                    gio::SubprocessFlags::STDIN_PIPE
+                        | gio::SubprocessFlags::STDOUT_SILENCE
+                        | gio::SubprocessFlags::STDERR_SILENCE,
                 )
                 .ok();
                 self.awake.set(started.is_some());
@@ -237,6 +248,7 @@ impl Session {
             }
         }
         drop(held);
+        persistent::write(&INHIBIT, self.awake.get().into());
         self.announce();
     }
 
