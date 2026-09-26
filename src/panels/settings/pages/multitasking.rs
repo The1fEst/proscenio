@@ -8,7 +8,7 @@ use crate::panels::settings::hyprrows::{self, Spin};
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::selection::Selection;
 
-const OPTIONS: [&str; 28] = [
+const OPTIONS: [&str; 38] = [
     "general:layout",
     "general:gaps_in",
     "general:gaps_out",
@@ -17,6 +17,16 @@ const OPTIONS: [&str; 28] = [
     "general:snap:enabled",
     "general:snap:window_gap",
     "general:snap:monitor_gap",
+    "general:resize_on_border",
+    "general:extend_border_grab_area",
+    "scrolling:column_width",
+    "scrolling:direction",
+    "scrolling:fullscreen_on_one_column",
+    "scrolling:follow_focus",
+    "scrolling:focus_fit_method",
+    "input:follow_mouse",
+    "input:focus_on_close",
+    "misc:focus_on_activate",
     "dwindle:preserve_split",
     "dwindle:smart_split",
     "dwindle:smart_resizing",
@@ -52,6 +62,33 @@ const MASTER_SIDES: [(&str, &str); 5] = [
     ("Top", "top"),
     ("Bottom", "bottom"),
     ("Centre", "center"),
+];
+const SCROLL_DIRECTIONS: [(&str, &str); 4] = [
+    ("New windows open to the right", "right"),
+    ("New windows open to the left", "left"),
+    ("New windows open below", "down"),
+    ("New windows open above", "up"),
+];
+const FIT_METHODS: [(&str, &str); 2] = [
+    ("Center the focused column", "0"),
+    ("Scroll just enough to show the focused column", "1"),
+];
+const FOLLOW_MOUSE: [(&str, &str); 4] = [
+    ("Focus follows the pointer", "1"),
+    ("Click to focus", "0"),
+    (
+        "Click to focus; the window under the pointer still gets hover and scroll",
+        "2",
+    ),
+    (
+        "The pointer never moves keyboard focus, not even a click",
+        "3",
+    ),
+];
+const FOCUS_ON_CLOSE: [(&str, &str); 3] = [
+    ("After a close, focus the next window", "0"),
+    ("After a close, focus the window under the pointer", "1"),
+    ("After a close, focus the window used last", "2"),
 ];
 
 fn layout(options: &HyprOptions) -> String {
@@ -101,6 +138,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         vec![
             choice("Dwindle", "splitscreen_right", Value::from("dwindle")),
             choice("Master", "splitscreen_left", Value::from("master")),
+            choice("Scrolling", "view_week", Value::from("scrolling")),
+            choice("Monocle", "fullscreen", Value::from("monocle")),
         ],
         {
             let options = Rc::downgrade(&options);
@@ -222,6 +261,53 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
+    let scrolling = page.subsection(&tiling, "Scrolling", "");
+    hyprrows::spin(
+        &page,
+        &scrolling,
+        &options,
+        &spin(
+            "width",
+            "Column width (%)",
+            "scrolling:column_width",
+            100.0,
+            (10, 100),
+            5,
+        ),
+    );
+    hyprrows::combo(
+        &page,
+        &scrolling,
+        &options,
+        "arrow_forward",
+        ("scrolling:direction", "right"),
+        &SCROLL_DIRECTIONS,
+    );
+    hyprrows::combo(
+        &page,
+        &scrolling,
+        &options,
+        "fit_width",
+        ("scrolling:focus_fit_method", "1"),
+        &FIT_METHODS,
+    );
+    hyprrows::switch(
+        &page,
+        &scrolling,
+        &options,
+        "center_focus_strong",
+        "Scroll to the focused window",
+        "scrolling:follow_focus",
+    );
+    hyprrows::switch(
+        &page,
+        &scrolling,
+        &options,
+        "fullscreen",
+        "A single column fills the screen",
+        "scrolling:fullscreen_on_one_column",
+    );
+
     let snapping = page.subsection(
         &tiling,
         "Snapping",
@@ -261,6 +347,55 @@ pub fn build(context: &Context) -> Rc<Page> {
             (0, 100),
             1,
         ),
+    );
+
+    let resizing = page.subsection(&tiling, "Resizing", "");
+    hyprrows::switch(
+        &page,
+        &resizing,
+        &options,
+        "resize",
+        "Resize windows by dragging their borders",
+        "general:resize_on_border",
+    );
+    let grab_area = hyprrows::spin(
+        &page,
+        &resizing,
+        &options,
+        &spin(
+            "width",
+            "Grab area around the border (px)",
+            "general:extend_border_grab_area",
+            1.0,
+            (0, 100),
+            1,
+        ),
+    );
+
+    let focus = page.section("arrow_selector_tool", "Focus");
+    hyprrows::combo(
+        &page,
+        &focus,
+        &options,
+        "arrow_selector_tool",
+        ("input:follow_mouse", "1"),
+        &FOLLOW_MOUSE,
+    );
+    hyprrows::combo(
+        &page,
+        &focus,
+        &options,
+        "close",
+        ("input:focus_on_close", "0"),
+        &FOCUS_ON_CLOSE,
+    );
+    hyprrows::switch(
+        &page,
+        &focus,
+        &options,
+        "open_in_new",
+        "Let apps take focus when they ask for it",
+        "misc:focus_on_activate",
     );
 
     let overview = page.section("overview_key", "Overview");
@@ -462,7 +597,7 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let follow = {
         let options = Rc::downgrade(&options);
-        let (dwindle, master) = (dwindle.parent(), master.parent());
+        let (dwindle, master, scrolling) = (dwindle.parent(), master.parent(), scrolling.parent());
         move || {
             let Some(options) = options.upgrade() else {
                 return;
@@ -475,6 +610,11 @@ pub fn build(context: &Context) -> Rc<Page> {
             if let Some(master) = &master {
                 master.set_visible(current == "master");
             }
+            if let Some(scrolling) = &scrolling {
+                scrolling.set_visible(current == "scrolling");
+            }
+            let resize = options.flag("general:resize_on_border");
+            Page::set_spin_row_enabled(&grab_area.0, &grab_area.1, resize);
             let snap = options.flag("general:snap:enabled");
             Page::set_spin_row_enabled(&window_gap.0, &window_gap.1, snap);
             Page::set_spin_row_enabled(&monitor_gap.0, &monitor_gap.1, snap);

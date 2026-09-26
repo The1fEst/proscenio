@@ -490,11 +490,23 @@ blur is off.
   written one line each into `settings.lua`, then Hyprland reloads
   (`src/services/hyproptions.rs`, `src/panels/settings/hyprrows.rs` for the
   `HyprlandSwitch` and the option spin boxes).
-- "Tiling": the layout (Dwindle or Master); "Spacing" (inner and outer gaps,
-  border width); "Dwindle" or "Master", whichever layout is in use, with their
-  switches, the master's new-window place and side, and the split or master
-  share in percent; "Snapping" (with a tooltip): the switch and a uniform row
-  of the window and screen gaps, dead while snapping is off.
+- "Tiling": the layout (Dwindle, Master, Scrolling or Monocle); "Spacing"
+  (inner and outer gaps, border width); "Dwindle", "Master" or "Scrolling",
+  whichever layout is in use, with their switches, the master's new-window
+  place and side, the split or master share in percent, and for Scrolling the
+  column width in percent (`scrolling:column_width`, 10–100), the direction new
+  windows open in, how a focused column is brought into view (center or fit),
+  scrolling to the focused window and a single column filling the screen;
+  "Snapping" (with a tooltip): the switch and a uniform row of the window and
+  screen gaps, dead while snapping is off; "Resizing": dragging borders to
+  resize (`general:resize_on_border`) and the grab area around them in px,
+  dead while dragging is off.
+- "Focus": what the pointer does to focus (`input:follow_mouse`: follows the
+  pointer 1, click to focus 0, click to focus with hover and scroll still going
+  to the window under the pointer 2, never, not even on a click 3), where focus
+  goes after a window closes (`input:focus_on_close`: next window, window under
+  the pointer, window used last), and letting apps take focus when they ask
+  (`misc:focus_on_activate`).
 - "Overview": the enable switch; "Looks": centered icons and the scale in
   percent; "Workspace grid": rows and columns, and the horizontal and vertical
   order as two selection arrays side by side. The orders are booleans in the
