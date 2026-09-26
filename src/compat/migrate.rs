@@ -20,6 +20,10 @@ pub fn run() {
             paths::state().join("first_run.txt"),
         ),
         (
+            paths::state().join("first_run.txt"),
+            paths::state().join("defaults_applied.txt"),
+        ),
+        (
             glib::user_cache_dir().join("quickshell/notifications/notifications.json"),
             paths::cache().join("notifications.json"),
         ),

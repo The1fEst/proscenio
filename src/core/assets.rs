@@ -38,6 +38,17 @@ const ICONS: [(&str, &[u8]); 13] = [
 ];
 
 const MICROPHONE: &[u8] = asset!("icons/micgate.png");
+const DEFAULT_WALLPAPER: &[u8] = asset!("images/default_wallpaper.png");
+
+pub fn default_wallpaper() -> Option<std::path::PathBuf> {
+    let directory = gtk4::glib::user_data_dir().join("proscenio");
+    let path = directory.join("default_wallpaper.png");
+    if !path.exists() {
+        std::fs::create_dir_all(&directory).ok()?;
+        std::fs::write(&path, DEFAULT_WALLPAPER).ok()?;
+    }
+    Some(path)
+}
 
 pub fn microphone_icon() -> Option<std::path::PathBuf> {
     let path = crate::core::paths::runtime().join("micgate.png");

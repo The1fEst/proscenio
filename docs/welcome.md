@@ -52,9 +52,26 @@ Differences from qs:
 
 - **The marker** is `~/.local/state/proscenio/first_run.txt`. The compat build
   copies qs's `<state>/user/first_run.txt` there.
-- **The first run** writes the main display chosen by the Displays rule
-  (`Displays::primary`) and sets no wallpaper. proscenio ships no default
-  wallpaper.
+- **Defaults are applied once.** When `first_run.txt` is missing and
+  `~/.local/state/proscenio/defaults_applied.txt` is missing too,
+  `src/panels/welcome/defaults.rs` writes that second marker and sets:
+  - the main display chosen by the Displays rule (`Displays::primary`);
+  - the default applications: Web `zen.desktop`, Mail
+    `org.mozilla.Thunderbird.desktop`, Calendar `org.gnome.Calendar.desktop`,
+    Music and Video `vlc.desktop`, Photos `satty.desktop`, Text
+    `com.microsoft.VSCode.desktop`, Files `org.kde.dolphin.desktop`, each only
+    when it is installed;
+  - the fonts: Google Sans Medium at 11 (general, menu), 10 (toolbar, title)
+    and 9 (small), JetBrainsMono Nerd Font Medium 11 (fixed);
+  - GTK theme `adw-gtk3-dark`, Qt style `Darkly`, icons `Papirus-Dark`, cursor
+    `Bibata-Modern-Ice` at 36, through the Appearance page's writers;
+  - the wallpaper: qs's `assets/images/default_wallpaper.png`, built into the
+    binary and written to `~/.local/share/proscenio/default_wallpaper.png`, set
+    through `switchwall`.
+
+  The "Show next time" switch only brings the window back. The compat build
+  copies `first_run.txt` to `defaults_applied.txt`, so an installation greeted
+  earlier keeps its settings.
 - **Language is left out.** proscenio has no translations, and its Region &
   Language settings page is a placeholder.
 - **The page wraps to the window.** In qs the language row does not wrap and

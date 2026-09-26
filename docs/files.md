@@ -7,6 +7,8 @@
 | `~/.local/state/proscenio/todo.json` | the to-do list |
 | `~/.local/state/proscenio/states.json` | timers and other state kept across restarts |
 | `~/.local/state/proscenio/generated/` | the color scheme: `colors.json` and `color.txt` from matugen, `material_colors.scss`, `terminal/kitty-theme.conf`, `terminal/sequences.txt` |
+| `~/.local/state/proscenio/first_run.txt`, `defaults_applied.txt` | the first-run markers ([welcome.md](welcome.md)) |
+| `~/.local/share/proscenio/default_wallpaper.png` | the default wallpaper the first run sets |
 | `~/.cache/proscenio/notifications.json` | the notification history |
 | `~/.cache/proscenio/notifications/` | images that notifications sent as raw pixels, one `<id>.png` each |
 | `~/.cache/proscenio/coverart/` | downloaded album art |
@@ -27,7 +29,7 @@ The dots point matugen, kitty, fish, zsh and `kde-material-you-colors` at
 `~/.local/state/proscenio/generated`. The QML shell does not follow those
 wallpaper changes.
 
-Icons, the cava config and the terminal templates are
+Icons, the default wallpaper, the cava config and the terminal templates are
 built into the binary; nothing is read from `~/.config/quickshell`.
 
 ## Commands

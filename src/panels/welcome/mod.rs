@@ -1,3 +1,4 @@
+mod defaults;
 mod preference;
 
 use gtk4::gdk;
@@ -73,8 +74,13 @@ pub fn greet_if_first_run(welcome: &Rc<Welcome>) {
         return;
     }
     let _ = std::fs::write(&marker, format!("{FIRST_RUN_CONTENT}\n"));
-    let displays = Displays::new();
-    displays.set_primary(&displays.primary());
+    let applied = paths::state().join("defaults_applied.txt");
+    if !applied.exists() {
+        let _ = std::fs::write(&applied, "");
+        let displays = Displays::new();
+        displays.set_primary(&displays.primary());
+        defaults::apply();
+    }
     welcome.open();
 }
 
