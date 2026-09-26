@@ -634,8 +634,13 @@ rasterized through the widget's own GSK renderer, colorized in HSL exactly as
 the 350 ms corner margin and the 200 ms opacity.
 
 The special workspace is implemented: the regular layers are rendered into an
-image surface, three-pass box blurred to `blur·32`, darkened by 0.1 and scaled
-by `1 − 0.08·blur`, with the name pill over it at `0.8 + 0.2·blur` scale.
+image surface padded by three blur radii, blurred by three box passes of radius
+`blur·32/5` that treat everything outside as transparent, darkened by 0.1 and
+scaled by `1 − 0.08·blur`, with the name pill over it at `0.8 + 0.2·blur`
+scale. The widget is a `Paint` whose cairo node reaches 32 px past its
+allocation on every side, so the blur spreads past the 26 px strip as
+`MultiEffect`'s padding lets it in qs. The radius matches qs's blob width at
+half maximum.
 Back-button toggles the special workspace.
 
 Super-hold follows `States.super_down` through the same delay timer, and

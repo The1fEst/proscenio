@@ -1,5 +1,6 @@
 use gtk4::cairo;
 use gtk4::gdk::RGBA;
+use gtk4::graphene;
 use gtk4::prelude::*;
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
@@ -13,6 +14,7 @@ use crate::platform::appicon;
 use crate::platform::hypr;
 use crate::ui::anim;
 use crate::ui::theme::{SharedTheme, transparentize};
+use crate::ui::widgets::paint::Paint;
 use crate::ui::widgets::text;
 
 const BUTTON: f64 = 26.0;
@@ -94,13 +96,11 @@ pub fn build(
     });
     let vertical = look.vertical;
 
-    let area = gtk4::DrawingArea::new();
+    let area = Paint::new(|_, _, _| {});
     if vertical {
-        area.set_content_width(BUTTON as i32);
-        area.set_content_height((BUTTON * shown as f64) as i32);
+        area.set_size_request(BUTTON as i32, (BUTTON * shown as f64) as i32);
     } else {
-        area.set_content_width((BUTTON * shown as f64) as i32);
-        area.set_content_height(BUTTON as i32);
+        area.set_size_request((BUTTON * shown as f64) as i32, BUTTON as i32);
         area.set_valign(gtk4::Align::Center);
     }
     let along = move |x: f64, y: f64| if vertical { y } else { x };
@@ -114,18 +114,25 @@ pub fn build(
     let motion = Rc::new(Motion::new(&area, &look, &state.borrow()));
     motion.settle(&state.borrow(), &look);
 
-    area.set_draw_func({
+    area.set_draw({
         let state = state.clone();
         let theme = theme.clone();
         let motion = motion.clone();
         let look = look.clone();
-        let canvas = area.clone();
-        move |_, cr, width, height| {
+        let canvas = area.downgrade();
+        move |snapshot, width, height| {
+            let Some(canvas) = canvas.upgrade() else {
+                return;
+            };
+            let bleed = BLUR_MAX as f32;
+            let bounds =
+                graphene::Rect::new(-bleed, -bleed, width + 2.0 * bleed, height + 2.0 * bleed);
+            let cr = snapshot.append_cairo(&bounds);
             draw(
-                cr,
+                &cr,
                 &canvas,
-                width,
-                height,
+                width as i32,
+                height as i32,
                 &look,
                 &state.borrow(),
                 &motion,
@@ -307,7 +314,7 @@ struct Motion {
 }
 
 impl Motion {
-    fn new(area: &gtk4::DrawingArea, look: &Look, state: &State) -> Self {
+    fn new(area: &Paint, look: &Look, state: &State) -> Self {
         let shown = look.shown;
         let index = (state.active - 1).rem_euclid(shown) as f64;
         let cells = |start: f64, millis: f64, ease: anim::Ease| {
@@ -492,7 +499,7 @@ fn refresh(state: &Rc<RefCell<State>>, monitor: &str) {
 #[allow(clippy::too_many_arguments)]
 fn draw(
     cr: &cairo::Context,
-    area: &gtk4::DrawingArea,
+    area: &Paint,
     width: i32,
     height: i32,
     look: &Look,
@@ -515,7 +522,7 @@ fn draw(
 
     if blur <= 0.002 {
         regular(cr, area, centre, look, state, motion, theme);
-    } else if let Some(smeared) = smear(
+    } else if let Some((smeared, padding)) = smear(
         area, width, height, centre, look, state, motion, theme, blur,
     ) {
         let (centre_x, centre_y) = (width as f64 / 2.0, height as f64 / 2.0);
@@ -524,7 +531,7 @@ fn draw(
         cr.translate(centre_x, centre_y);
         cr.scale(scale, scale);
         cr.translate(-centre_x, -centre_y);
-        let _ = cr.set_source_surface(&smeared, 0.0, 0.0);
+        let _ = cr.set_source_surface(&smeared, -padding, -padding);
         let _ = cr.paint();
         cr.set_operator(cairo::Operator::Atop);
         cr.set_source_rgba(0.0, 0.0, 0.0, 0.1 * blur);
@@ -538,7 +545,7 @@ fn draw(
 
 #[allow(clippy::too_many_arguments)]
 fn smear(
-    area: &gtk4::DrawingArea,
+    area: &Paint,
     width: i32,
     height: i32,
     centre: f64,
@@ -547,19 +554,27 @@ fn smear(
     motion: &Motion,
     theme: &crate::ui::theme::Theme,
     blur: f64,
-) -> Option<cairo::ImageSurface> {
-    let mut surface = cairo::ImageSurface::create(cairo::Format::ARgb32, width, height).ok()?;
+) -> Option<(cairo::ImageSurface, f64)> {
+    let radius = (blur * BLUR_MAX / 5.0).round() as i32;
+    let padding = radius * 3;
+    let mut surface = cairo::ImageSurface::create(
+        cairo::Format::ARgb32,
+        width + 2 * padding,
+        height + 2 * padding,
+    )
+    .ok()?;
     {
         let context = cairo::Context::new(&surface).ok()?;
+        context.translate(padding as f64, padding as f64);
         regular(&context, area, centre, look, state, motion, theme);
     }
-    box_blur(&mut surface, (blur * BLUR_MAX / 3.0).round() as i32);
-    Some(surface)
+    box_blur(&mut surface, radius);
+    Some((surface, padding as f64))
 }
 
 fn regular(
     cr: &cairo::Context,
-    area: &gtk4::DrawingArea,
+    area: &Paint,
     centre: f64,
     look: &Look,
     state: &State,
@@ -726,7 +741,7 @@ fn centred(extent: f64, size: f64) -> f64 {
 
 fn icons(
     cr: &cairo::Context,
-    area: &gtk4::DrawingArea,
+    area: &Paint,
     centre: f64,
     look: &Look,
     state: &State,
@@ -876,10 +891,10 @@ fn pass(
     radius: i32,
     horizontal: bool,
 ) {
+    let window = (2 * radius + 1) as u32;
     for row in 0..height {
         for column in 0..width {
             let mut sums = [0u32; 4];
-            let mut count = 0u32;
             for step in -radius..=radius {
                 let (x, y) = if horizontal {
                     (column as i32 + step, row as i32)
@@ -893,11 +908,10 @@ fn pass(
                 for (channel, sum) in sums.iter_mut().enumerate() {
                     *sum += source[at + channel] as u32;
                 }
-                count += 1;
             }
             let at = row * stride + column * 4;
             for (channel, sum) in sums.iter().enumerate() {
-                target[at + channel] = (sum / count.max(1)) as u8;
+                target[at + channel] = (sum / window) as u8;
             }
         }
     }
@@ -923,4 +937,18 @@ fn set_source(cr: &cairo::Context, color: RGBA) {
         color.blue() as f64,
         color.alpha() as f64,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_blur_pass_fades_content_at_the_edge_into_transparency() {
+        let mut source = vec![0u8; 5 * 4];
+        source[..4].copy_from_slice(&[255; 4]);
+        let mut target = vec![0u8; 5 * 4];
+        pass(&source, &mut target, 5, 1, 5 * 4, 1, true);
+        assert_eq!(&target[..8], &[85, 85, 85, 85, 85, 85, 85, 85]);
+    }
 }
