@@ -332,7 +332,11 @@ The slide wrapper around each card reports its child's request mode
 measured at its unwrapped width and the expanded card cuts off its button row.
 
 The hint handling follows Quickshell. An empty `app_icon` falls back to the
-icon of the `desktop-entry` hint's desktop file. Raw pixels in `image-data`,
+icon of the `desktop-entry` hint's desktop file. Without that hint, proscenio
+looks the app name up with `desktop::find` (desktop file id or
+`StartupWMClass`, case-insensitive) and then by the desktop file's `Name`; qs
+shows the generic glyph there. History entries saved without an icon get the
+same lookup on load, once per app name. Raw pixels in `image-data`,
 `image_data` or `icon_data` are saved as
 `~/.cache/proscenio/notifications/<id>.png`, which survives a restart
 (Quickshell keeps the image in memory); the file is deleted when the

@@ -410,7 +410,7 @@ impl Notifications {
         let notification = Notification {
             id,
             actions: labels,
-            app_icon: app_icon(text(2), &hints),
+            app_icon: app_icon(text(2), &hints, &text(0)),
             app_name: text(0),
             body: text(4),
             image: image(id, &hints),
@@ -506,12 +506,26 @@ fn hint(hints: &Variant, key: &str) -> Option<Variant> {
         .and_then(|pair| pair.child_value(1).as_variant())
 }
 
-fn app_icon(given: String, hints: &Variant) -> String {
+fn app_icon(given: String, hints: &Variant, app_name: &str) -> String {
     if !given.is_empty() {
         return given;
     }
     hint_string(hints, "desktop-entry")
         .and_then(|id| desktop::find(&id))
+        .map(|entry| entry.icon())
+        .unwrap_or_else(|| named_icon(app_name))
+}
+
+fn named_icon(app_name: &str) -> String {
+    if app_name.is_empty() {
+        return String::new();
+    }
+    desktop::find(app_name)
+        .or_else(|| {
+            desktop::all()
+                .into_iter()
+                .find(|entry| entry.name().eq_ignore_ascii_case(app_name))
+        })
         .map(|entry| entry.icon())
         .unwrap_or_default()
 }
@@ -582,12 +596,20 @@ fn store_path() -> PathBuf {
 }
 
 fn read_store() -> Vec<Notification> {
-    std::fs::read_to_string(store_path())
+    let mut list: Vec<Notification> = std::fs::read_to_string(store_path())
         .ok()
         .and_then(|text| serde_json::from_str::<Value>(&text).ok())
         .and_then(|value| value.as_array().cloned())
         .map(|entries| entries.iter().filter_map(Notification::from_json).collect())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    let mut found: HashMap<String, String> = HashMap::new();
+    for notification in list.iter_mut().filter(|entry| entry.app_icon.is_empty()) {
+        notification.app_icon = found
+            .entry(notification.app_name.clone())
+            .or_insert_with(|| named_icon(&notification.app_name))
+            .clone();
+    }
+    list
 }
 
 fn write_store(list: &[Notification]) {
