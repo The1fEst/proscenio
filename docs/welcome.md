@@ -1,0 +1,61 @@
+# The welcome window
+
+Source: `modules/ii/welcome/WelcomeWindow.qml` and `services/FirstRunExperience.qml`.
+Read [foundations.md](foundations.md) and [settings.md](settings.md) first: the
+window is built from the settings window's parts.
+
+## 1. First run
+
+`FirstRunExperience` reads `<state>/user/first_run.txt`. When the file is missing,
+it writes it ("This file is just here to confirm you've been greeted :>"), sets
+the default wallpaper through `switchwall.sh`, and opens the welcome window.
+
+## 2. The window
+
+A `FloatingWindow`, 900×650 with a 600×400 minimum, on `m3background`, loaded
+while `GlobalStates.welcomeOpen`. The titlebar follows `windows.showTitlebar` and
+`windows.centerTitle` like the settings window. It shows "Hi there! First things
+first...", a "Show next time" switch at scale 0.6, and a close button with the tip
+"Tip: Close a window with Super+Q". The switch deletes the marker when turned on
+and writes it back when turned off. Escape closes the window. Closing it sends a
+"Welcome app" notification that names Super+Shift+Alt+/ and Super+I.
+
+Below the titlebar is a `ContentPage` in a `m3surfaceContainerLow` box with these
+sections:
+
+- **Language**: the UI language, "Auto (System)" and every translation.
+- **Displays**: a monitor choice and the arrangement (both only with more than one
+  monitor), then resolution and refresh rate, as on the Displays page.
+- **Sound**: output and input devices.
+- **Bar**: position (Top, Left, Bottom, Right) and style (Hug, Float, Rect).
+- **Style & wallpaper**:
+  - two large `LightDarkPreferenceButton`s: a 250 px preview skeleton tinted with
+    the primary hue, whose wavy bar moves only on the active one;
+  - "Choose file" with Ctrl Super + T;
+  - a notice.
+- **Power saving**: the two idle timeout rows from the Power page.
+- **Info**: Keybinds (Super + /), Usage and Configuration, the last two linking to
+  the upstream wiki.
+- **Useless buttons**: GitHub and "Funny number", linking upstream.
+
+IPC target `welcome` with `open`, `close`, `toggle`.
+
+---
+
+**Status (proscenio).** `src/panels/welcome/` holds the window, the page and
+`preference.rs` for the large light/dark button. The window reuses the settings
+window's titlebar logic and CSS classes. It also reuses the Quick page's bar
+selections and wallpaper button (`shortcut_button`), the Power page's
+`idle_timeout_row` and the Sound page's `device_label`.
+
+Differences from qs:
+
+- **The marker** is `~/.local/state/proscenio/first_run.txt`. The compat build
+  copies qs's `<state>/user/first_run.txt` there.
+- **The first run** writes the main display chosen by the Displays rule
+  (`Displays::primary`) and sets no wallpaper. proscenio ships no default
+  wallpaper.
+- **Language is left out.** proscenio has no translations, and its Region &
+  Language settings page is a placeholder.
+- **The page wraps to the window.** In qs the language row does not wrap and
+  pushes the whole page off to the side, clipped and unscrollable.

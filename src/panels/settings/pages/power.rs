@@ -1,0 +1,160 @@
+use gtk4::prelude::*;
+use std::rc::Rc;
+
+use crate::core::config;
+use crate::panels::settings::content::{Context, Page, Parent};
+use crate::services::idleoptions::IdleOptions;
+use crate::ui::widgets::spinbox::SpinBox;
+
+const AUTOMATIC_SUSPEND: &str = "/battery/automaticSuspend";
+
+pub struct IdleTimeout {
+    pub what: &'static str,
+    pub title: &'static str,
+    pub tip: &'static str,
+    pub switch_icon: &'static str,
+    pub switch_text: &'static str,
+    pub fallback_minutes: i64,
+}
+
+pub fn idle_timeout_row(
+    page: &Page,
+    parent: &impl Parent,
+    options: &Rc<IdleOptions>,
+    row: &IdleTimeout,
+) {
+    let group = page.subsection(parent, row.title, row.tip);
+    let line = page.row(&group);
+    line.set_halign(gtk4::Align::Start);
+    let what = row.what;
+    let minutes = {
+        let options = Rc::downgrade(options);
+        move || {
+            options.upgrade().map_or(0, |options| {
+                (options.seconds(what) as f64 / 60.0).round() as i64
+            })
+        }
+    };
+    let fallback = row.fallback_minutes;
+    let switch = page.switch(&line, row.switch_icon, row.switch_text, {
+        let options = Rc::downgrade(options);
+        let minutes = minutes.clone();
+        move |wanted| {
+            if (minutes() > 0) == wanted {
+                return;
+            }
+            if let Some(options) = options.upgrade() {
+                options.set(what, if wanted { fallback * 60 } else { 0 });
+            }
+        }
+    });
+    switch.bind({
+        let minutes = minutes.clone();
+        move || minutes() > 0
+    });
+    let spin = SpinBox::new(&page.theme, 1, 600, 5, 0);
+    spin.connect_changed({
+        let options = Rc::downgrade(options);
+        move |value| {
+            if let Some(options) = options.upgrade() {
+                options.set(what, value * 60);
+            }
+        }
+    });
+    let spin_line = page.spin_row(&line, "timer", "after (min)", &spin);
+    let follow = move || {
+        let current = minutes();
+        switch.refresh();
+        spin.set_value(current);
+        Page::set_spin_row_enabled(&spin_line, &spin, current > 0);
+    };
+    follow();
+    options.connect_changed(follow);
+}
+
+pub fn build(context: &Context) -> Rc<Page> {
+    let page = Page::new(&context.theme, true);
+    let options = IdleOptions::new();
+
+    let saving = page.section("energy_savings_leaf", "Power Saving");
+    idle_timeout_row(
+        &page,
+        &saving,
+        &options,
+        &IdleTimeout {
+            what: "screen",
+            title: "Automatic Screen Blank",
+            tip: "Turns the screens off after a period of inactivity",
+            switch_icon: "brightness_low",
+            switch_text: "Blank the screen",
+            fallback_minutes: 15,
+        },
+    );
+
+    let battery = page.section("battery_android_full", "Battery");
+    let warnings = page.uniform_row(&battery);
+    page.config_spin(
+        &warnings,
+        "warning",
+        "Low warning",
+        "/battery/low",
+        20,
+        (0, 100),
+        5,
+    );
+    page.config_spin(
+        &warnings,
+        "dangerous",
+        "Critical warning",
+        "/battery/critical",
+        5,
+        (0, 100),
+        5,
+    );
+    let suspend = page.row(&battery);
+    suspend.set_halign(gtk4::Align::Start);
+    let automatic = page.config_switch(
+        &suspend,
+        "pause",
+        "Automatic suspend",
+        AUTOMATIC_SUSPEND,
+        true,
+    );
+    page.tip(
+        &automatic.button,
+        "Automatically suspends the system when battery is low",
+    );
+    let (at_row, at) = page.config_spin(&suspend, "", "at", "/battery/suspend", 3, (0, 100), 5);
+    let follow = move || {
+        Page::set_spin_row_enabled(&at_row, &at, config::value_bool(AUTOMATIC_SUSPEND, true));
+    };
+    follow();
+    page.watch(AUTOMATIC_SUSPEND, follow);
+    let full = page.uniform_row(&battery);
+    page.config_spin(
+        &full,
+        "charger",
+        "Full warning",
+        "/battery/full",
+        101,
+        (0, 101),
+        5,
+    );
+
+    let sleeping = page.section("bedtime", "Automatic Suspend");
+    idle_timeout_row(
+        &page,
+        &sleeping,
+        &options,
+        &IdleTimeout {
+            what: "suspend",
+            title: "Suspend when idle",
+            tip: "Turning automatic suspend off means the machine keeps drawing power while nobody is at it",
+            switch_icon: "pause",
+            switch_text: "Suspend",
+            fallback_minutes: 45,
+        },
+    );
+    page.keep(options);
+    page
+}

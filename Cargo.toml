@@ -1,0 +1,36 @@
+[package]
+name = "proscenio"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bitflags = "2"
+gdk4-wayland = { version = "0.11", features = ["wayland_crate"] }
+gtk4 = { version = "0.11.5", features = ["v4_22"] }
+gtk4-layer-shell = { version = "0.8.1", features = ["v1_3"] }
+libpulse-binding = "2.30.1"
+libpulse-glib-binding = "2.29.0"
+material-colors = "0.4.2"
+pangocairo = "0.22.9"
+serde_json = "1.0.151"
+toml_edit = { version = "0.25.15", features = ["serde"] }
+wayland-backend = { version = "0.3", features = ["client_system", "dlopen"] }
+wayland-client = "0.31"
+wayland-scanner = "0.31"
+
+[features]
+compat = []
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.profiling]
+inherits = "release"
+debug = "line-tables-only"
+strip = false
+
+[build-dependencies]
+wayland-scanner = "0.31"

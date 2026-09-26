@@ -1,0 +1,632 @@
+use gtk4::glib;
+use libpulse_binding::callbacks::ListResult;
+use libpulse_binding::context::introspect::Introspector;
+use libpulse_binding::context::subscribe::InterestMaskSet;
+use libpulse_binding::context::{Context, FlagSet, State};
+use libpulse_binding::volume::{ChannelVolumes, Volume};
+use libpulse_glib_binding::Mainloop;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+use std::time::Duration;
+
+use crate::core::listeners::{Listeners, Subscription};
+use crate::core::{assets, config, process};
+
+const HARD_MAX: f64 = 2.0;
+const SETTLE: Duration = Duration::from_secs(3);
+
+#[derive(Clone, Copy)]
+pub struct Protection {
+    pub enable: bool,
+    pub max_allowed_increase: f64,
+    pub max_allowed: f64,
+}
+
+pub struct Stream {
+    pub index: u32,
+    pub name: String,
+    pub media: Option<String>,
+    pub icon: String,
+    pub node: String,
+    pub volume: f64,
+    pub muted: bool,
+}
+
+pub struct Device {
+    pub name: String,
+    pub label: String,
+    pub description: String,
+    pub nick: String,
+}
+
+#[derive(Clone)]
+pub struct Audio {
+    pub sink_muted: Rc<Cell<bool>>,
+    pub source_muted: Rc<Cell<bool>>,
+    pub sink_volume: Rc<Cell<f64>>,
+    pub source_volume: Rc<Cell<f64>>,
+    sink_name: Rc<RefCell<String>>,
+    source_name: Rc<RefCell<String>>,
+    listeners: Rc<Listeners>,
+    node_listeners: Rc<Listeners>,
+    watchers: Rc<Listeners>,
+    sink_listeners: Rc<Listeners>,
+    protection_listeners: Rc<Listeners<String>>,
+    sink_seen: Rc<RefCell<String>>,
+    last_volume: Rc<Cell<f64>>,
+    settled: Rc<Cell<bool>>,
+    _mainloop: Rc<Mainloop>,
+    context: Rc<RefCell<Context>>,
+}
+
+impl Audio {
+    pub fn new() -> Option<Self> {
+        let mainloop = Mainloop::new(None)?;
+        let mut context = Context::new(&mainloop, "proscenio")?;
+        context.connect(None, FlagSet::NOFLAGS, None).ok()?;
+
+        let audio = Audio {
+            sink_muted: Rc::new(Cell::new(false)),
+            source_muted: Rc::new(Cell::new(false)),
+            sink_volume: Rc::new(Cell::new(0.0)),
+            source_volume: Rc::new(Cell::new(0.0)),
+            sink_name: Rc::new(RefCell::new(String::new())),
+            source_name: Rc::new(RefCell::new(String::new())),
+            listeners: Rc::default(),
+            node_listeners: Rc::default(),
+            watchers: Rc::default(),
+            sink_listeners: Rc::default(),
+            protection_listeners: Rc::default(),
+            sink_seen: Rc::new(RefCell::new(String::new())),
+            last_volume: Rc::new(Cell::new(0.0)),
+            settled: Rc::new(Cell::new(false)),
+            _mainloop: Rc::new(mainloop),
+            context: Rc::new(RefCell::new(context)),
+        };
+
+        let settled = audio.settled.clone();
+        glib::timeout_add_local_once(SETTLE, move || settled.set(true));
+        audio.start();
+        Some(audio)
+    }
+
+    pub fn subscribe(&self, listener: impl Fn() + 'static) -> Subscription {
+        self.listeners.add(listener)
+    }
+
+    pub fn watch(&self, listener: impl Fn() + 'static) -> Subscription {
+        self.watchers.add(listener)
+    }
+
+    pub fn watch_nodes(&self, listener: impl Fn() + 'static) -> Subscription {
+        self.node_listeners.add(listener)
+    }
+
+    pub fn on_sink_change(&self, listener: impl Fn() + 'static) -> Subscription {
+        self.sink_listeners.add(listener)
+    }
+
+    pub fn on_protection(&self, listener: impl Fn(&str) + 'static) -> Subscription {
+        self.protection_listeners
+            .add_with(move |reason: &String| listener(reason))
+    }
+
+    fn start(&self) {
+        let audio = self.clone();
+        glib::timeout_add_local(Duration::from_millis(100), move || {
+            match audio.context.borrow().get_state() {
+                State::Ready => {}
+                State::Failed | State::Terminated => return glib::ControlFlow::Break,
+                _ => return glib::ControlFlow::Continue,
+            }
+            audio.refresh();
+            let listener = audio.clone();
+            let mut context = audio.context.borrow_mut();
+            context.set_subscribe_callback(Some(Box::new(move |_, _, _| {
+                listener.refresh();
+                listener.node_listeners.notify();
+                listener.watchers.notify();
+            })));
+            context.subscribe(
+                InterestMaskSet::SERVER
+                    | InterestMaskSet::SINK
+                    | InterestMaskSet::SOURCE
+                    | InterestMaskSet::SINK_INPUT
+                    | InterestMaskSet::SOURCE_OUTPUT,
+                |_| {},
+            );
+            glib::ControlFlow::Break
+        });
+    }
+
+    fn introspector(&self) -> Introspector {
+        self.context.borrow().introspect()
+    }
+
+    fn refresh(&self) {
+        let audio = self.clone();
+        self.introspector().get_server_info(move |info| {
+            let defaults_moved = info
+                .default_sink_name
+                .as_deref()
+                .is_some_and(|name| *audio.sink_name.borrow() != name)
+                || info
+                    .default_source_name
+                    .as_deref()
+                    .is_some_and(|name| *audio.source_name.borrow() != name);
+            if let Some(name) = info.default_sink_name.as_deref() {
+                audio.sink_name.replace(name.to_owned());
+                let sink = audio.clone();
+                let owned = name.to_owned();
+                audio
+                    .introspector()
+                    .get_sink_info_by_name(name, move |result| {
+                        if let ListResult::Item(info) = result {
+                            sink.take_sink(&owned, info.mute, info.volume);
+                        }
+                    });
+            }
+            if let Some(name) = info.default_source_name.as_deref() {
+                audio.source_name.replace(name.to_owned());
+                let source = audio.clone();
+                audio
+                    .introspector()
+                    .get_source_info_by_name(name, move |result| {
+                        if let ListResult::Item(info) = result {
+                            let was_muted = source.source_muted.get();
+                            source.take(
+                                &source.source_muted,
+                                info.mute,
+                                &source.source_volume,
+                                info.volume,
+                            );
+                            if info.mute != was_muted && source.settled.get() {
+                                announce_microphone(info.mute);
+                            }
+                        }
+                    });
+            }
+            if defaults_moved {
+                audio.listeners.notify();
+                audio.watchers.notify();
+            }
+        });
+    }
+
+    pub fn set_sink_volume(&self, part: f64) {
+        let name = self.sink_name.borrow().clone();
+        if name.is_empty() {
+            return;
+        }
+        let volume = channels(part);
+        self.context
+            .borrow()
+            .introspect()
+            .set_sink_volume_by_name(&name, &volume, None);
+    }
+
+    pub fn toggle_sink_mute(&self) {
+        let name = self.sink_name.borrow().clone();
+        if name.is_empty() {
+            return;
+        }
+        self.context.borrow().introspect().set_sink_mute_by_name(
+            &name,
+            !self.sink_muted.get(),
+            None,
+        );
+    }
+
+    pub fn toggle_source_mute(&self) {
+        let name = self.source_name.borrow().clone();
+        if name.is_empty() {
+            return;
+        }
+        self.context.borrow().introspect().set_source_mute_by_name(
+            &name,
+            !self.source_muted.get(),
+            None,
+        );
+    }
+
+    pub fn streams(&self, sink: bool, handler: impl Fn(Vec<Stream>) + 'static) {
+        let found = Rc::new(RefCell::new(Vec::new()));
+        let handler = Rc::new(handler);
+        let describe = |proplist: &libpulse_binding::proplist::Proplist,
+                        name: Option<String>,
+                        index: u32,
+                        volume: &ChannelVolumes,
+                        muted: bool| Stream {
+            index,
+            name: proplist
+                .get_str("application.name")
+                .or_else(|| proplist.get_str("node.description"))
+                .or(name.clone())
+                .unwrap_or_default(),
+            media: proplist.get_str("media.name"),
+            icon: proplist
+                .get_str("application.icon-name")
+                .unwrap_or_default(),
+            node: proplist.get_str("node.name").or(name).unwrap_or_default(),
+            volume: volume.avg().0 as f64 / Volume::NORMAL.0 as f64,
+            muted,
+        };
+        if sink {
+            self.introspector()
+                .get_sink_input_info_list(move |result| match result {
+                    ListResult::Item(info) => found.borrow_mut().push(describe(
+                        &info.proplist,
+                        info.name.as_ref().map(|name| name.to_string()),
+                        info.index,
+                        &info.volume,
+                        info.mute,
+                    )),
+                    ListResult::End => handler(found.take()),
+                    ListResult::Error => {}
+                });
+        } else {
+            self.introspector()
+                .get_source_output_info_list(move |result| match result {
+                    ListResult::Item(info) => found.borrow_mut().push(describe(
+                        &info.proplist,
+                        info.name.as_ref().map(|name| name.to_string()),
+                        info.index,
+                        &info.volume,
+                        info.mute,
+                    )),
+                    ListResult::End => handler(found.take()),
+                    ListResult::Error => {}
+                });
+        }
+    }
+
+    pub fn set_stream_volume(&self, sink: bool, index: u32, part: f64) {
+        let volume = channels(part);
+        let mut introspect = self.context.borrow().introspect();
+        if sink {
+            introspect.set_sink_input_volume(index, &volume, None);
+        } else {
+            introspect.set_source_output_volume(index, &volume, None);
+        }
+    }
+
+    pub fn set_stream_mute(&self, sink: bool, index: u32, muted: bool) {
+        let mut introspect = self.context.borrow().introspect();
+        if sink {
+            introspect.set_sink_input_mute(index, muted, None);
+        } else {
+            introspect.set_source_output_mute(index, muted, None);
+        }
+    }
+
+    pub fn devices(&self, sink: bool, handler: impl Fn(Vec<Device>, String) + 'static) {
+        if !matches!(self.context.borrow().get_state(), State::Ready) {
+            return;
+        }
+        let found: Rc<RefCell<Vec<Device>>> = Rc::new(RefCell::new(Vec::new()));
+        let current = if sink {
+            self.sink_name.borrow().clone()
+        } else {
+            self.source_name.borrow().clone()
+        };
+        let label = |proplist: &libpulse_binding::proplist::Proplist,
+                     description: Option<String>| {
+            proplist
+                .get_str("node.nick")
+                .filter(|nick| !nick.is_empty())
+                .or(description)
+                .unwrap_or_else(|| "Unknown".to_owned())
+        };
+        if sink {
+            self.introspector()
+                .get_sink_info_list(move |result| match result {
+                    ListResult::Item(info) => found.borrow_mut().push(Device {
+                        name: info.name.as_deref().unwrap_or_default().to_owned(),
+                        label: label(
+                            &info.proplist,
+                            info.description.as_ref().map(|text| text.to_string()),
+                        ),
+                        description: info.description.as_deref().unwrap_or_default().to_owned(),
+                        nick: info.proplist.get_str("node.nick").unwrap_or_default(),
+                    }),
+                    ListResult::End => handler(found.take(), current.clone()),
+                    ListResult::Error => {}
+                });
+        } else {
+            self.introspector()
+                .get_source_info_list(move |result| match result {
+                    ListResult::Item(info) => {
+                        if info.monitor_of_sink.is_some() {
+                            return;
+                        }
+                        found.borrow_mut().push(Device {
+                            name: info.name.as_deref().unwrap_or_default().to_owned(),
+                            label: label(
+                                &info.proplist,
+                                info.description.as_ref().map(|text| text.to_string()),
+                            ),
+                            description: info.description.as_deref().unwrap_or_default().to_owned(),
+                            nick: info.proplist.get_str("node.nick").unwrap_or_default(),
+                        })
+                    }
+                    ListResult::End => handler(found.take(), current.clone()),
+                    ListResult::Error => {}
+                });
+        }
+    }
+
+    pub fn set_default(&self, sink: bool, name: &str) {
+        let mut context = self.context.borrow_mut();
+        if sink {
+            context.set_default_sink(name, |_| {});
+        } else {
+            context.set_default_source(name, |_| {});
+        }
+    }
+
+    pub fn set_source_volume(&self, part: f64) {
+        let name = self.source_name.borrow().clone();
+        if name.is_empty() {
+            return;
+        }
+        let volume = channels(part);
+        self.context
+            .borrow()
+            .introspect()
+            .set_source_volume_by_name(&name, &volume, None);
+    }
+
+    fn take_sink(&self, name: &str, muted: bool, volume: ChannelVolumes) {
+        let part = part(volume);
+        let fresh = *self.sink_seen.borrow() != name;
+        if fresh {
+            self.sink_seen.replace(name.to_owned());
+            self.last_volume.set(part);
+        }
+        let moved = (self.sink_volume.get() - part).abs() >= f64::EPSILON;
+        let changed = !fresh && (moved || self.sink_muted.get() != muted);
+        if changed && moved {
+            self.guard(part);
+        }
+        self.take(&self.sink_muted, muted, &self.sink_volume, volume);
+        if changed {
+            self.sink_listeners.notify();
+        }
+    }
+
+    fn guard(&self, part: f64) {
+        let protection = crate::core::config::current().protection;
+        if !protection.enable {
+            return;
+        }
+        let last = self.last_volume.get();
+        if part - last > protection.max_allowed_increase {
+            self.set_sink_volume(last);
+            self.protect("Illegal increment");
+            return;
+        }
+        if part > protection.max_allowed || part > HARD_MAX {
+            let allowed = last.min(protection.max_allowed);
+            self.set_sink_volume(allowed);
+            self.last_volume.set(allowed);
+            self.protect("Exceeded max allowed");
+            return;
+        }
+        self.last_volume.set(part);
+    }
+
+    fn protect(&self, reason: &str) {
+        self.protection_listeners.notify_with(&reason.to_owned());
+    }
+
+    fn take(
+        &self,
+        flag: &Rc<Cell<bool>>,
+        muted: bool,
+        level: &Rc<Cell<f64>>,
+        volume: ChannelVolumes,
+    ) {
+        let part = part(volume);
+        if flag.get() == muted && (level.get() - part).abs() < f64::EPSILON {
+            return;
+        }
+        flag.set(muted);
+        level.set(part);
+        self.listeners.notify();
+        self.watchers.notify();
+    }
+}
+
+fn announce_microphone(muted: bool) {
+    let state = if muted { "Muted" } else { "Unmuted" };
+    let icon = assets::microphone_icon().unwrap_or_default();
+    process::detach(&[
+        "notify-send",
+        "Microphone",
+        state,
+        "-a",
+        "Microphone",
+        "-n",
+        &icon.to_string_lossy(),
+        "--hint=int:transient:1",
+    ]);
+    if config::value("/sounds/microphone")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(true)
+    {
+        let theme = config::value("/sounds/theme")
+            .and_then(|value| value.as_str().map(str::to_owned))
+            .unwrap_or_else(|| "freedesktop".to_owned());
+        play_system_sound(
+            &theme,
+            if muted {
+                "device-removed"
+            } else {
+                "device-added"
+            },
+        );
+    }
+}
+
+pub fn sound_themes() -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir("/usr/share/sounds") else {
+        return Vec::new();
+    };
+    let mut themes: Vec<String> = entries
+        .flatten()
+        .filter(|entry| entry.path().join("stereo").is_dir())
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+    themes.sort();
+    themes.dedup();
+    themes
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Card {
+    pub name: String,
+    pub description: String,
+    pub active: String,
+    pub profiles: Vec<(String, String)>,
+}
+
+pub fn parse_cards(text: &str) -> Vec<Card> {
+    let mut cards: Vec<Card> = Vec::new();
+    let mut active = String::new();
+    let mut known: Vec<String> = Vec::new();
+    let mut in_profiles = false;
+    let finish = |cards: &mut Vec<Card>, active: &str, known: &[String]| {
+        if let Some(card) = cards.last_mut() {
+            card.active = if known.iter().any(|profile| profile == active) {
+                active.to_owned()
+            } else {
+                "off".to_owned()
+            };
+        }
+    };
+    for line in text.lines() {
+        let depth = line
+            .chars()
+            .take_while(|character| *character == '\t')
+            .count();
+        let content = line.trim();
+        if line.starts_with("Card #") {
+            finish(&mut cards, &active, &known);
+            active.clear();
+            known.clear();
+            in_profiles = false;
+            cards.push(Card {
+                name: String::new(),
+                description: String::new(),
+                active: String::new(),
+                profiles: Vec::new(),
+            });
+            continue;
+        }
+        let Some(card) = cards.last_mut() else {
+            continue;
+        };
+        if depth == 1 {
+            in_profiles = content == "Profiles:";
+            if let Some(name) = content.strip_prefix("Name: ") {
+                card.name = name.to_owned();
+            } else if let Some(profile) = content.strip_prefix("Active Profile: ") {
+                active = profile.to_owned();
+            }
+        } else if depth == 2 && in_profiles {
+            let Some((key, rest)) = content.split_once(": ") else {
+                continue;
+            };
+            known.push(key.to_owned());
+            let (label, details) = rest.rsplit_once(" (").unwrap_or((rest, ""));
+            if details.contains("available: yes") {
+                card.profiles.push((label.to_owned(), key.to_owned()));
+            }
+        } else if depth == 2
+            && let Some(description) = content.strip_prefix("device.description = ")
+        {
+            card.description = description.trim_matches('"').to_owned();
+        }
+    }
+    finish(&mut cards, &active, &known);
+    for card in &mut cards {
+        if card.description.is_empty() {
+            card.description = card.name.clone();
+        }
+    }
+    cards
+}
+
+pub fn cards(handler: impl FnOnce(Vec<Card>) + 'static) {
+    let launcher = gtk4::gio::SubprocessLauncher::new(
+        gtk4::gio::SubprocessFlags::STDOUT_PIPE | gtk4::gio::SubprocessFlags::STDERR_SILENCE,
+    );
+    launcher.setenv("LC_ALL", "C", true);
+    let Ok(process) = launcher.spawn(&["pactl", "list", "cards"].map(std::ffi::OsStr::new)) else {
+        return;
+    };
+    glib::spawn_future_local(async move {
+        if let Ok((Some(output), _)) = process.communicate_utf8_future(None).await {
+            handler(parse_cards(&output));
+        }
+    });
+}
+
+pub fn set_card_profile(card: &str, profile: &str, then: impl FnOnce() + 'static) {
+    let (card, profile) = (card.to_owned(), profile.to_owned());
+    glib::spawn_future_local(async move {
+        let command = ["pactl", "set-card-profile", card.as_str(), profile.as_str()];
+        if let Ok(process) = gtk4::gio::Subprocess::newv(
+            &command.map(std::ffi::OsStr::new),
+            gtk4::gio::SubprocessFlags::NONE,
+        ) {
+            let _ = process.wait_future().await;
+        }
+        then();
+    });
+}
+
+pub fn play_system_sound(theme: &str, name: &str) {
+    for extension in ["oga", "ogg"] {
+        let path = format!("/usr/share/sounds/{theme}/stereo/{name}.{extension}");
+        process::detach(&["ffplay", "-nodisp", "-autoexit", &path]);
+    }
+}
+
+fn part(volume: ChannelVolumes) -> f64 {
+    volume.avg().0 as f64 / Volume::NORMAL.0 as f64
+}
+
+fn channels(part: f64) -> ChannelVolumes {
+    let mut volume = ChannelVolumes::default();
+    volume.set(
+        2,
+        Volume((part.clamp(0.0, 1.0) * Volume::NORMAL.0 as f64).round() as u32),
+    );
+    volume
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cards_keep_their_available_profiles_in_pactl_order() {
+        let text = "Card #44\n\tName: alsa_card.pci-0000_00_05.0\n\tProperties:\n\t\tdevice.description = \"Built-in Audio\"\n\tProfiles:\n\t\toff: Off (sinks: 0, sources: 0, priority: 0, available: yes)\n\t\toutput:analog-stereo+input:analog-stereo: Analog Stereo Duplex (sinks: 1, sources: 1, priority: 6565, available: yes)\n\t\toutput:hdmi: HDMI (sinks: 1, sources: 0, priority: 5900, available: no)\n\tActive Profile: output:analog-stereo+input:analog-stereo\n\tPorts:\n\t\tanalog-output: Line Out (type: Line, priority: 9000)\n";
+        assert_eq!(
+            parse_cards(text),
+            [Card {
+                name: "alsa_card.pci-0000_00_05.0".to_owned(),
+                description: "Built-in Audio".to_owned(),
+                active: "output:analog-stereo+input:analog-stereo".to_owned(),
+                profiles: vec![
+                    ("Off".to_owned(), "off".to_owned()),
+                    (
+                        "Analog Stereo Duplex".to_owned(),
+                        "output:analog-stereo+input:analog-stereo".to_owned()
+                    ),
+                ],
+            }]
+        );
+    }
+}
