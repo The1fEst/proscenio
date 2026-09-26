@@ -23,8 +23,8 @@ const OPTIONS: [&str; 18] = [
     "cursor:no_hardware_cursors",
     "cursor:enable_hyprcursor",
     "input:touchpad:disable_while_typing",
-    "input:touchpad:tap-to-click",
-    "input:touchpad:tap-and-drag",
+    "input:touchpad:tap_to_click",
+    "input:touchpad:tap_and_drag",
     "input:touchpad:middle_button_emulation",
     "input:touchpad:clickfinger_behavior",
     "input:touchpad:tap_button_map",
@@ -37,9 +37,14 @@ const SCROLL_METHODS: [(&str, &str); 4] = [
     ("While a button is held", "on_button_down"),
     ("No scrolling", "no_scroll"),
 ];
+const HARDWARE_CURSORS: [(&str, &str); 3] = [
+    ("The screen draws the pointer, except while tearing", "2"),
+    ("The screen always draws the pointer", "0"),
+    ("The pointer is drawn with the rest of the screen", "1"),
+];
 const SPEED: (f64, f64) = (-100.0, 100.0);
 const EMPTY_START: i32 = 8;
-const DEVICE_KEYS: [&str; 3] = ["sensitivity", "accel_profile", "natural_scroll"];
+const DEVICE_KEYS: [&str; 4] = ["enabled", "sensitivity", "accel_profile", "natural_scroll"];
 
 fn choice(label: &str, icon: &'static str, value: Value) -> Choice {
     Choice {
@@ -238,6 +243,7 @@ pub fn build(context: &Context) -> Rc<Page> {
                 };
                 let own = devices.value_of(&device(), key);
                 match key {
+                    "enabled" => own != "false",
                     "accel_profile" => {
                         let profile = if own.is_empty() {
                             options.text("input:accel_profile")
@@ -279,6 +285,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         switch.bind(move || current());
         switch
     };
+    let device_enabled = device_switch("power_settings_new", "Enabled", "enabled");
+    page.tip(
+        &device_enabled.button,
+        "A disabled device stops moving the pointer until it is turned back on here.",
+    );
     let device_acceleration = device_switch("trending_up", "Mouse acceleration", "accel_profile");
     let device_natural = device_switch("swap_vert", "Natural scrolling", "natural_scroll");
     let (reset, _) = page.icon_button(
@@ -326,6 +337,7 @@ pub fn build(context: &Context) -> Rc<Page> {
                 &slider,
                 (device_number(&devices, &device, "sensitivity", fallback) * 100.0).round(),
             );
+            device_enabled.refresh();
             device_acceleration.refresh();
             device_natural.refresh();
             reset.set_sensitive(devices.overrides(&device) > 0);
@@ -373,22 +385,17 @@ pub fn build(context: &Context) -> Rc<Page> {
         "cursor:hide_on_key_press",
     );
     let drawing = page.subsection(&pointer, "Drawing", "");
-    let hardware = hyprrows::option_switch(
+    let hardware = hyprrows::combo(
         &page,
         &drawing,
         &options,
-        ("memory", "Let the screen draw the pointer"),
-        |options| options.number("cursor:no_hardware_cursors") == 0.0,
-        |options, hardware| {
-            options.set(
-                "cursor:no_hardware_cursors",
-                if hardware { "0" } else { "1" },
-            )
-        },
+        "memory",
+        ("cursor:no_hardware_cursors", "2"),
+        &HARDWARE_CURSORS,
     );
     page.tip(
         &hardware.button,
-        "A pointer the screen draws itself stays smooth whatever the rest of the screen is doing.\nTurn it off if the pointer disappears or is drawn in the wrong place.",
+        "A pointer the screen draws itself stays smooth whatever the rest of the screen is doing.\nPick the last choice if the pointer disappears or is drawn in the wrong place.",
     );
     hyprrows::switch(
         &page,
@@ -415,7 +422,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &options,
         "touch_app",
         "Tap to click",
-        "input:touchpad:tap-to-click",
+        "input:touchpad:tap_to_click",
     );
     page.tip(&tap.button, "Quickly touch the touchpad to click.");
     hyprrows::switch(
@@ -424,7 +431,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &options,
         "drag_pan",
         "Tap and drag",
-        "input:touchpad:tap-and-drag",
+        "input:touchpad:tap_and_drag",
     );
     hyprrows::switch(
         &page,

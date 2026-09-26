@@ -663,15 +663,17 @@ blur is off.
   acceleration (with a tooltip), natural scrolling (with a tooltip), the
   scroll method and the scroll amount in percent.
 - "This mouse only": "No pointing device is connected", or "Device" (with a
-  tooltip): the mouse, its own speed, acceleration and natural scrolling,
-  each showing the general value until the mouse has its own, and "Follow the
-  general settings", dead until it has one. Per-device settings are one
+  tooltip): the mouse, its own speed, whether it is enabled (with a tooltip;
+  `enabled = false` in its `hl.device` line), acceleration and natural
+  scrolling, each showing the general value until the mouse has its own, and
+  "Follow the general settings", dead until it has one. Per-device settings are one
   `hl.device` line each in `settings.lua` (`src/platform/devicesettings.rs`,
   the port of `hypr-device.py`, byte for byte, through
   `src/services/deviceoptions.rs`), batched for 50 ms into one write, then
   Hyprland reloads.
-- "Pointer": hiding it when still (with a tooltip) and while typing; letting
-  the screen draw it (with a tooltip) and hyprcursor themes.
+- "Pointer": hiding it when still (with a tooltip) and while typing; who
+  draws it (with a tooltip; `cursor:no_hardware_cursors`: the screen except
+  while tearing 2, always the screen 0, never 1) and hyprcursor themes.
 - "Touchpad": disable while typing; "Clicking": tap to click (with a
   tooltip), tap and drag, three-finger middle click, and nested "Secondary
   click" and "Tap with two or three fingers" selections; "Scrolling": natural
