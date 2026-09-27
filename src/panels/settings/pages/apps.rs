@@ -161,11 +161,11 @@ impl Roles {
                 .into_iter()
                 .map(|candidate| candidate.entry)
                 .collect();
-            let types = role.types;
+            let key = role.key;
             combo.connect_activated({
                 let roles = Rc::downgrade(self);
                 move |index| {
-                    defaultapps::set(types, &entries[index]);
+                    defaultapps::set(key, &entries[index]);
                     if let Some(roles) = roles.upgrade() {
                         roles.reload();
                     }

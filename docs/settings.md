@@ -691,12 +691,20 @@ blur is off.
   of the entries that can, named as the entries name themselves, on the one
   in use. `src/platform/defaultapps.rs` is the port of `default-apps.py`: it
   reads the association files the way the mime-apps spec lays them out,
-  follows a kind's parent kinds, and sets a choice through GIO, which is what
-  `gio mime` does. A choice covers every type of its kind that the entry
-  opens, from the lists Plasma's component chooser uses (web adds
-  `text/html`), and always the kind's main type, which is the one listed and
-  shown. It reads off the main thread, again after a choice, and a second
-  after the installed applications change.
+  follows a kind's parent kinds, and shows the entry set for the kind's main
+  type. A choice is authoritative over every type the kind owns, whether or
+  not the entry declares it: first the list Plasma's component chooser uses
+  for that kind (web adds `text/html` and `application/xhtml+xml`), then every
+  type in shared-mime-info's `mime/types` that no other kind lists, by group:
+  `image/*` for photos, `audio/*` for music, `video/*` for video, and for text
+  `text/*` and any type descending from `text/plain` (JSON, YAML, XML,
+  scripts). Each owned type gets the entry as its only default and first in
+  its added associations in `~/.config/mimeapps.list`, written once, and in
+  the same pass every default and added entry naming a desktop file that is
+  not installed is dropped, a type left with none losing its line. Other
+  lines and the removed associations stay as they were. It reads off the main
+  thread, again after a choice, and a second after the installed applications
+  change.
 - "Window rules": the rules the settings app owns, one `hl.window_rule` line
   each in `settings.lua` (`src/platform/windowrules.rs`, the port of
   `hypr-rules.py`, byte for byte), as 48 px `colLayer2` cards of the class,

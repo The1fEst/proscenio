@@ -36,9 +36,7 @@ const QT_STYLE: &str = "Darkly";
 
 pub fn apply() {
     for (key, entry) in APPS {
-        if let Some((_, _, types)) = defaultapps::ROLES.iter().find(|(role, _, _)| *role == key) {
-            defaultapps::set(types, entry);
-        }
+        defaultapps::set(key, entry);
     }
     gio::spawn_blocking(|| {
         for (role, family, size) in FONTS {
