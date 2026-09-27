@@ -513,7 +513,7 @@ mod tests {
             names("  "),
             PAGES.iter().map(|page| page.name).collect::<Vec<_>>()
         );
-        assert_eq!(names("mouse touch"), ["Mouse & Touchpad"]);
+        assert_eq!(names("mouse touch"), ["Mouse & Touchpad", "Devices"]);
         assert_eq!(names("nothing like this"), Vec::<&str>::new());
     }
 }
