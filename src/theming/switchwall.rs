@@ -10,7 +10,7 @@ use std::time::Duration;
 use crate::core::{assets, config, gsettings, paths, process};
 use crate::platform::hypr;
 use crate::platform::notify::{self, Notification};
-use crate::theming::colors;
+use crate::theming::{colors, kde};
 
 const SCHEMES: [&str; 8] = [
     "scheme-content",
@@ -446,38 +446,12 @@ fn apply_kde(scheme: &str) {
     if config::value(&format!("{THEMING}/enableQtApps")) == Some(Value::Bool(false)) {
         return;
     }
-    let variant = match scheme {
-        "scheme-content" => 0,
-        "scheme-expressive" => 1,
-        "scheme-fidelity" => 2,
-        "scheme-monochrome" => 3,
-        "scheme-neutral" => 4,
-        "scheme-rainbow" => 7,
-        "scheme-fruit-salad" => 8,
-        _ => 5,
-    };
-    if let Ok(color) = std::fs::read_to_string(paths::generated().join("color.txt")) {
-        let mode = if gsettings::prefers_dark() {
-            "-d"
-        } else {
-            "-l"
-        };
-        let mut command = std::process::Command::new("kde-material-you-colors");
-        if let Some(venv) = std::env::var_os("ILLOGICAL_IMPULSE_VIRTUAL_ENV") {
-            let bin = PathBuf::from(&venv).join("bin");
-            let mut path = bin.clone().into_os_string();
-            if let Some(inherited) = std::env::var_os("PATH") {
-                path.push(":");
-                path.push(inherited);
-            }
-            command = std::process::Command::new(bin.join("kde-material-you-colors"));
-            command.env("VIRTUAL_ENV", venv).env("PATH", path);
-        }
-        let _ = command
-            .args([mode, "--color", &color.replace('\n', ""), "-sv"])
-            .arg(variant.to_string())
-            .stdin(std::process::Stdio::null())
-            .status();
+    if let Some(source) = std::fs::read_to_string(paths::generated().join("color.txt"))
+        .ok()
+        .and_then(|color| colors::parse_hex(color.trim()))
+        && let Err(error) = kde::apply(source, scheme, gsettings::prefers_dark())
+    {
+        eprintln!("{error}");
     }
     if let Err(error) = colors::kde_selection() {
         eprintln!("{error}");

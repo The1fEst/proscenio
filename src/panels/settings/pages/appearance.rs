@@ -239,20 +239,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         &[&tools::MATUGEN],
         "apps themed through matugen templates keep their colors",
     );
-    let material_you_in_venv =
-        std::env::var_os("ILLOGICAL_IMPULSE_VIRTUAL_ENV").is_some_and(|venv| {
-            std::path::Path::new(&venv)
-                .join("bin")
-                .join(tools::MATERIAL_YOU.program)
-                .is_file()
-        });
-    if !material_you_in_venv {
-        page.tools_notice(
-            &themed,
-            &[&tools::MATERIAL_YOU],
-            "Qt apps keep their colors",
-        );
-    }
+    page.tools_notice(
+        &themed,
+        &[&tools::PLASMA_APPLY_COLORSCHEME],
+        "Qt apps keep their colors",
+    );
     page.config_switch(
         &themed,
         "hardware",

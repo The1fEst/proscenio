@@ -262,7 +262,7 @@ fn hex(argb: Argb) -> String {
     format!("#{:02X}{:02X}{:02X}", argb.red, argb.green, argb.blue)
 }
 
-fn parse_hex(text: &str) -> Option<Argb> {
+pub fn parse_hex(text: &str) -> Option<Argb> {
     let digits = text.strip_prefix('#').unwrap_or(text);
     if digits.len() < 6 {
         return None;

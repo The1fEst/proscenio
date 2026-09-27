@@ -41,9 +41,18 @@ After that, in the background:
 - `applycolor.sh`, when `enableTerminal` is on, fills `kitty-theme.conf` and
   `sequences.txt` from `scripts/colors/terminal`, reloads kitty with SIGUSR1
   and writes the sequences to every `/dev/pts/N`.
-- `kde-material-you-colors-wrapper.sh`, when `enableQtApps` is not off, runs
-  `kde-material-you-colors` from the Python venv, then `kde-selection.py`
-  copies the primary container into the KDE selection colors.
+- When `enableQtApps` is not off, `src/theming/kde.rs` writes the
+  `MaterialYouLight` and `MaterialYouDark` color schemes, each also as a
+  `…2.colors` copy, into `~/.local/share/color-schemes` from the seed in
+  `color.txt` and the scheme type. They are kde-material-you-colors 1.10.1's
+  schemes: its roles of the light and dark Material schemes, background roles
+  with their tone truncated to an integer, and the Breeze link, visited,
+  negative, neutral and positive colors each run through `scheme-vibrant`. It
+  applies the copy and then the scheme of the current mode with
+  `plasma-apply-colorscheme`, which does not reapply a scheme that is already
+  active, and writes the scheme's SHA-1 as `ColorSchemeHash` in `kdeglobals`.
+  Then `kde-selection.py` copies the primary container into the KDE selection
+  colors.
 - `material-code-set-color.sh` writes the seed color into
   `material-code.primaryColor` of every VS Code fork's `settings.json`.
 
@@ -90,8 +99,6 @@ Same arguments, same order of work. It leaves the same files as
   or comma-terminated object
 
 The terminal templates and `scheme-base.json` are built into the binary.
-`kde-material-you-colors` runs from the Python venv in
-`ILLOGICAL_IMPULSE_VIRTUAL_ENV`.
 
 The shell runs `proscenio switchwall` as a child process
 (`switchwall::detach`) from the launcher's `accentcolor`, `dark` and `light`,

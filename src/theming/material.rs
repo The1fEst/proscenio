@@ -234,7 +234,7 @@ fn python_round(value: f64) -> f64 {
     value.round_ties_even()
 }
 
-fn fix_if_disliked(hct: Hct) -> Hct {
+pub fn fix_if_disliked(hct: Hct) -> Hct {
     let hue = python_round(hct.get_hue());
     let disliked = (90.0..=111.0).contains(&hue)
         && python_round(hct.get_chroma()) > 16.0

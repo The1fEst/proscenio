@@ -25,7 +25,7 @@ separate state.
 When the shell stores a setting in `config.toml`, it changes only that key
 and keeps the rest of the file, comments included.
 
-The dots point matugen, kitty, fish, zsh and `kde-material-you-colors` at
+The dots point matugen, kitty, fish and zsh at
 `~/.local/state/proscenio/generated`. The QML shell does not follow those
 wallpaper changes.
 

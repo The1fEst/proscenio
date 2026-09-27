@@ -121,7 +121,7 @@ the top, with 30 px between sections and 80 px of room below the last.
   | Network, Saved Networks | `nmcli`, `org.freedesktop.NetworkManager` | the page is only a notice |
   | Network, "Set up connections" | the program of `/apps/network` | button disabled, tooltip names it |
   | Bluetooth | `org.bluez`; `bluetoothctl` | the page is only a notice; notice |
-  | Appearance, Color generation | `matugen`, `kde-material-you-colors` (also in `ILLOGICAL_IMPULSE_VIRTUAL_ENV`) | notices |
+  | Appearance, Color generation | `matugen`, `plasma-apply-colorscheme` | notices |
   | Quick, "Choose file" | `kdialog` | button disabled, tooltip names it |
   | Bar, Utility buttons | `grim`, `magick`, `wl-copy`, `hyprpicker`, `ydotool`, `wpctl`, `wf-recorder`, `slurp`; `net.hadess.PowerProfiles` | notices |
   | Panels | `kdialog` (wallpaper selector), `ydotool` (on-screen keyboard) | notices |
@@ -580,11 +580,7 @@ blur is off.
   `appearance.py`, through `src/services/appearance.rs`: every toolkit keeps
   its own copy (gsettings, `gtk-3.0` and `gtk-4.0` `settings.ini`,
   `kdeglobals`, `~/.icons/default`, and `hl.env` lines in `settings.lua`), and
-  each writer edits one key and leaves the rest of the file alone. The icon
-  theme also goes to `iconslight` and `iconsdark` in
-  `~/.config/kde-material-you-colors/config.conf` when that file exists, since
-  kde-material-you-colors sets the KDE icon theme from those keys on every
-  wallpaper change. The files
+  each writer edits one key and leaves the rest of the file alone. The files
   match the script's output byte for byte. Reads and writes run off
   the main thread, one write at a time, and each write rereads everything.
 - "Color generation": the three theming switches (two with tooltips) and

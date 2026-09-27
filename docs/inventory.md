@@ -67,6 +67,5 @@ it. The translation tools are developer tools and are not ported.
 Ported: the whole of `scripts/colors` ([colors.md](colors.md)),
 `scripts/videos/record.sh` as `proscenio record`,
 `scripts/system/boot-next-windows.sh` inside the session actions, and
-`scripts/thumbnails` inside the wallpaper selector.
-`kde-material-you-colors` runs from the Python venv; it is a separate program
-the dots install, not a shell script.
+`scripts/thumbnails` inside the wallpaper selector. The KDE color schemes
+`kde-material-you-colors` made are built by `src/theming/kde.rs`.
