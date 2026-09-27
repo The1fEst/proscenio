@@ -557,26 +557,7 @@ impl Config {
             slider_volume: flag(&quick_sliders, "showVolume", true),
             slider_mic: flag(&quick_sliders, "showMic", false),
             slider_brightness: flag(&quick_sliders, "showBrightness", true),
-            toggles: RefCell::new(
-                root.pointer("/sidebar/quickToggles/android/toggles")
-                    .and_then(Value::as_array)
-                    .map(|list| {
-                        list.iter()
-                            .filter_map(|entry| {
-                                Some((
-                                    entry.get("type")?.as_str()?.to_owned(),
-                                    entry.get("size").and_then(Value::as_i64).unwrap_or(1) as i32,
-                                ))
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_else(|| {
-                        DEFAULT_TOGGLES
-                            .iter()
-                            .map(|(kind, size)| ((*kind).to_owned(), *size))
-                            .collect()
-                    }),
-            ),
+            toggles: RefCell::new(toggles_of(&root)),
             toggle_columns: root
                 .pointer("/sidebar/quickToggles/android/columns")
                 .and_then(Value::as_i64)
@@ -812,6 +793,26 @@ const DEFAULT_TOGGLES: [(&str, i32); 6] = [
     ("nightLight", 2),
 ];
 
+fn toggles_of(root: &Value) -> Vec<(String, i32)> {
+    let Some(list) = root
+        .pointer("/sidebar/quickToggles/android/toggles")
+        .and_then(Value::as_array)
+    else {
+        return DEFAULT_TOGGLES
+            .iter()
+            .map(|(kind, size)| ((*kind).to_owned(), *size))
+            .collect();
+    };
+    list.iter()
+        .filter_map(|entry| {
+            Some((
+                entry.get("type")?.as_str()?.to_owned(),
+                entry.get("size").and_then(Value::as_i64).unwrap_or(1) as i32,
+            ))
+        })
+        .collect()
+}
+
 pub const RENDERER: &str = "/renderer";
 pub const DEFAULT_RENDERER: &str = "cairo";
 static RUNNING_RENDERER: std::sync::OnceLock<String> = std::sync::OnceLock::new();
@@ -1019,6 +1020,18 @@ fn strings(node: &Value, key: &str) -> Vec<String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn quick_toggles_default_to_the_six_of_config_qml_only_when_none_are_listed() {
+        let defaults = toggles_of(&json!({}));
+        assert_eq!(defaults.len(), 6);
+        assert_eq!(defaults[0], ("network".to_owned(), 2));
+        assert_eq!(defaults[2], ("idleInhibitor".to_owned(), 1));
+        let emptied = json!({ "sidebar": { "quickToggles": { "android": { "toggles": [] } } } });
+        assert!(toggles_of(&emptied).is_empty());
+        let own = json!({ "sidebar": { "quickToggles": { "android": { "toggles": [{ "type": "mic" }] } } } });
+        assert_eq!(toggles_of(&own), [("mic".to_owned(), 1)]);
+    }
 
     #[test]
     fn an_emptied_keyword_list_stays_empty_and_only_a_missing_one_takes_the_defaults() {
