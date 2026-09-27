@@ -10,13 +10,14 @@ use crate::panels::settings::content::{Context, Page, Style};
 use crate::platform::defaultapps::{self, Role};
 use crate::platform::hypr;
 use crate::platform::windowrules::{self, Rule};
-use crate::ui::theme::pixel_size;
+use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::controls::ComboBox;
 use crate::ui::widgets::ripple::RippleButton;
 use crate::ui::widgets::row::Row;
 use crate::ui::widgets::text;
 use crate::ui::widgets::textfield::TextField;
+use crate::ui::widgets::windowdialog::{self, Place, WindowDialog};
 
 const RULE_HEIGHT: i32 = 48;
 const RULE_START: i32 = 12;
@@ -25,6 +26,12 @@ const RULE_SPACING: i32 = 10;
 const REMOVE_SIZE: i32 = 32;
 const REMOVE_ICON: f64 = 20.0;
 const EMPTY_START: i32 = 8;
+const OTHER: &str = "Other…";
+const NOT_SET: &str = "Not set";
+const DIALOG_WIDTH: f64 = 460.0;
+const DIALOG_HEIGHT: f64 = 600.0;
+const DIALOG_ICON: i32 = 24;
+const DIALOG_ITEM_VERTICAL: i32 = 12;
 const RESCAN_DELAY: std::time::Duration = std::time::Duration::from_secs(1);
 
 #[derive(Clone, Copy, PartialEq)]
@@ -67,6 +74,139 @@ const COMMANDS: [(&str, &str, &str); 4] = [
         "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'",
     ),
 ];
+
+fn role_prompt(key: &str) -> &'static str {
+    match key {
+        "web" => "Select default web browser",
+        "mail" => "Select default e-mail client",
+        "calendar" => "Select default calendar application",
+        "music" => "Select default music player",
+        "video" => "Select default video player",
+        "photos" => "Select default image viewer",
+        "text" => "Select default text editor",
+        "files" => "Select default file manager",
+        _ => "Select default application",
+    }
+}
+
+fn app_dialog(
+    theme: &SharedTheme,
+    prompt: &str,
+    picked: impl Fn(String) + 'static,
+) -> Rc<WindowDialog> {
+    let dialog = WindowDialog::new(theme, Some(DIALOG_HEIGHT));
+    dialog.set_background_width(DIALOG_WIDTH);
+    dialog
+        .column
+        .add(&windowdialog::title(prompt), Place::default());
+    let search = TextField::new(theme, Style::Outlined, "Search applications");
+    dialog.column.add(&search.root, Place::wide());
+    dialog
+        .column
+        .add(&windowdialog::separator(), windowdialog::separator_place());
+
+    let list = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    let empty = text::styled("No matches");
+    text::set_color(&empty, "colSubtext");
+    empty.set_xalign(0.0);
+    empty.set_margin_start(windowdialog::PADDING as i32);
+    empty.set_visible(false);
+    list.append(&empty);
+    let picked = Rc::new(picked);
+    let mut rows: Vec<(String, RippleButton)> = Vec::new();
+    for app in defaultapps::applications() {
+        let Some(id) = app.id().map(String::from) else {
+            continue;
+        };
+        let name = app.display_name().to_string();
+        let item = windowdialog::list_item(theme, false);
+        let row = Row::new(RULE_SPACING);
+        if let Some(icon) = app.icon() {
+            let image = gtk4::Image::from_gicon(&icon);
+            image.set_pixel_size(DIALOG_ICON);
+            row.append(&image);
+        }
+        let label = text::styled(&name);
+        text::set_color(&label, "colOnLayer3");
+        label.set_xalign(0.0);
+        label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        let label = Centred::filling_width(&label);
+        label.set_hexpand(true);
+        row.append(&label);
+        item.set_content(&row, windowdialog::PADDING as i32, DIALOG_ITEM_VERTICAL);
+        item.connect_clicked({
+            let dialog = Rc::downgrade(&dialog);
+            let picked = picked.clone();
+            let id = id.clone();
+            move |_| {
+                picked(id.clone());
+                if let Some(dialog) = dialog.upgrade() {
+                    dialog.dismiss();
+                }
+            }
+        });
+        list.append(&item);
+        let words = format!("{name}\n{id}\n{}", app.executable().display()).to_lowercase();
+        rows.push((words, item));
+    }
+    let scroll = gtk4::ScrolledWindow::new();
+    scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::External);
+    scroll.set_child(Some(&list));
+    crate::ui::widgets::flickable::follow_scroll_settings(&scroll);
+    dialog.column.add(
+        &scroll,
+        Place {
+            left: -windowdialog::PADDING,
+            right: -windowdialog::PADDING,
+            fill_width: true,
+            fill_height: true,
+            ..Place::default()
+        },
+    );
+    search.connect_changed({
+        let search = Rc::downgrade(&search);
+        move || {
+            let Some(search) = search.upgrade() else {
+                return;
+            };
+            let query = search.text().trim().to_lowercase();
+            let mut shown = false;
+            for (words, item) in &rows {
+                let matches = words.contains(&query);
+                item.set_visible(matches);
+                shown |= matches;
+            }
+            empty.set_visible(!shown);
+        }
+    });
+
+    dialog
+        .column
+        .add(&windowdialog::separator(), windowdialog::separator_place());
+    let (buttons, place) = windowdialog::button_row();
+    buttons.append(&windowdialog::spacer());
+    let cancel = windowdialog::button(theme, "Cancel");
+    cancel.connect_clicked({
+        let dialog = Rc::downgrade(&dialog);
+        move |_| {
+            if let Some(dialog) = dialog.upgrade() {
+                dialog.dismiss();
+            }
+        }
+    });
+    buttons.append(&cancel);
+    dialog.column.add(&buttons, place);
+    glib::idle_add_local_once({
+        let search = Rc::downgrade(&search);
+        move || {
+            if let Some(search) = search.upgrade() {
+                search.grab_focus();
+            }
+        }
+    });
+    dialog.keep(search);
+    dialog
+}
 
 fn role_icon(key: &str) -> &'static str {
     match key {
@@ -116,6 +256,7 @@ struct Roles {
     page: Weak<Page>,
     holder: gtk4::Box,
     combos: RefCell<Vec<Rc<ComboBox>>>,
+    present: Rc<dyn Fn(Rc<WindowDialog>)>,
 }
 
 impl Roles {
@@ -145,29 +286,52 @@ impl Roles {
             combo.set_icon(role_icon(role.key));
             combo.button.set_hexpand(true);
             group.append(&combo.button);
-            let names: Vec<String> = role
-                .candidates
+            let mut names: Vec<String> = Vec::new();
+            let mut entries: Vec<Option<String>> = Vec::new();
+            if role.default.is_empty() {
+                names.push(NOT_SET.to_owned());
+                entries.push(None);
+            }
+            for candidate in role.candidates {
+                names.push(candidate.name);
+                entries.push(Some(candidate.entry));
+            }
+            names.push(OTHER.to_owned());
+            let index = entries
                 .iter()
-                .map(|candidate| candidate.name.clone())
-                .collect();
-            let index = role
-                .candidates
-                .iter()
-                .position(|candidate| candidate.entry == role.default)
+                .position(|entry| entry.as_deref().unwrap_or_default() == role.default)
                 .unwrap_or(0);
             combo.set_items(&names, index as i32);
-            let entries: Vec<String> = role
-                .candidates
-                .into_iter()
-                .map(|candidate| candidate.entry)
-                .collect();
             let key = role.key;
             combo.connect_activated({
                 let roles = Rc::downgrade(self);
-                move |index| {
-                    defaultapps::set(key, &entries[index]);
-                    if let Some(roles) = roles.upgrade() {
-                        roles.reload();
+                let combo = Rc::downgrade(&combo);
+                let theme = page.theme.clone();
+                move |chosen| {
+                    let Some(roles) = roles.upgrade() else {
+                        return;
+                    };
+                    match entries.get(chosen) {
+                        Some(Some(entry)) => {
+                            defaultapps::set(key, entry);
+                            roles.reload();
+                        }
+                        Some(None) => {}
+                        None => {
+                            if let Some(combo) = combo.upgrade() {
+                                combo.set_items(&names, index as i32);
+                            }
+                            let dialog = app_dialog(&theme, role_prompt(key), {
+                                let roles = Rc::downgrade(&roles);
+                                move |entry| {
+                                    defaultapps::set(key, &entry);
+                                    if let Some(roles) = roles.upgrade() {
+                                        roles.reload();
+                                    }
+                                }
+                            });
+                            (roles.present)(dialog);
+                        }
                     }
                 }
             });
@@ -250,6 +414,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         page: Rc::downgrade(&page),
         holder: defaults.clone(),
         combos: RefCell::new(Vec::new()),
+        present: Rc::new(context.dialog_presenter()),
     });
     roles.reload();
     let rescan = Rc::new(Cell::new(None::<glib::SourceId>));

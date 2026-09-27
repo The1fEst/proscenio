@@ -23,6 +23,7 @@ use crate::ui::widgets::text;
 pub use crate::ui::widgets::textfield::Style;
 use crate::ui::widgets::textfield::TextField;
 use crate::ui::widgets::tooltip::{self, Tooltip};
+use crate::ui::widgets::windowdialog::WindowDialog;
 
 pub const BASE_WIDTH: i32 = 600;
 const TOP: i32 = 20;
@@ -132,9 +133,45 @@ pub struct Context {
     pub theme: SharedTheme,
     pub services: Rc<Services>,
     pub subpage: RefCell<Option<Subpage>>,
+    pub overlay: glib::WeakRef<gtk4::Overlay>,
+    pub dialog: Rc<RefCell<Option<Rc<WindowDialog>>>>,
 }
 
 impl Context {
+    pub fn dialog_presenter(&self) -> impl Fn(Rc<WindowDialog>) + use<> {
+        let overlay = self.overlay.clone();
+        let shown = self.dialog.clone();
+        move |dialog| {
+            let Some(overlay) = overlay.upgrade() else {
+                return;
+            };
+            if let Some(previous) = shown.take() {
+                overlay.remove_overlay(&previous.root);
+            }
+            dialog.set_scrim_radius(0.0);
+            dialog.connect_dismiss({
+                let dialog = Rc::downgrade(&dialog);
+                let overlay = overlay.downgrade();
+                let shown = shown.clone();
+                move || {
+                    let (Some(dialog), Some(overlay)) = (dialog.upgrade(), overlay.upgrade())
+                    else {
+                        return;
+                    };
+                    let root = dialog.root.clone();
+                    let shown = shown.clone();
+                    dialog.show(false, move || {
+                        overlay.remove_overlay(&root);
+                        shown.take();
+                    });
+                }
+            });
+            overlay.add_overlay(&dialog.root);
+            dialog.show(true, || {});
+            shown.replace(Some(dialog));
+        }
+    }
+
     pub fn subpage_opener(&self, id: &'static str) -> impl Fn() + use<> {
         let open = self.subpage.borrow().clone();
         let title = super::pages::subpage(id).map_or(id, |subpage| subpage.title);

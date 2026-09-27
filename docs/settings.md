@@ -686,10 +686,18 @@ blur is off.
 
 ## 30. Apps
 
-- "Default Apps": a subsection per kind of file or link that has anything to
-  open it (web, mail, calendar, music, video, photos, text, files), each a box
-  of the entries that can, named as the entries name themselves, on the one
-  in use. `src/platform/defaultapps.rs` is the port of `default-apps.py`: it
+- "Default Apps": a subsection per kind of file or link (web, mail, calendar,
+  music, video, photos, text, files), each a box of the entries that declare
+  the kind's type, named as the entries name themselves, on the one in use,
+  led by "Not set" when none is, and ending in "Other…". "Other…" puts the box
+  back on its choice and opens a `WindowDialog` over the settings window
+  (`Context::dialog_presenter`, an overlay around the window's content), the
+  way the sidebar opens its Wi-Fi and Bluetooth dialogs: the prompt Plasma
+  uses for the kind ("Select default text editor"), a search field that has
+  focus, the shown applications GIO lists, sorted by name, with their icons,
+  filtered by name, desktop id and executable ("No matches" when nothing is
+  left), and "Cancel". Picking one sets it for the kind and closes the
+  dialog. `src/platform/defaultapps.rs` is the port of `default-apps.py`: it
   reads the association files the way the mime-apps spec lays them out,
   follows a kind's parent kinds, and shows the entry set for the kind's main
   type. A choice is authoritative over every type the kind owns, whether or

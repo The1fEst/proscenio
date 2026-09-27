@@ -328,17 +328,15 @@ pub fn read() -> Vec<Role> {
                 }
             }
         }
-        if candidates.is_empty() {
-            continue;
-        }
         let default = defaults
             .get(mime)
             .unwrap_or(&empty)
             .iter()
             .find(|entry| known.contains_key(*entry))
+            .or(candidates.first())
             .cloned()
-            .unwrap_or_else(|| candidates[0].clone());
-        if !candidates.contains(&default) {
+            .unwrap_or_default();
+        if !default.is_empty() && !candidates.contains(&default) {
             candidates.insert(0, default.clone());
         }
         roles.push(Role {
@@ -356,6 +354,16 @@ pub fn read() -> Vec<Role> {
         });
     }
     roles
+}
+
+pub fn applications() -> Vec<gio::AppInfo> {
+    let mut found: Vec<gio::AppInfo> = gio::AppInfo::all()
+        .into_iter()
+        .filter(|app| app.should_show() && app.id().is_some())
+        .collect();
+    found.sort_by_key(|app| app.display_name().to_lowercase());
+    found.dedup_by(|one, other| one.id() == other.id());
+    found
 }
 
 fn owner(kind: &str, parents: &HashMap<String, Vec<String>>) -> Option<&'static str> {

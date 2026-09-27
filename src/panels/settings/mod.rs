@@ -79,6 +79,8 @@ impl Settings {
                 theme: theme.clone(),
                 services: services.clone(),
                 subpage: RefCell::new(None),
+                overlay: glib::WeakRef::new(),
+                dialog: Rc::default(),
             }),
             view: RefCell::new(None),
         })
@@ -181,7 +183,10 @@ impl Settings {
         content.append(&stage);
         row.append(&content);
         column.append(&row);
-        window.set_child(Some(&column));
+        let overlay = gtk4::Overlay::new();
+        overlay.set_child(Some(&column));
+        self.context.overlay.set(Some(&overlay));
+        window.set_child(Some(&overlay));
 
         let view = Rc::new(View {
             window: window.clone(),
