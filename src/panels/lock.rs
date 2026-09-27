@@ -465,7 +465,9 @@ impl Lock {
     }
 
     pub fn lock(self: &Rc<Self>) {
-        if config::value_bool("/lock/useHyprlock", false) {
+        if config::value_bool("/lock/useHyprlock", false)
+            && crate::core::process::exists("hyprlock")
+        {
             crate::core::process::detach(&["bash", "-c", "pidof hyprlock || hyprlock"]);
             return;
         }
@@ -1175,8 +1177,8 @@ fn unlock_keyring(password: String) {
         .unwrap_or(true);
     if locked {
         let user = glib::user_name().to_string_lossy().into_owned();
-        let _ = std::process::Command::new("killall")
-            .args(["-q", "-u", &user, "gnome-keyring-daemon"])
+        let _ = std::process::Command::new("pkill")
+            .args(["-x", "-u", &user, "gnome-keyring-daemon"])
             .status();
         if let Ok(mut daemon) = std::process::Command::new("gnome-keyring-daemon")
             .args(["--daemonize", "--login"])

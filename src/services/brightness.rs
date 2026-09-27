@@ -283,16 +283,22 @@ fn ddc_displays(output: &str) -> Vec<(String, String)> {
 }
 
 fn read(command: &[&str], handler: impl Fn(String) + 'static) {
-    let Ok(process) = gio::Subprocess::newv(
+    let process = gio::Subprocess::newv(
         &command.iter().map(std::ffi::OsStr::new).collect::<Vec<_>>(),
         gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    ) else {
-        return;
-    };
+    );
     glib::spawn_future_local(async move {
-        if let Ok((Some(output), _)) = process.communicate_utf8_future(None).await {
-            handler(output.to_string());
-        }
+        let output = match process {
+            Ok(process) => process
+                .communicate_utf8_future(None)
+                .await
+                .ok()
+                .and_then(|(output, _)| output)
+                .map(|output| output.to_string())
+                .unwrap_or_default(),
+            Err(_) => String::new(),
+        };
+        handler(output);
     });
 }
 

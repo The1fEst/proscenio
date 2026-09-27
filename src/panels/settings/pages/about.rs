@@ -2,7 +2,6 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use std::rc::Rc;
 
-use crate::core::process;
 use crate::panels::settings::content::{BASE_WIDTH, Context, Page};
 use crate::services::sysinfo::{self, Disk};
 use crate::ui::theme::{SharedTheme, pixel_size};
@@ -316,12 +315,16 @@ fn link_markup(url: &str, colour: &str) -> String {
     format!("<a href=\"{url}\"><span foreground=\"{colour}\" underline=\"none\">{url}</span></a>")
 }
 
+fn open(url: &str) {
+    let _ = gtk4::gio::AppInfo::launch_default_for_uri(url, gtk4::gio::AppLaunchContext::NONE);
+}
+
 fn link_label(markup: &str) -> gtk4::Label {
     let label = text::styled("");
     label.set_markup(markup);
     label.set_xalign(0.0);
     label.connect_activate_link(|_, url| {
-        process::detach(&["xdg-open", url]);
+        open(url);
         glib::Propagation::Stop
     });
     label
@@ -332,9 +335,7 @@ fn links(page: &Page, links: Vec<Link>) -> Flow {
     flow.set_hexpand(true);
     for link in links {
         let url = link.url;
-        let (button, _) = page.icon_button(link.icon, link.filled, link.label, move || {
-            process::detach(&["xdg-open", &url]);
-        });
+        let (button, _) = page.icon_button(link.icon, link.filled, link.label, move || open(&url));
         flow.append(&button);
     }
     flow

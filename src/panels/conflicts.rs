@@ -43,9 +43,9 @@ pub fn check(app: &gtk4::Application, theme: &SharedTheme) {
 }
 
 fn kill(running: &[String]) {
-    let mut command = vec!["killall"];
-    command.extend(running.iter().map(String::as_str));
-    detach(&command);
+    for name in running {
+        detach(&["pkill", "-x", name]);
+    }
 }
 
 fn ask(app: &gtk4::Application, theme: &SharedTheme, running: Vec<String>) {
