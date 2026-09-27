@@ -4,6 +4,7 @@ use gtk4::prelude::*;
 use serde_json::Value;
 
 use crate::panels::settings::content::{Choice, Page, Parent};
+use crate::platform::{hypr, hyprconfig};
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::controls::{ComboBox, ConfigSwitch};
 use crate::ui::widgets::selection::Selection;
@@ -25,6 +26,24 @@ pub fn switch(
         move |options| options.flag(option),
         move |options, wanted| options.set(option, &wanted.to_string()),
     )
+}
+
+pub fn lines_switch(
+    page: &Page,
+    parent: &impl Parent,
+    icon: &str,
+    label: &str,
+    lines: &'static [&'static str],
+) -> Rc<ConfigSwitch> {
+    let switch = page.switch(parent, icon, label, move |on| {
+        if hyprconfig::lines_present(lines) == on {
+            return;
+        }
+        let _ = hyprconfig::set_lines(lines, on);
+        hypr::request("reload");
+    });
+    switch.bind(move || hyprconfig::lines_present(lines));
+    switch
 }
 
 pub fn option_switch(

@@ -80,11 +80,19 @@ pub fn set_option(text: &str, option: &str, value: &str) -> String {
     )
 }
 
-const SMART_GAPS: [&str; 4] = [
+pub const SMART_GAPS: &[&str] = &[
     "hl.workspace_rule({ workspace = \"w[tv1]\", gaps_out = 0, gaps_in = 0 })",
     "hl.workspace_rule({ workspace = \"f[1]\", gaps_out = 0, gaps_in = 0 })",
     "hl.window_rule({ name = \"no-gaps-wtv1\", match = { float = false, workspace = \"w[tv1]\" }, border_size = 0, rounding = 0 })",
     "hl.window_rule({ name = \"no-gaps-f1\", match = { float = false, workspace = \"f[1]\" }, border_size = 0, rounding = 0 })",
+];
+
+pub const UNDIMMED_FULLSCREEN: &[&str] = &[
+    "hl.window_rule({ name = \"no-dim-fullscreen\", match = { fullscreen = true }, no_dim = true })",
+];
+
+pub const OPAQUE_FULLSCREEN: &[&str] = &[
+    "hl.window_rule({ name = \"opaque-fullscreen\", match = { fullscreen = true }, opacity = \"1 override 1 override\" })",
 ];
 
 fn has_lines(text: &str, lines: &[&str]) -> bool {
@@ -109,17 +117,17 @@ fn with_lines(text: &str, lines: &[&str], on: bool) -> String {
     joined
 }
 
-pub fn smart_gaps() -> bool {
+pub fn lines_present(lines: &[&str]) -> bool {
     has_lines(
         &std::fs::read_to_string(settings_path()).unwrap_or_default(),
-        &SMART_GAPS,
+        lines,
     )
 }
 
-pub fn set_smart_gaps(on: bool) -> std::io::Result<()> {
+pub fn set_lines(lines: &[&str], on: bool) -> std::io::Result<()> {
     let path = settings_path();
     let text = std::fs::read_to_string(&path).unwrap_or_default();
-    std::fs::write(path, with_lines(&text, &SMART_GAPS, on))
+    std::fs::write(path, with_lines(&text, lines, on))
 }
 
 #[cfg(test)]

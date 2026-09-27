@@ -7,6 +7,7 @@ use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
 use crate::panels::settings::hyprrows::{self, Spin};
 use crate::platform::appearance::Parts;
+use crate::platform::hyprconfig;
 use crate::services::appearance::DesktopAppearance;
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::centred::Centred;
@@ -658,6 +659,17 @@ pub fn build(context: &Context) -> Rc<Page> {
             &spin("opacity", label, option, 100.0, (10, 100), 0),
         );
     }
+    let opaque = hyprrows::lines_switch(
+        &page,
+        &opacity,
+        "fullscreen",
+        "Keep fullscreen windows opaque",
+        hyprconfig::OPAQUE_FULLSCREEN,
+    );
+    page.tip(
+        &opaque.button,
+        "Maximized windows too, whether focused or not",
+    );
 
     let shadows = page.subsection(&windows, "Shadows", "");
     hyprrows::switch(
@@ -713,6 +725,14 @@ pub fn build(context: &Context) -> Rc<Page> {
         "Dim windows out of focus",
         "decoration:dim_inactive",
     );
+    let undimmed = hyprrows::lines_switch(
+        &page,
+        &dimming,
+        "fullscreen",
+        "Keep fullscreen windows undimmed",
+        hyprconfig::UNDIMMED_FULLSCREEN,
+    );
+    page.tip(&undimmed.button, "Maximized windows too");
     let dim_strength = hyprrows::spin(
         &page,
         &dimming,
@@ -770,6 +790,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             sharp.set_enabled(shadowed);
             let dimmed = options.flag("decoration:dim_inactive");
             Page::set_spin_row_enabled(&dim_strength.0, &dim_strength.1, dimmed);
+            undimmed.set_enabled(dimmed);
         }
     };
     blur_follows();
