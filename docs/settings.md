@@ -545,7 +545,11 @@ blur is off.
 - "Windows": corner rounding and shape (the shape tenfold with one decimal,
   with a tooltip); blur with its radius and passes, dead while blur is off,
   and X-ray (with a tooltip); the focused and other windows' opacity in
-  percent; allow tearing (with a tooltip).
+  percent; "Shadows": drop shadows (`decoration:shadow:enabled`) with their
+  size in px, falloff (`render_power`, 1–4) and a sharp edge, dead while
+  shadows are off; "Dimming": dimming windows out of focus with its strength
+  in percent (dead while dimming is off) and the dimming around the special
+  workspace in percent; allow tearing (with a tooltip).
 - "Shell windows": the title bar switch (with a tooltip) and centering the
   title, dead while the title bar is off.
 

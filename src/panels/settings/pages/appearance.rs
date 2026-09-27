@@ -13,7 +13,7 @@ use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::spinbox::SpinBox;
 use crate::ui::widgets::text;
 
-const OPTIONS: [&str; 9] = [
+const OPTIONS: [&str; 16] = [
     "decoration:rounding",
     "decoration:rounding_power",
     "decoration:blur:enabled",
@@ -22,6 +22,13 @@ const OPTIONS: [&str; 9] = [
     "decoration:blur:xray",
     "decoration:active_opacity",
     "decoration:inactive_opacity",
+    "decoration:shadow:enabled",
+    "decoration:shadow:range",
+    "decoration:shadow:render_power",
+    "decoration:shadow:sharp",
+    "decoration:dim_inactive",
+    "decoration:dim_strength",
+    "decoration:dim_special",
     "general:allow_tearing",
 ];
 const FONT_LABEL_WIDTH: i32 = 110;
@@ -633,6 +640,87 @@ pub fn build(context: &Context) -> Rc<Page> {
         );
     }
 
+    let shadows = page.subsection(&windows, "Shadows", "");
+    hyprrows::switch(
+        &page,
+        &shadows,
+        &options,
+        "shadow",
+        "Drop shadows under windows",
+        "decoration:shadow:enabled",
+    );
+    let shadow_row = page.row(&shadows);
+    let shadow_size = hyprrows::spin(
+        &page,
+        &shadow_row,
+        &options,
+        &spin(
+            "width",
+            "Size (px)",
+            "decoration:shadow:range",
+            1.0,
+            (0, 100),
+            0,
+        ),
+    );
+    let shadow_falloff = hyprrows::spin(
+        &page,
+        &shadow_row,
+        &options,
+        &spin(
+            "gradient",
+            "Falloff",
+            "decoration:shadow:render_power",
+            1.0,
+            (1, 4),
+            0,
+        ),
+    );
+    let sharp = hyprrows::switch(
+        &page,
+        &shadows,
+        &options,
+        "crop_square",
+        "Sharp edge",
+        "decoration:shadow:sharp",
+    );
+
+    let dimming = page.subsection(&windows, "Dimming", "");
+    hyprrows::switch(
+        &page,
+        &dimming,
+        &options,
+        "brightness_4",
+        "Dim windows out of focus",
+        "decoration:dim_inactive",
+    );
+    let dim_strength = hyprrows::spin(
+        &page,
+        &dimming,
+        &options,
+        &spin(
+            "contrast",
+            "Dim by (%)",
+            "decoration:dim_strength",
+            100.0,
+            (0, 100),
+            0,
+        ),
+    );
+    hyprrows::spin(
+        &page,
+        &dimming,
+        &options,
+        &spin(
+            "select_window_2",
+            "Dim around the special workspace by (%)",
+            "decoration:dim_special",
+            100.0,
+            (0, 100),
+            0,
+        ),
+    );
+
     let rendering = page.subsection(&windows, "Rendering", "");
     let tearing = hyprrows::switch(
         &page,
@@ -657,6 +745,12 @@ pub fn build(context: &Context) -> Rc<Page> {
             Page::set_spin_row_enabled(&radius.0, &radius.1, on);
             Page::set_spin_row_enabled(&passes.0, &passes.1, on);
             xray.set_enabled(on);
+            let shadowed = options.flag("decoration:shadow:enabled");
+            Page::set_spin_row_enabled(&shadow_size.0, &shadow_size.1, shadowed);
+            Page::set_spin_row_enabled(&shadow_falloff.0, &shadow_falloff.1, shadowed);
+            sharp.set_enabled(shadowed);
+            let dimmed = options.flag("decoration:dim_inactive");
+            Page::set_spin_row_enabled(&dim_strength.0, &dim_strength.1, dimmed);
         }
     };
     blur_follows();
