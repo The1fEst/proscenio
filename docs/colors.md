@@ -75,6 +75,9 @@ Same arguments, same order of work. It leaves the same files as
 `switchwall.sh`: the palette, both terminal themes, the config, gsettings and
 `kdeglobals`. Differences from the script:
 
+- the terminal themes are written unless `enableTerminal` is set to false, as
+  the Qt and shell switches already are: `config.toml` holds only the keys
+  that were changed, so a missing key means the default, which is on
 - kitty is reloaded with `pkill -USR1 -x kitty`; the script's
   `kill $(pidof kitty)` passes all the PIDs as one word and reloads nothing
 - the terminal sequences are written to `/dev/pts/N` with `O_NONBLOCK`

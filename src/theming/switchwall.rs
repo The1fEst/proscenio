@@ -272,13 +272,7 @@ fn switch(
         return glib::ExitCode::FAILURE;
     }
 
-    let config_exists = config::config_path().is_file();
-    if !config_exists {
-        println!("Config file not found. Applying terminal theming by default.");
-    }
-    if !config_exists
-        || config::value(&format!("{THEMING}/enableTerminal")) == Some(Value::Bool(true))
-    {
+    if config::value(&format!("{THEMING}/enableTerminal")) != Some(Value::Bool(false)) {
         jobs.push(thread::spawn(move || apply_terminal(&scss)));
     }
     jobs.push(thread::spawn(move || apply_kde(&scheme)));
