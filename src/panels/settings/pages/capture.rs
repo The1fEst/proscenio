@@ -1,12 +1,22 @@
 use std::rc::Rc;
 
-use crate::core::config;
+use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Style};
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
     let paths = page.section("folder", "Save paths");
+    page.tools_notice(
+        &paths,
+        &[&tools::GRIM, &tools::MAGICK, &tools::WL_COPY, &tools::SATTY],
+        "screenshots and the snip actions that need them fail",
+    );
+    page.tools_notice(
+        &paths,
+        &[&tools::WF_RECORDER, &tools::SLURP],
+        "screen recording fails",
+    );
     let screenshots = page.subsection(
         &paths,
         "Screenshots",

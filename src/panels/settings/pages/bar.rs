@@ -2,7 +2,7 @@ use gtk4::prelude::*;
 use serde_json::Value;
 use std::rc::Rc;
 
-use crate::core::config;
+use crate::core::{config, tools};
 use crate::panels::settings::content::{Choice, Context, Page};
 use crate::panels::settings::pages::notifications::monitors;
 use crate::panels::settings::pages::quick::{bar_position, corner_style};
@@ -13,6 +13,8 @@ const SHOW_BACKGROUND: &str = "/bar/showBackground";
 const CORNER_STYLE: &str = "/bar/cornerStyle";
 const SCREEN_LIST: &str = "/bar/screenList";
 const INVERT_PINNED: &str = "/tray/invertPinnedItems";
+const POWER_PROFILES: &str = "net.hadess.PowerProfiles";
+const NO_POWER_PROFILES: &str = "power-profiles-daemon is not on the system bus, so the Performance Profile button does nothing. It comes with the power-profiles-daemon package.";
 const PINNED_ITEMS: &str = "/tray/pinnedItems";
 const NUMBER_MAP: &str = "/bar/workspaces/numberMap";
 const UPDATES: &str = "/bar/utilButtons/showUpdates";
@@ -276,6 +278,23 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
 
     let buttons = page.section("widgets", "Utility buttons");
+    page.tools_notice(
+        &buttons,
+        &[
+            &tools::GRIM,
+            &tools::MAGICK,
+            &tools::WL_COPY,
+            &tools::HYPRPICKER,
+            &tools::YDOTOOL,
+            &tools::WPCTL,
+            &tools::WF_RECORDER,
+            &tools::SLURP,
+        ],
+        "the buttons that run them do nothing",
+    );
+    if !tools::system_service(POWER_PROFILES) {
+        page.notice(&buttons, "info", NO_POWER_PROFILES);
+    }
     for pair in [
         [
             (

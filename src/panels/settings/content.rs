@@ -6,6 +6,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::tools::{self, Tool};
 use crate::core::watch;
 use crate::services::Services;
 use crate::ui::theme::{SharedTheme, pixel_size, rounding};
@@ -512,6 +513,15 @@ impl Page {
             child = widget.next_sibling();
         }
         spin.set_enabled(enabled);
+    }
+
+    pub fn tools_notice(&self, parent: &impl Parent, tools: &[&Tool], effect: &str) -> bool {
+        let missing = tools::missing(tools);
+        if missing.is_empty() {
+            return true;
+        }
+        self.notice(parent, "info", &tools::missing_message(&missing, effect));
+        false
     }
 
     pub fn notice(&self, parent: &impl Parent, icon: &str, message: &str) -> gtk4::Box {

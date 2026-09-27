@@ -18,10 +18,6 @@ pub struct IdleOptions {
     listeners: RefCell<Vec<Box<dyn Fn()>>>,
 }
 
-pub fn available() -> bool {
-    crate::core::process::exists("hypridle")
-}
-
 impl IdleOptions {
     pub fn new() -> Rc<Self> {
         Rc::new(IdleOptions {

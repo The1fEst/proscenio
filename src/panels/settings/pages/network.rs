@@ -3,9 +3,9 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::core::config;
 use crate::core::process::detach;
-use crate::panels::settings::content::{Context, Page};
+use crate::core::{config, tools};
+use crate::panels::settings::content::{Context, Page, Parent};
 use crate::services::net::{Connection, Connections, VPN_KINDS, WIRED};
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::centred::Centred;
@@ -20,6 +20,23 @@ const ROW_SPACING: i32 = 10;
 const EMPTY_MARGIN: i32 = 8;
 const BUTTON_TOP: i32 = 4;
 const NETWORK_APP: &str = "kcmshell6 kcm_networkmanagement";
+const NETWORK_MANAGER: &str = "org.freedesktop.NetworkManager";
+const MANAGER_STOPPED: &str = "NetworkManager is not on the system bus, so connections are not listed or switched. Enable NetworkManager.service.";
+
+pub fn manager_running(page: &Page, parent: &impl Parent) -> bool {
+    if !page.tools_notice(
+        parent,
+        &[&tools::NMCLI],
+        "connections are not listed or switched",
+    ) {
+        return false;
+    }
+    if tools::system_service(NETWORK_MANAGER) {
+        return true;
+    }
+    page.notice(parent, "info", MANAGER_STOPPED);
+    false
+}
 
 struct Group {
     rows: gtk4::Box,
@@ -30,6 +47,13 @@ struct Group {
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
+    let status = page.section("", "");
+    if !manager_running(&page, &status) {
+        return page;
+    }
+    if let Some(section) = status.parent() {
+        section.set_visible(false);
+    }
     let connections = Connections::new();
 
     let wired_section = page.section("lan", "Wired");
@@ -43,10 +67,20 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
     set_up.set_margin_top(BUTTON_TOP);
     vpn_section.append(&set_up);
-    page.tip(
-        &set_up,
-        "Adding and editing connections is NetworkManager's own job",
-    );
+    let command = config::value_str("/apps/network").unwrap_or_else(|| NETWORK_APP.to_owned());
+    match tools::command_missing(&command) {
+        Some(program) => {
+            set_up.set_sensitive(false);
+            page.tip(
+                &set_up,
+                &format!("{program} is not installed. Pick another network connection editor on the Apps page"),
+            );
+        }
+        None => page.tip(
+            &set_up,
+            "Adding and editing connections is NetworkManager's own job",
+        ),
+    }
 
     let follow = {
         let connections = Rc::downgrade(&connections);

@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::content::{Context, Page};
+use crate::panels::settings::pages::network::manager_running;
 use crate::services::wifi::{Saved, Wifi};
 use crate::ui::shapes::Shape;
 use crate::ui::theme::pixel_size;
@@ -23,6 +24,13 @@ type Shown = Option<Vec<Saved>>;
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
+    let status = page.section("", "");
+    if !manager_running(&page, &status) {
+        return page;
+    }
+    if let Some(section) = status.parent() {
+        section.set_visible(false);
+    }
     let wifi = Wifi::new();
 
     let placeholder = Placeholder::build(

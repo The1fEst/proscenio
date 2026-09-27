@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::core::{config, shell};
+use crate::core::{config, shell, tools};
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::power::{
     IdleTimeout, general_switch, hypridle_available, idle_timeout_row,
@@ -44,6 +44,11 @@ pub fn build(context: &Context) -> Rc<Page> {
             |options, on| options.set_general(BEFORE_SLEEP, on.then_some(LOCK_COMMAND)),
         );
     }
+    page.tools_notice(
+        &main,
+        &[&tools::HYPRLOCK],
+        &format!("the session always locks with {}", shell::name()),
+    );
     let hyprlock = page.config_switch(
         &main,
         "water_drop",
@@ -74,6 +79,11 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.tip(
         &power.button,
         "Remember that on most devices one can always hold the power button to force shutdown\nThis only makes it a tiny bit harder for accidents to happen",
+    );
+    page.tools_notice(
+        &security,
+        &[&tools::GNOME_KEYRING],
+        "unlocking leaves the keyring as it is",
     );
     let keyring = page.config_switch(
         &security,

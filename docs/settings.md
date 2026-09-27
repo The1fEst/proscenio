@@ -100,6 +100,34 @@ the top, with 30 px between sections and 80 px of room below the last.
 - **`NoticeBox`**: `colPrimaryContainer` with radius 17 and 8 px inside, a
   22 px symbol at the top and 8 px to its right the message, wrapping at
   words, both `colOnPrimaryContainer`.
+- **Missing programs**: `Page::tools_notice` puts a `NoticeBox` where a
+  control depends on an optional program that is not on `PATH`, naming the
+  programs, what does not happen without them and their Arch packages
+  (`src/core/tools.rs`); services are checked on the system bus (owned or
+  activatable). The notice appears when the page is built. Where the control
+  only writes the shell's config it stays; where it writes the tool's own
+  files (hypridle) it is left out.
+
+  | Page | Checked | Without it |
+  | --- | --- | --- |
+  | Sound | a pulse server | the page is only a notice |
+  | Sound, Alert Sound | `ffplay`, `/usr/share/sounds/*/stereo` | notice |
+  | Displays, Night light | `hyprsunset` | notice |
+  | Power | `hypridle`, `org.freedesktop.UPower` | idle rows left out; notice |
+  | Screen Lock | `hypridle`, `hyprlock`, `gnome-keyring-daemon` | idle rows left out; notices; the lock falls back to the shell's own |
+  | Welcome, Power saving | `hypridle` | notice only |
+  | Privacy, Devices | `pw-dump` | notice |
+  | Screenshots & Recording | `grim`, `magick`, `wl-copy`, `satty`, `wf-recorder`, `slurp` | notices |
+  | Network, Saved Networks | `nmcli`, `org.freedesktop.NetworkManager` | the page is only a notice |
+  | Network, "Set up connections" | the program of `/apps/network` | button disabled, tooltip names it |
+  | Bluetooth | `org.bluez`; `bluetoothctl` | the page is only a notice; notice |
+  | Appearance, Color generation | `matugen`, `kde-material-you-colors` (also in `ILLOGICAL_IMPULSE_VIRTUAL_ENV`) | notices |
+  | Quick, "Choose file" | `kdialog` | button disabled, tooltip names it |
+  | Bar, Utility buttons | `grim`, `magick`, `wl-copy`, `hyprpicker`, `ydotool`, `wpctl`, `wf-recorder`, `slurp`; `net.hadess.PowerProfiles` | notices |
+  | Panels | `kdialog` (wallpaper selector), `ydotool` (on-screen keyboard) | notices |
+  | Search, Prefixes | `qalc`, `cliphist` | notices |
+  | Apps, Commands | the program of each command | one notice, updated as the commands change |
+  | Users | `org.freedesktop.Accounts` | notice |
 - **A busy section** (`ContentSection { busy: … }`) adds an 18 px
   `MaterialLoadingIndicator` 4 px after its title while busy.
 - **`ContentPlaceholder`**: a whole-page state 220 px tall, with a
@@ -249,7 +277,8 @@ the three answers under the C locale; success closes and clears the form.
   `os-release` `LOGO`, else the distro family's symbolic icon; the dots'
   `illogical-impulse`) and 20 px to its right the name at 22 px over its
   links at 16 px, the fork line at 12 px. Links take KDE's `ForegroundLink`
-  color, without underline, and open with `xdg-open`. Under each banner a
+  color, without underline, and open in the default handler through GIO
+  (links and buttons alike). Under each banner a
   wrapping row of `RippleButtonWithIcon`s 5 px apart for the distro's
   documentation, support, bug and privacy pages, and for the dots'
   documentation, issues, discussions and sponsorship.

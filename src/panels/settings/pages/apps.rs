@@ -5,6 +5,7 @@ use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::platform::defaultapps::{self, Role};
 use crate::platform::hypr;
@@ -435,7 +436,42 @@ pub fn build(context: &Context) -> Rc<Page> {
     for (placeholder, pointer, default) in COMMANDS {
         page.config_text(&opened, Style::Outlined, placeholder, pointer, default);
     }
+    let shown: Rc<RefCell<Option<gtk4::Box>>> = Rc::new(RefCell::new(None));
+    let follow = {
+        let page = Rc::downgrade(&page);
+        move || {
+            let Some(page) = page.upgrade() else {
+                return;
+            };
+            if let Some(notice) = shown.take() {
+                opened.remove(&notice);
+            }
+            let missing = missing_commands();
+            if !missing.is_empty() {
+                let message = format!(
+                    "Not installed: {}. The buttons that run these do nothing until the command names an installed program.",
+                    missing.join(", ")
+                );
+                shown.replace(Some(page.notice(&opened, "info", &message)));
+            }
+        }
+    };
+    follow();
+    for (_, pointer, _) in COMMANDS {
+        page.watch(pointer, follow.clone());
+    }
     page
+}
+
+fn missing_commands() -> Vec<String> {
+    COMMANDS
+        .iter()
+        .filter_map(|(name, pointer, default)| {
+            let command = config::value_str(pointer).unwrap_or_else(|| (*default).to_owned());
+            let program = tools::command_missing(&command)?;
+            Some(format!("{program} ({name})"))
+        })
+        .collect()
 }
 
 struct Disconnect(

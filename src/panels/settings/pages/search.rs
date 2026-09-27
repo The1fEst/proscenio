@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use crate::core::tools;
 use crate::panels::settings::content::{Context, Page, Style};
 
 pub fn build(context: &Context) -> Rc<Page> {
@@ -33,6 +34,12 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
 
     let prefixes = page.subsection(&main, "Prefixes", "");
+    page.tools_notice(&prefixes, &[&tools::QALC], "math results never show");
+    page.tools_notice(
+        &prefixes,
+        &[&tools::CLIPHIST],
+        "the clipboard prefix finds nothing",
+    );
     page.config_switch(
         &prefixes,
         "bolt",

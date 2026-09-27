@@ -2,13 +2,15 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::tools;
 use crate::panels::settings::content::{Context, Page, Parent};
-use crate::services::idleoptions::{self, IdleOptions};
+use crate::services::idleoptions::IdleOptions;
 use crate::ui::widgets::controls::ConfigSwitch;
 use crate::ui::widgets::spinbox::SpinBox;
 
 const AUTOMATIC_SUSPEND: &str = "/battery/automaticSuspend";
-const HYPRIDLE_MISSING: &str = "hypridle is not installed, so the session never blanks, locks or suspends on its own. It comes with the hypridle package.";
+const UPOWER: &str = "org.freedesktop.UPower";
+const UPOWER_MISSING: &str = "UPower is not running, so the battery level is unknown and none of these fire. It comes with the upower package.";
 const INHIBIT_KEYS: [&str; 3] = [
     "ignore_dbus_inhibit",
     "ignore_systemd_inhibit",
@@ -16,11 +18,11 @@ const INHIBIT_KEYS: [&str; 3] = [
 ];
 
 pub fn hypridle_available(page: &Page, parent: &impl Parent) -> bool {
-    if idleoptions::available() {
-        return true;
-    }
-    page.notice(parent, "info", HYPRIDLE_MISSING);
-    false
+    page.tools_notice(
+        parent,
+        &[&tools::HYPRIDLE],
+        "the session never blanks, locks or suspends on its own",
+    )
 }
 
 pub fn general_switch(
@@ -170,6 +172,9 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
 
     let battery = page.section("battery_android_full", "Battery");
+    if !tools::system_service(UPOWER) {
+        page.notice(&battery, "info", UPOWER_MISSING);
+    }
     let warnings = page.uniform_row(&battery);
     page.config_spin(
         &warnings,

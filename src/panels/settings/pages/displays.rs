@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::core::config;
+use crate::core::{config, tools};
 use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Choice, Context, Page, Style};
 use crate::panels::settings::hyprrows;
@@ -810,6 +810,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
 
     let night = page.section("nightlight", "Night light");
+    page.tools_notice(&night, &[&tools::HYPRSUNSET], "night light does nothing");
     page.config_switch(
         &night,
         "schedule",

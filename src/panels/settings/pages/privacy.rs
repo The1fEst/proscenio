@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
+use crate::core::tools;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::services::privacy;
 use crate::ui::theme::pixel_size;
@@ -39,6 +40,11 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
 
     let devices = page.section("sensors", "Devices");
+    page.tools_notice(
+        &devices,
+        &[&tools::PW_DUMP],
+        "the microphone and screen always read as unused",
+    );
     let row = page.uniform_row(&devices);
     let microphone = tile(&row, "mic", "Microphone idle");
     let screen = tile(&row, "screen_share", "Screen not shared");

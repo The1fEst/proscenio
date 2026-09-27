@@ -4,7 +4,7 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::core::config;
+use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, slider_row};
 use crate::services::audio::{self, Audio, Card, Device, Stream};
 use crate::ui::theme::SharedTheme;
@@ -17,6 +17,8 @@ const EMPTY_MARGIN: i32 = 8;
 const PROTECTION: &str = "/audio/protection/enable";
 const THEME: &str = "/sounds/theme";
 const DEFAULT_THEME: &str = "freedesktop";
+const NO_SERVER: &str = "No PulseAudio-compatible sound server is running, so there is nothing to control. PipeWire provides one with the pipewire-pulse package.";
+const NO_THEME: &str = "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.";
 
 struct Side {
     sink: bool,
@@ -53,6 +55,8 @@ fn show_percent(slider: &Slider, value: f64) {
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let Some(audio) = context.services.audio.clone() else {
+        let section = page.section("volume_off", "Sound");
+        page.notice(&section, "info", NO_SERVER);
         return page;
     };
 
@@ -74,6 +78,10 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
 
     let alerts = page.section("notification_sound", "Alert Sound");
+    page.tools_notice(&alerts, &[&tools::FFPLAY], "alert sounds stay silent");
+    if audio::sound_themes().is_empty() {
+        page.notice(&alerts, "info", NO_THEME);
+    }
     let kinds = page.uniform_row(&alerts);
     page.config_switch(
         &kinds,

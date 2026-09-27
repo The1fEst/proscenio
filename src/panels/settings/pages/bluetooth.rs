@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::tools;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::content::{Context, Page};
 use crate::services::bluez::{Bluez, Device, Setup, friendly_order};
@@ -22,6 +23,8 @@ const ROW_END: i32 = 8;
 const ROW_SPACING: i32 = 10;
 const SEARCHING_MARGIN: i32 = 8;
 const LOOK_AGAIN: Duration = Duration::from_secs(1);
+const BLUEZ: &str = "org.bluez";
+const NO_BLUEZ: &str = "BlueZ is not on the system bus, so there is no Bluetooth. It comes with the bluez package and runs as bluetooth.service.";
 
 struct Looking {
     bluez: Bluez,
@@ -41,10 +44,19 @@ type Shown = Option<(Vec<Device>, Option<String>, Option<String>, Vec<String>)>;
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
+    let controls = page.section("", "");
+    if !tools::system_service(BLUEZ) {
+        page.notice(&controls, "info", NO_BLUEZ);
+        return page;
+    }
+    page.tools_notice(
+        &controls,
+        &[&tools::BLUETOOTHCTL],
+        "pairing a device that asks for confirmation fails",
+    );
     let bluez = context.services.bluez.clone();
     let setup = Setup::new(&bluez);
 
-    let controls = page.section("", "");
     let switch = page.switch(&controls, "bluetooth", "Bluetooth", {
         let bluez = bluez.clone();
         move |wanted| {

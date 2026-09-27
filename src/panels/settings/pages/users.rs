@@ -3,6 +3,7 @@ use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+use crate::core::tools;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::services::accounts::{self, User};
 use crate::ui::image;
@@ -11,6 +12,8 @@ use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::text;
 use crate::ui::widgets::textfield::TextField;
 
+const ACCOUNTS: &str = "org.freedesktop.Accounts";
+const NO_ACCOUNTS: &str = "AccountsService is not on the system bus, so the name, email and picture can be neither read nor changed. It comes with the accountsservice package.";
 const HEADER_SPACING: i32 = 20;
 const HEADER_MARGIN: i32 = 10;
 const AVATAR: i32 = 80;
@@ -42,6 +45,9 @@ pub fn build(context: &Context) -> Rc<Page> {
     let shown: Show = Rc::new(RefCell::new(None));
 
     let account = page.section("person", "Account");
+    if !tools::system_service(ACCOUNTS) {
+        page.notice(&account, "info", NO_ACCOUNTS);
+    }
     let header = gtk4::Box::new(gtk4::Orientation::Horizontal, HEADER_SPACING);
     header.set_halign(gtk4::Align::Center);
     header.set_margin_top(HEADER_MARGIN);

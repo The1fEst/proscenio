@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::core::config;
+use crate::core::{config, tools};
 use crate::panels::settings::content::{Choice, Context, Page, Style};
 use crate::services::session;
 use crate::theming::switchwall;
@@ -325,7 +325,16 @@ pub fn choose_wallpaper(page: &Page) -> RippleButton {
         "T",
     );
     choose.connect_clicked(|_| switchwall::detach(&[]));
-    page.tip(&choose, "Pick wallpaper image on your system");
+    let missing = tools::missing(&[&tools::KDIALOG]);
+    if missing.is_empty() {
+        page.tip(&choose, "Pick wallpaper image on your system");
+    } else {
+        choose.set_sensitive(false);
+        page.tip(
+            &choose,
+            &tools::missing_message(&missing, "there is no file picker"),
+        );
+    }
     choose
 }
 

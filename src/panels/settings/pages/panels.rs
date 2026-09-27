@@ -2,7 +2,7 @@ use gtk4::prelude::*;
 use serde_json::Value;
 use std::rc::Rc;
 
-use crate::core::config;
+use crate::core::{config, tools};
 use crate::panels::osk::layouts::LAYOUTS;
 use crate::panels::settings::content::{Choice, Context, Page};
 use crate::ui::widgets::selection::Selection;
@@ -255,6 +255,11 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
 
     let selector = page.section("wallpaper_slideshow", "Wallpaper selector");
+    page.tools_notice(
+        &selector,
+        &[&tools::KDIALOG],
+        "the system file picker does not open",
+    );
     page.config_switch(
         &selector,
         "ad",
@@ -264,6 +269,11 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
 
     let osk = page.section("keyboard", "On-screen keyboard");
+    page.tools_notice(
+        &osk,
+        &[&tools::YDOTOOL],
+        "the on-screen keyboard types nothing",
+    );
     page.config_switch(
         &osk,
         "keep",
