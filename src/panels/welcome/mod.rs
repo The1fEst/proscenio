@@ -10,12 +10,13 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::core::{actions, config, paths, process, watch};
+use crate::core::{actions, config, paths, watch};
 use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Choice, Page};
 use crate::panels::settings::pages::power::{IdleTimeout, hypridle_available, idle_timeout_row};
 use crate::panels::settings::pages::quick::{self, bar_position, corner_style};
 use crate::panels::settings::pages::sound::device_label;
+use crate::platform::notify::{self, Notification};
 use crate::services::Services;
 use crate::services::displays::{Displays, number, rates_of, shown_modes_of};
 use crate::services::idleoptions::IdleOptions;
@@ -184,13 +185,12 @@ impl Welcome {
                 if let Some(welcome) = welcome.upgrade() {
                     welcome.window.replace(None);
                 }
-                process::detach(&[
-                    "notify-send",
-                    "Welcome app",
-                    "Enjoy! You can reopen the welcome app any time with <tt>Super+Shift+Alt+/</tt>. To open the settings app, hit <tt>Super+I</tt>",
-                    "-a",
-                    "Shell",
-                ]);
+                notify::send(&Notification {
+                    app: "Shell",
+                    summary: "Welcome app",
+                    body: "Enjoy! You can reopen the welcome app any time with <tt>Super+Shift+Alt+/</tt>. To open the settings app, hit <tt>Super+I</tt>",
+                    ..Default::default()
+                });
             }
         });
 

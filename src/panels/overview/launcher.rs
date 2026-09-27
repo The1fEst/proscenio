@@ -11,6 +11,7 @@ use crate::core::levenshtein;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::detach;
 use crate::platform::desktop::{self, DesktopAction, DesktopEntry};
+use crate::platform::notify::{self, Notification};
 use crate::services::cliphist::{self, Cliphist};
 use crate::services::net::Net;
 use crate::services::todo::Todo;
@@ -544,15 +545,14 @@ impl Launcher {
         let digits: String = trimmed.chars().take_while(char::is_ascii_digit).collect();
         let Ok(count) = digits.parse::<usize>() else {
             let prefix = &self.config().search_action;
-            detach(&[
-                "notify-send",
-                "Superpaste",
-                &format!(
+            notify::send(&Notification {
+                app: "Shell",
+                summary: "Superpaste",
+                body: &format!(
                     "Usage: <tt>{prefix}superpaste NUM_OF_ENTRIES[i]</tt>\nSupply <tt>i</tt> when you want images\nExamples:\n<tt>{prefix}superpaste 4i</tt> for the last 4 images\n<tt>{prefix}superpaste 7</tt> for the last 7 entries"
                 ),
-                "-a",
-                "Shell",
-            ]);
+                ..Default::default()
+            });
             return;
         };
         let images = trimmed[digits.len()..].starts_with('i');

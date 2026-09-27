@@ -7,6 +7,7 @@ use crate::core::config::{self, Config};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::detach;
 use crate::platform::dbus;
+use crate::platform::notify::{self, Notification, Urgency};
 use crate::services::audio;
 
 const BUS: &str = "org.freedesktop.UPower";
@@ -150,23 +151,21 @@ impl Battery {
                 audio::play_system_sound(&config.sounds_theme, name);
             }
         };
-        let notify = |summary: &str, body: &str, urgency: &str| {
-            detach(&[
-                "notify-send",
+        let notify = |summary: &str, body: &str, urgency: Urgency| {
+            notify::send(&Notification {
+                app: "Shell",
                 summary,
                 body,
-                "-u",
                 urgency,
-                "-a",
-                "Shell",
-                "--hint=int:transient:1",
-            ]);
+                transient: true,
+                ..Default::default()
+            });
         };
         if now.low && !before.low {
             notify(
                 "Low battery",
                 "Consider plugging in your device",
-                "critical",
+                Urgency::Critical,
             );
             sound("dialog-warning");
         }
@@ -175,14 +174,14 @@ impl Battery {
                 "Please charge!\nAutomatic suspend triggers at {}%",
                 (config.battery_suspend * 100.0).round()
             );
-            notify("Critically low battery", &body, "critical");
+            notify("Critically low battery", &body, Urgency::Critical);
             sound("suspend-error");
         }
         if now.suspending && !before.suspending {
             detach(&["bash", "-c", "systemctl suspend || loginctl suspend"]);
         }
         if now.full && !before.full {
-            notify("Battery full", "Please unplug the charger", "normal");
+            notify("Battery full", "Please unplug the charger", Urgency::Normal);
             sound("complete");
         }
         if let (Some(was), Some(plugged)) = (before.plugged, now.plugged) {

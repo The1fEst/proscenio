@@ -494,7 +494,7 @@ notification daemon ([notifications.md](notifications.md)).
 
 `cloudflareWarp` is `src/services/warp.rs`. It reads `warp-cli status` once at
 startup, as the QML `Process` does, sets `available` on any output, and runs
-the registration and reconnect pair with its two `notify-send` failures when
+the registration and reconnect pair with its two failure notifications when
 the status says `Unable`. `easyEffects` is `src/services/easyeffects.rs`, with
 the same three shell probes as the QML service. Its right-click launches the
 app and closes the sidebar; it is the one `altAction` that is not a dialog.

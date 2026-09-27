@@ -256,6 +256,14 @@ The name is requested without the replace flag: while another daemon, such as
 the QML shell, owns it, proscenio waits in the queue and takes it when that
 daemon exits.
 
+The shell's own notifications (battery, Pomodoro, microphone, weather,
+recording, switchwall and the rest) are `Notify` calls on the session bus from
+`src/platform/notify.rs`, not `notify-send`: `send` calls asynchronously on the
+main loop, and `send_blocking`, for subcommands that exit right after, calls
+synchronously and, when the notification has actions, waits on a private main
+context for `ActionInvoked` or `NotificationClosed` and returns the chosen
+action. They reach whichever daemon owns the name.
+
 Grouping by app is in `Notifications::groups`: a group's time is the latest
 of its members, and the groups are ordered by that time, newest first.
 
@@ -300,9 +308,9 @@ order:
   `colOnSecondaryContainer` or `colOnPrimaryContainer`.
 
 The microphone mute and unmute notifications from `src/services/audio.rs` are
-sent with `notify-send` as app `Microphone`, with
-`-n $XDG_RUNTIME_DIR/proscenio/micgate.png` as the app icon and the
-`transient` hint, so their icon is that picture at full size.
+sent as app `Microphone`, with `$XDG_RUNTIME_DIR/proscenio/micgate.png` as
+the app icon and the `transient` hint, so their icon is that picture at full
+size.
 
 Divergences:
 

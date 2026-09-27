@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{assets, config, process};
+use crate::platform::notify::{self, Notification};
 
 const HARD_MAX: f64 = 2.0;
 const SETTLE: Duration = Duration::from_secs(3);
@@ -440,16 +441,14 @@ impl Audio {
 fn announce_microphone(muted: bool) {
     let state = if muted { "Muted" } else { "Unmuted" };
     let icon = assets::microphone_icon().unwrap_or_default();
-    process::detach(&[
-        "notify-send",
-        "Microphone",
-        state,
-        "-a",
-        "Microphone",
-        "-n",
-        &icon.to_string_lossy(),
-        "--hint=int:transient:1",
-    ]);
+    notify::send(&Notification {
+        app: "Microphone",
+        summary: "Microphone",
+        body: state,
+        icon: &icon.to_string_lossy(),
+        transient: true,
+        ..Default::default()
+    });
     if config::value("/sounds/microphone")
         .and_then(|value| value.as_bool())
         .unwrap_or(true)

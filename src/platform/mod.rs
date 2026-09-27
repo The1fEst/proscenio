@@ -17,6 +17,7 @@ pub mod inputdevices;
 pub mod ipc;
 pub mod locknotify;
 pub mod monitorrules;
+pub mod notify;
 pub mod pam;
 pub mod readable;
 pub mod sessionlock;

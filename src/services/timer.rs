@@ -7,8 +7,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::core::config;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::persistent;
-use crate::core::process::detach;
 use crate::core::watch;
+use crate::platform::notify::{self, Notification};
 use crate::services::audio;
 
 const POMODORO_INTERVAL: Duration = Duration::from_millis(200);
@@ -230,7 +230,12 @@ impl Timer {
             } else {
                 format!("🔴 Focus: {} minutes", config.pomodoro_focus / 60)
             };
-            detach(&["notify-send", "Pomodoro", &message, "-a", "Shell"]);
+            notify::send(&Notification {
+                app: "Shell",
+                summary: "Pomodoro",
+                body: &message,
+                ..Default::default()
+            });
             if config.sounds_pomodoro {
                 audio::play_system_sound(&config.sounds_theme, "alarm-clock-elapsed");
             }

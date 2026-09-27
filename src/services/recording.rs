@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process;
+use crate::platform::notify::{self, Notification};
 
 const CHECK: Duration = Duration::from_millis(250);
 const CHECKS: i32 = 20;
@@ -93,7 +94,12 @@ pub fn run(arguments: &[String]) -> glib::ExitCode {
 }
 
 fn notify(summary: &str, body: &str) {
-    process::detach(&["notify-send", summary, body, "-a", APP_NAME]);
+    notify::send_blocking(&Notification {
+        app: APP_NAME,
+        summary,
+        body,
+        ..Default::default()
+    });
 }
 
 #[derive(Clone)]

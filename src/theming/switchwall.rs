@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use crate::core::{assets, config, gsettings, paths, process};
 use crate::platform::hypr;
+use crate::platform::notify::{self, Notification};
 use crate::theming::colors;
 
 const SCHEMES: [&str; 8] = [
@@ -313,19 +314,17 @@ fn offer_upscale(image: &str) {
     let body = format!(
         "Image resolution ({image_width}x{image_height}) is lower than screen resolution ({width}x{height})"
     );
-    if notify(&["-A", "open_upscayl=Open Upscayl", "Upscale?", &body]) != "open_upscayl" {
+    if !ask("Upscale?", &body, "", ("open_upscayl", "Open Upscayl")) {
         return;
     }
     if !process::exists("upscayl") {
-        let action = notify(&[
-            "-c",
-            "im.error",
-            "-A",
-            "install_upscayl=Install Upscayl (Arch)",
+        let install = ask(
             "Install Upscayl?",
             "paru -S upscayl-bin",
-        ]);
-        if action != "install_upscayl" {
+            "im.error",
+            ("install_upscayl", "Install Upscayl (Arch)"),
+        );
+        if !install {
             return;
         }
         process::run(&["kitty", "-1", "paru", "-S", "upscayl-bin"]);
@@ -340,29 +339,38 @@ fn offer_install(missing: &[&str]) {
     let names = missing.join(" ");
     println!("Missing deps: {names}");
     println!("Arch: sudo pacman -S {names}");
-    let action = notify(&[
-        "-c",
-        "im.error",
-        "-A",
-        "install_arch=Install (Arch)",
+    let install = ask(
         "Can't switch to video wallpaper",
         &format!("Missing dependencies: {names}"),
-    ]);
-    if action != "install_arch" {
+        "im.error",
+        ("install_arch", "Install (Arch)"),
+    );
+    if !install {
         return;
     }
     let mut command = vec!["kitty", "-1", "sudo", "pacman", "-S"];
     command.extend_from_slice(missing);
     process::run(&command);
     if process::exists("mpvpaper") && process::exists("ffmpeg") {
-        notify(&[APP_NAME, "Alright, try again!"]);
+        notify::send_blocking(&Notification {
+            app: APP_NAME,
+            summary: APP_NAME,
+            body: "Alright, try again!",
+            ..Default::default()
+        });
     }
 }
 
-fn notify(arguments: &[&str]) -> String {
-    let mut command = vec!["notify-send", "-a", APP_NAME];
-    command.extend_from_slice(arguments);
-    process::output(&command).unwrap_or_default()
+fn ask(summary: &str, body: &str, category: &str, action: (&str, &str)) -> bool {
+    let chosen = notify::send_blocking(&Notification {
+        app: APP_NAME,
+        summary,
+        body,
+        category,
+        actions: &[action],
+        ..Default::default()
+    });
+    chosen.as_deref() == Some(action.0)
 }
 
 fn write_restore(video: Option<&str>) {

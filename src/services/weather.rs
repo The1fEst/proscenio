@@ -8,6 +8,7 @@ use std::time::Duration;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, watch};
 use crate::platform::geoclue;
+use crate::platform::notify::{self, Notification};
 
 #[derive(Clone, Default)]
 pub struct Report {
@@ -92,13 +93,12 @@ impl Weather {
                 found.fetch();
             },
             || {
-                crate::core::process::detach(&[
-                    "notify-send",
-                    "Weather Service",
-                    "Cannot find a GPS service. Using the fallback method instead.",
-                    "-a",
-                    "Shell",
-                ]);
+                notify::send(&Notification {
+                    app: "Shell",
+                    summary: "Weather Service",
+                    body: "Cannot find a GPS service. Using the fallback method instead.",
+                    ..Default::default()
+                });
             },
         );
     }

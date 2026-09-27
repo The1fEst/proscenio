@@ -76,7 +76,7 @@ Settings come from `time.pomodoro` (`focus` 1500, `breakTime` 300,
 - `stopwatch { running, start, laps }`, where `start` is in centiseconds.
 
 The pomodoro refreshes every 200 ms. When a lap runs out it flips to
-the next phase and sends a `notify-send Pomodoro` message. With
+the next phase and sends a `Pomodoro` notification. With
 `sounds.pomodoro` set, it also plays `alarm-clock-elapsed` from the
 `sounds.theme` theme through `paplay`. The cycle advances on each return to
 focus. The stopwatch refreshes every 10 ms and is reset at start-up unless it

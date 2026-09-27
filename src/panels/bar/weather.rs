@@ -3,8 +3,8 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::config::Config;
-use crate::core::process::detach;
 use crate::core::scope::Scope;
+use crate::platform::notify::{self, Notification};
 use crate::services::weather::{self, Weather};
 use crate::ui::theme::pixel_size;
 use crate::ui::widgets::centred::Centred;
@@ -64,13 +64,12 @@ pub fn build(weather: &Weather, config: &Rc<Config>, scope: &Scope) -> gtk4::Wid
         let weather = weather.clone();
         move |_, _, _, _| {
             weather.fetch();
-            detach(&[
-                "notify-send",
-                "Weather",
-                "Refreshing (manually triggered)",
-                "-a",
-                "Shell",
-            ]);
+            notify::send(&Notification {
+                app: "Shell",
+                summary: "Weather",
+                body: "Refreshing (manually triggered)",
+                ..Default::default()
+            });
         }
     });
     area.add_controller(refresh);

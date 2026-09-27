@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::detach;
+use crate::platform::notify::{self, Notification};
 
 const FAILED: &str =
     "Connection failed. Please inspect manually with the <tt>warp-cli</tt> command";
@@ -78,7 +79,12 @@ impl Warp {
 }
 
 fn report(body: &str) {
-    detach(&["notify-send", "Cloudflare WARP", body, "-a", "Shell"]);
+    notify::send(&Notification {
+        app: "Shell",
+        summary: "Cloudflare WARP",
+        body,
+        ..Default::default()
+    });
 }
 
 async fn run(line: &[&str]) -> Option<String> {
