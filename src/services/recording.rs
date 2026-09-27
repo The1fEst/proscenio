@@ -1,4 +1,3 @@
-use gtk4::gio;
 use gtk4::glib;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -107,7 +106,6 @@ pub struct Recording {
     seen: Rc<Cell<bool>>,
     expecting: Rc<Cell<bool>>,
     pending_checks: Rc<Cell<i32>>,
-    checking: Rc<Cell<bool>>,
     pub seconds: Rc<Cell<u32>>,
     was_active: Rc<Cell<bool>>,
     ticker: Rc<RefCell<Option<glib::SourceId>>>,
@@ -120,7 +118,6 @@ impl Recording {
             seen: Rc::new(Cell::new(false)),
             expecting: Rc::new(Cell::new(false)),
             pending_checks: Rc::new(Cell::new(0)),
-            checking: Rc::new(Cell::new(false)),
             seconds: Rc::new(Cell::new(0)),
             was_active: Rc::new(Cell::new(false)),
             ticker: Rc::new(RefCell::new(None)),
@@ -210,28 +207,12 @@ impl Recording {
     }
 
     fn refresh(&self) {
-        if self.checking.replace(true) {
-            return;
+        let found = process::running("wf-recorder");
+        self.seen.set(found);
+        if found {
+            self.expecting.set(false);
         }
-        let recording = self.clone();
-        glib::spawn_future_local(async move {
-            let found = match gio::Subprocess::newv(
-                &[
-                    std::ffi::OsStr::new("pgrep"),
-                    std::ffi::OsStr::new("wf-recorder"),
-                ],
-                gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-            ) {
-                Ok(process) => process.wait_future().await.is_ok() && process.exit_status() == 0,
-                Err(_) => false,
-            };
-            recording.checking.set(false);
-            recording.seen.set(found);
-            if found {
-                recording.expecting.set(false);
-            }
-            recording.changed();
-        });
+        self.changed();
     }
 
     fn changed(&self) {

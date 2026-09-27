@@ -473,12 +473,12 @@ holds; a monitor's panels keep theirs in the monitor's `Scope` (section 8).
 | --- | --- |
 | `resources` | samples `/proc/meminfo` and `/proc/stat` once for every bar |
 | `media position` | re-reads the players while one plays |
-| `recording` | looks for `wf-recorder` while no recording is known |
+| `recording` | looks for a `wf-recorder` in `/proc/*/comm`, without spawning anything, while no recording is known |
 | `night light schedule` | re-evaluates the schedule when the minute changes |
 | `warp` | reads `warp-cli status` once WARP is found |
 | `weather`, `updates` | with their periods, as above |
 | `trim` | section 6 |
-| `wireguard`, `clock details`, `uptime` | per monitor, through `add_scoped` |
+| `clock details`, `uptime` | per monitor, through `add_scoped` |
 
 Outside the loop stay the timers that only run while something is under way
 (the stopwatch and pomodoro, the recording's seconds, the capture pump) and

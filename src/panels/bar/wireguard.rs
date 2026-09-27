@@ -1,15 +1,14 @@
 use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
-use std::rc::Rc;
 
 use crate::core::scope::Scope;
-use crate::services::background::BackgroundTasks;
+use crate::services::net::Net;
 use crate::ui::widgets::{customicon, reveal};
 
 const SIZE: i32 = 19;
 
-pub fn build(background: &Rc<BackgroundTasks>, scope: &Scope) -> gtk4::Widget {
+pub fn build(net: &Net, scope: &Scope) -> gtk4::Widget {
     let icon = customicon::build("wireguard-symbolic", SIZE);
     icon.set_valign(gtk4::Align::Center);
 
@@ -22,10 +21,7 @@ pub fn build(background: &Rc<BackgroundTasks>, scope: &Scope) -> gtk4::Widget {
         });
     };
     check();
-    scope.keep(background.add_scoped("wireguard", move || {
-        check();
-        Ok(())
-    }));
+    scope.keep(net.subscribe(check));
 
     holder.upcast()
 }

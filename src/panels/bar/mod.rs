@@ -419,7 +419,7 @@ fn right_section(
         scope,
     ));
     indicators.append(&network::build(&services.net, scope));
-    indicators.append(&wireguard::build(&services.background, scope));
+    indicators.append(&wireguard::build(&services.net, scope));
     let bluetooth = bluetooth::build(&services.bluez, scope);
     bluetooth.set_margin_start(INDICATOR_SPACING);
     indicators.append(&bluetooth);

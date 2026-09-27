@@ -59,6 +59,20 @@ pub fn exists(program: &str) -> bool {
     glib::find_program_in_path(program).is_some()
 }
 
+pub fn running(name: &str) -> bool {
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return false;
+    };
+    entries.flatten().any(|entry| {
+        entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with(|c: char| c.is_ascii_digit())
+            && std::fs::read_to_string(entry.path().join("comm"))
+                .is_ok_and(|comm| comm.trim_end() == name)
+    })
+}
+
 pub fn run<S: AsRef<OsStr>>(command: &[S]) -> bool {
     let Some((program, arguments)) = command.split_first() else {
         return false;

@@ -738,9 +738,9 @@ so no plug sound plays at start. `src/services/updates.rs` polls
 The util buttons are 26 px `RippleButton`s with the tooltip, record and dark
 mode wired as in the QML. The screen snip button runs proscenio's own
 `regionScreenshot` action, which opens the region selector.
-`src/services/recording.rs` ports `ScreenRecording`
-(`pgrep wf-recorder`, the 250 ms confirmation checks, the elapsed-seconds
-ticker) and `src/panels/bar/recording.rs` is the indicator with its tooltip.
+`src/services/recording.rs` ports `ScreenRecording` (the running
+`wf-recorder`, found in `/proc/*/comm` rather than through `pgrep`, the 250 ms
+confirmation checks, the elapsed-seconds ticker) and `src/panels/bar/recording.rs` is the indicator with its tooltip.
 
 The calendar panel is `src/panels/calendar/mod.rs`: one overlay layer surface per
 monitor, namespace `proscenio:calendarPanel`, 420 wide inside a 10 px elevation
@@ -960,8 +960,9 @@ and bluetooth indicators exist at 19 px with the 15 px spacing, and
 `src/ui/widgets/reveal.rs` animates width over 400 ms `emphasizedDecel` and the
 margin over 200 ms `expressiveEffects`.
 
-The WireGuard indicator is implemented on the same two-speed reveal, polling
-`nmcli connection show --active` every 3 s and drawing the shell's own
+The WireGuard indicator is implemented on the same two-speed reveal. It runs
+`nmcli connection show --active` once at start and again whenever the network
+service reports a NetworkManager change, instead of every 3 s, and draws the shell's own
 `wireguard-symbolic.svg` as a symbolic `GFileIcon`, which GTK recolors. The
 `colText` cross-fade is a 200 ms `transition: color` on `.indicator-pill
 label` with the `expressiveEffects` curve.
