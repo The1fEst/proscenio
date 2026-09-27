@@ -440,6 +440,12 @@ impl Displays {
         self.finish_writing();
     }
 
+    pub fn set_disabled(&self, monitor: &Monitor, disabled: bool) {
+        let pairs = [("disabled".to_owned(), disabled.to_string())];
+        let _ = monitorrules::write_rule(&monitor.name, &pairs);
+        self.finish_writing();
+    }
+
     fn finish_writing(&self) {
         hypr::request("reload");
         self.reload();

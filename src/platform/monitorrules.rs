@@ -32,7 +32,8 @@ pub fn write_primary(output: &str) -> std::io::Result<()> {
 }
 
 fn render(value: &str) -> String {
-    if value.starts_with('{') || value.parse::<f64>().is_ok() {
+    if value.starts_with('{') || value == "true" || value == "false" || value.parse::<f64>().is_ok()
+    {
         value.to_owned()
     } else {
         format!("\"{value}\"")
@@ -310,5 +311,15 @@ mod tests {
             with_primary(FILE, "HDMI-A-1"),
             FILE.replace("\"DP-1\")", "\"HDMI-A-1\")")
         );
+    }
+
+    #[test]
+    fn a_display_is_turned_off_and_on_with_a_bare_boolean() {
+        let off = with_rule(FILE, "DP-1", &pairs(&[("disabled", "true")]));
+        assert!(off.contains("\tcm = \"srgb\",\n\tdisabled = true,\n})"));
+        assert_eq!(parse(&off).monitors["DP-1"]["disabled"], "true");
+        let on = with_rule(&off, "DP-1", &pairs(&[("disabled", "false")]));
+        assert!(on.contains("\tdisabled = false,\n})"));
+        assert!(!on.contains("disabled = true"));
     }
 }

@@ -419,20 +419,28 @@ tooltip. The list follows NetworkManager's changes, 500 ms after the last one.
   past 10 px moves it, snapping within 10 px to the neighbors' edges and
   pushed out to the nearest side of any display it lands on, and the new
   spots are written with the main display at 0 × 0.
-- The displays as selection buttons ("model (name)"), then "Rescan displays"
-  (a renderer reload, with a tooltip), and under subsections: "Use as" (main,
-  extended or a mirror of another), "Resolution" (the native mode scaled by
+- The displays as selection buttons ("model (name)"), disabled ones included,
+  with "Rescan displays" (a renderer reload, with a tooltip) at the end of the
+  same row, and under subsections: "Use as" (main, extended, a mirror of
+  another, or "Off", offered while another display stays on or when this one
+  is off; "Off" writes `disabled = true` alone, hands the main display to an
+  enabled one, and picking anything else writes `disabled = false` first),
+  "Resolution" (the native mode scaled by
   1, 1.25, 4⁄3, 1.5, 1.6 and 2 wherever that gives whole pixels, plus the panel
   modes at the running size, or every panel mode with "Show all
   resolutions"), "Refresh rate", "Rotation" and "Variable refresh rate".
 - "Color": the color profile (with `hdr` ones forcing 10-bit), bit depth,
-  forced wide color and HDR (with a warning tooltip), Auto HDR (Hyprland's
-  `render:cm_auto_hdr`), the SDR transfer function and an ICC profile from
-  the usual color directories.
+  forced wide color and HDR (with a warning tooltip), the SDR transfer
+  function and an ICC profile from the usual color directories.
 - "Luminance": SDR brightness, saturation and minimum luminance in hundredths,
   SDR maximum luminance, and under "Display" the display's own minimum,
   maximum and maximum average luminance.
 - "Reserved area": top, right, bottom and left, 0–2000.
+- "All displays": Auto HDR (with a tooltip; `render:cm_auto_hdr`), the
+  global variable refresh rate that a display set to follow it uses (with a
+  tooltip; `misc:vrr`: off, on, fullscreen only, fullscreen games and video)
+  and keeping X11 apps sharp on scaled displays (with a tooltip;
+  `xwayland:force_zero_scaling`).
 - "Night light": the automatic schedule switch, a uniform row of the From and
   To times (dead while the schedule is off), and the color temperature.
 - Every change is written to the display's `hl.monitor` block in

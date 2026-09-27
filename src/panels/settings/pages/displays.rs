@@ -6,6 +6,7 @@ use std::rc::Rc;
 use crate::core::config;
 use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Choice, Context, Page, Style};
+use crate::panels::settings::hyprrows;
 use crate::platform::hypr;
 use crate::services::displays::{Displays, Monitor, number, rates_of, shown_modes_of};
 use crate::services::hyproptions::HyprOptions;
@@ -15,6 +16,14 @@ use crate::ui::widgets::selection::Selection;
 use crate::ui::widgets::spinbox::SpinBox;
 
 const AUTO_HDR: &str = "render:cm_auto_hdr";
+const GLOBAL_VRR: &str = "misc:vrr";
+const ZERO_SCALING: &str = "xwayland:force_zero_scaling";
+const GLOBAL_VRR_MODES: [(&str, &str); 4] = [
+    ("Off", "0"),
+    ("On", "1"),
+    ("Fullscreen only", "2"),
+    ("Fullscreen games and video", "3"),
+];
 const NIGHT_AUTOMATIC: &str = "/light/night/automatic";
 
 type Commit = Box<dyn Fn(&Rc<Displays>, &Monitor, i64)>;
@@ -295,6 +304,7 @@ impl State {
                     state.refresh();
                 }
             });
+            selection.root.set_hexpand(true);
             widgets.choices.prepend(&selection.root);
             widgets.selection.replace(Some((names, selection)));
         }
@@ -321,7 +331,13 @@ impl State {
                 }
             ));
         }
-        let current_use = if primary == name {
+        if can_turn_off(&monitor, &others) {
+            use_as_values.push("off".to_owned());
+            use_as_labels.push("Off".to_owned());
+        }
+        let current_use = if monitor.disabled {
+            "off".to_owned()
+        } else if primary == name {
             "main".to_owned()
         } else {
             others
@@ -437,7 +453,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let state = Rc::new(State {
         theme: page.theme.clone(),
         displays: Displays::new(),
-        options: HyprOptions::new(&[AUTO_HDR]),
+        options: HyprOptions::new(&[AUTO_HDR, GLOBAL_VRR, ZERO_SCALING]),
         selected: RefCell::new(String::new()),
         all_resolutions: Cell::new(false),
         widgets: RefCell::new(None),
@@ -480,7 +496,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     }));
 
     let main = page.section("", "");
-    let choices = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
+    let choices = gtk4::Box::new(gtk4::Orientation::Horizontal, 4);
     main.append(&choices);
     let (rescan, _) = page.icon_button("refresh", true, "Rescan displays", {
         let state = Rc::downgrade(&state);
@@ -491,6 +507,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             }
         }
     });
+    rescan.set_valign(gtk4::Align::Center);
     choices.append(&rescan);
     page.tip(
         &rescan,
@@ -514,9 +531,30 @@ pub fn build(context: &Context) -> Rc<Page> {
                 1 => "extend".to_owned(),
                 other => match others.get(other - 2) {
                     Some(other) => other.name.clone(),
+                    None if other == others.len() + 2 && can_turn_off(&monitor, &others) => {
+                        "off".to_owned()
+                    }
                     None => return,
                 },
             };
+            if value == "off" {
+                if state.displays.primary() == monitor.name
+                    && let Some(next) = others.iter().find(|other| !other.disabled)
+                {
+                    state.displays.set_primary(&next.name);
+                }
+                state.displays.set_disabled(&monitor, true);
+                return;
+            }
+            if monitor.disabled {
+                state.displays.set_disabled(&monitor, false);
+                if value == "main" {
+                    state.displays.set_primary(&monitor.name);
+                } else if value != "extend" {
+                    state.apply(&[("mirror", value)]);
+                }
+                return;
+            }
             if value == "main" {
                 state.displays.set_primary(&monitor.name);
                 return;
@@ -659,22 +697,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         "hdr_on",
         move |index| ("supports_hdr", FORCED[index].1.to_string()),
     );
-    let auto_group = page.subsection(
-        &color,
-        "Auto HDR",
-        "Switches to HDR while a fullscreen window has HDR content. Applies to every display.",
-    );
-    let auto_hdr = page.combo(&auto_group, "hdr_auto");
-    auto_hdr.connect_activated({
-        let state = Rc::downgrade(&state);
-        move |index| {
-            if let Some(state) = state.upgrade() {
-                state
-                    .options
-                    .set(AUTO_HDR, &AUTO_HDR_MODES[index].1.to_string());
-            }
-        }
-    });
     let eotf = keyed_combo(
         &page,
         &state,
@@ -742,6 +764,50 @@ pub fn build(context: &Context) -> Rc<Page> {
         );
         spins.push(spin);
     }
+
+    let every = page.section("desktop_windows", "All displays");
+    let auto_group = page.subsection(
+        &every,
+        "Auto HDR",
+        "Switches to HDR while a fullscreen window has HDR content.",
+    );
+    let auto_hdr = page.combo(&auto_group, "hdr_auto");
+    auto_hdr.connect_activated({
+        let state = Rc::downgrade(&state);
+        move |index| {
+            if let Some(state) = state.upgrade() {
+                state
+                    .options
+                    .set(AUTO_HDR, &AUTO_HDR_MODES[index].1.to_string());
+            }
+        }
+    });
+    let sync_group = page.subsection(
+        &every,
+        "Variable refresh rate",
+        "What a display set to follow the global setting does.",
+    );
+    hyprrows::combo(
+        &page,
+        &sync_group,
+        &state.options,
+        "sync",
+        (GLOBAL_VRR, "0"),
+        &GLOBAL_VRR_MODES,
+    );
+    let xwayland = page.subsection(&every, "X11 apps", "");
+    let sharp = hyprrows::switch(
+        &page,
+        &xwayland,
+        &state.options,
+        "high_density",
+        "Keep X11 apps sharp on scaled displays",
+        ZERO_SCALING,
+    );
+    page.tip(
+        &sharp.button,
+        "X11 apps are drawn unscaled instead of stretched. They look sharp, and small unless they scale themselves (GDK_SCALE, QT_SCALE_FACTOR).",
+    );
 
     let night = page.section("nightlight", "Night light");
     page.config_switch(
@@ -821,6 +887,10 @@ pub fn build(context: &Context) -> Rc<Page> {
     state.refresh();
     page.keep(state);
     page
+}
+
+fn can_turn_off(monitor: &Monitor, others: &[Monitor]) -> bool {
+    monitor.disabled || others.iter().any(|other| !other.disabled)
 }
 
 fn keyed_combo(
