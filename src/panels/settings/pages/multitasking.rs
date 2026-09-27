@@ -5,6 +5,7 @@ use std::rc::Rc;
 use crate::core::config;
 use crate::panels::settings::content::{Choice, Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
+use crate::platform::{hypr, hyprconfig};
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::selection::Selection;
 
@@ -182,6 +183,18 @@ pub fn build(context: &Context) -> Rc<Page> {
     ] {
         hyprrows::spin(&page, &spacing, &options, &spec);
     }
+    let smart = page.switch(&spacing, "crop_free", "Smart gaps", |on| {
+        if hyprconfig::smart_gaps() == on {
+            return;
+        }
+        let _ = hyprconfig::set_smart_gaps(on);
+        hypr::request("reload");
+    });
+    smart.bind(hyprconfig::smart_gaps);
+    page.tip(
+        &smart.button,
+        "No gaps, border or rounding around a workspace's only tiled window, or a maximized one",
+    );
 
     let dwindle = page.subsection(&tiling, "Dwindle", "");
     hyprrows::switch(

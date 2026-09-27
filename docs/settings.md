@@ -540,7 +540,12 @@ blur is off.
   (`src/services/hyproptions.rs`, `src/panels/settings/hyprrows.rs` for the
   `HyprlandSwitch` and the option spin boxes).
 - "Tiling": the layout (Dwindle, Master, Scrolling or Monocle); "Spacing"
-  (inner and outer gaps, border width); "Dwindle", "Master" or "Scrolling",
+  (inner and outer gaps, border width, and "Smart gaps" with a tooltip, on
+  while `settings.lua` holds the four lines of Hyprland's example: workspace
+  rules for `w[tv1]` and `f[1]` with no inner or outer gaps, and the window
+  rules `no-gaps-wtv1` and `no-gaps-f1` taking border and rounding off tiled
+  windows there; the switch adds or removes the four together and reloads,
+  `src/platform/hyprconfig.rs`); "Dwindle", "Master" or "Scrolling",
   whichever layout is in use, with their switches, the master's new-window
   place and side, the split or master share in percent, and for Scrolling the
   column width in percent (`scrolling:column_width`, 10–100), the direction new

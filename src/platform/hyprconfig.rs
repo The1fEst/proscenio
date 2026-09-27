@@ -80,9 +80,65 @@ pub fn set_option(text: &str, option: &str, value: &str) -> String {
     )
 }
 
+const SMART_GAPS: [&str; 4] = [
+    "hl.workspace_rule({ workspace = \"w[tv1]\", gaps_out = 0, gaps_in = 0 })",
+    "hl.workspace_rule({ workspace = \"f[1]\", gaps_out = 0, gaps_in = 0 })",
+    "hl.window_rule({ name = \"no-gaps-wtv1\", match = { float = false, workspace = \"w[tv1]\" }, border_size = 0, rounding = 0 })",
+    "hl.window_rule({ name = \"no-gaps-f1\", match = { float = false, workspace = \"f[1]\" }, border_size = 0, rounding = 0 })",
+];
+
+fn has_lines(text: &str, lines: &[&str]) -> bool {
+    lines
+        .iter()
+        .all(|wanted| text.lines().any(|line| line.trim() == *wanted))
+}
+
+fn with_lines(text: &str, lines: &[&str], on: bool) -> String {
+    let mut kept: Vec<&str> = text
+        .lines()
+        .filter(|line| !lines.contains(&line.trim()))
+        .collect();
+    while kept.last().is_some_and(|line| line.trim().is_empty()) {
+        kept.pop();
+    }
+    if on {
+        kept.extend_from_slice(lines);
+    }
+    let mut joined = kept.join("\n");
+    joined.push('\n');
+    joined
+}
+
+pub fn smart_gaps() -> bool {
+    has_lines(
+        &std::fs::read_to_string(settings_path()).unwrap_or_default(),
+        &SMART_GAPS,
+    )
+}
+
+pub fn set_smart_gaps(on: bool) -> std::io::Result<()> {
+    let path = settings_path();
+    let text = std::fs::read_to_string(&path).unwrap_or_default();
+    std::fs::write(path, with_lines(&text, &SMART_GAPS, on))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn smart_gaps_are_four_lines_added_and_removed_together() {
+        let text = "-- mine\nhl.config({ general = { gaps_in = 4 } })\n";
+        let on = with_lines(text, &SMART_GAPS, true);
+        assert!(has_lines(&on, &SMART_GAPS));
+        assert!(on.starts_with(text));
+        assert_eq!(with_lines(&on, &SMART_GAPS, true), on);
+        assert_eq!(with_lines(&on, &SMART_GAPS, false), text);
+        assert!(!has_lines(
+            &format!("{text}{}\n", SMART_GAPS[0]),
+            &SMART_GAPS
+        ));
+    }
 
     #[test]
     fn options_are_rewritten_on_their_own_line_or_appended() {
