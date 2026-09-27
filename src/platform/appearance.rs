@@ -138,6 +138,10 @@ fn kdeglobals() -> PathBuf {
     glib::user_config_dir().join("kdeglobals")
 }
 
+fn material_you_config() -> PathBuf {
+    glib::user_config_dir().join("kde-material-you-colors/config.conf")
+}
+
 fn icon_default() -> PathBuf {
     home().join(".icons/default/index.theme")
 }
@@ -591,8 +595,18 @@ pub fn set_icons(theme: &str) {
         set_ini_key(&path, "gtk-icon-theme-name", theme, SETTINGS);
     }
     set_ini_key(&kdeglobals(), "Theme", theme, "[Icons]");
+    set_material_you_icons(&material_you_config(), theme);
     set_lua_env("QT_ICON_THEME", theme);
     set_lua_env("QS_ICON_THEME", theme);
+}
+
+fn set_material_you_icons(path: &Path, theme: &str) {
+    if !path.exists() {
+        return;
+    }
+    for key in ["iconslight", "iconsdark"] {
+        set_ini_key(path, key, theme, "[CUSTOM]");
+    }
 }
 
 fn variations(pango: &str) -> String {
@@ -678,6 +692,28 @@ mod tests {
     use super::*;
 
     const FONTS: &str = "DejaVu Sans,DejaVu Sans Condensed:style=Condensed Bold,Bold\nDejaVu Sans:style=Book\nInter:style=Italic\nInter:style=Bold Italic,Italic\nInter:style=Regular\nInter:style=Medium\nSF Pro Text:style=Medium\nSF Pro Text:style=Regular\n:style=Nothing\nNoStyle\n";
+
+    #[test]
+    fn material_you_takes_the_icon_theme_only_when_its_config_exists() {
+        let folder =
+            std::env::temp_dir().join(format!("proscenio-material-you-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&folder);
+        let config = folder.join("config.conf");
+        std::fs::write(
+            &config,
+            "[CUSTOM]\nmonitor = 0\n#iconsdark = OneUI-dark\niconslight = breeze-plus\niconsdark = breeze-plus-dark\n",
+        )
+        .unwrap();
+        set_material_you_icons(&config, "Papirus-Dark");
+        assert_eq!(
+            std::fs::read_to_string(&config).unwrap(),
+            "[CUSTOM]\nmonitor = 0\n#iconsdark = OneUI-dark\niconslight = Papirus-Dark\niconsdark = Papirus-Dark\n"
+        );
+        let missing = folder.join("missing.conf");
+        set_material_you_icons(&missing, "Papirus-Dark");
+        assert!(!missing.exists());
+        let _ = std::fs::remove_dir_all(&folder);
+    }
 
     #[test]
     fn ini_keys_are_written_inside_their_own_section() {

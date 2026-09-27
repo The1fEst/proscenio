@@ -580,7 +580,11 @@ blur is off.
   `appearance.py`, through `src/services/appearance.rs`: every toolkit keeps
   its own copy (gsettings, `gtk-3.0` and `gtk-4.0` `settings.ini`,
   `kdeglobals`, `~/.icons/default`, and `hl.env` lines in `settings.lua`), and
-  each writer edits one key and leaves the rest of the file alone. The files
+  each writer edits one key and leaves the rest of the file alone. The icon
+  theme also goes to `iconslight` and `iconsdark` in
+  `~/.config/kde-material-you-colors/config.conf` when that file exists, since
+  kde-material-you-colors sets the KDE icon theme from those keys on every
+  wallpaper change. The files
   match the script's output byte for byte. Reads and writes run off
   the main thread, one write at a time, and each write rereads everything.
 - "Color generation": the three theming switches (two with tooltips) and
