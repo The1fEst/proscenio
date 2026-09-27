@@ -15,7 +15,6 @@ const fn tool(program: &'static str, package: &'static str) -> Tool {
 
 pub const BLUETOOTHCTL: Tool = tool("bluetoothctl", "bluez-utils");
 pub const CLIPHIST: Tool = tool("cliphist", "cliphist");
-pub const FFPLAY: Tool = tool("ffplay", "ffmpeg");
 pub const GNOME_KEYRING: Tool = tool("gnome-keyring-daemon", "gnome-keyring");
 pub const GRIM: Tool = tool("grim", "grim");
 pub const HYPRIDLE: Tool = tool("hypridle", "hypridle");

@@ -111,7 +111,7 @@ the top, with 30 px between sections and 80 px of room below the last.
   | Page | Checked | Without it |
   | --- | --- | --- |
   | Sound | a pulse server | the page is only a notice |
-  | Sound, Alert Sound | `ffplay`, `/usr/share/sounds/*/stereo` | notice |
+  | Sound, Alert Sound | `/usr/share/sounds/*/stereo` | notice |
   | Displays, Night light | `hyprsunset` | notice |
   | Power | `hypridle`, `org.freedesktop.UPower` | idle rows left out; notice |
   | Screen Lock | `hypridle`, `hyprlock`, `gnome-keyring-daemon` | idle rows left out; notices; the lock falls back to the shell's own |
@@ -492,7 +492,9 @@ tooltip. The list follows NetworkManager's changes, 500 ms after the last one.
   is muted, or "Nothing is playing".
 - "Alert Sound": a uniform row of the battery, Pomodoro and microphone
   switches (the last with a tooltip), and the sound theme, one of the themes
-  under `/usr/share/sounds` with a `stereo` folder.
+  under `/usr/share/sounds` with a `stereo` folder. Alerts play the theme's
+  `.oga` (else `.ogg`) file with `paplay`, which comes with `libpulse`, the
+  library the shell links against.
 - "Sound cards": each card's available profiles, in `pactl`'s order, under
   its description with a tooltip.
 - "Earbang protection": the switch, with a tooltip, and a row of the largest

@@ -4,7 +4,7 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::core::{config, tools};
+use crate::core::config;
 use crate::panels::settings::content::{Context, Page, slider_row};
 use crate::services::audio::{self, Audio, Card, Device, Stream};
 use crate::ui::theme::SharedTheme;
@@ -78,7 +78,6 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
 
     let alerts = page.section("notification_sound", "Alert Sound");
-    page.tools_notice(&alerts, &[&tools::FFPLAY], "alert sounds stay silent");
     if audio::sound_themes().is_empty() {
         page.notice(&alerts, "info", NO_THEME);
     }

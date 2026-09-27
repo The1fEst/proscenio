@@ -587,9 +587,12 @@ pub fn set_card_profile(card: &str, profile: &str, then: impl FnOnce() + 'static
 }
 
 pub fn play_system_sound(theme: &str, name: &str) {
-    for extension in ["oga", "ogg"] {
-        let path = format!("/usr/share/sounds/{theme}/stereo/{name}.{extension}");
-        process::detach(&["ffplay", "-nodisp", "-autoexit", &path]);
+    let found = ["oga", "ogg"]
+        .map(|extension| format!("/usr/share/sounds/{theme}/stereo/{name}.{extension}"))
+        .into_iter()
+        .find(|path| std::path::Path::new(path).is_file());
+    if let Some(path) = found {
+        process::detach(&["paplay", &path]);
     }
 }
 
