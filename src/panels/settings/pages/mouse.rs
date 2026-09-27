@@ -44,7 +44,7 @@ const HARDWARE_CURSORS: [(&str, &str); 3] = [
 ];
 const SPEED: (f64, f64) = (-100.0, 100.0);
 const EMPTY_START: i32 = 8;
-const DEVICE_KEYS: [&str; 4] = ["enabled", "sensitivity", "accel_profile", "natural_scroll"];
+const DEVICE_KEYS: [&str; 3] = ["sensitivity", "accel_profile", "natural_scroll"];
 
 fn choice(label: &str, icon: &'static str, value: Value) -> Choice {
     Choice {

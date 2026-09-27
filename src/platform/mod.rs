@@ -13,6 +13,7 @@ pub mod grab;
 pub mod hypr;
 pub mod hyprconfig;
 pub mod hypridle;
+pub mod inputdevices;
 pub mod ipc;
 pub mod locknotify;
 pub mod monitorrules;

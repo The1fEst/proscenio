@@ -703,7 +703,30 @@ blur is off.
 - Known difference: keycaps are whole-pixel widgets, so a row of them can
   drift 1 to 2 px from Qt's fractional placement.
 
-## 33. Accessibility
+## 33. Devices
+
+proscenio's own page; the QML shell has none.
+
+- "Input devices": a notice on extra devices, then one subsection per piece
+  of hardware with a switch row per device Hyprland reports (`hyprctl
+  devices`: keyboards, mice, tablets, touch, switches), each with its kind's
+  icon and Hyprland's name; the main keyboard's row adds "main keyboard" and
+  its active keymap.
+- `src/platform/inputdevices.rs` groups the devices: a Hyprland name is the
+  kernel name from `/proc/bus/input/devices` in lower case with spaces as
+  dashes, a duplicate getting `-N`; devices whose `Phys` match up to
+  `/inputN` are one piece of hardware, and devices without `Phys` group by the
+  first word of their name. A group is titled with the words its members'
+  kernel names share, a doubled leading word once. Hardware comes first, then
+  virtual devices, each by title.
+- The switch writes `enabled = true` or `false` in the device's `hl.device`
+  line through `src/services/deviceoptions.rs`. `true` is written, not the
+  line removed: Hyprland keeps a device off when its `enabled = false` line
+  goes away.
+- The list is read every 2 s while the page is open and rebuilt only when a
+  device, the main keyboard or a keymap changes.
+
+## 34. Accessibility
 
 - "Seeing": the cursor size (8 to 128 in steps of 4), set with the cursor
   theme through the appearance port; reduced motion (with a tooltip), which

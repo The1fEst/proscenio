@@ -8,6 +8,7 @@ pub mod bar;
 pub mod bluetooth;
 pub mod capture;
 pub mod datetime;
+pub mod devices;
 pub mod displays;
 pub mod hiddennetwork;
 pub mod keyboard;
@@ -251,6 +252,23 @@ pub const PAGES: &[Entry] = &[
         ],
     },
     Entry {
+        name: "Devices",
+        icon: "devices_other",
+        id: "devices",
+        starts_group: false,
+        keywords: &[
+            "device",
+            "input",
+            "keyboard",
+            "mouse",
+            "touchpad",
+            "tablet",
+            "touchscreen",
+            "disable",
+            "main",
+        ],
+    },
+    Entry {
         name: "Accessibility",
         icon: "accessibility_new",
         id: "accessibility",
@@ -432,6 +450,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "apps" => apps::build(context),
         "mouse" => mouse::build(context),
         "keyboard" => keyboard::build(context),
+        "devices" => devices::build(context),
         "accessibility" => accessibility::build(context),
         "savednetworks" => savednetworks::build(context),
         "hiddennetwork" => hiddennetwork::build(context),
