@@ -106,11 +106,13 @@ pub fn build(
         actions.push(action);
         button.connect_clicked({
             let session = services.session.clone();
-            let window = window.clone();
+            let window = window.downgrade();
             let label = *label;
             move |_| {
                 run(&session, label);
-                window.set_visible(false);
+                if let Some(window) = window.upgrade() {
+                    window.set_visible(false);
+                }
             }
         });
         let focus = gtk4::EventControllerFocus::new();
@@ -165,17 +167,16 @@ pub fn build(
     window.set_visible(false);
 
     let dismiss = gtk4::GestureClick::new();
-    dismiss.connect_pressed({
-        let window = window.clone();
-        let stack = stack.clone();
-        move |_, _, x, y| {
-            let on_button = stack
-                .pick(x, y, gtk4::PickFlags::DEFAULT)
-                .and_then(|target| target.ancestor(RippleButton::static_type()))
-                .is_some();
-            if !on_button {
-                window.set_visible(false);
-            }
+    dismiss.connect_pressed(|gesture, _, x, y| {
+        let Some(stack) = gesture.widget() else {
+            return;
+        };
+        let on_button = stack
+            .pick(x, y, gtk4::PickFlags::DEFAULT)
+            .and_then(|target| target.ancestor(RippleButton::static_type()))
+            .is_some();
+        if !on_button && let Some(window) = stack.root().and_downcast::<gtk4::Window>() {
+            window.set_visible(false);
         }
     });
     stack.add_controller(dismiss);
@@ -184,11 +185,12 @@ pub fn build(
     let keys = gtk4::EventControllerKey::new();
     keys.set_propagation_phase(gtk4::PropagationPhase::Capture);
     keys.connect_key_pressed({
-        let window = window.clone();
         let actions = actions.clone();
-        move |_, key, _, _| {
+        move |keys, key, _, _| {
             if key == gdk::Key::Escape {
-                window.set_visible(false);
+                if let Some(window) = keys.widget() {
+                    window.set_visible(false);
+                }
                 return glib::Propagation::Stop;
             }
             let Some(index) = actions.iter().position(|action| action.focused.get()) else {

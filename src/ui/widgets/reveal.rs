@@ -111,12 +111,11 @@ fn reveal(
             length.to(if reveal { natural } else { 0.0 });
             margin.to(if reveal { spacing } else { 0.0 });
 
-            let holder = holder.clone();
             let length = length.clone();
             let margin = margin.clone();
-            holder.clone().add_tick_callback(move |_, _| {
+            holder.add_tick_callback(move |holder, _| {
                 place(
-                    &holder,
+                    holder,
                     gap,
                     orientation,
                     length.get().round() as i32,
