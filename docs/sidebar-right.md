@@ -276,6 +276,9 @@ The default style. A `colLayer1` rectangle, radius 17, `padding: 6`,
 
 ```
 columns        = sidebar.quickToggles.android.columns        (default 5)
+toggles        = sidebar.quickToggles.android.toggles        (default: network 2,
+                 bluetooth 2, idleInhibitor 1, mic 1, audio 2, nightLight 2 —
+                 type and size, as in Config.qml)
 baseCellHeight = 56
 baseCellWidth  = (width − padding·2 − spacing·columns) / columns
 ```

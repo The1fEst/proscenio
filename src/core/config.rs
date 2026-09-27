@@ -570,7 +570,12 @@ impl Config {
                             })
                             .collect()
                     })
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|| {
+                        DEFAULT_TOGGLES
+                            .iter()
+                            .map(|(kind, size)| ((*kind).to_owned(), *size))
+                            .collect()
+                    }),
             ),
             toggle_columns: root
                 .pointer("/sidebar/quickToggles/android/columns")
@@ -797,6 +802,15 @@ pub fn value_f64(pointer: &str, default: f64) -> f64 {
 pub fn value_str(pointer: &str) -> Option<String> {
     value(pointer).and_then(|value| value.as_str().map(str::to_owned))
 }
+
+const DEFAULT_TOGGLES: [(&str, i32); 6] = [
+    ("network", 2),
+    ("bluetooth", 2),
+    ("idleInhibitor", 1),
+    ("mic", 1),
+    ("audio", 2),
+    ("nightLight", 2),
+];
 
 pub const RENDERER: &str = "/renderer";
 pub const DEFAULT_RENDERER: &str = "cairo";
