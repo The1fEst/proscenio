@@ -673,6 +673,32 @@ pub fn build(context: &Context) -> Rc<Page> {
         "None",
     );
 
+    let modifiers = page.section("keyboard_command_key", "Modifier Keys");
+    let show_caps = option_combo(
+        &page,
+        &modifiers,
+        &keyboard,
+        ("Caps Lock", "keyboard_capslock"),
+        "caps",
+        "Default",
+    );
+    let show_ctrl = option_combo(
+        &page,
+        &modifiers,
+        &keyboard,
+        ("Ctrl", "keyboard_control_key"),
+        "ctrl",
+        "Default",
+    );
+    let show_altwin = option_combo(
+        &page,
+        &modifiers,
+        &keyboard,
+        ("Alt and Super", "keyboard_option_key"),
+        "altwin",
+        "Default",
+    );
+
     let shortcuts = page.section("shortcut", "Keyboard Shortcuts");
     let by_symbol = hyprrows::switch(
         &page,
@@ -769,6 +795,9 @@ pub fn build(context: &Context) -> Rc<Page> {
             show_switching();
             show_third();
             show_compose();
+            show_caps();
+            show_ctrl();
+            show_altwin();
         }
     };
     let follow = Rc::new(follow);

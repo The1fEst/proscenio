@@ -704,8 +704,10 @@ blur is off.
   34 px ripple row with Qt's 8 px button padding.
 - "Input Source Switching": the layout switching key (the xkb `grp` options,
   or only the shell shortcut) and Num Lock at start; "Special Character
-  Entry": the third-level key and the Compose key, each replacing its own
-  entry in `input:kb_options` and keeping the rest.
+  Entry": the third-level key and the Compose key; "Modifier Keys": the xkb
+  `caps`, `ctrl` and `altwin` options (Caps Lock, Ctrl, Alt and Super), each
+  with "Default" for none. Every one of these boxes replaces its own entry in
+  `input:kb_options` and keeps the rest.
 - "Keyboard Shortcuts": shortcuts following the symbol (with a tooltip), a
   search field, and Hyprland's described binds grouped by the category before
   the colon, each a label and its keycaps.
