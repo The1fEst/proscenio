@@ -1,5 +1,6 @@
 pub mod arrangement;
 pub mod content;
+pub mod gestures;
 pub mod hyprrows;
 pub mod pages;
 mod rail;

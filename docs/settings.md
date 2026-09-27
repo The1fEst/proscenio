@@ -736,6 +736,26 @@ blur is off.
   tooltip), tap and drag, three-finger middle click, and nested "Secondary
   click" and "Tap with two or three fingers" selections; "Scrolling": natural
   scrolling and the scroll amount.
+- "Gestures" (with a tooltip): the gestures in effect, as 48 px cards with the
+  fingers and direction, the action (a Lua function reads "Custom action") and
+  a round remove button (`src/panels/settings/gestures.rs`). Hyprland has no
+  request that lists gestures, so `src/platform/gestures.rs` reads the
+  `hl.gesture` calls of `~/.config/hypr/hyprland/general.lua` as the defaults,
+  then applies `settings.lua` in order: an `action = "unset"` line takes the
+  default with the same fingers, direction and modifiers away, any other line
+  adds a gesture. The `custom` files are not read. Removing a gesture from
+  `settings.lua` deletes its line; removing a default appends an unset line.
+- "Add a gesture": combos for 3–5 fingers, the direction (swipe any way, left
+  or right, up or down, each of the four, pinch, pinch in, pinch out) and the
+  action (switch workspace, move, resize, close, toggle floating, toggle
+  fullscreen, toggle the special workspace, scroll the layout), and "Add
+  gesture", which appends a one-line `hl.gesture` to `settings.lua`, or
+  removes the unset line when it brings back a default. A gesture that one in
+  effect would shadow, by Hyprland's own rule (same fingers and modifiers, and
+  the same direction, its axis, or a swipe over a horizontal or vertical one),
+  is refused with a message naming that gesture. After each write Hyprland
+  reloads; a new `hl.gesture` config error puts the file back, reloads again
+  and shows the error.
 
 ## 32. Keyboard
 

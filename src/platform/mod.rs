@@ -9,6 +9,7 @@ pub mod devicesettings;
 pub mod fprint;
 pub mod gbm;
 pub mod geoclue;
+pub mod gestures;
 pub mod grab;
 pub mod hypr;
 pub mod hyprconfig;

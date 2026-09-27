@@ -4,6 +4,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::panels::settings::content::{Choice, Context, Page, slider_row};
+use crate::panels::settings::gestures;
 use crate::panels::settings::hyprrows::{self, Spin};
 use crate::services::deviceoptions::DeviceOptions;
 use crate::services::hyproptions::HyprOptions;
@@ -498,6 +499,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             10,
         ),
     );
+    gestures::section(&page, &touchpad);
 
     page.keep(options);
     page.keep(devices);
