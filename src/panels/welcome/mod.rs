@@ -13,7 +13,7 @@ use std::rc::Rc;
 use crate::core::{actions, config, paths, process, watch};
 use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Choice, Page};
-use crate::panels::settings::pages::power::{IdleTimeout, idle_timeout_row};
+use crate::panels::settings::pages::power::{IdleTimeout, hypridle_available, idle_timeout_row};
 use crate::panels::settings::pages::quick::{self, bar_position, corner_style};
 use crate::panels::settings::pages::sound::device_label;
 use crate::services::Services;
@@ -279,34 +279,36 @@ fn content(theme: &SharedTheme, services: &Rc<Services>) -> Rc<Page> {
     page.notice(&styling, "info", NOTICE);
 
     let power = page.section("bedtime", "Power saving");
-    let options = IdleOptions::new();
-    idle_timeout_row(
-        &page,
-        &power,
-        &options,
-        &IdleTimeout {
-            what: "screen",
-            title: "Automatic Screen Blank",
-            tip: "Turns the screens off after a period of inactivity",
-            switch_icon: "brightness_low",
-            switch_text: "Blank the screen",
-            fallback_minutes: 15,
-        },
-    );
-    idle_timeout_row(
-        &page,
-        &power,
-        &options,
-        &IdleTimeout {
-            what: "suspend",
-            title: "Suspend when idle",
-            tip: "Turning automatic suspend off means the machine keeps drawing power while nobody is at it",
-            switch_icon: "pause",
-            switch_text: "Suspend",
-            fallback_minutes: 45,
-        },
-    );
-    page.keep(options);
+    if hypridle_available(&page, &power) {
+        let options = IdleOptions::new();
+        idle_timeout_row(
+            &page,
+            &power,
+            &options,
+            &IdleTimeout {
+                what: "screen",
+                title: "Automatic Screen Blank",
+                tip: "Turns the screens off after a period of inactivity",
+                switch_icon: "brightness_low",
+                switch_text: "Blank the screen",
+                fallback_minutes: 15,
+            },
+        );
+        idle_timeout_row(
+            &page,
+            &power,
+            &options,
+            &IdleTimeout {
+                what: "suspend",
+                title: "Suspend when idle",
+                tip: "Turning automatic suspend off means the machine keeps drawing power while nobody is at it",
+                switch_icon: "pause",
+                switch_text: "Suspend",
+                fallback_minutes: 45,
+            },
+        );
+        page.keep(options);
+    }
 
     let info = page.section("info", "Info");
     let links = Flow::new(FLOW_SPACING);

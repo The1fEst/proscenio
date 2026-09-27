@@ -21,6 +21,84 @@ pub fn write(pairs: &[(String, i64)]) -> std::io::Result<()> {
     std::fs::write(path, text)
 }
 
+pub fn read_general() -> HashMap<String, String> {
+    general(&std::fs::read_to_string(config_path()).unwrap_or_default())
+}
+
+pub fn write_general(changes: &[(String, Option<String>)]) -> std::io::Result<()> {
+    let path = config_path();
+    let mut text = std::fs::read_to_string(&path)?;
+    for (key, value) in changes {
+        text = set_general(&text, key, value.as_deref());
+    }
+    std::fs::write(path, text)
+}
+
+fn general_body(text: &str) -> Option<(usize, usize)> {
+    let mut offset = 0;
+    for line in text.split_inclusive('\n') {
+        if line.trim() == "general {" {
+            let start = offset + line.len();
+            let end = start + text[start..].find("\n}")?;
+            return Some((start, end));
+        }
+        offset += line.len();
+    }
+    None
+}
+
+fn key_of(line: &str) -> Option<&str> {
+    line.split_once('=').map(|(key, _)| key.trim())
+}
+
+pub fn general(text: &str) -> HashMap<String, String> {
+    let Some((start, end)) = general_body(text) else {
+        return HashMap::new();
+    };
+    text[start..end]
+        .lines()
+        .filter_map(|line| {
+            let (key, value) = line.split_once('=')?;
+            Some((key.trim().to_owned(), value.trim().to_owned()))
+        })
+        .collect()
+}
+
+pub fn set_general(text: &str, key: &str, value: Option<&str>) -> String {
+    let Some((start, end)) = general_body(text) else {
+        return match value {
+            Some(value) => format!("general {{\n    {key} = {value}\n}}\n\n{text}"),
+            None => text.to_owned(),
+        };
+    };
+    let mut offset = start;
+    for line in text[start..end].split_inclusive('\n') {
+        let line_end = offset + line.len();
+        if key_of(line) == Some(key) {
+            let last = !line.ends_with('\n');
+            return match value {
+                Some(value) => format!(
+                    "{}    {key} = {value}{}{}",
+                    &text[..offset],
+                    if last { "" } else { "\n" },
+                    &text[line_end..]
+                ),
+                None if last => format!(
+                    "{}{}",
+                    text[..offset].trim_end_matches('\n'),
+                    &text[line_end..]
+                ),
+                None => format!("{}{}", &text[..offset], &text[line_end..]),
+            };
+        }
+        offset = line_end;
+    }
+    match value {
+        Some(value) => format!("{}\n    {key} = {value}{}", &text[..end], &text[end..]),
+        None => text.to_owned(),
+    }
+}
+
 fn skip_whitespace(text: &str, at: usize) -> usize {
     text[at..]
         .char_indices()
@@ -196,6 +274,25 @@ mod tests {
                 "{}\n\nlistener {{\n    timeout = 2700\n    on-timeout = systemctl suspend || loginctl suspend\n}}\n",
                 FILE.trim_end_matches('\n')
             )
+        );
+    }
+
+    #[test]
+    fn general_keys_are_added_changed_and_removed_inside_the_block() {
+        let added = set_general(FILE, "before_sleep_cmd", Some("loginctl lock-session"));
+        assert!(added.contains(
+            "general {\n    lock_cmd = $lock_cmd\n    before_sleep_cmd = loginctl lock-session\n}\n"
+        ));
+        assert_eq!(
+            general(&added).get("before_sleep_cmd").map(String::as_str),
+            Some("loginctl lock-session")
+        );
+        let changed = set_general(&added, "lock_cmd", Some("hyprlock"));
+        assert!(changed.contains("general {\n    lock_cmd = hyprlock\n    before_sleep_cmd"));
+        assert_eq!(set_general(&added, "before_sleep_cmd", None), FILE);
+        assert_eq!(
+            set_general(FILE, "lock_cmd", None),
+            FILE.replace("general {\n    lock_cmd = $lock_cmd\n}", "general {\n}")
         );
     }
 }

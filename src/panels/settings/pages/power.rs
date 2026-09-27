@@ -3,10 +3,62 @@ use std::rc::Rc;
 
 use crate::core::config;
 use crate::panels::settings::content::{Context, Page, Parent};
-use crate::services::idleoptions::IdleOptions;
+use crate::services::idleoptions::{self, IdleOptions};
+use crate::ui::widgets::controls::ConfigSwitch;
 use crate::ui::widgets::spinbox::SpinBox;
 
 const AUTOMATIC_SUSPEND: &str = "/battery/automaticSuspend";
+const HYPRIDLE_MISSING: &str = "hypridle is not installed, so the session never blanks, locks or suspends on its own. It comes with the hypridle package.";
+const INHIBIT_KEYS: [&str; 3] = [
+    "ignore_dbus_inhibit",
+    "ignore_systemd_inhibit",
+    "ignore_wayland_inhibit",
+];
+
+pub fn hypridle_available(page: &Page, parent: &impl Parent) -> bool {
+    if idleoptions::available() {
+        return true;
+    }
+    page.notice(parent, "info", HYPRIDLE_MISSING);
+    false
+}
+
+pub fn general_switch(
+    page: &Page,
+    parent: &impl Parent,
+    options: &Rc<IdleOptions>,
+    icon: &str,
+    label: &str,
+    read: impl Fn(&IdleOptions) -> bool + Clone + 'static,
+    write: impl Fn(&Rc<IdleOptions>, bool) + 'static,
+) -> Rc<ConfigSwitch> {
+    let current = {
+        let options = Rc::downgrade(options);
+        move || options.upgrade().is_some_and(|options| read(&options))
+    };
+    let switch = page.switch(parent, icon, label, {
+        let options = Rc::downgrade(options);
+        let current = current.clone();
+        move |wanted| {
+            if current() == wanted {
+                return;
+            }
+            if let Some(options) = options.upgrade() {
+                write(&options, wanted);
+            }
+        }
+    });
+    switch.bind(current);
+    options.connect_changed({
+        let switch = Rc::downgrade(&switch);
+        move || {
+            if let Some(switch) = switch.upgrade() {
+                switch.refresh();
+            }
+        }
+    });
+    switch
+}
 
 pub struct IdleTimeout {
     pub what: &'static str,
@@ -77,19 +129,45 @@ pub fn build(context: &Context) -> Rc<Page> {
     let options = IdleOptions::new();
 
     let saving = page.section("energy_savings_leaf", "Power Saving");
-    idle_timeout_row(
-        &page,
-        &saving,
-        &options,
-        &IdleTimeout {
-            what: "screen",
-            title: "Automatic Screen Blank",
-            tip: "Turns the screens off after a period of inactivity",
-            switch_icon: "brightness_low",
-            switch_text: "Blank the screen",
-            fallback_minutes: 15,
-        },
-    );
+    let idle = hypridle_available(&page, &saving);
+    if idle {
+        idle_timeout_row(
+            &page,
+            &saving,
+            &options,
+            &IdleTimeout {
+                what: "screen",
+                title: "Automatic Screen Blank",
+                tip: "Turns the screens off after a period of inactivity",
+                switch_icon: "brightness_low",
+                switch_text: "Blank the screen",
+                fallback_minutes: 15,
+            },
+        );
+        let inhibit = page.row(&saving);
+        inhibit.set_halign(gtk4::Align::Start);
+        let apps = general_switch(
+            &page,
+            &inhibit,
+            &options,
+            "smart_display",
+            "Apps can keep the screen on",
+            |options| {
+                INHIBIT_KEYS
+                    .iter()
+                    .all(|key| options.general(key).as_deref() != Some("true"))
+            },
+            |options, on| {
+                for key in INHIBIT_KEYS {
+                    options.set_general(key, if on { None } else { Some("true") });
+                }
+            },
+        );
+        page.tip(
+            &apps.button,
+            "Video players, calls and games can hold off blanking, locking and suspend while they play",
+        );
+    }
 
     let battery = page.section("battery_android_full", "Battery");
     let warnings = page.uniform_row(&battery);
@@ -141,20 +219,22 @@ pub fn build(context: &Context) -> Rc<Page> {
         5,
     );
 
-    let sleeping = page.section("bedtime", "Automatic Suspend");
-    idle_timeout_row(
-        &page,
-        &sleeping,
-        &options,
-        &IdleTimeout {
-            what: "suspend",
-            title: "Suspend when idle",
-            tip: "Turning automatic suspend off means the machine keeps drawing power while nobody is at it",
-            switch_icon: "pause",
-            switch_text: "Suspend",
-            fallback_minutes: 45,
-        },
-    );
+    if idle {
+        let sleeping = page.section("bedtime", "Automatic Suspend");
+        idle_timeout_row(
+            &page,
+            &sleeping,
+            &options,
+            &IdleTimeout {
+                what: "suspend",
+                title: "Suspend when idle",
+                tip: "Turning automatic suspend off means the machine keeps drawing power while nobody is at it",
+                switch_icon: "pause",
+                switch_text: "Suspend",
+                fallback_minutes: 45,
+            },
+        );
+    }
     page.keep(options);
     page
 }

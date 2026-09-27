@@ -2,29 +2,48 @@ use std::rc::Rc;
 
 use crate::core::{config, shell};
 use crate::panels::settings::content::{Context, Page};
-use crate::panels::settings::pages::power::{IdleTimeout, idle_timeout_row};
+use crate::panels::settings::pages::power::{
+    IdleTimeout, general_switch, hypridle_available, idle_timeout_row,
+};
 use crate::services::idleoptions::IdleOptions;
 
 const BLUR: &str = "/lock/blur/enable";
+const BEFORE_SLEEP: &str = "before_sleep_cmd";
+const LOCK_COMMAND: &str = "loginctl lock-session";
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let options = IdleOptions::new();
 
     let main = page.section("", "");
-    idle_timeout_row(
-        &page,
-        &main,
-        &options,
-        &IdleTimeout {
-            what: "lock",
-            title: "Automatic Screen Lock",
-            tip: "Locks the session after a period of inactivity",
-            switch_icon: "lock_clock",
-            switch_text: "Lock the session",
-            fallback_minutes: 30,
-        },
-    );
+    if hypridle_available(&page, &main) {
+        idle_timeout_row(
+            &page,
+            &main,
+            &options,
+            &IdleTimeout {
+                what: "lock",
+                title: "Automatic Screen Lock",
+                tip: "Locks the session after a period of inactivity",
+                switch_icon: "lock_clock",
+                switch_text: "Lock the session",
+                fallback_minutes: 30,
+            },
+        );
+        general_switch(
+            &page,
+            &main,
+            &options,
+            "bedtime",
+            "Lock before sleep",
+            |options| {
+                options
+                    .general(BEFORE_SLEEP)
+                    .is_some_and(|command| command.contains("lock"))
+            },
+            |options, on| options.set_general(BEFORE_SLEEP, on.then_some(LOCK_COMMAND)),
+        );
+    }
     let hyprlock = page.config_switch(
         &main,
         "water_drop",

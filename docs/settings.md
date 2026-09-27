@@ -478,6 +478,14 @@ tooltip. The list follows NetworkManager's changes, 500 ms after the last one.
   and suspend listeners of `~/.config/hypr/hypridle.conf` and restart
   hypridle; `src/platform/hypridle.rs` is a port of the shell's
   `hypr-idle.py`.
+- "Apps can keep the screen on", under the screen blank row: on while none of
+  `ignore_dbus_inhibit`, `ignore_systemd_inhibit` and
+  `ignore_wayland_inhibit` in the `general` block is `true`; off writes all
+  three as `true`, on removes them.
+- Every hypridle control, here, on Screen Lock and in the Welcome "Power
+  saving" section, exists only when `hypridle` is on `PATH`. Without it the
+  "Power Saving" section (the Welcome section, the Screen Lock page) shows a
+  notice that hypridle is not installed, and "Automatic Suspend" is left out.
 - "Battery": a uniform row of the low and critical warnings, a row of the
   "Automatic suspend" switch (with a tooltip) and the level it suspends "at",
   dead while the switch is off, and the full warning.
@@ -485,7 +493,9 @@ tooltip. The list follows NetworkManager's changes, 500 ms after the last one.
 ## 24. Screen Lock (subpage)
 
 An untitled section: the `IdleTimeoutRow` for the lock listener (30 minutes
-when turned on), switches for using Hyprlock and for locking on startup;
+when turned on), "Lock before sleep" (on while the hypridle `general` block
+has a `before_sleep_cmd` that locks; on writes `loginctl lock-session`, off
+removes the key), switches for using Hyprlock and for locking on startup;
 "Security", with requiring the password to power off and unlocking the
 keyring, both with tooltips; "Style: general", with the centered clock, the
 "Locked" text and varying password shapes; and "Style: Blurred", with the blur
