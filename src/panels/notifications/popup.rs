@@ -6,7 +6,6 @@ use std::rc::Rc;
 use crate::core::scope::Scope;
 use crate::core::{config, watch};
 use crate::panels::notifications::list::CardList;
-use crate::services::fullscreen::Fullscreen;
 use crate::services::notifications::Notifications;
 use crate::services::states::States;
 use crate::ui::theme::SharedTheme;
@@ -21,7 +20,6 @@ pub fn open(
     app: &gtk4::Application,
     notifications: &Notifications,
     events: &crate::platform::hypr::Events,
-    fullscreen: &Fullscreen,
     states: &States,
     theme: &SharedTheme,
     monitor: &gdk::Monitor,
@@ -56,7 +54,6 @@ pub fn open(
         let window = window.downgrade();
         let notifications = notifications.clone();
         let states = states.clone();
-        let fullscreen = fullscreen.clone();
         Rc::new(move || {
             let Some(window) = window
                 .upgrade()
@@ -83,7 +80,7 @@ pub fn open(
                     crate::platform::hypr::focused_monitor().as_deref() == Some(connector.as_str())
                 }
             };
-            let groups = if mine && !fullscreen.covers(&connector) {
+            let groups = if mine {
                 notifications.groups(true)
             } else {
                 Vec::new()
@@ -103,10 +100,6 @@ pub fn open(
         move || queue()
     }));
     scope.keep(states.subscribe({
-        let queue = queue.clone();
-        move || queue()
-    }));
-    scope.keep(fullscreen.subscribe({
         let queue = queue.clone();
         move || queue()
     }));

@@ -381,7 +381,6 @@ impl Screens {
                 app,
                 &services.notifications,
                 &services.events,
-                &services.fullscreen,
                 &services.states,
                 theme,
                 monitor,

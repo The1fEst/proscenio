@@ -520,15 +520,15 @@ outside either, since GTK widgets remove their own internal ones later.
 
 qs goes on drawing its bar, dock and corners under a fullscreen window, and a
 top-layer surface mapped after the window went fullscreen, as on a shell
-restart, even shows above it. proscenio draws nothing on a monitor whose
-active workspace holds a real fullscreen window (`fullscreen == 2`). One
-service, `src/services/fullscreen.rs`, keeps the set of covered monitors from
-the Hyprland event stream, reading `hyprctl monitors` and `clients` once per
-burst of events. The bar, the dock with its trigger, the corners and the
-notification popups hide there; so does the background unless
-`background.hideWhenFullscreen` is off. A popup missed that way stays in the
-sidebar's list. Panels opened on demand (the sidebar, the overview, the OSD
-and so on) still show over the window.
+restart, even shows above it. proscenio draws none of its permanent surfaces
+on a monitor whose active workspace holds a real fullscreen window
+(`fullscreen == 2`). One service, `src/services/fullscreen.rs`, keeps the set
+of covered monitors from the Hyprland event stream, reading `hyprctl monitors`
+and `clients` once per burst of events. The bar, the dock with its trigger and
+the corners hide there; so does the background unless
+`background.hideWhenFullscreen` is off. Notification popups, on the Overlay
+layer, and panels opened on demand (the sidebar, the overview, the OSD and so
+on) show over the window.
 
 Hiding the bar would drop its exclusive zone, so the tiled windows of the next
 workspace would lay out without it and then jump when the bar comes back. While
