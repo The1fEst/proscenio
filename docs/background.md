@@ -245,6 +245,14 @@ every frame of the slide. The image size is read with `Pixbuf::file_info`, not
 `magick`, and the image is decoded off the main thread straight to the target
 size.
 
+**The lock blur** is a second copy of the wallpaper, blurred once off the main
+thread, not a GSK blur node. The copy is decoded at up to 1/8 of the wallpaper's
+size (the shrink is `sigma / 3`, where `sigma` is half the GSK radius of
+`lock.blur.radius`), blurred with three box passes whose sum has the Gaussian's
+variance, and drawn stretched over the wallpaper while locked. It is rebuilt when
+the wallpaper or `lock.blur` changes. A blur node is recomputed on every frame of
+the zoom, and on the `cairo` renderer that runs on the CPU in the main thread.
+
 **`last`** is the higher of the active workspace and the highest workspace
 holding a window, so the first window opened on an empty monitor leaves the
 wallpaper where it is.

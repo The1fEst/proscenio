@@ -69,6 +69,7 @@ struct Background {
     screen: (f64, f64),
     source: RefCell<String>,
     image: RefCell<Option<Image>>,
+    blurred: RefCell<Option<gdk::Texture>>,
     x: Rc<anim::Motion>,
     y: Rc<anim::Motion>,
     margins: Cell<[i32; 4]>,
@@ -133,6 +134,7 @@ pub fn open(
         screen,
         source: RefCell::new(String::new()),
         image: RefCell::new(None),
+        blurred: RefCell::new(None),
         placed: Cell::new(false),
         sidebar_open: Cell::new(false),
         locked: Cell::new(false),
@@ -213,18 +215,12 @@ pub fn open(
             snapshot.translate(&centre);
             snapshot.scale(scale, scale);
             snapshot.translate(&graphene::Point::new(-centre.x(), -centre.y()));
-            let radius = if locked {
-                config::value_f64("/lock/blur/radius", LOCK_BLUR_RADIUS)
-            } else {
-                0.0
-            };
-            if radius > 0.0 {
-                snapshot.push_blur(gsk_blur(radius));
-            }
-            snapshot.append_scaled_texture(&image.texture, gsk::ScalingFilter::Linear, &bounds);
-            if radius > 0.0 {
-                snapshot.pop();
-            }
+            let blurred = background.blurred.borrow();
+            let texture = blurred
+                .as_ref()
+                .filter(|_| locked)
+                .unwrap_or(&image.texture);
+            snapshot.append_scaled_texture(texture, gsk::ScalingFilter::Linear, &bounds);
             if locked {
                 let mut wash = background.theme.borrow().colors.col_layer0;
                 wash.set_alpha(wash.alpha() * LOCK_WASH);
@@ -277,6 +273,14 @@ pub fn open(
             if let Some(background) = background.upgrade() {
                 background.reload();
                 background.check_safety();
+            }
+        }
+    }));
+    scope.hold(watch::config("/lock/blur", {
+        let background = Rc::downgrade(&background);
+        move || {
+            if let Some(background) = background.upgrade() {
+                background.reblur();
             }
         }
     }));
@@ -397,6 +401,7 @@ impl Background {
         self.weather.wallpaper_changed();
         if video || wallpaper.is_empty() {
             self.image.replace(None);
+            self.blurred.replace(None);
             self.follow_margins();
             self.paint.queue_draw();
             return;
@@ -433,6 +438,40 @@ impl Background {
             background.placed.set(false);
             background.place();
             background.paint.queue_draw();
+            background.reblur();
+        });
+    }
+
+    fn reblur(self: &Rc<Self>) {
+        self.blurred.replace(None);
+        let wallpaper = self.source.borrow().clone();
+        let Some(size) = self
+            .image
+            .borrow()
+            .as_ref()
+            .map(|image| (image.width as i32, image.height as i32))
+        else {
+            return;
+        };
+        let radius = config::value_f64("/lock/blur/radius", LOCK_BLUR_RADIUS);
+        if !config::value_bool("/lock/blur/enable", true) || radius <= 0.0 {
+            return;
+        }
+        let background = self.clone();
+        glib::spawn_future_local(async move {
+            let path = PathBuf::from(&wallpaper);
+            let sigma = gsk_blur(radius) / 2.0;
+            let Some(texture) = crate::ui::image::blurred_texture(path, size, sigma).await else {
+                return;
+            };
+            let current = config::value_f64("/lock/blur/radius", LOCK_BLUR_RADIUS);
+            if *background.source.borrow() != wallpaper || current != radius {
+                return;
+            }
+            background.blurred.replace(Some(texture));
+            if background.locked.get() {
+                background.paint.queue_draw();
+            }
         });
     }
 
