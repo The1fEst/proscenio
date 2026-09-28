@@ -1,5 +1,5 @@
 use gtk4::gio;
-use gtk4::glib::{self, Variant};
+use gtk4::glib;
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -49,7 +49,7 @@ impl Power {
         let Some(system) = self.system.clone() else {
             return;
         };
-        let next = next.to_owned();
+        let request = set_profile(next);
         glib::spawn_future_local(async move {
             let _ = system
                 .call_future(
@@ -57,14 +57,7 @@ impl Power {
                     PATH,
                     "org.freedesktop.DBus.Properties",
                     "Set",
-                    Some(
-                        &(
-                            BUS,
-                            "ActiveProfile",
-                            Variant::from_variant(&next.to_variant()),
-                        )
-                            .to_variant(),
-                    ),
+                    Some(&request),
                     None,
                     gio::DBusCallFlags::NONE,
                     2000,
@@ -98,5 +91,27 @@ impl Power {
             }
             power.listeners.notify();
         });
+    }
+}
+
+fn set_profile(profile: &str) -> glib::Variant {
+    (BUS, "ActiveProfile", profile.to_variant()).to_variant()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_profile_travels_as_a_plain_string_inside_the_value() {
+        let request = set_profile("performance");
+        assert_eq!(request.type_().as_str(), "(ssv)");
+        assert_eq!(
+            request
+                .child_value(2)
+                .as_variant()
+                .and_then(|value| value.str().map(str::to_owned)),
+            Some("performance".to_owned())
+        );
     }
 }
