@@ -162,6 +162,7 @@ struct Controls {
     rise: Cell<Tween>,
     appear: Cell<Tween>,
     _switches: Vec<Rc<ConfigSwitch>>,
+    _countdown: Rc<dyn Fn(bool)>,
 }
 
 struct Selection {
@@ -1325,7 +1326,7 @@ impl RegionSelector {
         row.append(&capture);
         row.append(&close_button);
         let config = self.config();
-        let (menu, switches) = options_menu(&self.theme, &config);
+        let (menu, switches, countdown) = options_menu(&self.theme, &config);
         menu.set_visible(false);
         let stack = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         stack.append(&menu);
@@ -1373,6 +1374,7 @@ impl RegionSelector {
                 rise: Cell::new(Tween::new(0.0, MOVE_MILLIS, EXPRESSIVE_DEFAULT)),
                 appear: Cell::new(Tween::new(0.0, FAST_MILLIS, EXPRESSIVE_EFFECTS)),
                 _switches: switches,
+                _countdown: countdown,
             },
             config,
             theme: self.theme.clone(),
@@ -1547,7 +1549,10 @@ impl RegionSelector {
     }
 }
 
-fn options_menu(theme: &SharedTheme, config: &Rc<Config>) -> (gtk4::Box, Vec<Rc<ConfigSwitch>>) {
+fn options_menu(
+    theme: &SharedTheme,
+    config: &Rc<Config>,
+) -> (gtk4::Box, Vec<Rc<ConfigSwitch>>, Rc<dyn Fn(bool)>) {
     let menu = gtk4::Box::new(gtk4::Orientation::Vertical, MENU_SPACING);
     menu.add_css_class("region-options");
     menu.set_size_request(MENU_WIDTH, -1);
@@ -1621,11 +1626,13 @@ fn options_menu(theme: &SharedTheme, config: &Rc<Config>) -> (gtk4::Box, Vec<Rc<
     for (button, _, value) in buttons.iter() {
         button.connect_clicked({
             let config = config.clone();
-            let refresh = refresh.clone();
+            let refresh = Rc::downgrade(&refresh);
             let value = *value;
             move || {
                 config.region.set_countdown(value);
-                refresh(true);
+                if let Some(refresh) = refresh.upgrade() {
+                    refresh(true);
+                }
             }
         });
     }
@@ -1687,7 +1694,7 @@ fn options_menu(theme: &SharedTheme, config: &Rc<Config>) -> (gtk4::Box, Vec<Rc<
         menu.append(&switch.button);
         switches.push(switch);
     }
-    (menu, switches)
+    (menu, switches, refresh)
 }
 
 fn close(selection: &Rc<Selection>) {

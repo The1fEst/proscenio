@@ -568,14 +568,15 @@ impl View {
             }
         });
         let focus = gtk4::EventControllerFocus::new();
-        focus.connect_enter({
-            let filter = filter.clone();
-            move |_| filter.set_placeholder_text(Some("Search wallpapers"))
-        });
-        focus.connect_leave({
-            let filter = filter.clone();
-            move |_| filter.set_placeholder_text(Some("Hit \"/\" to search"))
-        });
+        let placeholder = |text: &'static str| {
+            move |focus: &gtk4::EventControllerFocus| {
+                if let Some(filter) = focus.widget().and_downcast::<gtk4::Entry>() {
+                    filter.set_placeholder_text(Some(text));
+                }
+            }
+        };
+        focus.connect_enter(placeholder("Search wallpapers"));
+        focus.connect_leave(placeholder("Hit \"/\" to search"));
         filter.add_controller(focus);
 
         scroller.vadjustment().connect_value_changed({
