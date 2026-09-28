@@ -465,14 +465,14 @@ impl Screens {
             monitor,
             scope,
         );
-        sidebar.watch({
+        scope.keep(sidebar.watch({
             let notifications = services.notifications.clone();
             let states = services.states.clone();
             move |open| {
                 notifications.set_inhibited(open);
                 states.set_sidebar_open(open);
             }
-        });
+        }));
         Panels {
             calendar: calendar::build(app, config, theme, services, monitor, scope),
             media: mediacontrols::build(app, config, services, theme, monitor, scope),

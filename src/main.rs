@@ -716,11 +716,11 @@ fn open_bar(
     let super_show = Rc::new(Cell::new(false));
     let place = {
         let config = config.clone();
-        let window = window.clone();
+        let window = window.downgrade();
         let content = content.downgrade();
         let offset = offset.clone();
         move || {
-            let Some(content) = content.upgrade() else {
+            let (Some(content), Some(window)) = (content.upgrade(), window.upgrade()) else {
                 return;
             };
             let shift = offset.get() as i32;
@@ -750,7 +750,7 @@ fn open_bar(
 
     let update = {
         let config = config.clone();
-        let window = window.clone();
+        let window = window.downgrade();
         let content = content.downgrade();
         let offset = offset.clone();
         let hovered = hovered.clone();
@@ -760,7 +760,7 @@ fn open_bar(
             if !config.auto_hide {
                 return;
             }
-            let Some(content) = content.upgrade() else {
+            let (Some(content), Some(window)) = (content.upgrade(), window.upgrade()) else {
                 return;
             };
             let must_show = hovered.get() || super_show.get();

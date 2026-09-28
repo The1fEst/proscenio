@@ -146,10 +146,11 @@ pub fn build(
     click.connect_pressed({
         let state = state.clone();
         let motion = motion.clone();
-        let area = area.clone();
-        move |_, _, x, y| {
+        move |gesture, _, x, y| {
             motion.pressed.set(true);
-            area.queue_draw();
+            if let Some(area) = gesture.widget() {
+                area.queue_draw();
+            }
             let state = state.borrow();
             let index = (along(x, y) / BUTTON).floor() as i32;
             if !(0..shown).contains(&index) {
@@ -161,10 +162,11 @@ pub fn build(
     });
     click.connect_released({
         let motion = motion.clone();
-        let area = area.clone();
-        move |_, _, _, _| {
+        move |gesture, _, _, _| {
             motion.pressed.set(false);
-            area.queue_draw();
+            if let Some(area) = gesture.widget() {
+                area.queue_draw();
+            }
         }
     });
     area.add_controller(click);
@@ -184,9 +186,8 @@ pub fn build(
     let pointer = gtk4::EventControllerMotion::new();
     pointer.connect_motion({
         let motion = motion.clone();
-        let area = area.clone();
         let state = state.clone();
-        move |_, x, y| {
+        move |pointer, x, y| {
             motion.hovered.set(true);
             motion.touch(
                 (along(x, y) / BUTTON)
@@ -194,19 +195,22 @@ pub fn build(
                     .clamp(0.0, (shown - 1) as f64),
             );
             motion.aim_special(&state.borrow());
-            area.queue_draw();
+            if let Some(area) = pointer.widget() {
+                area.queue_draw();
+            }
         }
     });
     pointer.connect_leave({
         let motion = motion.clone();
         let state = state.clone();
-        let area = area.clone();
-        move |_| {
+        move |pointer| {
             motion.hovered.set(false);
             motion.pressed.set(false);
             motion.touch((state.borrow().active - 1).rem_euclid(shown) as f64);
             motion.aim_special(&state.borrow());
-            area.queue_draw();
+            if let Some(area) = pointer.widget() {
+                area.queue_draw();
+            }
         }
     });
     area.add_controller(pointer);

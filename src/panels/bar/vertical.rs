@@ -312,9 +312,12 @@ fn bottom_section(
             }
         }
     });
-    sidebar.watch({
-        let button = button.clone();
+    scope.keep(sidebar.watch({
+        let button = button.downgrade();
         move |open| {
+            let Some(button) = button.upgrade() else {
+                return;
+            };
             button.set_toggled(open);
             if open {
                 button.add_css_class("toggled");
@@ -322,7 +325,7 @@ fn bottom_section(
                 button.remove_css_class("toggled");
             }
         }
-    });
+    }));
     area.append(&button);
 
     let hover = gtk4::EventControllerMotion::new();

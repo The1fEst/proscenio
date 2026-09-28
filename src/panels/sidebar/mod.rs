@@ -12,6 +12,7 @@ use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 use crate::core::config::Config;
+use crate::core::listeners::{Listeners, Subscription};
 use crate::core::scope::Scope;
 use crate::panels::notifications::list;
 use crate::platform::grab;
@@ -32,7 +33,7 @@ pub struct Sidebar {
     grab: Option<Rc<grab::Grab>>,
     overlay: gtk4::Overlay,
     dialog: Rc<RefCell<Option<Rc<WindowDialog>>>>,
-    watchers: RefCell<Vec<Box<dyn Fn(bool)>>>,
+    watchers: Listeners<bool>,
 }
 
 impl Sidebar {
@@ -56,9 +57,9 @@ impl Sidebar {
         }
     }
 
-    pub fn watch(&self, watcher: impl Fn(bool) + 'static) {
+    pub fn watch(&self, watcher: impl Fn(bool) + 'static) -> Subscription {
         watcher(self.window.is_visible());
-        self.watchers.borrow_mut().push(Box::new(watcher));
+        self.watchers.add_with(move |open| watcher(*open))
     }
 
     fn show(self: &Rc<Self>) {
@@ -83,10 +84,7 @@ impl Sidebar {
     }
 
     fn announce(&self) {
-        let open = self.window.is_visible();
-        for watcher in self.watchers.borrow().iter() {
-            watcher(open);
-        }
+        self.watchers.notify_with(&self.window.is_visible());
     }
 }
 
@@ -256,7 +254,7 @@ pub fn build(
         grab: grab::Grab::new(&monitor.display()),
         overlay,
         dialog: open_dialog,
-        watchers: RefCell::new(Vec::new()),
+        watchers: Listeners::default(),
     });
     owner.replace(Rc::downgrade(&sidebar));
     sidebar
