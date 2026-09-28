@@ -90,6 +90,8 @@ pub struct Launcher {
     apps: Rc<RefCell<Vec<Rc<App>>>>,
     app_names: Rc<RefCell<Vec<Prepared>>>,
     emojis: Rc<RefCell<Option<Rc<Emojis>>>>,
+    emoji_generation: Rc<Cell<u64>>,
+    emoji_loading: Rc<Cell<bool>>,
     cliphist: Cliphist,
     todo: Todo,
     net: Net,
@@ -106,6 +108,8 @@ impl Launcher {
             apps: Rc::new(RefCell::new(Vec::new())),
             app_names: Rc::new(RefCell::new(Vec::new())),
             emojis: Rc::new(RefCell::new(None)),
+            emoji_generation: Rc::new(Cell::new(0)),
+            emoji_loading: Rc::new(Cell::new(false)),
             cliphist: cliphist.clone(),
             todo: todo.clone(),
             net: net.clone(),
@@ -141,19 +145,41 @@ impl Launcher {
         self.apps.replace(Vec::new());
         self.app_names.replace(Vec::new());
         self.emojis.replace(None);
+        self.emoji_generation.set(self.emoji_generation.get() + 1);
+        self.emoji_loading.set(false);
         self.math.replace(String::new());
         self.cliphist.release();
     }
 
-    fn emojis(&self) -> Rc<Emojis> {
+    fn emojis(&self) -> Option<Rc<Emojis>> {
         if let Some(emojis) = self.emojis.borrow().as_ref() {
-            return emojis.clone();
+            return Some(emojis.clone());
         }
-        let lines = load_emojis();
-        let names = lines.iter().map(|line| fuzzy::prepare(line)).collect();
-        let emojis = Rc::new(Emojis { lines, names });
-        self.emojis.replace(Some(emojis.clone()));
-        emojis
+        if self.emoji_loading.replace(true) {
+            return None;
+        }
+        let generation = self.emoji_generation.get();
+        let launcher = self.clone();
+        glib::spawn_future_local(async move {
+            let loaded = gio::spawn_blocking(|| {
+                let lines = load_emojis();
+                let names: Vec<Prepared> = lines.iter().map(|line| fuzzy::prepare(line)).collect();
+                (lines, names)
+            })
+            .await;
+            if launcher.emoji_generation.get() != generation {
+                return;
+            }
+            launcher.emoji_loading.set(false);
+            let Ok((lines, names)) = loaded else {
+                return;
+            };
+            launcher
+                .emojis
+                .replace(Some(Rc::new(Emojis { lines, names })));
+            launcher.announce();
+        });
+        None
     }
 
     fn reload_apps(&self) {
@@ -421,7 +447,9 @@ impl Launcher {
     }
 
     fn emoji_results(&self, search: &str) -> Vec<Item> {
-        let emojis = self.emojis();
+        let Some(emojis) = self.emojis() else {
+            return Vec::new();
+        };
         let references: Vec<&Prepared> = emojis.names.iter().collect();
         let found: Vec<usize> = if search.is_empty() {
             (0..emojis.lines.len()).collect()
