@@ -15,6 +15,7 @@ use crate::platform::notify::{self, Notification};
 
 const HARD_MAX: f64 = 2.0;
 const SETTLE: Duration = Duration::from_secs(3);
+const RECONNECT: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Copy)]
 pub struct Protection {
@@ -56,15 +57,15 @@ pub struct Audio {
     sink_seen: Rc<RefCell<String>>,
     last_volume: Rc<Cell<f64>>,
     settled: Rc<Cell<bool>>,
-    _mainloop: Rc<Mainloop>,
+    reconnecting: Rc<Cell<bool>>,
+    mainloop: Rc<Mainloop>,
     context: Rc<RefCell<Context>>,
 }
 
 impl Audio {
     pub fn new() -> Option<Self> {
         let mainloop = Mainloop::new(None)?;
-        let mut context = Context::new(&mainloop, "proscenio")?;
-        context.connect(None, FlagSet::NOFLAGS, None).ok()?;
+        let context = open(&mainloop)?;
 
         let audio = Audio {
             sink_muted: Rc::new(Cell::new(false)),
@@ -81,13 +82,14 @@ impl Audio {
             sink_seen: Rc::new(RefCell::new(String::new())),
             last_volume: Rc::new(Cell::new(0.0)),
             settled: Rc::new(Cell::new(false)),
-            _mainloop: Rc::new(mainloop),
+            reconnecting: Rc::new(Cell::new(false)),
+            mainloop: Rc::new(mainloop),
             context: Rc::new(RefCell::new(context)),
         };
 
         let settled = audio.settled.clone();
         glib::timeout_add_local_once(SETTLE, move || settled.set(true));
-        audio.start();
+        audio.follow();
         Some(audio)
     }
 
@@ -112,41 +114,72 @@ impl Audio {
             .add_with(move |reason: &String| listener(reason))
     }
 
-    fn start(&self) {
+    fn follow(&self) {
         let audio = self.clone();
-        glib::timeout_add_local(Duration::from_millis(100), move || {
-            match audio.context.borrow().get_state() {
-                State::Ready => {}
-                State::Failed | State::Terminated => return glib::ControlFlow::Break,
-                _ => return glib::ControlFlow::Continue,
-            }
-            audio.refresh();
-            let listener = audio.clone();
-            let mut context = audio.context.borrow_mut();
-            context.set_subscribe_callback(Some(Box::new(move |_, _, _| {
-                listener.refresh();
-                listener.node_listeners.notify();
-                listener.watchers.notify();
+        self.context
+            .borrow_mut()
+            .set_state_callback(Some(Box::new(move || {
+                let audio = audio.clone();
+                glib::idle_add_local_once(move || audio.on_state());
             })));
-            context.subscribe(
-                InterestMaskSet::SERVER
-                    | InterestMaskSet::SINK
-                    | InterestMaskSet::SOURCE
-                    | InterestMaskSet::SINK_INPUT
-                    | InterestMaskSet::SOURCE_OUTPUT,
-                |_| {},
-            );
-            glib::ControlFlow::Break
+    }
+
+    fn on_state(&self) {
+        let state = self.context.borrow().get_state();
+        match state {
+            State::Ready => self.listen(),
+            State::Failed | State::Terminated => self.reconnect(),
+            _ => {}
+        }
+    }
+
+    fn listen(&self) {
+        self.refresh();
+        let listener = self.clone();
+        let mut context = self.context.borrow_mut();
+        context.set_subscribe_callback(Some(Box::new(move |_, _, _| {
+            listener.refresh();
+            listener.node_listeners.notify();
+            listener.watchers.notify();
+        })));
+        context.subscribe(
+            InterestMaskSet::SERVER
+                | InterestMaskSet::SINK
+                | InterestMaskSet::SOURCE
+                | InterestMaskSet::SINK_INPUT
+                | InterestMaskSet::SOURCE_OUTPUT,
+            |_| {},
+        );
+    }
+
+    fn reconnect(&self) {
+        if self.reconnecting.replace(true) {
+            return;
+        }
+        let audio = self.clone();
+        glib::timeout_add_local_once(RECONNECT, move || {
+            audio.reconnecting.set(false);
+            match open(&audio.mainloop) {
+                Some(context) => {
+                    audio.context.replace(context);
+                    audio.follow();
+                }
+                None => audio.reconnect(),
+            }
         });
     }
 
-    fn introspector(&self) -> Introspector {
-        self.context.borrow().introspect()
+    fn introspector(&self) -> Option<Introspector> {
+        let context = self.context.borrow();
+        matches!(context.get_state(), State::Ready).then(|| context.introspect())
     }
 
     fn refresh(&self) {
+        let Some(introspect) = self.introspector() else {
+            return;
+        };
         let audio = self.clone();
-        self.introspector().get_server_info(move |info| {
+        introspect.get_server_info(move |info| {
             let defaults_moved = info
                 .default_sink_name
                 .as_deref()
@@ -155,37 +188,36 @@ impl Audio {
                     .default_source_name
                     .as_deref()
                     .is_some_and(|name| *audio.source_name.borrow() != name);
+            let Some(introspect) = audio.introspector() else {
+                return;
+            };
             if let Some(name) = info.default_sink_name.as_deref() {
                 audio.sink_name.replace(name.to_owned());
                 let sink = audio.clone();
                 let owned = name.to_owned();
-                audio
-                    .introspector()
-                    .get_sink_info_by_name(name, move |result| {
-                        if let ListResult::Item(info) = result {
-                            sink.take_sink(&owned, info.mute, info.volume);
-                        }
-                    });
+                introspect.get_sink_info_by_name(name, move |result| {
+                    if let ListResult::Item(info) = result {
+                        sink.take_sink(&owned, info.mute, info.volume);
+                    }
+                });
             }
             if let Some(name) = info.default_source_name.as_deref() {
                 audio.source_name.replace(name.to_owned());
                 let source = audio.clone();
-                audio
-                    .introspector()
-                    .get_source_info_by_name(name, move |result| {
-                        if let ListResult::Item(info) = result {
-                            let was_muted = source.source_muted.get();
-                            source.take(
-                                &source.source_muted,
-                                info.mute,
-                                &source.source_volume,
-                                info.volume,
-                            );
-                            if info.mute != was_muted && source.settled.get() {
-                                announce_microphone(info.mute);
-                            }
+                introspect.get_source_info_by_name(name, move |result| {
+                    if let ListResult::Item(info) = result {
+                        let was_muted = source.source_muted.get();
+                        source.take(
+                            &source.source_muted,
+                            info.mute,
+                            &source.source_volume,
+                            info.volume,
+                        );
+                        if info.mute != was_muted && source.settled.get() {
+                            announce_microphone(info.mute);
                         }
-                    });
+                    }
+                });
             }
             if defaults_moved {
                 audio.listeners.notify();
@@ -199,11 +231,10 @@ impl Audio {
         if name.is_empty() {
             return;
         }
-        let volume = channels(part);
-        self.context
-            .borrow()
-            .introspect()
-            .set_sink_volume_by_name(&name, &volume, None);
+        let Some(mut introspect) = self.introspector() else {
+            return;
+        };
+        introspect.set_sink_volume_by_name(&name, &channels(part), None);
     }
 
     pub fn toggle_sink_mute(&self) {
@@ -211,11 +242,10 @@ impl Audio {
         if name.is_empty() {
             return;
         }
-        self.context.borrow().introspect().set_sink_mute_by_name(
-            &name,
-            !self.sink_muted.get(),
-            None,
-        );
+        let Some(mut introspect) = self.introspector() else {
+            return;
+        };
+        introspect.set_sink_mute_by_name(&name, !self.sink_muted.get(), None);
     }
 
     pub fn toggle_source_mute(&self) {
@@ -223,11 +253,10 @@ impl Audio {
         if name.is_empty() {
             return;
         }
-        self.context.borrow().introspect().set_source_mute_by_name(
-            &name,
-            !self.source_muted.get(),
-            None,
-        );
+        let Some(mut introspect) = self.introspector() else {
+            return;
+        };
+        introspect.set_source_mute_by_name(&name, !self.source_muted.get(), None);
     }
 
     pub fn streams(&self, sink: bool, handler: impl Fn(Vec<Stream>) + 'static) {
@@ -252,38 +281,41 @@ impl Audio {
             volume: volume.avg().0 as f64 / Volume::NORMAL.0 as f64,
             muted,
         };
+        let Some(introspect) = self.introspector() else {
+            return;
+        };
         if sink {
-            self.introspector()
-                .get_sink_input_info_list(move |result| match result {
-                    ListResult::Item(info) => found.borrow_mut().push(describe(
-                        &info.proplist,
-                        info.name.as_ref().map(|name| name.to_string()),
-                        info.index,
-                        &info.volume,
-                        info.mute,
-                    )),
-                    ListResult::End => handler(found.take()),
-                    ListResult::Error => {}
-                });
+            introspect.get_sink_input_info_list(move |result| match result {
+                ListResult::Item(info) => found.borrow_mut().push(describe(
+                    &info.proplist,
+                    info.name.as_ref().map(|name| name.to_string()),
+                    info.index,
+                    &info.volume,
+                    info.mute,
+                )),
+                ListResult::End => handler(found.take()),
+                ListResult::Error => {}
+            });
         } else {
-            self.introspector()
-                .get_source_output_info_list(move |result| match result {
-                    ListResult::Item(info) => found.borrow_mut().push(describe(
-                        &info.proplist,
-                        info.name.as_ref().map(|name| name.to_string()),
-                        info.index,
-                        &info.volume,
-                        info.mute,
-                    )),
-                    ListResult::End => handler(found.take()),
-                    ListResult::Error => {}
-                });
+            introspect.get_source_output_info_list(move |result| match result {
+                ListResult::Item(info) => found.borrow_mut().push(describe(
+                    &info.proplist,
+                    info.name.as_ref().map(|name| name.to_string()),
+                    info.index,
+                    &info.volume,
+                    info.mute,
+                )),
+                ListResult::End => handler(found.take()),
+                ListResult::Error => {}
+            });
         }
     }
 
     pub fn set_stream_volume(&self, sink: bool, index: u32, part: f64) {
         let volume = channels(part);
-        let mut introspect = self.context.borrow().introspect();
+        let Some(mut introspect) = self.introspector() else {
+            return;
+        };
         if sink {
             introspect.set_sink_input_volume(index, &volume, None);
         } else {
@@ -292,7 +324,9 @@ impl Audio {
     }
 
     pub fn set_stream_mute(&self, sink: bool, index: u32, muted: bool) {
-        let mut introspect = self.context.borrow().introspect();
+        let Some(mut introspect) = self.introspector() else {
+            return;
+        };
         if sink {
             introspect.set_sink_input_mute(index, muted, None);
         } else {
@@ -301,9 +335,9 @@ impl Audio {
     }
 
     pub fn devices(&self, sink: bool, handler: impl Fn(Vec<Device>, String) + 'static) {
-        if !matches!(self.context.borrow().get_state(), State::Ready) {
+        let Some(introspect) = self.introspector() else {
             return;
-        }
+        };
         let found: Rc<RefCell<Vec<Device>>> = Rc::new(RefCell::new(Vec::new()));
         let current = if sink {
             self.sink_name.borrow().clone()
@@ -319,9 +353,26 @@ impl Audio {
                 .unwrap_or_else(|| "Unknown".to_owned())
         };
         if sink {
-            self.introspector()
-                .get_sink_info_list(move |result| match result {
-                    ListResult::Item(info) => found.borrow_mut().push(Device {
+            introspect.get_sink_info_list(move |result| match result {
+                ListResult::Item(info) => found.borrow_mut().push(Device {
+                    name: info.name.as_deref().unwrap_or_default().to_owned(),
+                    label: label(
+                        &info.proplist,
+                        info.description.as_ref().map(|text| text.to_string()),
+                    ),
+                    description: info.description.as_deref().unwrap_or_default().to_owned(),
+                    nick: info.proplist.get_str("node.nick").unwrap_or_default(),
+                }),
+                ListResult::End => handler(found.take(), current.clone()),
+                ListResult::Error => {}
+            });
+        } else {
+            introspect.get_source_info_list(move |result| match result {
+                ListResult::Item(info) => {
+                    if info.monitor_of_sink.is_some() {
+                        return;
+                    }
+                    found.borrow_mut().push(Device {
                         name: info.name.as_deref().unwrap_or_default().to_owned(),
                         label: label(
                             &info.proplist,
@@ -329,35 +380,19 @@ impl Audio {
                         ),
                         description: info.description.as_deref().unwrap_or_default().to_owned(),
                         nick: info.proplist.get_str("node.nick").unwrap_or_default(),
-                    }),
-                    ListResult::End => handler(found.take(), current.clone()),
-                    ListResult::Error => {}
-                });
-        } else {
-            self.introspector()
-                .get_source_info_list(move |result| match result {
-                    ListResult::Item(info) => {
-                        if info.monitor_of_sink.is_some() {
-                            return;
-                        }
-                        found.borrow_mut().push(Device {
-                            name: info.name.as_deref().unwrap_or_default().to_owned(),
-                            label: label(
-                                &info.proplist,
-                                info.description.as_ref().map(|text| text.to_string()),
-                            ),
-                            description: info.description.as_deref().unwrap_or_default().to_owned(),
-                            nick: info.proplist.get_str("node.nick").unwrap_or_default(),
-                        })
-                    }
-                    ListResult::End => handler(found.take(), current.clone()),
-                    ListResult::Error => {}
-                });
+                    })
+                }
+                ListResult::End => handler(found.take(), current.clone()),
+                ListResult::Error => {}
+            });
         }
     }
 
     pub fn set_default(&self, sink: bool, name: &str) {
         let mut context = self.context.borrow_mut();
+        if !matches!(context.get_state(), State::Ready) {
+            return;
+        }
         if sink {
             context.set_default_sink(name, |_| {});
         } else {
@@ -370,11 +405,10 @@ impl Audio {
         if name.is_empty() {
             return;
         }
-        let volume = channels(part);
-        self.context
-            .borrow()
-            .introspect()
-            .set_source_volume_by_name(&name, &volume, None);
+        let Some(mut introspect) = self.introspector() else {
+            return;
+        };
+        introspect.set_source_volume_by_name(&name, &channels(part), None);
     }
 
     fn take_sink(&self, name: &str, muted: bool, volume: ChannelVolumes) {
@@ -436,6 +470,12 @@ impl Audio {
         self.listeners.notify();
         self.watchers.notify();
     }
+}
+
+fn open(mainloop: &Mainloop) -> Option<Context> {
+    let mut context = Context::new(mainloop, "proscenio")?;
+    context.connect(None, FlagSet::NOFLAGS, None).ok()?;
+    Some(context)
 }
 
 fn announce_microphone(muted: bool) {
