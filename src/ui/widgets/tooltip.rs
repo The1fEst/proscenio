@@ -27,6 +27,7 @@ pub struct Tooltip {
     text: Rc<RefCell<String>>,
     shown: Rc<anim::Motion>,
     open: Cell<bool>,
+    measured: Cell<bool>,
     qt_placement: Cell<bool>,
     pointing: Cell<Option<(i32, i32, i32, i32)>>,
     exact: Rc<Cell<Option<(f64, f64)>>>,
@@ -99,6 +100,7 @@ impl Tooltip {
             text,
             shown,
             open: Cell::new(false),
+            measured: Cell::new(false),
             qt_placement: Cell::new(false),
             pointing: Cell::new(None),
             exact,
@@ -120,6 +122,7 @@ impl Tooltip {
 
     pub fn place_like_qt(&self) {
         self.qt_placement.set(true);
+        self.measured.set(false);
     }
 
     fn place(&self) {
@@ -156,17 +159,28 @@ impl Tooltip {
 
     pub fn set_text(&self, value: &str) {
         self.text.replace(value.to_owned());
+        self.measured.set(false);
+        if self.open.get() {
+            self.measure_text();
+        }
+        self.area.queue_draw();
+    }
+
+    fn measure_text(&self) {
+        if self.measured.replace(true) {
+            return;
+        }
+        let value = self.text.borrow().clone();
         if self.qt_placement.get() {
-            let (width, height) = exact_size(&self.area, value);
+            let (width, height) = exact_size(&self.area, &value);
             self.exact.set(Some((width, height)));
             self.area.set_content_width(width.ceil() as i32);
             self.area.set_content_height(height.ceil() as i32);
         } else {
-            let (width, height) = measure(&self.area, value);
+            let (width, height) = measure(&self.area, &value);
             self.area.set_content_width(width);
             self.area.set_content_height(height);
         }
-        self.area.queue_draw();
     }
 
     pub fn show(&self, visible: bool) {
@@ -174,6 +188,7 @@ impl Tooltip {
             return;
         }
         if visible {
+            self.measure_text();
             if self.qt_placement.get() {
                 self.place();
             }
