@@ -4,27 +4,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
-use crate::platform::hypr::{self, Events};
-use crate::ui::widgets::coalesce;
-
-const EVENTS: [&str; 16] = [
-    "fullscreen",
-    "workspace",
-    "workspacev2",
-    "focusedmon",
-    "focusedmonv2",
-    "moveworkspace",
-    "moveworkspacev2",
-    "openwindow",
-    "closewindow",
-    "movewindow",
-    "movewindowv2",
-    "monitoradded",
-    "monitoraddedv2",
-    "monitorremoved",
-    "monitorremovedv2",
-    "configreloaded",
-];
+use crate::services::hyprstate::{HyprState, Snapshot};
 
 #[derive(Clone)]
 pub struct Fullscreen {
@@ -33,22 +13,17 @@ pub struct Fullscreen {
 }
 
 impl Fullscreen {
-    pub fn new(events: &Events) -> Self {
+    pub fn new(hypr: &HyprState) -> Self {
         let fullscreen = Fullscreen {
-            covered: Rc::new(RefCell::new(covered())),
+            covered: Rc::new(RefCell::new(covered(&hypr.snapshot()))),
             listeners: Rc::default(),
         };
-        let refresh = coalesce(Rc::new({
+        hypr.subscribe({
             let fullscreen = fullscreen.clone();
-            move || fullscreen.refresh()
-        }));
-        events
-            .subscribe(move |event, _| {
-                if EVENTS.contains(&event) {
-                    refresh();
-                }
-            })
-            .forever();
+            let hypr = hypr.clone();
+            move || fullscreen.refresh(&hypr.snapshot())
+        })
+        .forever();
         fullscreen
     }
 
@@ -60,8 +35,8 @@ impl Fullscreen {
         self.listeners.add(listener)
     }
 
-    fn refresh(&self) {
-        let now = covered();
+    fn refresh(&self, snapshot: &Snapshot) {
+        let now = covered(snapshot);
         if *self.covered.borrow() == now {
             return;
         }
@@ -70,11 +45,8 @@ impl Fullscreen {
     }
 }
 
-fn covered() -> HashSet<String> {
-    let Some(monitors) = hypr::json("monitors").and_then(|value| value.as_array().cloned()) else {
-        return HashSet::new();
-    };
-    let Some(clients) = hypr::json("clients").and_then(|value| value.as_array().cloned()) else {
+fn covered(snapshot: &Snapshot) -> HashSet<String> {
+    let (Some(monitors), Some(clients)) = (&snapshot.monitors, &snapshot.clients) else {
         return HashSet::new();
     };
     monitors
@@ -93,4 +65,33 @@ fn covered() -> HashSet<String> {
                 .then(|| name.to_owned())
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn a_monitor_is_covered_by_a_real_fullscreen_window_on_its_active_workspace() {
+        let snapshot = Snapshot {
+            monitors: Some(vec![
+                json!({"name": "DP-1", "activeWorkspace": {"id": 1}}),
+                json!({"name": "DP-2", "activeWorkspace": {"id": 2}}),
+                json!({"name": "HDMI-A-1", "activeWorkspace": {"id": 3}}),
+            ]),
+            clients: Some(vec![
+                json!({"fullscreen": 2, "workspace": {"id": 1}}),
+                json!({"fullscreen": 1, "workspace": {"id": 2}}),
+                json!({"fullscreen": 2, "workspace": {"id": 4}}),
+            ]),
+            ..Snapshot::default()
+        };
+        assert_eq!(covered(&snapshot), HashSet::from(["DP-1".to_owned()]));
+        let unread = Snapshot {
+            clients: None,
+            ..snapshot
+        };
+        assert!(covered(&unread).is_empty());
+    }
 }

@@ -11,6 +11,7 @@ pub mod displays;
 pub mod easyeffects;
 pub mod fullscreen;
 pub mod hyproptions;
+pub mod hyprstate;
 pub mod idleoptions;
 pub mod mpris;
 pub mod net;
@@ -45,6 +46,7 @@ use crate::services::brightness::Light;
 use crate::services::cliphist::Cliphist;
 use crate::services::easyeffects::EasyEffects;
 use crate::services::fullscreen::Fullscreen;
+use crate::services::hyprstate::HyprState;
 use crate::services::mpris::Mpris;
 use crate::services::net::Net;
 use crate::services::notifications::Notifications;
@@ -66,6 +68,7 @@ pub struct Services {
     pub background: std::rc::Rc<BackgroundTasks>,
     pub resources: std::rc::Rc<Resources>,
     pub events: Events,
+    pub hypr: HyprState,
     pub fullscreen: Fullscreen,
     pub session_bus: Option<gio::DBusConnection>,
     pub audio: Option<Audio>,
@@ -97,11 +100,13 @@ impl Services {
         let session = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE).ok();
         let session_for_mpris = session.clone();
         let events = Events::default();
+        let hypr = HyprState::new(&events);
         let services = Services {
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),
             xkb: Xkb::new(&events),
-            fullscreen: Fullscreen::new(&events),
+            fullscreen: Fullscreen::new(&hypr),
+            hypr,
             recording: Recording::new(),
             states: States::new(),
             wallpapers: Wallpapers::new(),

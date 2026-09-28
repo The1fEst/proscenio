@@ -12,6 +12,7 @@ use crate::core::config::Config;
 use crate::core::scope::Scope;
 use crate::platform::appicon;
 use crate::platform::hypr;
+use crate::services::hyprstate::Snapshot;
 use crate::ui::anim;
 use crate::ui::theme::{SharedTheme, transparentize};
 use crate::ui::widgets::paint::Paint;
@@ -79,7 +80,6 @@ pub fn build(
     toggle_overview: impl Fn() + 'static,
     scope: &Scope,
 ) -> gtk4::Widget {
-    let events = &services.events;
     let shown = config.workspaces_shown;
     let look = Rc::new(Look {
         shown,
@@ -109,7 +109,7 @@ pub fn build(
         active: 1,
         ..State::default()
     }));
-    refresh(&state, monitor);
+    refresh(&state, &services.hypr.snapshot(), monitor);
 
     let motion = Rc::new(Motion::new(&area, &look, &state.borrow()));
     motion.settle(&state.borrow(), &look);
@@ -222,38 +222,15 @@ pub fn build(
     });
     area.add_controller(scroll);
 
-    scope.keep(events.subscribe({
+    scope.keep(services.hypr.subscribe({
         let state = state.clone();
         let area = area.clone();
         let motion = motion.clone();
         let look = look.clone();
         let monitor = monitor.to_owned();
-        move |event, _| {
-            if !matches!(
-                event,
-                "workspace"
-                    | "workspacev2"
-                    | "focusedmon"
-                    | "focusedmonv2"
-                    | "createworkspace"
-                    | "createworkspacev2"
-                    | "destroyworkspace"
-                    | "destroyworkspacev2"
-                    | "moveworkspace"
-                    | "moveworkspacev2"
-                    | "activespecial"
-                    | "activespecialv2"
-                    | "openwindow"
-                    | "closewindow"
-                    | "movewindow"
-                    | "movewindowv2"
-                    | "configreloaded"
-                    | "activewindow"
-                    | "activewindowv2"
-            ) {
-                return;
-            }
-            refresh(&state, &monitor);
+        let hypr = services.hypr.clone();
+        move || {
+            refresh(&state, &hypr.snapshot(), &monitor);
             motion.aim(&state.borrow(), &look);
             area.queue_draw();
         }
@@ -435,9 +412,9 @@ fn focus(workspace: &str) {
     ));
 }
 
-fn refresh(state: &Rc<RefCell<State>>, monitor: &str) {
+fn refresh(state: &Rc<RefCell<State>>, snapshot: &Snapshot, monitor: &str) {
     let mut state = state.borrow_mut();
-    if let Some(monitors) = hypr::json("monitors").and_then(|value| value.as_array().cloned()) {
+    if let Some(monitors) = &snapshot.monitors {
         let mine = monitors
             .iter()
             .find(|entry| entry.get("name").and_then(Value::as_str) == Some(monitor));
@@ -454,11 +431,12 @@ fn refresh(state: &Rc<RefCell<State>>, monitor: &str) {
             .trim_start_matches("special:")
             .to_owned();
     }
-    let focused = hypr::json("activewindow")
-        .and_then(|window| window.get("address").cloned())
-        .is_some();
-    let fake = if focused { None } else { Some(state.active) };
-    if let Some(workspaces) = hypr::json("workspaces").and_then(|value| value.as_array().cloned()) {
+    let fake = if snapshot.active_window.is_some() {
+        None
+    } else {
+        Some(state.active)
+    };
+    if let Some(workspaces) = &snapshot.workspaces {
         state.occupied = workspaces
             .iter()
             .filter_map(|entry| entry.get("id").and_then(Value::as_i64))
@@ -466,9 +444,9 @@ fn refresh(state: &Rc<RefCell<State>>, monitor: &str) {
             .filter(|id| Some(*id) != fake)
             .collect();
     }
-    if let Some(clients) = hypr::json("clients").and_then(|value| value.as_array().cloned()) {
+    if let Some(clients) = &snapshot.clients {
         let mut biggest: HashMap<i32, (i64, String)> = HashMap::new();
-        for client in &clients {
+        for client in clients {
             let Some(workspace) = client.pointer("/workspace/id").and_then(Value::as_i64) else {
                 continue;
             };

@@ -523,8 +523,12 @@ top-layer surface mapped after the window went fullscreen, as on a shell
 restart, even shows above it. proscenio draws none of its permanent surfaces
 on a monitor whose active workspace holds a real fullscreen window
 (`fullscreen == 2`). One service, `src/services/fullscreen.rs`, keeps the set
-of covered monitors from the Hyprland event stream, reading `hyprctl monitors`
-and `clients` once per burst of events. The bar, the dock with its trigger and
+of covered monitors from the shared Hyprland snapshot of
+`src/services/hyprstate.rs`. That service reads `monitors`, `workspaces`,
+`clients` and `activewindow` on a worker thread once per event, folding the
+events that arrive during a read into one more read, and notifies its
+subscribers, the bar's workspaces among them, when the snapshot lands. The
+bar, the dock with its trigger and
 the corners hide there; so does the background unless
 `background.hideWhenFullscreen` is off. Notification popups, on the Overlay
 layer, and panels opened on demand (the sidebar, the overview, the OSD and so
