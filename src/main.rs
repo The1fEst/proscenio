@@ -38,6 +38,7 @@ const VERTICAL_NAMESPACE: &str = "proscenio:verticalBar";
 const RESERVE_NAMESPACE: &str = "proscenio:barReserve";
 
 fn main() -> glib::ExitCode {
+    unload::single_arena();
     let arguments: Vec<String> = std::env::args().collect();
     let command = arguments.get(1).map(String::as_str);
     if command == Some("ipc") {

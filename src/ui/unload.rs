@@ -8,9 +8,17 @@ const SETTLE: Duration = Duration::from_millis(1500);
 const AFTER_TOOLTIP_POPUP: Duration = Duration::from_millis(1000);
 const GROWTH_BEFORE_TRIM: usize = 1024 * 1024;
 const PAGE: usize = 4096;
+const M_ARENA_MAX: i32 = -8;
 
 unsafe extern "C" {
     fn malloc_trim(pad: usize) -> i32;
+    fn mallopt(param: i32, value: i32) -> i32;
+}
+
+pub fn single_arena() {
+    unsafe {
+        mallopt(M_ARENA_MAX, 1);
+    }
 }
 
 thread_local! {

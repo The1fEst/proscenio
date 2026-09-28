@@ -426,6 +426,12 @@ since the last trim. glibc keeps memory freed in the middle of its heap until
 a trim; an idle bar's redraws alone leave about 50 MB there per hour. With
 the check, what a trim could still return stays under 4 MB.
 
+`main` first calls `unload::single_arena()`, which sets glibc's `M_ARENA_MAX` to 1
+before any thread starts, so every thread allocates from the one heap the trims
+reach. With the default per-thread arenas, GTK's icon loading threads leave
+their freed pages in arenas of their own: every icon theme change then kept
+about 400 KB, and the shell held some 20 MB more after the same work.
+
 The second of delay is for GTK's tooltips. A pending tooltip popup, up to
 500 ms, looks up the surface of the window the pointer was last over. Only a
 leave event cancels it, and a window that hides under a still pointer gets
