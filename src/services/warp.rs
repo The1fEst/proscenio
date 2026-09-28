@@ -1,10 +1,9 @@
-use gtk4::gio;
 use gtk4::glib;
 use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::process::detach;
+use crate::core::process::{self, detach};
 use crate::platform::notify::{self, Notification};
 
 const FAILED: &str =
@@ -88,15 +87,11 @@ fn report(body: &str) {
 }
 
 async fn run(line: &[&str]) -> Option<String> {
-    let arguments: Vec<&std::ffi::OsStr> = line.iter().map(std::ffi::OsStr::new).collect();
-    let process = gio::Subprocess::newv(
-        &arguments,
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    )
-    .ok()?;
-    let (stdout, _) = process.communicate_utf8_future(None).await.ok()?;
-    if !process.has_exited() || process.exit_status() != 0 {
+    let mut command = process::command(line);
+    command.stderr(std::process::Stdio::null());
+    let output = process::capture(command).await?;
+    if !output.status.success() {
         return None;
     }
-    Some(stdout.map(Into::into).unwrap_or_default())
+    String::from_utf8(output.stdout).ok()
 }

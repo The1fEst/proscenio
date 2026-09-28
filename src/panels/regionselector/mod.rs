@@ -1,7 +1,6 @@
 pub mod screenshot;
 
 use gtk4::gdk::{self, RGBA};
-use gtk4::gio;
 use gtk4::glib;
 use gtk4::graphene;
 use gtk4::gsk;
@@ -14,7 +13,7 @@ use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
-use crate::core::persistent;
+use crate::core::{persistent, process};
 use crate::platform::hypr;
 use crate::services::recording::Recording;
 use crate::ui::anim::{EXPRESSIVE_DEFAULT, EXPRESSIVE_EFFECTS, Tween};
@@ -551,7 +550,7 @@ impl Selection {
             options.show_pointer.get(),
         );
         self.snipped.set(true);
-        crate::core::process::detach(&["bash", "-c", &script]);
+        crate::platform::desktop::shell(&script);
         if !recording {
             self.dismiss();
             return;
@@ -1215,7 +1214,7 @@ impl RegionSelector {
                 false
             };
             if running {
-                crate::core::process::detach_subcommand(&["record"]);
+                crate::core::process::launch_subcommand(&["record"]);
                 if let Some(selector) = selector.upgrade() {
                     selector.dismiss();
                 }
@@ -1710,13 +1709,7 @@ fn close(selection: &Rc<Selection>) {
 }
 
 async fn run(command: &[&str]) -> bool {
-    let Ok(process) = gio::Subprocess::newv(
-        &command.iter().map(std::ffi::OsStr::new).collect::<Vec<_>>(),
-        gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-    ) else {
-        return false;
-    };
-    process.wait_future().await.is_ok() && process.exit_status() == 0
+    process::finish(process::quiet(command)).await == Some(true)
 }
 
 #[cfg(test)]

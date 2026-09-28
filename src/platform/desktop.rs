@@ -2,9 +2,10 @@ use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
 
+use crate::core::process;
+
 const GROUP: &str = "Desktop Entry";
 const ACTION_GROUP: &str = "Desktop Action";
-const SCOPE: [&str; 5] = ["systemd-run", "--user", "--scope", "--quiet", "--collect"];
 
 pub struct DesktopEntry {
     pub id: String,
@@ -199,18 +200,12 @@ fn bash(line: &str) -> [String; 3] {
 }
 
 fn spawn(command: &[String], directory: Option<&str>, app: Option<&str>) {
-    let unit = app.map(|id| format!("--unit={}", unit_name(id, &glib::uuid_string_random())));
-    let mut argv: Vec<&std::ffi::OsStr> = SCOPE.iter().map(std::ffi::OsStr::new).collect();
-    argv.extend(unit.as_deref().map(std::ffi::OsStr::new));
-    argv.push(std::ffi::OsStr::new("--"));
-    argv.extend(command.iter().map(std::ffi::OsStr::new));
-    let launcher = crate::core::process::own_session(
-        gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-    );
+    let unit = app.map(|id| unit_name(id, &glib::uuid_string_random()));
+    let mut launched = process::own_scope(unit.as_deref(), command);
     if let Some(directory) = directory {
-        launcher.set_cwd(directory);
+        launched.current_dir(directory);
     }
-    let _ = launcher.spawn(&argv);
+    process::start(launched);
 }
 
 fn unit_name(id: &str, uuid: &str) -> String {

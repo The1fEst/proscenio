@@ -100,7 +100,7 @@ Same arguments, same order of work. It leaves the same files as
 
 The terminal templates and `scheme-base.json` are built into the binary.
 
-The shell runs `proscenio switchwall` as a child process
+The shell runs `proscenio switchwall` in its own transient scope
 (`switchwall::detach`) from the launcher's `accentcolor`, `dark` and `light`,
 the bar's dark mode button, the dark mode quick toggle, IPC
 `theme toggleLightDark`, and the Quick settings page's wallpaper, scheme,

@@ -468,7 +468,7 @@ impl Lock {
         if config::value_bool("/lock/useHyprlock", false)
             && crate::core::process::exists("hyprlock")
         {
-            crate::core::process::detach(&["bash", "-c", "pidof hyprlock || hyprlock"]);
+            crate::platform::desktop::shell("pidof hyprlock || hyprlock");
             return;
         }
         if self.instance.borrow().is_some() {

@@ -151,7 +151,7 @@ impl Recording {
         if !self.active() {
             return;
         }
-        crate::core::process::detach_subcommand(&["record"]);
+        crate::core::process::launch_subcommand(&["record"]);
         self.expecting.set(false);
         self.seen.set(false);
         self.start_checks();

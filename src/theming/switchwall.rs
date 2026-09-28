@@ -43,7 +43,7 @@ const THEMING: &str = "/appearance/wallpaperTheming";
 pub fn detach(arguments: &[&str]) {
     let mut command = vec!["switchwall"];
     command.extend_from_slice(arguments);
-    process::detach_subcommand(&command);
+    process::launch_subcommand(&command);
 }
 
 pub fn run(arguments: &[String]) -> glib::ExitCode {

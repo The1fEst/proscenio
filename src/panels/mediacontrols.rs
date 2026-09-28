@@ -1,5 +1,4 @@
 use gtk4::gdk::{self, RGBA};
-use gtk4::gio;
 use gtk4::glib;
 use gtk4::graphene;
 use gtk4::gsk;
@@ -7,10 +6,12 @@ use gtk4::pango;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
 use std::cell::{Cell, RefCell};
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::core::config::Config;
+use crate::core::process;
 use crate::core::scope::Scope;
 use crate::platform::{appicon, grab};
 use crate::services::Services;
@@ -59,7 +60,7 @@ const DOMINANT_PART: f32 = 0.8;
 pub struct MediaControls {
     pub window: gtk4::ApplicationWindow,
     grab: Option<Rc<grab::Grab>>,
-    cava: RefCell<Option<gio::Subprocess>>,
+    cava: RefCell<Option<process::Running>>,
     points: Rc<RefCell<Vec<f64>>>,
     cards: Rc<RefCell<Vec<Rc<Card>>>>,
 }
@@ -95,8 +96,8 @@ impl MediaControls {
             grab.release();
         }
         self.window.set_visible(false);
-        if let Some(process) = self.cava.take() {
-            process.force_exit();
+        if let Some(mut running) = self.cava.take() {
+            running.stop();
         }
         self.points.borrow_mut().clear();
     }
@@ -107,39 +108,37 @@ impl MediaControls {
         if std::fs::write(&config, crate::core::assets::CAVA).is_err() {
             return;
         }
-        let Ok(process) = gio::Subprocess::newv(
-            &[
-                std::ffi::OsStr::new("cava"),
-                std::ffi::OsStr::new("-p"),
-                config.as_os_str(),
-            ],
-            gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-        ) else {
+        let mut command =
+            process::command(&[OsStr::new("cava"), OsStr::new("-p"), config.as_os_str()]);
+        command
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null());
+        let Some(mut running) = process::start(command) else {
             return;
         };
-        let Some(stdout) = process.stdout_pipe() else {
+        let Some(stdout) = running.child.stdout.take() else {
             return;
         };
-        let reader = gio::DataInputStream::new(&stdout);
         let points = self.points.clone();
         let cards = Rc::downgrade(&self.cards);
-        glib::spawn_future_local(async move {
-            while let Ok(Some(line)) = reader.read_line_utf8_future(glib::Priority::DEFAULT).await {
-                let Some(cards) = cards.upgrade() else {
-                    break;
-                };
-                points.replace(
-                    line.split(';')
-                        .filter_map(|point| point.trim().parse::<f64>().ok())
-                        .collect(),
-                );
-                for card in cards.borrow().iter() {
-                    card.backdrop.queue_draw();
-                }
+        process::lines(stdout, move |line| {
+            let Some(line) = line else {
+                points.borrow_mut().clear();
+                return;
+            };
+            let Some(cards) = cards.upgrade() else {
+                return;
+            };
+            points.replace(
+                line.split(';')
+                    .filter_map(|point| point.trim().parse::<f64>().ok())
+                    .collect(),
+            );
+            for card in cards.borrow().iter() {
+                card.backdrop.queue_draw();
             }
-            points.borrow_mut().clear();
         });
-        self.cava.replace(Some(process));
+        self.cava.replace(Some(running));
     }
 }
 
@@ -783,20 +782,19 @@ impl Card {
             finish(file);
             return;
         }
-        let Ok(process) = gio::Subprocess::newv(
-            &[
-                std::ffi::OsStr::new("curl"),
-                std::ffi::OsStr::new("-4"),
-                std::ffi::OsStr::new("-sSL"),
-                std::ffi::OsStr::new(url),
-                std::ffi::OsStr::new("-o"),
-                file.as_os_str(),
-            ],
-            gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-        ) else {
-            return;
-        };
-        process.wait_async(gio::Cancellable::NONE, move |_| finish(file));
+        let download = process::quiet(&[
+            OsStr::new("curl"),
+            OsStr::new("-4"),
+            OsStr::new("-sSL"),
+            OsStr::new(url),
+            OsStr::new("-o"),
+            file.as_os_str(),
+        ]);
+        glib::spawn_future_local(async move {
+            if process::finish(download).await.is_some() {
+                finish(file);
+            }
+        });
     }
 
     fn fade_art(self: &Rc<Self>, shown: bool) {

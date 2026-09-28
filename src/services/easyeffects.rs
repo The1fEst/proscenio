@@ -1,10 +1,10 @@
-use gtk4::gio;
 use gtk4::glib;
 use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::process::detach;
+use crate::core::process::{self, detach};
+use crate::platform::desktop;
 
 const AVAILABLE: &str =
     "command -v easyeffects || flatpak info com.github.wwmm.easyeffects > /dev/null 2>&1";
@@ -47,12 +47,16 @@ impl EasyEffects {
     pub fn toggle(&self) {
         let on = !self.active.get();
         self.active.set(on);
-        detach(&["bash", "-c", if on { ENABLE } else { DISABLE }]);
+        if on {
+            desktop::shell(ENABLE);
+        } else {
+            detach(&["bash", "-c", DISABLE]);
+        }
         self.announce();
     }
 
     pub fn configure(&self) {
-        detach(&["bash", "-c", CONFIGURE]);
+        desktop::shell(CONFIGURE);
     }
 
     fn announce(&self) {
@@ -62,16 +66,10 @@ impl EasyEffects {
     fn probe(&self, line: &'static str, keep: impl Fn(bool) + 'static) {
         let service = self.clone();
         glib::spawn_future_local(async move {
-            let Ok(process) = gio::Subprocess::newv(
-                &["bash", "-c", line].map(std::ffi::OsStr::new),
-                gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-            ) else {
+            let Some(success) = process::finish(process::quiet(&["bash", "-c", line])).await else {
                 return;
             };
-            if process.wait_future().await.is_err() {
-                return;
-            }
-            keep(process.has_exited() && process.exit_status() == 0);
+            keep(success);
             service.announce();
         });
     }

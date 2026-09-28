@@ -1,10 +1,8 @@
 use gtk4::gdk;
-use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::{Cell, RefCell};
-use std::ffi::OsStr;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -29,12 +27,9 @@ pub fn start_if_on_trial() {
     if config::renderer_fallback().is_none() {
         return;
     }
-    let launcher = process::own_session(
-        gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-    );
-    launcher.setenv("GSK_RENDERER", SAFE_RENDERER, true);
-    let executable = process::executable();
-    let _ = launcher.spawn(&[OsStr::new(&executable), OsStr::new(COMMAND)]);
+    let mut command = process::own_session(&[process::executable().as_str(), COMMAND]);
+    command.env("GSK_RENDERER", SAFE_RENDERER);
+    process::start(command);
 }
 
 pub fn run(shell: &'static str) -> glib::ExitCode {
@@ -171,12 +166,9 @@ fn call_shell(shell: &str, answer: &str) -> bool {
 }
 
 fn start_shell() {
-    let launcher = process::own_session(
-        gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-    );
-    launcher.unsetenv("GSK_RENDERER");
-    let executable = process::executable();
-    let _ = launcher.spawn(&[OsStr::new(&executable)]);
+    let mut command = process::own_session(&[process::executable()]);
+    command.env_remove("GSK_RENDERER");
+    process::start(command);
 }
 
 fn name(renderer: &str) -> String {

@@ -5,6 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
+use crate::core::process;
 use crate::platform::dbus;
 
 pub const BUS: &str = "org.bluez";
@@ -329,7 +330,7 @@ pub struct Setup {
     pub waiting: RefCell<Option<String>>,
     pub connecting: RefCell<Option<String>>,
     pub refused: RefCell<Vec<String>>,
-    agent: RefCell<Option<gio::Subprocess>>,
+    agent: RefCell<Option<process::Running>>,
     listeners: RefCell<Vec<Box<dyn Fn()>>>,
 }
 
@@ -363,8 +364,8 @@ impl Setup {
     }
 
     fn hold_agent(&self, hold: bool) {
-        if let Some(agent) = self.agent.take() {
-            agent.force_exit();
+        if let Some(mut agent) = self.agent.take() {
+            agent.stop();
         }
         if hold {
             let command = [
@@ -375,13 +376,7 @@ impl Setup {
                 "86400",
                 "devices",
             ];
-            self.agent.replace(
-                gio::Subprocess::newv(
-                    &command.map(std::ffi::OsStr::new),
-                    gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-                )
-                .ok(),
-            );
+            self.agent.replace(process::start(process::quiet(&command)));
         }
     }
 
@@ -483,8 +478,8 @@ impl Setup {
 
 impl Drop for Setup {
     fn drop(&mut self) {
-        if let Some(agent) = self.agent.take() {
-            agent.force_exit();
+        if let Some(mut agent) = self.agent.take() {
+            agent.stop();
         }
     }
 }

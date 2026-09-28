@@ -1,10 +1,10 @@
-use gtk4::gio;
 use gtk4::glib;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::process;
 use crate::platform::hypridle;
 
 const WRITE_DELAY: Duration = Duration::from_millis(50);
@@ -119,10 +119,5 @@ impl Drop for IdleOptions {
 
 async fn restart_hypridle() {
     let command = ["systemctl", "--user", "restart", "hypridle.service"];
-    if let Ok(process) = gio::Subprocess::newv(
-        &command.map(std::ffi::OsStr::new),
-        gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-    ) {
-        let _ = process.wait_future().await;
-    }
+    process::finish(process::quiet(&command)).await;
 }

@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use crate::core::config::{self, Config};
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::process::detach;
+use crate::core::process::{self, detach};
 use crate::core::{persistent, watch};
 
 #[derive(Clone)]
@@ -16,7 +16,7 @@ pub struct Session {
     pub dark: Rc<Cell<bool>>,
     pub automatic: Rc<Cell<bool>>,
     pub temperature: Rc<Cell<i32>>,
-    inhibitor: Rc<RefCell<Option<gio::Subprocess>>>,
+    inhibitor: Rc<RefCell<Option<process::Running>>>,
     schedule: Rc<Schedule>,
     listeners: Rc<Listeners>,
     following: Rc<RefCell<Option<watch::Watch>>>,
@@ -224,25 +224,20 @@ impl Session {
     pub fn toggle_awake(&self) {
         let mut held = self.inhibitor.borrow_mut();
         match held.take() {
-            Some(process) => {
-                process.force_exit();
+            Some(mut running) => {
+                running.stop();
                 self.awake.set(false);
             }
             None => {
-                let started = gio::Subprocess::newv(
-                    &[
-                        "systemd-inhibit",
-                        "--what=idle:sleep",
-                        "--who=proscenio",
-                        "--why=Keep awake",
-                        "cat",
-                    ]
-                    .map(std::ffi::OsStr::new),
-                    gio::SubprocessFlags::STDIN_PIPE
-                        | gio::SubprocessFlags::STDOUT_SILENCE
-                        | gio::SubprocessFlags::STDERR_SILENCE,
-                )
-                .ok();
+                let mut command = process::quiet(&[
+                    "systemd-inhibit",
+                    "--what=idle:sleep",
+                    "--who=proscenio",
+                    "--why=Keep awake",
+                    "cat",
+                ]);
+                command.stdin(std::process::Stdio::piped());
+                let started = process::start(command);
                 self.awake.set(started.is_some());
                 *held = started;
             }
@@ -327,14 +322,9 @@ impl Session {
 
     fn read_night(&self) {
         let session = self.clone();
-        let Ok(process) = gio::Subprocess::newv(
-            &["hyprctl", "hyprsunset", "temperature"].map(std::ffi::OsStr::new),
-            gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-        ) else {
-            return;
-        };
+        let command = process::command(&["hyprctl", "hyprsunset", "temperature"]);
         glib::spawn_future_local(async move {
-            if let Ok((Some(output), _)) = process.communicate_utf8_future(None).await
+            if let Some(output) = process::capture_text(command).await
                 && let Ok(value) = output.trim().parse::<i32>()
             {
                 session.night.set(value != DEFAULT_TEMPERATURE);

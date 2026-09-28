@@ -1,9 +1,9 @@
-use gtk4::gio;
 use gtk4::glib;
 use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::actions;
+use crate::core::process;
 use crate::core::scope::Scope;
 use crate::panels::bar::bluetooth;
 use crate::panels::sidebar::quicktoggle::Look;
@@ -290,10 +290,7 @@ pub fn act(kind: &str, services: &Rc<Services>, close: &Rc<dyn Fn()>) {
         "colorPicker" => {
             close();
             glib::timeout_add_local_once(DELAYED, || {
-                let _ = gio::Subprocess::newv(
-                    &["hyprpicker", "-a"].map(std::ffi::OsStr::new),
-                    gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-                );
+                process::start(process::quiet(&["hyprpicker", "-a"]));
             });
         }
         _ => {}

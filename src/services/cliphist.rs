@@ -8,7 +8,7 @@ use std::time::Duration;
 use crate::core::fuzzy::{self, Prepared};
 use crate::core::levenshtein;
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::process::detach;
+use crate::core::process::{self, detach};
 
 const BINARY: &str = "cliphist";
 const SLOPPY_ENTRIES: usize = 100;
@@ -145,18 +145,13 @@ impl Cliphist {
     }
 
     fn after(&self, line: &str) {
-        let Ok(process) = gio::Subprocess::newv(
-            &[
-                std::ffi::OsStr::new("bash"),
-                std::ffi::OsStr::new("-c"),
-                std::ffi::OsStr::new(line),
-            ],
-            gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-        ) else {
-            return;
-        };
+        let command = process::quiet(&["bash", "-c", line]);
         let again = self.clone();
-        process.wait_async(gio::Cancellable::NONE, move |_| again.refresh());
+        glib::spawn_future_local(async move {
+            if process::finish(command).await.is_some() {
+                again.refresh();
+            }
+        });
     }
 
     pub fn superpaste(&self, count: usize, images: bool) {

@@ -97,10 +97,18 @@ App buttons follow `DockAppButton`:
 Desktop entries are found and launched the way `DesktopEntries.heuristicLookup`
 and `AppLaunch.entry` do it: by id, then by `StartupWMClass`, and started
 inside `systemd-run --user --scope`. `ignoredAppRegexes` are real regular
-expressions through `GRegex`. Every process proscenio starts and detaches
-(apps, `xdg-open` and similar) begins its own session with `setsid()`, so a
-`^C` or hang-up sent to proscenio's terminal does not reach it. The scope
-separates the cgroup, not the process group.
+expressions through `GRegex`. Every process proscenio detaches starts through
+the `setsid` program, so a `^C` or hang-up sent to proscenio's terminal does
+not reach it. The scope separates the cgroup, not the process group.
+
+`src/core/process.rs` starts every child with `std::process::Command`, which
+uses `posix_spawn` instead of forking the whole shell. `process::launch`,
+`process::launch_subcommand` and `desktop::shell` put the program in its own
+transient scope: apps, `xdg-open`, custom commands, EasyEffects, hyprlock,
+screenshot and recording scripts, and `switchwall`. These keep running when
+`proscenio.service` restarts, and their memory is not counted as the shell's.
+`process::detach` leaves short helpers such as `paplay`, `hyprctl` and `wpctl`
+in the shell's cgroup. Children are reaped through GLib child watches.
 
 Windows come from `hyprctl clients` rather than the foreign-toplevel protocol.
 Previews use `hyprland_toplevel_export_v1` (vendored in `protocols/`, trimmed

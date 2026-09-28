@@ -229,7 +229,7 @@ impl Rail {
             }
         });
         fab.connect_down(|| {
-            process::detach(&["xdg-open", &config::config_path().to_string_lossy()]);
+            process::launch(&["xdg-open", &config::config_path().to_string_lossy()]);
         });
         fab.connect_alt({
             let rail = Rc::downgrade(&rail);

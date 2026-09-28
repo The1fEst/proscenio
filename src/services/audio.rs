@@ -557,15 +557,10 @@ pub fn parse_cards(text: &str) -> Vec<Card> {
 }
 
 pub fn cards(handler: impl FnOnce(Vec<Card>) + 'static) {
-    let launcher = gtk4::gio::SubprocessLauncher::new(
-        gtk4::gio::SubprocessFlags::STDOUT_PIPE | gtk4::gio::SubprocessFlags::STDERR_SILENCE,
-    );
-    launcher.setenv("LC_ALL", "C", true);
-    let Ok(process) = launcher.spawn(&["pactl", "list", "cards"].map(std::ffi::OsStr::new)) else {
-        return;
-    };
+    let mut command = process::command(&["pactl", "list", "cards"]);
+    command.env("LC_ALL", "C");
     glib::spawn_future_local(async move {
-        if let Ok((Some(output), _)) = process.communicate_utf8_future(None).await {
+        if let Some(output) = process::capture_text(command).await {
             handler(parse_cards(&output));
         }
     });
@@ -575,12 +570,7 @@ pub fn set_card_profile(card: &str, profile: &str, then: impl FnOnce() + 'static
     let (card, profile) = (card.to_owned(), profile.to_owned());
     glib::spawn_future_local(async move {
         let command = ["pactl", "set-card-profile", card.as_str(), profile.as_str()];
-        if let Ok(process) = gtk4::gio::Subprocess::newv(
-            &command.map(std::ffi::OsStr::new),
-            gtk4::gio::SubprocessFlags::NONE,
-        ) {
-            let _ = process.wait_future().await;
-        }
+        process::finish(process::command(&command)).await;
         then();
     });
 }

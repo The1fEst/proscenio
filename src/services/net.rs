@@ -4,6 +4,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
+use crate::core::process;
 use crate::platform::dbus;
 
 pub const BUS: &str = "org.freedesktop.NetworkManager";
@@ -49,17 +50,13 @@ impl Net {
 
     pub fn toggle_wifi(&self) {
         let on = !self.wifi_enabled.get();
-        run(&["nmcli", "radio", "wifi", if on { "on" } else { "off" }]);
+        let state = if on { "on" } else { "off" };
+        process::start(process::quiet(&["nmcli", "radio", "wifi", state]));
     }
 
     pub fn toggle_wireguard(&self) {
         let up = !self.wireguard.get();
-        run(&[
-            "nmcli",
-            "connection",
-            if up { "up" } else { "down" },
-            "WireGuard",
-        ]);
+        tunnel("WireGuard", up);
     }
 
     pub fn refresh(&self) {
@@ -67,7 +64,7 @@ impl Net {
             return;
         };
         let net = self.clone();
-        read(
+        process::read(
             &["sh", "-c", "nmcli -t -f NAME c show --active | head -1"],
             move |output| {
                 net.connection.replace(output.trim_end().to_owned());
@@ -76,7 +73,7 @@ impl Net {
         );
         let net = self.clone();
         let command = "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g";
-        read(&["sh", "-c", command], move |output| {
+        process::read(&["sh", "-c", command], move |output| {
             let mut lines: Vec<&str> = output.trim().lines().collect();
             let connectivity = lines.pop().unwrap_or_default();
             let mut status = "disconnected";
@@ -146,7 +143,7 @@ impl Net {
 }
 
 pub fn tunnels(handler: impl Fn(Vec<(String, bool)>) + 'static) {
-    read(
+    process::read(
         &[
             "nmcli",
             "-t",
@@ -172,21 +169,8 @@ pub fn tunnels(handler: impl Fn(Vec<(String, bool)>) + 'static) {
 }
 
 pub fn tunnel(name: &str, up: bool) {
-    run(&["nmcli", "connection", if up { "up" } else { "down" }, name]);
-}
-
-fn read(command: &[&str], handler: impl Fn(String) + 'static) {
-    let Ok(process) = gio::Subprocess::newv(
-        &command.iter().map(std::ffi::OsStr::new).collect::<Vec<_>>(),
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    ) else {
-        return;
-    };
-    glib::spawn_future_local(async move {
-        if let Ok((Some(output), _)) = process.communicate_utf8_future(None).await {
-            handler(output.to_string());
-        }
-    });
+    let state = if up { "up" } else { "down" };
+    process::start(process::quiet(&["nmcli", "connection", state, name]));
 }
 
 fn bars(strength: u32) -> &'static str {
@@ -246,13 +230,6 @@ async fn access_point(system: &gio::DBusConnection) -> Option<(u32, String)> {
     Some((strength, name))
 }
 
-fn run(command: &[&str]) {
-    let _ = gio::Subprocess::newv(
-        &command.iter().map(std::ffi::OsStr::new).collect::<Vec<_>>(),
-        gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-    );
-}
-
 pub struct Finished {
     pub success: bool,
     pub output: String,
@@ -260,28 +237,19 @@ pub struct Finished {
 }
 
 pub async fn nmcli(arguments: &[&str]) -> Finished {
-    let launcher = gio::SubprocessLauncher::new(
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_PIPE,
-    );
-    launcher.setenv("LANG", "C", true);
-    launcher.setenv("LC_ALL", "C", true);
-    let mut command = vec![std::ffi::OsStr::new("nmcli")];
-    command.extend(arguments.iter().map(std::ffi::OsStr::new));
-    let failed = Finished {
-        success: false,
-        output: String::new(),
-        errors: String::new(),
-    };
-    let Ok(process) = launcher.spawn(&command) else {
-        return failed;
-    };
-    let Ok((output, errors)) = process.communicate_utf8_future(None).await else {
-        return failed;
+    let mut command = process::command(&["nmcli"]);
+    command.args(arguments).env("LANG", "C").env("LC_ALL", "C");
+    let Some(finished) = process::capture(command).await else {
+        return Finished {
+            success: false,
+            output: String::new(),
+            errors: String::new(),
+        };
     };
     Finished {
-        success: process.is_successful(),
-        output: output.map(Into::into).unwrap_or_default(),
-        errors: errors.map(Into::into).unwrap_or_default(),
+        success: finished.status.success(),
+        output: String::from_utf8_lossy(&finished.stdout).into_owned(),
+        errors: String::from_utf8_lossy(&finished.stderr).into_owned(),
     }
 }
 

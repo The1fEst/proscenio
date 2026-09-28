@@ -3,9 +3,9 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::core::process::detach;
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
+use crate::platform::desktop;
 use crate::services::net::{Connection, Connections, VPN_KINDS, WIRED};
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::centred::Centred;
@@ -63,7 +63,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let vpn = group(&vpn_section, "No VPN is set up");
     let (set_up, _) = page.icon_button("settings_ethernet", true, "Set up connections", || {
         let command = config::value_str("/apps/network").unwrap_or_else(|| NETWORK_APP.to_owned());
-        detach(&["bash", "-c", &command]);
+        desktop::shell(&command);
     });
     set_up.set_margin_top(BUTTON_TOP);
     vpn_section.append(&set_up);

@@ -1,10 +1,10 @@
-use gtk4::gio;
 use gtk4::glib;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::listeners::{Listeners, Subscription};
+use crate::core::process;
 use crate::platform::hypr;
 
 pub const GAMMA_FLOOR: f64 = 25.0;
@@ -32,7 +32,7 @@ pub struct Light {
     screens: Rc<RefCell<Vec<Rc<Screen>>>>,
     names: Rc<RefCell<Vec<String>>>,
     pub gamma: Rc<Cell<f64>>,
-    writer: Rc<RefCell<Option<gio::Subprocess>>>,
+    writer: Rc<RefCell<Option<process::Running>>>,
     generation: Rc<Cell<u64>>,
     listeners: Rc<Listeners<Change>>,
 }
@@ -220,14 +220,11 @@ impl Light {
                 ]
             }
         };
-        if let Some(previous) = self.writer.take() {
-            previous.force_exit();
+        if let Some(mut previous) = self.writer.take() {
+            previous.stop();
         }
-        let started = gio::Subprocess::newv(
-            &command.iter().map(std::ffi::OsStr::new).collect::<Vec<_>>(),
-            gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-        );
-        self.writer.replace(started.ok());
+        self.writer
+            .replace(process::start(process::quiet(&command)));
     }
 
     fn focused(&self) -> Option<String> {
@@ -255,10 +252,8 @@ impl Light {
     pub fn set_gamma(&self, percent: f64) {
         let percent = percent.clamp(GAMMA_FLOOR, 100.0).round();
         self.gamma.set(percent);
-        let _ = gio::Subprocess::newv(
-            &["hyprctl", "hyprsunset", "gamma", &percent.to_string()].map(std::ffi::OsStr::new),
-            gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-        );
+        let gamma = percent.to_string();
+        process::start(process::quiet(&["hyprctl", "hyprsunset", "gamma", &gamma]));
         self.announce(Change::Gamma);
     }
 }
@@ -283,22 +278,9 @@ fn ddc_displays(output: &str) -> Vec<(String, String)> {
 }
 
 fn read(command: &[&str], handler: impl Fn(String) + 'static) {
-    let process = gio::Subprocess::newv(
-        &command.iter().map(std::ffi::OsStr::new).collect::<Vec<_>>(),
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    );
+    let command = process::command(command);
     glib::spawn_future_local(async move {
-        let output = match process {
-            Ok(process) => process
-                .communicate_utf8_future(None)
-                .await
-                .ok()
-                .and_then(|(output, _)| output)
-                .map(|output| output.to_string())
-                .unwrap_or_default(),
-            Err(_) => String::new(),
-        };
-        handler(output);
+        handler(process::capture_text(command).await.unwrap_or_default());
     });
 }
 

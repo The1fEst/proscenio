@@ -1,7 +1,6 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
-use crate::core::process::detach;
 use crate::core::scope::Scope;
 use crate::panels::settings::Settings;
 use crate::panels::sidebar::toggles::{self, Menu};
@@ -128,11 +127,9 @@ fn alt(kind: &str, context: &Context) {
             session.set_automatic(!session.automatic.get());
         }
         "easyEffects" => {
-            detach(&[
-                "bash",
-                "-c",
+            crate::platform::desktop::shell(
                 "flatpak run com.github.wwmm.easyeffects || easyeffects",
-            ]);
+            );
             (context.close)();
         }
         "wireGuard" => (context.open_menu)(Menu::WireGuard),

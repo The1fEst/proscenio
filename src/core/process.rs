@@ -1,24 +1,113 @@
 use gtk4::gio;
 use gtk4::glib;
+use std::cell::Cell;
 use std::ffi::OsStr;
-use std::process::{Command, Stdio};
+use std::io::Read;
+use std::os::fd::AsRawFd;
+use std::process::{Child, ChildStdout, Command, Output, Stdio};
+use std::rc::Rc;
 
-unsafe extern "C" {
-    fn setsid() -> i32;
+use crate::platform::readable;
+
+pub fn command<S: AsRef<OsStr>>(line: &[S]) -> Command {
+    let Some((program, arguments)) = line.split_first() else {
+        return Command::new("true");
+    };
+    let mut command = Command::new(program);
+    command.args(arguments).stdin(Stdio::null());
+    command
 }
 
-pub fn own_session(flags: gio::SubprocessFlags) -> gio::SubprocessLauncher {
-    let launcher = gio::SubprocessLauncher::new(flags);
-    launcher.set_child_setup(|| unsafe {
-        setsid();
+pub fn quiet<S: AsRef<OsStr>>(line: &[S]) -> Command {
+    let mut command = command(line);
+    command.stdout(Stdio::null()).stderr(Stdio::null());
+    command
+}
+
+pub fn own_session<S: AsRef<OsStr>>(line: &[S]) -> Command {
+    let mut command = quiet(&["setsid"]);
+    command.args(line);
+    command
+}
+
+const SCOPE: [&str; 5] = ["systemd-run", "--user", "--scope", "--quiet", "--collect"];
+
+pub fn own_scope<S: AsRef<OsStr>>(unit: Option<&str>, line: &[S]) -> Command {
+    let mut command = own_session(&SCOPE);
+    command
+        .args(unit.map(|unit| format!("--unit={unit}")))
+        .arg("--")
+        .args(line);
+    command
+}
+
+pub struct Running {
+    pub child: Child,
+    exited: Rc<Cell<bool>>,
+}
+
+impl Running {
+    pub fn stop(&mut self) {
+        if !self.exited.get() {
+            let _ = self.child.kill();
+        }
+    }
+}
+
+pub fn start(mut command: Command) -> Option<Running> {
+    let child = command.spawn().ok()?;
+    let exited = Rc::new(Cell::new(false));
+    glib::child_watch_add_local(glib::Pid(child.id() as i32), {
+        let exited = exited.clone();
+        move |_, _| exited.set(true)
     });
-    launcher
+    Some(Running { child, exited })
 }
 
-pub fn detach(command: &[&str]) {
-    let launcher =
-        own_session(gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE);
-    let _ = launcher.spawn(&command.iter().map(OsStr::new).collect::<Vec<_>>());
+pub fn detach(line: &[&str]) {
+    start(own_session(line));
+}
+
+pub fn launch(line: &[&str]) {
+    start(own_scope(None, line));
+}
+
+pub async fn finish(mut command: Command) -> Option<bool> {
+    let child = command.spawn().ok()?;
+    let (_, status) = glib::child_watch_future(glib::Pid(child.id() as i32)).await;
+    Some(status == 0)
+}
+
+pub async fn capture(mut command: Command) -> Option<Output> {
+    gio::spawn_blocking(move || command.output().ok())
+        .await
+        .ok()
+        .flatten()
+}
+
+pub async fn capture_text(mut command: Command) -> Option<String> {
+    command.stderr(Stdio::null());
+    let output = capture(command).await?;
+    String::from_utf8(output.stdout).ok()
+}
+
+pub fn lines(mut stdout: ChildStdout, mut handler: impl FnMut(Option<&str>) + 'static) {
+    let mut pending: Vec<u8> = Vec::new();
+    let mut chunk = [0u8; 4096];
+    let fd = stdout.as_raw_fd();
+    readable::when_readable(fd, move || {
+        let read = stdout.read(&mut chunk).unwrap_or(0);
+        if read == 0 {
+            handler(None);
+            return glib::ControlFlow::Break;
+        }
+        pending.extend_from_slice(&chunk[..read]);
+        while let Some(end) = pending.iter().position(|&byte| byte == b'\n') {
+            let line: Vec<u8> = pending.drain(..=end).collect();
+            handler(Some(String::from_utf8_lossy(&line[..end]).as_ref()));
+        }
+        glib::ControlFlow::Continue
+    });
 }
 
 pub fn executable() -> String {
@@ -48,11 +137,11 @@ fn restart(mut command: Command) {
     let _ = command.args(std::env::args_os().skip(1)).exec();
 }
 
-pub fn detach_subcommand(arguments: &[&str]) {
+pub fn launch_subcommand(arguments: &[&str]) {
     let executable = executable();
     let mut command = vec![executable.as_str()];
     command.extend_from_slice(arguments);
-    detach(&command);
+    launch(&command);
 }
 
 pub fn exists(program: &str) -> bool {
@@ -84,16 +173,11 @@ pub fn run<S: AsRef<OsStr>>(command: &[S]) -> bool {
         .is_ok_and(|status| status.success())
 }
 
-pub fn read(command: &[&str], handler: impl FnOnce(String) + 'static) {
-    let Ok(process) = gio::Subprocess::newv(
-        &command.iter().map(OsStr::new).collect::<Vec<_>>(),
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    ) else {
-        return;
-    };
+pub fn read(line: &[&str], handler: impl FnOnce(String) + 'static) {
+    let command = command(line);
     glib::spawn_future_local(async move {
-        if let Ok((Some(output), _)) = process.communicate_utf8_future(None).await {
-            handler(output.to_string());
+        if let Some(output) = capture_text(command).await {
+            handler(output);
         }
     });
 }

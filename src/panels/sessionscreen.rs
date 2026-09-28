@@ -1,11 +1,11 @@
 use gtk4::gdk;
-use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::core::process;
 use crate::core::scope::Scope;
 use crate::services::Services;
 use crate::services::session::Session;
@@ -413,15 +413,9 @@ fn warning(text: &str) -> gtk4::Widget {
 
 fn probe(line: &'static str, target: gtk4::Widget) {
     glib::spawn_future_local(async move {
-        let Ok(process) = gio::Subprocess::newv(
-            &["bash", "-c", line].map(std::ffi::OsStr::new),
-            gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-        ) else {
+        let Some(success) = process::finish(process::quiet(&["bash", "-c", line])).await else {
             return;
         };
-        if process.wait_future().await.is_err() {
-            return;
-        }
-        target.set_visible(process.has_exited() && process.exit_status() == 0);
+        target.set_visible(success);
     });
 }

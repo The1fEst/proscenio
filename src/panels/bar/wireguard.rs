@@ -1,7 +1,7 @@
-use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
 
+use crate::core::process;
 use crate::core::scope::Scope;
 use crate::services::net::Net;
 use crate::ui::widgets::{customicon, reveal};
@@ -27,19 +27,8 @@ pub fn build(net: &Net, scope: &Scope) -> gtk4::Widget {
 }
 
 async fn active() -> bool {
-    let Ok(process) = gio::Subprocess::newv(
-        &[
-            std::ffi::OsStr::new("nmcli"),
-            std::ffi::OsStr::new("connection"),
-            std::ffi::OsStr::new("show"),
-            std::ffi::OsStr::new("--active"),
-        ],
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    ) else {
-        return false;
-    };
-    let Ok((stdout, _)) = process.communicate_utf8_future(None).await else {
-        return false;
-    };
-    stdout.is_some_and(|text| text.contains("WireGuard"))
+    let command = process::command(&["nmcli", "connection", "show", "--active"]);
+    process::capture_text(command)
+        .await
+        .is_some_and(|text| text.contains("WireGuard"))
 }

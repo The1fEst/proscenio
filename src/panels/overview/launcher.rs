@@ -9,7 +9,7 @@ use crate::core::config::{self, Config};
 use crate::core::fuzzy::{self, Prepared};
 use crate::core::levenshtein;
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::process::detach;
+use crate::core::process;
 use crate::platform::desktop::{self, DesktopAction, DesktopEntry};
 use crate::platform::notify::{self, Notification};
 use crate::services::cliphist::{self, Cliphist};
@@ -545,7 +545,7 @@ impl Launcher {
                 if !arguments.is_empty() {
                     argv.extend(arguments.split(' '));
                 }
-                detach(&argv);
+                process::launch(&argv);
             }
         }
     }
@@ -641,11 +641,5 @@ fn load_emojis() -> Vec<String> {
 }
 
 async fn read(line: &[&str]) -> Option<String> {
-    let process = gio::Subprocess::newv(
-        &line.iter().map(std::ffi::OsStr::new).collect::<Vec<_>>(),
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    )
-    .ok()?;
-    let (stdout, _) = process.communicate_utf8_future(None).await.ok()?;
-    stdout.map(Into::into)
+    process::capture_text(process::command(line)).await
 }

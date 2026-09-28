@@ -5,6 +5,7 @@ use crate::core::config::{self, Config};
 use crate::core::process::detach;
 use crate::core::scope::Scope;
 use crate::core::watch;
+use crate::platform::desktop;
 use crate::services::Services;
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::ripple::RippleButton;
@@ -52,7 +53,7 @@ pub fn build(
         }));
         scope.hold(watch::config("/updates", move || show()));
         button.connect_clicked(|_| {
-            detach(&["bash", "-c", &config::current().app_update]);
+            desktop::shell(&config::current().app_update);
         });
         row.append(&button);
     }
@@ -68,7 +69,7 @@ pub fn build(
         button.connect_clicked({
             let recording = services.recording.clone();
             move |_| {
-                crate::core::process::detach_subcommand(&["record"]);
+                crate::core::process::launch_subcommand(&["record"]);
                 recording.watch();
             }
         });

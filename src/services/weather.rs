@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::{config, watch};
+use crate::core::{config, process, watch};
 use crate::platform::geoclue;
 use crate::platform::notify::{self, Notification};
 
@@ -227,14 +227,7 @@ fn stamp_format() -> String {
 }
 
 async fn run(line: &[&str]) -> Option<String> {
-    let arguments: Vec<&std::ffi::OsStr> = line.iter().map(std::ffi::OsStr::new).collect();
-    let process = gio::Subprocess::newv(
-        &arguments,
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    )
-    .ok()?;
-    let (stdout, _) = process.communicate_utf8_future(None).await.ok()?;
-    stdout
-        .map(Into::into)
-        .filter(|text: &String| !text.is_empty())
+    process::capture_text(process::command(line))
+        .await
+        .filter(|text| !text.is_empty())
 }

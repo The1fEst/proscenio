@@ -1,11 +1,10 @@
-use gtk4::gio;
 use gtk4::glib;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::{config, watch};
+use crate::core::{config, process, watch};
 
 #[derive(Clone)]
 pub struct Updates {
@@ -73,11 +72,5 @@ impl Updates {
 }
 
 async fn run(program: &str) -> Option<String> {
-    let process = gio::Subprocess::newv(
-        &[std::ffi::OsStr::new(program)],
-        gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-    )
-    .ok()?;
-    let (stdout, _) = process.communicate_utf8_future(None).await.ok()?;
-    stdout.map(Into::into)
+    process::capture_text(process::command(&[program])).await
 }
