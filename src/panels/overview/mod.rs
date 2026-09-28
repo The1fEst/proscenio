@@ -813,38 +813,54 @@ impl Overview {
 
         let number = cliphist::entry_number(entry).unwrap_or(0);
         let path = self.decode.join(number.to_string());
-        let _ = std::fs::create_dir_all(&self.decode);
-        let line = format!(
-            "[ -f '{0}' ] || echo '{1}' | cliphist decode > '{0}'",
-            path.display(),
-            cliphist::escape(entry)
-        );
-        if let Ok(process) = gio::Subprocess::newv(
-            &[
-                std::ffi::OsStr::new("bash"),
-                std::ffi::OsStr::new("-c"),
-                std::ffi::OsStr::new(&line),
-            ],
-            gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE,
-        ) {
-            let picture = picture.clone();
-            let path = path.clone();
-            let scale = picture.scale_factor().max(1);
-            let target = if shown_width > 0 && shown_height > 0 {
-                (shown_width * scale, shown_height * scale)
-            } else {
-                (-1, -1)
-            };
-            process.wait_async(gio::Cancellable::NONE, move |_| {
-                glib::spawn_future_local(async move {
-                    if let Some(texture) = crate::ui::image::texture(path, target).await {
-                        picture.set_paintable(Some(&texture));
-                    }
-                });
-            });
-        }
+        let scale = picture.scale_factor().max(1);
+        let target = if shown_width > 0 && shown_height > 0 {
+            (shown_width * scale, shown_height * scale)
+        } else {
+            (-1, -1)
+        };
+        let entry = entry.to_owned();
+        glib::spawn_future_local(async move {
+            let decoded = gio::spawn_blocking({
+                let path = path.clone();
+                move || decode_entry(&entry, &path)
+            })
+            .await;
+            if decoded.is_err() {
+                return;
+            }
+            if let Some(texture) = crate::ui::image::texture(path, target).await {
+                picture.set_paintable(Some(&texture));
+            }
+        });
         frame.upcast()
     }
+}
+
+fn decode_entry(entry: &str, path: &std::path::Path) {
+    if path.exists() {
+        return;
+    }
+    if let Some(folder) = path.parent() {
+        let _ = std::fs::create_dir_all(folder);
+    }
+    let Ok(file) = std::fs::File::create(path) else {
+        return;
+    };
+    let Ok(mut child) = std::process::Command::new("cliphist")
+        .arg("decode")
+        .stdin(std::process::Stdio::piped())
+        .stdout(file)
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    else {
+        return;
+    };
+    if let Some(mut stdin) = child.stdin.take() {
+        use std::io::Write;
+        let _ = writeln!(stdin, "{entry}");
+    }
+    let _ = child.wait();
 }
 
 fn app_icon(name: &str, size: i32, anchor: &impl IsA<gtk4::Widget>) -> gtk4::Widget {

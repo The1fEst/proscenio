@@ -97,23 +97,28 @@ impl Cliphist {
     pub fn refresh(&self) {
         let again = self.clone();
         glib::spawn_future_local(async move {
-            let Ok(process) = gio::Subprocess::newv(
-                &[std::ffi::OsStr::new(BINARY), std::ffi::OsStr::new("list")],
-                gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE,
-            ) else {
+            let listed = gio::spawn_blocking(|| {
+                let output = std::process::Command::new(BINARY)
+                    .arg("list")
+                    .stderr(std::process::Stdio::null())
+                    .output()
+                    .ok()
+                    .filter(|output| output.status.success())?;
+                let stdout = String::from_utf8(output.stdout).ok()?;
+                let entries: Vec<String> = stdout.lines().map(str::to_owned).collect();
+                let prepared: Vec<Prepared> = entries
+                    .iter()
+                    .map(|entry| fuzzy::prepare(without_first_word(entry)))
+                    .collect();
+                Some((entries, prepared))
+            })
+            .await;
+            let Ok(Some((entries, prepared))) = listed else {
                 return;
             };
-            let Ok((Some(stdout), _)) = process.communicate_utf8_future(None).await else {
-                return;
-            };
-            if !process.is_successful() || !again.loaded.get() {
+            if !again.loaded.get() {
                 return;
             }
-            let entries: Vec<String> = stdout.lines().map(str::to_owned).collect();
-            let prepared = entries
-                .iter()
-                .map(|entry| fuzzy::prepare(without_first_word(entry)))
-                .collect();
             again.entries.replace(entries);
             again.prepared.replace(prepared);
             again.listeners.notify();
