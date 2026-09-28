@@ -341,7 +341,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-const SUBPAGES: [Subpage; 13] = [
+pub const SUBPAGES: [Subpage; 13] = [
     Subpage {
         id: "savednetworks",
         title: "Saved Networks",
@@ -413,25 +413,6 @@ pub fn subpage(id: &str) -> Option<&'static Subpage> {
     SUBPAGES.iter().find(|subpage| subpage.id == id)
 }
 
-pub fn matching(query: &str) -> Vec<usize> {
-    let query = query.to_lowercase();
-    let terms: Vec<&str> = query.split_whitespace().collect();
-    if terms.is_empty() {
-        return (0..PAGES.len()).collect();
-    }
-    let contains_all = |haystack: &str| terms.iter().all(|term| haystack.contains(term));
-    let mut found: Vec<usize> = PAGES
-        .iter()
-        .enumerate()
-        .filter(|(_, page)| {
-            contains_all(&format!("{} {}", page.name, page.keywords.join(" ")).to_lowercase())
-        })
-        .map(|(index, _)| index)
-        .collect();
-    found.sort_by_key(|&index| !contains_all(&PAGES[index].name.to_lowercase()));
-    found
-}
-
 pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
     match id {
         "quick" => quick::build(context),
@@ -487,13 +468,6 @@ fn placeholder(name: &str, context: &Context) -> Rc<Page> {
 mod tests {
     use super::*;
 
-    fn names(query: &str) -> Vec<&'static str> {
-        matching(query)
-            .into_iter()
-            .map(|index| PAGES[index].name)
-            .collect()
-    }
-
     #[test]
     fn every_subpage_hangs_off_a_rail_page_and_is_not_one_itself() {
         for subpage in &SUBPAGES {
@@ -504,16 +478,5 @@ mod tests {
             subpage("capture").map(|found| found.parent),
             Some("privacy")
         );
-    }
-
-    #[test]
-    fn a_search_puts_pages_named_by_it_before_those_that_only_mention_it() {
-        assert_eq!(names("net"), ["Network", "Wi-Fi"]);
-        assert_eq!(
-            names("  "),
-            PAGES.iter().map(|page| page.name).collect::<Vec<_>>()
-        );
-        assert_eq!(names("mouse touch"), ["Mouse & Touchpad", "Devices"]);
-        assert_eq!(names("nothing like this"), Vec::<&str>::new());
     }
 }

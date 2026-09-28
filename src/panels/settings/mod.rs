@@ -2,8 +2,11 @@ pub mod arrangement;
 pub mod content;
 pub mod gestures;
 pub mod hyprrows;
+mod index;
 pub mod pages;
 mod rail;
+#[cfg(test)]
+mod scan;
 
 use gtk4::gdk;
 use gtk4::glib;
@@ -21,6 +24,7 @@ use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::ripple::RippleButton;
 use crate::ui::widgets::text::{self, Family};
 use content::{Context, Page};
+use index::Hit;
 use pages::PAGES;
 use rail::Rail;
 
@@ -66,6 +70,7 @@ struct View {
     page: RefCell<Option<Rc<Page>>>,
     loaded: Cell<Option<&'static str>>,
     wanted: Cell<Shown>,
+    pending: RefCell<Option<Hit>>,
     switch_start: Cell<i64>,
     switching: Cell<bool>,
     _following: watch::Watch,
@@ -201,6 +206,7 @@ impl Settings {
                 id: PAGES[0].id,
                 subpage: None,
             }),
+            pending: RefCell::new(None),
             switch_start: Cell::new(0),
             switching: Cell::new(false),
             _following: following,
@@ -231,6 +237,14 @@ impl Settings {
             move |page| {
                 if let Some(view) = view.upgrade() {
                     view.select(page);
+                }
+            }
+        });
+        rail.connect_found({
+            let view = Rc::downgrade(&view);
+            move |hit| {
+                if let Some(view) = view.upgrade() {
+                    view.reveal(hit);
                 }
             }
         });
@@ -379,6 +393,38 @@ impl View {
         });
     }
 
+    fn reveal(self: &Rc<Self>, hit: &Hit) {
+        self.pending.replace(hit.setting.then(|| hit.clone()));
+        match pages::subpage(hit.page) {
+            Some(subpage) => {
+                if let Some(parent) = pages::index_of(subpage.parent) {
+                    self.rail.set_current(parent);
+                }
+                self.show(Shown {
+                    id: subpage.id,
+                    subpage: Some(subpage.title),
+                });
+            }
+            None => {
+                if let Some(index) = pages::index_of(hit.page) {
+                    self.select(index);
+                }
+            }
+        }
+        if !self.switching.get() {
+            self.reveal_pending();
+        }
+    }
+
+    fn reveal_pending(&self) {
+        let Some(hit) = self.pending.take() else {
+            return;
+        };
+        if let Some(page) = self.page.borrow().as_ref() {
+            page.reveal(hit.path, &hit.title);
+        }
+    }
+
     fn show(self: &Rc<Self>, shown: Shown) {
         self.header.set_visible(shown.subpage.is_some());
         self.header_title.set_text(shown.subpage.unwrap_or(""));
@@ -434,5 +480,6 @@ impl View {
         self.stage.append(&page.root);
         self.page.replace(Some(page));
         self.loaded.set(Some(wanted.id));
+        self.reveal_pending();
     }
 }

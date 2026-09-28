@@ -8,9 +8,10 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::{config, process};
-use crate::panels::settings::pages::{self, PAGES};
+use crate::panels::settings::index::{self, Hit};
+use crate::panels::settings::pages::PAGES;
 use crate::ui::anim::{self, EXPRESSIVE_EFFECTS, EXPRESSIVE_FAST, Tween};
-use crate::ui::theme::{SharedTheme, Theme, rounding, transparentize};
+use crate::ui::theme::{SharedTheme, Theme, pixel_size, rounding, transparentize};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::fixedwidth::FixedWidth;
 use crate::ui::widgets::group::pointer_cursor;
@@ -42,8 +43,13 @@ const HIGHLIGHT_MILLIS: f64 = 350.0;
 const FILL_MILLIS: f64 = 200.0;
 const COPIED: Duration = Duration::from_millis(1500);
 const EXPANDED_ABOVE: i32 = 900;
+const RESULT_LIMIT: usize = 60;
+const RESULT_SPACING: i32 = 2;
+const RESULT_PADDING: i32 = 12;
+const RESULT_HEIGHT: i32 = 48;
 
 type Selected = Rc<dyn Fn(usize)>;
+type Found = Rc<dyn Fn(&Hit)>;
 
 const FAB: Look = Look {
     background: |theme| theme.colors.col_primary_container,
@@ -91,13 +97,16 @@ pub struct Rail {
     search: Rc<TextField>,
     scroller: gtk4::ScrolledWindow,
     list: gtk4::Box,
+    results_scroller: gtk4::ScrolledWindow,
+    results: gtk4::Box,
+    hits: RefCell<Vec<Hit>>,
     highlight: Paint,
     highlight_y: Rc<anim::Motion>,
     tabs: Vec<Rc<Tab>>,
-    shown: RefCell<Vec<usize>>,
     current: Cell<usize>,
     revealing: Cell<bool>,
     selected: RefCell<Option<Selected>>,
+    found: RefCell<Option<Found>>,
     _tips: Vec<Rc<Tooltip>>,
 }
 
@@ -155,6 +164,15 @@ impl Rail {
         crate::ui::widgets::flickable::follow_scroll_settings(&scroller);
         column.append(&scroller);
 
+        let results = gtk4::Box::new(gtk4::Orientation::Vertical, RESULT_SPACING);
+        let results_scroller = gtk4::ScrolledWindow::new();
+        results_scroller.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
+        results_scroller.set_vexpand(true);
+        results_scroller.set_child(Some(&results));
+        results_scroller.set_visible(false);
+        crate::ui::widgets::flickable::follow_scroll_settings(&results_scroller);
+        column.append(&results_scroller);
+
         let tabs: Vec<Rc<Tab>> = (0..PAGES.len()).map(|page| Tab::new(theme, page)).collect();
         for tab in &tabs {
             list.append(&tab.outer);
@@ -188,13 +206,16 @@ impl Rail {
             search: search.clone(),
             scroller,
             list,
+            results_scroller,
+            results,
+            hits: RefCell::new(Vec::new()),
             highlight: highlight.clone(),
             highlight_y,
             tabs,
-            shown: RefCell::new((0..PAGES.len()).collect()),
             current: Cell::new(0),
             revealing: Cell::new(false),
             selected: RefCell::new(None),
+            found: RefCell::new(None),
             _tips: vec![fab_tip],
         });
 
@@ -223,6 +244,18 @@ impl Rail {
             move || {
                 if let Some(rail) = rail.upgrade() {
                     rail.filter(&rail.search.text());
+                }
+            }
+        });
+        search.connect_accepted({
+            let rail = Rc::downgrade(&rail);
+            move || {
+                let Some(rail) = rail.upgrade() else {
+                    return;
+                };
+                let first = rail.hits.borrow().first().cloned();
+                if let Some(hit) = first {
+                    rail.choose(&hit);
                 }
             }
         });
@@ -268,6 +301,17 @@ impl Rail {
 
     pub fn connect_selected(&self, action: impl Fn(usize) + 'static) {
         self.selected.replace(Some(Rc::new(action)));
+    }
+
+    pub fn connect_found(&self, action: impl Fn(&Hit) + 'static) {
+        self.found.replace(Some(Rc::new(action)));
+    }
+
+    fn choose(&self, hit: &Hit) {
+        let found = self.found.borrow().clone();
+        if let Some(found) = found {
+            found(hit);
+        }
     }
 
     pub fn current(&self) -> usize {
@@ -359,19 +403,59 @@ impl Rail {
         });
     }
 
-    fn filter(&self, query: &str) {
-        let shown = pages::matching(query);
+    fn filter(self: &Rc<Self>, query: &str) {
         let searching = !query.trim().is_empty();
-        while let Some(child) = self.list.first_child() {
-            self.list.remove(&child);
+        self.scroller.set_visible(!searching);
+        self.results_scroller.set_visible(searching);
+        while let Some(child) = self.results.first_child() {
+            self.results.remove(&child);
         }
-        for &index in &shown {
-            let tab = &self.tabs[index];
-            tab.set_group(PAGES[index].starts_group && !searching);
-            self.list.append(&tab.outer);
+        let hits = index::search(query);
+        if searching && hits.is_empty() {
+            let nothing = text::styled_sized("No settings found", TAB_TEXT);
+            text::set_color(&nothing, "colSubtext");
+            nothing.set_margin_top(RESULT_PADDING);
+            self.results.append(&nothing);
         }
-        self.shown.replace(shown);
-        self.highlight.queue_draw();
+        for hit in hits.iter().take(RESULT_LIMIT) {
+            self.results.append(&self.result_row(hit));
+        }
+        self.results_scroller.vadjustment().set_value(0.0);
+        self.hits.replace(hits);
+        if !searching {
+            self.highlight.queue_draw();
+        }
+    }
+
+    fn result_row(self: &Rc<Self>, hit: &Hit) -> RippleButton {
+        let lines = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        lines.set_valign(gtk4::Align::Center);
+        let title = text::styled_sized(&hit.title, TAB_TEXT);
+        text::set_color(&title, "colOnLayer1");
+        title.set_xalign(0.0);
+        title.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        lines.append(&Centred::filling_width(&title));
+        if !hit.trail.is_empty() {
+            let trail = text::styled_sized(&hit.trail, pixel_size::SMALLER);
+            text::set_color(&trail, "colSubtext");
+            trail.set_xalign(0.0);
+            trail.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+            lines.append(&Centred::filling_width(&trail));
+        }
+        let button = RippleButton::new(&self.theme);
+        button.set_radius(rounding::SMALL as f64);
+        button.set_size_request(-1, RESULT_HEIGHT);
+        button.set_content(&lines, RESULT_PADDING, 0);
+        button.connect_clicked({
+            let rail = Rc::downgrade(self);
+            let hit = hit.clone();
+            move |_| {
+                if let Some(rail) = rail.upgrade() {
+                    rail.choose(&hit);
+                }
+            }
+        });
+        button
     }
 
     fn copy_path(&self) {
@@ -396,12 +480,7 @@ impl Rail {
         if !self.revealing.get() {
             return;
         }
-        let current = self.current.get();
-        if !self.shown.borrow().contains(&current) {
-            self.revealing.set(false);
-            return;
-        }
-        let tab = &self.tabs[current];
+        let tab = &self.tabs[self.current.get()];
         let adjustment = self.scroller.vadjustment();
         let Some(bounds) = tab.button.compute_bounds(&self.list) else {
             return;
@@ -425,11 +504,7 @@ impl Rail {
     }
 
     fn draw_highlight(&self, snapshot: &gtk4::Snapshot) {
-        let current = self.current.get();
-        if !self.shown.borrow().contains(&current) {
-            return;
-        }
-        let tab = &self.tabs[current];
+        let tab = &self.tabs[self.current.get()];
         let Some(bounds) = tab.button.compute_bounds(&self.list) else {
             return;
         };
@@ -584,10 +659,6 @@ impl Tab {
         });
         tab.restyle(false);
         tab
-    }
-
-    fn set_group(&self, group: bool) {
-        self.separator.set_visible(group);
     }
 
     fn set_toggled(self: &Rc<Self>, toggled: bool) {

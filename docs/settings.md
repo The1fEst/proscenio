@@ -43,9 +43,17 @@ label, kept between 150 and 230; collapsed, 56. The width moves over
   the rail. A press opens the config file; a right click copies its path and
   shows `check` / "Path copied" for 1.5 s. Its tooltip reads "Open the shell
   config file" and "Alternatively right-click to copy path".
-- **The search field**, only while expanded, 4 px in from both sides. It
-  filters the tabs by name and keywords, every word having to match, and
-  lists the pages whose names match first. Collapsing the rail clears it.
+- **The search field**, only while expanded, 4 px in from both sides. While
+  it holds text, the tabs give way to a list of results: pages by name and
+  keywords, and every section, subsection and control by its title, each with
+  its page and sections below it at 12 px in `colSubtext` ("Screen Lock ›
+  Style: Blurred"). Every word has to match the title or that trail; titles
+  that start with the query come first, then titles that hold every word,
+  then the rest. A result is 48 px tall with 12 px padding and a 60-result
+  cap; "No settings found" stands in for an empty list. Pressing a result,
+  or Enter for the first, opens its page and scrolls the setting to a third
+  of the way down, tinting it `colPrimary` at 20 % for 1.5 s. Collapsing the
+  rail clears the field.
 - **The tabs**, scrolling: 56 px each. Those that start a group (Wi-Fi,
   Displays, Apps, Mouse & Touchpad, Accessibility) sit 13 px lower with a 1 px
   `colOutlineVariant` line in the middle of the gap, 8 px in, except while
@@ -846,15 +854,23 @@ proscenio's own page; the QML shell has none.
 ---
 
 **Status (proscenio).** The frame lives in `src/panels/settings/`: `mod.rs`
-the window, `rail.rs` the navigation rail, `pages/mod.rs` the page list and
-its search, `content.rs` the page, sections and bound rows, with the spin box
-in `src/ui/widgets/spinbox.rs` and the text field in
+the window, `rail.rs` the navigation rail, `pages/mod.rs` the page list,
+`index.rs` the search, `content.rs` the page, sections and bound rows, with
+the spin box in `src/ui/widgets/spinbox.rs` and the text field in
 `src/ui/widgets/textfield.rs`. Every page and subpage is ported except Region
 & Language, which shows a placeholder: proscenio has no translations. The
 window, the rail, the tabs, the title bar and the pages, text fields' labels
 and values included, match qs pixel for pixel apart from the differences
 named in their sections. No page runs Python: each script the QML pages use
 has a Rust port under `src/platform/`.
+
+The search index is built at compile time: `build.rs` reads every
+`pages/*.rs` through `scan.rs` and lists the titles of sections,
+subsections and controls, each with the sections it sits in. A control is a
+call that passes a symbol name followed by a capitalized title, as a pair of
+arguments or a tuple; `IdleTimeout`-style struct literals add their `title`
+and `*_text` fields. A new row is found by the search without being listed
+anywhere.
 
 Every row reads its setting from `config.toml`, writes it back there, and
 follows the file when it changes elsewhere. The notification timeout, the

@@ -2,7 +2,7 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use serde_json::Value;
 use std::any::Any;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::config;
@@ -48,6 +48,11 @@ const SLIDER_TRACK: f64 = 12.0;
 const SLIDER_LABEL: i32 = 120;
 const SLIDER_SPACING: i32 = 10;
 const SLIDER_MARGIN: i32 = 8;
+const GROUP_CLASS: &str = "settings-group";
+const FOUND_CLASS: &str = "settings-found";
+const FOUND_SHOWN: std::time::Duration = std::time::Duration::from_millis(1500);
+const FOUND_ABOVE: f64 = 1.0 / 3.0;
+const FOUND_FRAMES: u32 = 60;
 
 /// The QML symbol loader gives its item a width and no height, so a row sizes to its
 /// text and the symbol hangs across the middle of it.
@@ -61,6 +66,69 @@ fn without_height(child: &impl IsA<gtk4::Widget>) -> gtk4::Widget {
     overlay.add_overlay(child);
     overlay.set_valign(gtk4::Align::Center);
     overlay.upcast()
+}
+
+fn descendants(root: &gtk4::Widget) -> Vec<gtk4::Widget> {
+    let mut found = Vec::new();
+    let mut stack = vec![root.clone()];
+    while let Some(widget) = stack.pop() {
+        let mut child = widget.last_child();
+        while let Some(current) = child {
+            child = current.prev_sibling();
+            stack.push(current);
+        }
+        found.push(widget);
+    }
+    found
+}
+
+fn find_label(root: &gtk4::Widget, path: &[&str], title: &str) -> Option<gtk4::Label> {
+    let label_texts = |widget: &gtk4::Widget| -> Vec<String> {
+        descendants(widget)
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<gtk4::Label>().ok())
+            .map(|label| label.text().to_string())
+            .collect()
+    };
+    let headed_by = |label: &gtk4::Label| {
+        let mut matched = 0;
+        let mut current = label.parent();
+        while let Some(widget) = current {
+            if let Some(header) = widget.prev_sibling() {
+                let texts = label_texts(&header);
+                matched += path
+                    .iter()
+                    .filter(|part| texts.iter().any(|text| text == *part))
+                    .count();
+            }
+            if &widget == root {
+                break;
+            }
+            current = widget.parent();
+        }
+        matched
+    };
+    descendants(root)
+        .into_iter()
+        .filter_map(|widget| widget.downcast::<gtk4::Label>().ok())
+        .filter(|label| label.text() == title)
+        .enumerate()
+        .max_by_key(|(order, label)| (headed_by(label), std::cmp::Reverse(*order)))
+        .map(|(_, label)| label)
+}
+
+fn found_target(label: &gtk4::Label) -> gtk4::Widget {
+    let mut current: gtk4::Widget = label.clone().upcast();
+    while let Some(parent) = current.parent() {
+        if parent.has_css_class(GROUP_CLASS) {
+            return current;
+        }
+        current = parent;
+    }
+    label
+        .parent()
+        .and_then(|centred| centred.parent())
+        .unwrap_or_else(|| label.clone().upcast())
 }
 
 pub trait Parent {
@@ -223,6 +291,42 @@ impl Page {
         self.kept.borrow_mut().push(Box::new(held));
     }
 
+    pub fn reveal(&self, path: &[&str], title: &str) {
+        let Some(label) = find_label(self.column.upcast_ref(), path, title) else {
+            return;
+        };
+        let target = found_target(&label);
+        let scroller = self.root.downgrade();
+        let frames = Cell::new(0);
+        target.add_tick_callback(move |target, _| {
+            frames.set(frames.get() + 1);
+            let Some(scroller) = scroller.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            let content = scroller.child().and_then(|viewport| viewport.first_child());
+            let bounds = content.and_then(|content| target.compute_bounds(&content));
+            let adjustment = scroller.vadjustment();
+            let Some(bounds) =
+                bounds.filter(|bounds| bounds.height() > 0.0 && adjustment.page_size() > 0.0)
+            else {
+                return if frames.get() < FOUND_FRAMES {
+                    glib::ControlFlow::Continue
+                } else {
+                    glib::ControlFlow::Break
+                };
+            };
+            adjustment.set_value(bounds.y() as f64 - adjustment.page_size() * FOUND_ABOVE);
+            target.add_css_class(FOUND_CLASS);
+            let target = target.downgrade();
+            glib::timeout_add_local_once(FOUND_SHOWN, move || {
+                if let Some(target) = target.upgrade() {
+                    target.remove_css_class(FOUND_CLASS);
+                }
+            });
+            glib::ControlFlow::Break
+        });
+    }
+
     pub fn watch(&self, pointer: &str, action: impl Fn() + 'static) {
         self.keep(watch::config(pointer, action));
     }
@@ -269,6 +373,7 @@ impl Page {
             section.append(&header);
         }
         let content = gtk4::Box::new(gtk4::Orientation::Vertical, SECTION_CONTENT_SPACING);
+        content.add_css_class(GROUP_CLASS);
         section.append(&content);
         self.column.append(&section);
         content
@@ -321,6 +426,7 @@ impl Page {
         });
         subsection.append(&header);
         let content = gtk4::Box::new(gtk4::Orientation::Vertical, SUBSECTION_SPACING);
+        content.add_css_class(GROUP_CLASS);
         subsection.append(&content);
         parent.add(&subsection);
         (content, tip)

@@ -230,6 +230,13 @@ window.settings-window { background-color: var(--m3background); }
     border-radius: 10px;
 }
 .settings-rail-separator { background-color: var(--colOutlineVariant); }
+.settings-group > * {
+    border-radius: 12px;
+    transition: background-color 400ms cubic-bezier(0.34, 0.80, 0.34, 1.00);
+}
+.settings-found {
+    background-color: alpha(var(--colPrimary), 0.2);
+}
 .settings-tile {
     background-color: var(--colLayer2);
     border-radius: 12px;
