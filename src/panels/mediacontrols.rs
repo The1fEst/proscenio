@@ -34,6 +34,7 @@ const GAPS_OUT: i32 = 5;
 const RADIUS: f32 = (rounding::SCREEN_ROUNDING - GAPS_OUT + 1) as f32;
 const ART_RADIUS: f32 = rounding::VERYSMALL as f32;
 const PADDING: i32 = 13;
+const ART_SIDE: i32 = HEIGHT - (ELEVATION + PADDING) * 2;
 const SPACING: i32 = 15;
 const INFO_SPACING: i32 = 2;
 const ROW_SPACING: i32 = 5;
@@ -281,9 +282,19 @@ fn placeholder() -> gtk4::Widget {
 struct Look {
     adapted: Cell<Adapted>,
     texture: RefCell<Option<gdk::Texture>>,
+    thumbnail: RefCell<Option<gdk::Texture>>,
+    blurred: RefCell<Option<Blurred>>,
     app_icon: RefCell<Option<gdk::Paintable>>,
     opacity: Cell<Tween>,
     playing: Cell<bool>,
+}
+
+struct Blurred {
+    source: gdk::Texture,
+    width: f32,
+    height: f32,
+    scrim: RGBA,
+    layer: gdk::Texture,
 }
 
 struct Card {
@@ -329,16 +340,32 @@ impl Card {
         let look = Rc::new(Look {
             adapted: Cell::new(initial),
             texture: RefCell::new(None),
+            thumbnail: RefCell::new(None),
+            blurred: RefCell::new(None),
             app_icon: RefCell::new(None),
             opacity: Cell::new(Tween::new(0.0, ART_MILLIS, EMPHASIZED_DECEL)),
             playing: Cell::new(false),
         });
 
-        let backdrop = Paint::new({
+        let backdrop = Paint::new(|_, _, _| {});
+        backdrop.set_draw({
             let look = look.clone();
             let points = points.clone();
+            let canvas = backdrop.downgrade();
             move |snapshot, width, height| {
-                backdrop(snapshot, width, height, &look, &points.borrow())
+                let canvas = canvas.upgrade();
+                let scale = canvas.as_ref().map_or(1, |canvas| canvas.scale_factor());
+                let renderer = canvas
+                    .and_then(|canvas| canvas.native())
+                    .and_then(|native| native.renderer());
+                paint_backdrop(
+                    snapshot,
+                    (width, height),
+                    scale,
+                    &look,
+                    &points.borrow(),
+                    renderer.as_ref(),
+                )
             }
         });
         backdrop.add_css_class("media-card");
@@ -351,8 +378,7 @@ impl Card {
             let look = look.clone();
             move |snapshot, width, height| cover_art(snapshot, width, height, &look)
         });
-        let side = HEIGHT - (ELEVATION + PADDING) * 2;
-        art.set_size_request(side, side);
+        art.set_size_request(ART_SIDE, ART_SIDE);
 
         let title = text::styled_sized("", pixel_size::LARGE);
         title.set_xalign(0.0);
@@ -667,7 +693,7 @@ impl Card {
         } else {
             &track.desktop_entry
         };
-        let side = (HEIGHT - (ELEVATION + PADDING) * 2) as f32 * APP_ICON_SHARE;
+        let side = ART_SIDE as f32 * APP_ICON_SHARE;
         let paintable = appicon::themed(
             &icons,
             &appicon::guess(&icons, app),
@@ -685,6 +711,8 @@ impl Card {
             self.art_url.replace(Some(url.to_owned()));
             self.dominant.set(None);
             self.look.texture.replace(None);
+            self.look.thumbnail.replace(None);
+            self.look.blurred.replace(None);
             self.fade_art(false);
             if !url.is_empty() {
                 self.download(theme, url);
@@ -719,23 +747,37 @@ impl Card {
         let theme = theme.clone();
         let wanted = url.to_owned();
         let finish = move |file: PathBuf| {
-            let Some(card) = card.upgrade() else {
-                return;
-            };
-            if card.art_url.borrow().as_deref() != Some(wanted.as_str()) {
-                return;
-            }
-            card.dominant.set(
-                gtk4::gdk_pixbuf::Pixbuf::from_file(&file)
-                    .ok()
-                    .and_then(theme::average),
-            );
-            card.look
-                .texture
-                .replace(gdk::Texture::from_filename(&file).ok());
-            card.follow_art(&theme, &wanted);
-            card.recolour(card.root.is_mapped());
-            card.fade_art(true);
+            let card = card.clone();
+            let theme = theme.clone();
+            let wanted = wanted.clone();
+            let scale = card.upgrade().map_or(1, |card| card.art.scale_factor());
+            glib::spawn_future_local(async move {
+                let sizes = vec![
+                    (
+                        (WIDTH - 2 * ELEVATION) * scale,
+                        (HEIGHT - 2 * ELEVATION) * scale,
+                    ),
+                    (ART_SIDE * scale, ART_SIDE * scale),
+                ];
+                let loaded = crate::ui::image::cover_textures(file, sizes, |pixbuf| {
+                    theme::average(pixbuf.clone())
+                })
+                .await;
+                let Some(card) = card.upgrade() else {
+                    return;
+                };
+                if card.art_url.borrow().as_deref() != Some(wanted.as_str()) {
+                    return;
+                }
+                let (textures, dominant) = loaded.unzip();
+                let mut textures = textures.unwrap_or_default().into_iter();
+                card.dominant.set(dominant.flatten());
+                card.look.texture.replace(textures.next());
+                card.look.thumbnail.replace(textures.next());
+                card.follow_art(&theme, &wanted);
+                card.recolour(card.root.is_mapped());
+                card.fade_art(true);
+            });
         };
         if file.exists() {
             finish(file);
@@ -862,7 +904,14 @@ fn button(theme: &SharedTheme, icon: &str, size: i32) -> (RippleButton, gtk4::La
     (button, symbol)
 }
 
-fn backdrop(snapshot: &gtk4::Snapshot, width: f32, height: f32, look: &Look, points: &[f64]) {
+fn paint_backdrop(
+    snapshot: &gtk4::Snapshot,
+    (width, height): (f32, f32),
+    scale: i32,
+    look: &Look,
+    points: &[f64],
+    renderer: Option<&gsk::Renderer>,
+) {
     let bounds = graphene::Rect::new(0.0, 0.0, width, height);
     let adapted = look.adapted.get();
     snapshot.push_rounded_clip(&gsk::RoundedRect::from_rect(bounds, RADIUS));
@@ -879,37 +928,131 @@ fn backdrop(snapshot: &gtk4::Snapshot, width: f32, height: f32, look: &Look, poi
         && opacity > 0.0
     {
         snapshot.push_opacity(opacity);
-        push_saturation(snapshot);
-        snapshot.push_blur(ART_BLUR as f64);
-        snapshot.push_clip(&bounds);
-        snapshot.append_texture(texture, &cover(texture, bounds));
-        snapshot.pop();
-        snapshot.push_rounded_clip(&gsk::RoundedRect::from_rect(bounds, RADIUS));
-        snapshot.append_color(&transparentize(adapted.col_layer0, SCRIM), &bounds);
-        snapshot.pop();
-        snapshot.pop();
-        snapshot.pop();
+        let scrim = transparentize(adapted.col_layer0, SCRIM);
+        match blurred_art(look, texture, bounds, scrim, renderer) {
+            Some(layer) => snapshot.append_texture(&layer, &bounds),
+            None => blur_art(snapshot, texture, bounds, scrim),
+        }
         snapshot.pop();
     }
 
-    if look.playing.get() && points.len() >= 2 {
-        push_saturation(snapshot);
-        snapshot.push_blur(WAVE_BLUR as f64);
-        let cr = snapshot.append_cairo(&bounds);
-        wave(
-            &cr,
-            width as f64,
-            height as f64,
+    if look.playing.get()
+        && points.len() >= 2
+        && let Some((texture, area)) = blurred_wave(
+            (width, height),
+            scale,
             points,
-            adapted.col_primary,
-        );
-        snapshot.pop();
-        snapshot.pop();
+            saturated(adapted.col_primary),
+        )
+    {
+        snapshot.append_texture(&texture, &area);
     }
     snapshot.pop();
 }
 
-fn wave(cr: &gtk4::cairo::Context, width: f64, height: f64, points: &[f64], colour: RGBA) {
+fn blurred_wave(
+    (width, height): (f32, f32),
+    scale: i32,
+    points: &[f64],
+    colour: RGBA,
+) -> Option<(gdk::Texture, graphene::Rect)> {
+    let scale = scale.max(1) as f64;
+    let sigma = WAVE_BLUR as f64 / 2.0 * scale;
+    let pad = (3.0 * sigma).ceil() as i32;
+    let mask_width = (width as f64 * scale).ceil() as i32 + 2 * pad;
+    let mask_height = (height as f64 * scale).ceil() as i32 + 2 * pad;
+    let mut mask =
+        gtk4::cairo::ImageSurface::create(gtk4::cairo::Format::A8, mask_width, mask_height).ok()?;
+    {
+        let cr = gtk4::cairo::Context::new(&mask).ok()?;
+        cr.translate(pad as f64, pad as f64);
+        cr.scale(scale, scale);
+        wave(&cr, width as f64, height as f64, points);
+        cr.fill().ok()?;
+    }
+    mask.flush();
+    let stride = mask.stride() as usize;
+    let mut coverage = mask.data().ok()?.to_vec();
+    crate::ui::image::gaussian_blur(
+        &mut coverage,
+        (mask_width as usize, mask_height as usize),
+        stride,
+        1,
+        sigma,
+    );
+    let tint = [colour.red(), colour.green(), colour.blue(), 1.0];
+    let mut pixels = Vec::with_capacity((mask_width * mask_height * 4) as usize);
+    for row in coverage.chunks(stride).take(mask_height as usize) {
+        for &value in &row[..mask_width as usize] {
+            let alpha = value as f32 / 255.0 * WAVE_ALPHA;
+            pixels.extend(tint.map(|channel| (channel * alpha * 255.0).round() as u8));
+        }
+    }
+    let texture = gdk::MemoryTexture::new(
+        mask_width,
+        mask_height,
+        gdk::MemoryFormat::R8g8b8a8Premultiplied,
+        &glib::Bytes::from_owned(pixels),
+        (mask_width * 4) as usize,
+    );
+    let area = graphene::Rect::new(
+        (-pad as f64 / scale) as f32,
+        (-pad as f64 / scale) as f32,
+        (mask_width as f64 / scale) as f32,
+        (mask_height as f64 / scale) as f32,
+    );
+    Some((texture.upcast(), area))
+}
+
+fn blur_art(
+    snapshot: &gtk4::Snapshot,
+    texture: &gdk::Texture,
+    bounds: graphene::Rect,
+    scrim: RGBA,
+) {
+    push_saturation(snapshot);
+    snapshot.push_blur(ART_BLUR as f64);
+    snapshot.push_clip(&bounds);
+    snapshot.append_texture(texture, &cover(texture, bounds));
+    snapshot.pop();
+    snapshot.push_rounded_clip(&gsk::RoundedRect::from_rect(bounds, RADIUS));
+    snapshot.append_color(&scrim, &bounds);
+    snapshot.pop();
+    snapshot.pop();
+    snapshot.pop();
+}
+
+fn blurred_art(
+    look: &Look,
+    texture: &gdk::Texture,
+    bounds: graphene::Rect,
+    scrim: RGBA,
+    renderer: Option<&gsk::Renderer>,
+) -> Option<gdk::Texture> {
+    let (width, height) = (bounds.width(), bounds.height());
+    if let Some(held) = look.blurred.borrow().as_ref()
+        && held.source == *texture
+        && held.width == width
+        && held.height == height
+        && held.scrim == scrim
+    {
+        return Some(held.layer.clone());
+    }
+    let renderer = renderer?;
+    let blurred = gtk4::Snapshot::new();
+    blur_art(&blurred, texture, bounds, scrim);
+    let layer = renderer.render_texture(blurred.to_node()?, Some(&bounds));
+    look.blurred.replace(Some(Blurred {
+        source: texture.clone(),
+        width,
+        height,
+        scrim,
+        layer: layer.clone(),
+    }));
+    Some(layer)
+}
+
+fn wave(cr: &gtk4::cairo::Context, width: f64, height: f64, points: &[f64]) {
     let count = points.len() as i64;
     cr.move_to(0.0, height);
     for index in 0..count {
@@ -923,13 +1066,6 @@ fn wave(cr: &gtk4::cairo::Context, width: f64, height: f64, points: &[f64], colo
     }
     cr.line_to(width, height);
     cr.close_path();
-    cr.set_source_rgba(
-        colour.red() as f64,
-        colour.green() as f64,
-        colour.blue() as f64,
-        WAVE_ALPHA as f64,
-    );
-    let _ = cr.fill();
 }
 
 fn cover_art(snapshot: &gtk4::Snapshot, width: f32, height: f32, look: &Look) {
@@ -941,7 +1077,7 @@ fn cover_art(snapshot: &gtk4::Snapshot, width: f32, height: f32, look: &Look) {
         .get()
         .value(glib::monotonic_time())
         .clamp(0.0, 1.0);
-    if let Some(texture) = look.texture.borrow().as_ref()
+    if let Some(texture) = look.thumbnail.borrow().as_ref()
         && opacity > 0.0
     {
         snapshot.push_opacity(opacity);
@@ -974,9 +1110,30 @@ fn cover(texture: &gdk::Texture, bounds: graphene::Rect) -> graphene::Rect {
 }
 
 fn push_saturation(snapshot: &gtk4::Snapshot) {
+    snapshot.push_color_matrix(&saturation(), &graphene::Vec4::zero());
+}
+
+fn saturated(colour: RGBA) -> RGBA {
+    let [red, green, blue, alpha] = saturation()
+        .transform_vec4(&graphene::Vec4::new(
+            colour.red(),
+            colour.green(),
+            colour.blue(),
+            colour.alpha(),
+        ))
+        .to_float();
+    RGBA::new(
+        red.clamp(0.0, 1.0),
+        green.clamp(0.0, 1.0),
+        blue.clamp(0.0, 1.0),
+        alpha,
+    )
+}
+
+fn saturation() -> graphene::Matrix {
     let amount = 1.0 + SATURATION;
     let grey = [0.299, 0.587, 0.114].map(|weight| weight * (1.0 - amount));
-    let matrix = graphene::Matrix::from_float([
+    graphene::Matrix::from_float([
         grey[0] + amount,
         grey[0],
         grey[0],
@@ -993,8 +1150,7 @@ fn push_saturation(snapshot: &gtk4::Snapshot) {
         0.0,
         0.0,
         1.0,
-    ]);
-    snapshot.push_color_matrix(&matrix, &graphene::Vec4::zero());
+    ])
 }
 
 pub fn clean_title(title: &str) -> String {
@@ -1045,4 +1201,18 @@ fn now(widget: &impl IsA<gtk4::Widget>) -> i64 {
         .frame_clock()
         .map(|clock| clock.frame_time())
         .unwrap_or_else(glib::monotonic_time)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saturating_a_colour_keeps_greys_and_pushes_hues_away_from_grey() {
+        let grey = saturated(RGBA::new(0.4, 0.4, 0.4, 0.7));
+        assert!((grey.red() - 0.4).abs() < 1e-5 && (grey.blue() - 0.4).abs() < 1e-5);
+        assert_eq!(grey.alpha(), 0.7);
+        let purple = saturated(RGBA::new(0.6, 0.3, 0.7, 1.0));
+        assert!(purple.red() > 0.6 && purple.green() < 0.3 && purple.blue() > 0.7);
+    }
 }

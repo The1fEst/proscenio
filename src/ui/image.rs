@@ -22,6 +22,25 @@ pub async fn texture(path: PathBuf, (width, height): (i32, i32)) -> Option<gdk::
     Some(upload(pixels))
 }
 
+pub async fn cover_textures<T: Send + 'static>(
+    path: PathBuf,
+    sizes: Vec<(i32, i32)>,
+    measure: impl FnOnce(&Pixbuf) -> T + Send + 'static,
+) -> Option<(Vec<gdk::Texture>, T)> {
+    let (covers, measured) = gio::spawn_blocking(move || {
+        let pixbuf = Pixbuf::from_file(&path).ok()?;
+        let covers = sizes
+            .into_iter()
+            .map(|size| cover(&pixbuf, size).map(|scaled| pixels(&scaled)))
+            .collect::<Option<Vec<_>>>()?;
+        Some((covers, measure(&pixbuf)))
+    })
+    .await
+    .ok()
+    .flatten()?;
+    Some((covers.into_iter().map(upload).collect(), measured))
+}
+
 pub async fn blurred_texture(path: PathBuf, size: (i32, i32), sigma: f64) -> Option<gdk::Texture> {
     let pixels = gio::spawn_blocking(move || {
         let shrink = (sigma / BLUR_PIXELS_PER_SIGMA)
@@ -70,7 +89,7 @@ fn box_sizes(sigma: f64) -> [usize; BLUR_PASSES] {
     })
 }
 
-fn gaussian_blur(
+pub fn gaussian_blur(
     data: &mut [u8],
     (width, height): (usize, usize),
     stride: usize,
@@ -132,26 +151,28 @@ fn box_line(
     }
 }
 
-pub async fn cover_texture(path: PathBuf, (width, height): (i32, i32)) -> Option<gdk::Texture> {
+pub async fn cover_texture(path: PathBuf, size: (i32, i32)) -> Option<gdk::Texture> {
     let pixels = gio::spawn_blocking(move || {
         let pixbuf = Pixbuf::from_file(&path).ok()?;
-        let scale =
-            (width as f64 / pixbuf.width() as f64).max(height as f64 / pixbuf.height() as f64);
-        let crop_width = ((width as f64 / scale).round() as i32).min(pixbuf.width());
-        let crop_height = ((height as f64 / scale).round() as i32).min(pixbuf.height());
-        let cropped = pixbuf.new_subpixbuf(
-            (pixbuf.width() - crop_width) / 2,
-            (pixbuf.height() - crop_height) / 2,
-            crop_width,
-            crop_height,
-        );
-        let scaled = cropped.scale_simple(width, height, InterpType::Bilinear)?;
-        Some(pixels(&scaled))
+        Some(pixels(&cover(&pixbuf, size)?))
     })
     .await
     .ok()
     .flatten()?;
     Some(upload(pixels))
+}
+
+fn cover(pixbuf: &Pixbuf, (width, height): (i32, i32)) -> Option<Pixbuf> {
+    let scale = (width as f64 / pixbuf.width() as f64).max(height as f64 / pixbuf.height() as f64);
+    let crop_width = ((width as f64 / scale).round() as i32).min(pixbuf.width());
+    let crop_height = ((height as f64 / scale).round() as i32).min(pixbuf.height());
+    let cropped = pixbuf.new_subpixbuf(
+        (pixbuf.width() - crop_width) / 2,
+        (pixbuf.height() - crop_height) / 2,
+        crop_width,
+        crop_height,
+    );
+    cropped.scale_simple(width, height, InterpType::Bilinear)
 }
 
 fn pixels(pixbuf: &Pixbuf) -> Pixels {
