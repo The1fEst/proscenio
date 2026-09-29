@@ -186,6 +186,37 @@ mod tests {
     }
 
     #[test]
+    fn every_catalog_translates_every_key_and_keeps_its_placeholders() {
+        let placeholders = |text: &str| -> HashSet<String> {
+            text.match_indices('%')
+                .filter_map(|(at, _)| {
+                    let digits: String = text[at + 1..]
+                        .chars()
+                        .take_while(char::is_ascii_digit)
+                        .collect();
+                    (!digits.is_empty()).then_some(digits)
+                })
+                .collect()
+        };
+        let reference = CATALOGS
+            .iter()
+            .find(|(code, _)| *code == "en_US")
+            .map(|(_, text)| parse(text))
+            .unwrap_or_default();
+        for (code, text) in CATALOGS {
+            let entries = parse(text);
+            assert_eq!(entries.len(), reference.len(), "{code}");
+            for key in reference.keys() {
+                let value = entries.get(key).map(|value| placeholders(shown(value)));
+                assert!(
+                    value.is_some_and(|value| value.is_superset(&placeholders(key))),
+                    "{code}: {key}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn a_right_to_left_name_keeps_its_code_on_the_right() {
         assert_eq!(display_name("he_HE"), "\u{200E}עברית (he_HE)");
     }
