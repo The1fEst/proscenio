@@ -139,7 +139,6 @@ impl QuickToggle {
             }
         };
 
-        let with_text = expanded && symbol.is_some();
         let mut disc = None;
         let (name, status) = if expanded {
             let area = gtk4::DrawingArea::new();
@@ -184,25 +183,20 @@ impl QuickToggle {
             row.set_margin_end(PADDING as i32);
             row.append(&holder);
 
-            if with_text {
-                let name = text::styled_sized("", pixel_size::SMALLIE);
-                name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
-                name.set_xalign(0.0);
-                let status = text::styled_sized("", pixel_size::SMALLER);
-                status.set_ellipsize(gtk4::pango::EllipsizeMode::End);
-                status.set_xalign(0.0);
-                let column = Column::filling_width(-2);
-                column.append(&name);
-                column.append(&status);
-                let centred = Centred::filling_width(&column);
-                centred.set_hexpand(true);
-                row.append(&centred);
-                button.set_content(&row);
-                (Some(name), Some(status))
-            } else {
-                button.set_content(&row);
-                (None, None)
-            }
+            let name = text::styled_sized("", pixel_size::SMALLIE);
+            name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+            name.set_xalign(0.0);
+            let status = text::styled_sized("", pixel_size::SMALLER);
+            status.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+            status.set_xalign(0.0);
+            let column = Column::filling_width(-2);
+            column.append(&name);
+            column.append(&status);
+            let centred = Centred::filling_width(&column);
+            centred.set_hexpand(true);
+            row.append(&centred);
+            button.set_content(&row);
+            (Some(name), Some(status))
         } else {
             button.set_content(&glyph_widget);
             (None, None)
