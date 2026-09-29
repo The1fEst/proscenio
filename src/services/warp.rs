@@ -2,6 +2,7 @@ use gtk4::glib;
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::{self, detach};
 use crate::platform::notify::{self, Notification};
@@ -67,11 +68,11 @@ impl Warp {
     fn register(&self) {
         glib::spawn_future_local(async move {
             if run(&["warp-cli", "registration", "new"]).await.is_none() {
-                report(UNREGISTERED);
+                report(&tr(UNREGISTERED));
                 return;
             }
             if run(&["warp-cli", "connect"]).await.is_none() {
-                report(FAILED);
+                report(&tr(FAILED));
             }
         });
     }
@@ -80,7 +81,7 @@ impl Warp {
 fn report(body: &str) {
     notify::send(&Notification {
         app: "Shell",
-        summary: "Cloudflare WARP",
+        summary: &tr("Cloudflare WARP"),
         body,
         ..Default::default()
     });

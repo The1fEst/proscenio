@@ -121,6 +121,7 @@ pub fn executable() -> String {
 }
 
 pub const OPEN_SETTINGS: &str = "PROSCENIO_OPEN_SETTINGS";
+pub const OPEN_WELCOME: &str = "PROSCENIO_OPEN_WELCOME";
 
 pub fn restart_shell() {
     restart(Command::new(executable()));
@@ -129,6 +130,12 @@ pub fn restart_shell() {
 pub fn restart_shell_on_settings(page: &str) {
     let mut command = Command::new(executable());
     command.env(OPEN_SETTINGS, page);
+    restart(command);
+}
+
+pub fn restart_shell_on_welcome() {
+    let mut command = Command::new(executable());
+    command.env(OPEN_WELCOME, "1");
     restart(command);
 }
 

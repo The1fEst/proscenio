@@ -1,6 +1,7 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::panels::settings::Settings;
 use crate::panels::sidebar::toggles::{self, Menu};
@@ -172,9 +173,9 @@ fn show(toggle: &Toggle, services: &Rc<Services>) {
     }
 
     let tooltip = match toggle.kind {
-        "nightLight" => "Night Light | Right-click to toggle Auto mode".to_owned(),
-        "idleInhibitor" => "Keep system awake".to_owned(),
-        "wireGuard" => "WireGuard | Right-click to manage connections".to_owned(),
+        "nightLight" => tr("Night Light | Right-click to toggle Auto mode"),
+        "idleInhibitor" => tr("Keep system awake"),
+        "wireGuard" => tr("WireGuard | Right-click to manage connections"),
         _ => look.tooltip.clone(),
     };
     toggle.tooltip.set_text(&tooltip);

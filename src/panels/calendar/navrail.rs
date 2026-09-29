@@ -5,6 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::f64::consts::PI;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::panels::calendar::pinned::Pinned;
 use crate::ui::anim::{EXPRESSIVE_EFFECTS, EXPRESSIVE_FAST, Fade, Tween};
 use crate::ui::theme::{SharedTheme, Theme, transparentize};
@@ -64,7 +65,7 @@ impl NavRail {
             slot.set_size_request(BASE as i32, HIGHLIGHT as i32);
             widget.put(&slot, 0.0, y + top);
 
-            let label = text::styled_sized(name, LABEL);
+            let label = text::styled_sized(&tr(name), LABEL);
             text::set_color(&label, "colOnLayer1");
             label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
             label.set_max_width_chars(1);

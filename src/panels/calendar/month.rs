@@ -3,6 +3,7 @@ use gtk4::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::ui::theme::{SharedTheme, pixel_size, rounding};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::ripple::{Look, RippleButton};
@@ -51,7 +52,7 @@ pub fn build(theme: &SharedTheme) -> Rc<Month> {
     jump.set_content(&Centred::new(&title), HEADER_PADDING, 0);
     let hint = Tooltip::new(&jump, theme, tooltip::Kind::Styled);
     hint.place_like_qt();
-    hint.set_text("Jump to current month");
+    hint.set_text(&tr("Jump to current month"));
 
     let back = chevron(theme, "chevron_left");
     let forward = chevron(theme, "chevron_right");
@@ -68,7 +69,7 @@ pub fn build(theme: &SharedTheme) -> Rc<Month> {
     let names = gtk4::Box::new(gtk4::Orientation::Horizontal, SPACING);
     names.set_halign(gtk4::Align::Center);
     for name in WEEKDAYS {
-        let label = text::styled(name);
+        let label = text::styled(&tr(name));
         text::set_color(&label, "colOnLayer1");
         let cell = Centred::new(&label);
         cell.set_size_request(CELL, CELL);

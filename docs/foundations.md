@@ -545,3 +545,32 @@ workspace would lay out without it and then jump when the bar comes back. While
 the bar, or a pinned dock, is hidden this way, a 1×1 layer surface
 (`src/ui/reserve.rs`) on the same edge holds the zone. Its one pixel has an
 alpha of 1/255, since a surface that paints nothing never maps.
+
+## 10. Translations
+
+The interface text is English in the source and goes through
+`src/core/i18n.rs` where it is shown:
+
+- `tr(text)` returns the translation of `text`, or `text` itself when the
+  catalog has none.
+- `trf(text, arguments)` translates, then replaces `%1`, `%2`, … with the
+  arguments, like qs's `Translation.tr(text).arg(…)`.
+
+The catalogs are qs's, `assets/translations/<code>.json`, one JSON object per
+language that maps the English text to its translation. They are built into
+the binary: de_DE, en_US, es_MX, fr_FR, he_HE, id_ID, it_IT, ja_JP, pt_BR,
+ru_RU, tr_TR, uk_UA, vi_VN and zh_CN. An empty value counts as missing, and a
+value ending in `/*keep*/` is shown without that suffix.
+
+The language is `language.ui`. With `auto`, the default, it is the first
+locale from `g_get_language_names()` other than `C`, with its encoding and
+modifier dropped (`ru_RU.UTF-8` → `ru_RU`). The catalog loads on the first
+`tr` call. `~/.config/proscenio/translations/<code>.json` is read first and
+the built-in catalog is laid over it, so the file adds keys but does not
+replace built-in ones, as in qs.
+
+Text is translated when a widget is built, so a new language takes a restart.
+Static tables (page names, quick toggle names, choice labels) keep their
+English text and are translated where they are displayed. The settings search
+indexes the English titles: the build-time scanner reads `tr("…")` as the
+literal inside it.

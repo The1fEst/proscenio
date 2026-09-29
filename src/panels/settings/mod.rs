@@ -15,6 +15,7 @@ use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::{config, watch};
 use crate::platform::hypr;
 use crate::services::Services;
@@ -315,7 +316,7 @@ impl Settings {
 
     fn titlebar(self: &Rc<Self>) -> (gtk4::CenterBox, Centred) {
         let bar = gtk4::CenterBox::new();
-        let title = gtk4::Label::new(Some("Settings"));
+        let title = gtk4::Label::new(Some(&tr("Settings")));
         text::set_font(&title, Family::Title, pixel_size::TITLE as f64, "wght=550");
         text::set_color(&title, "colOnLayer0");
         let placed = Centred::new(&title);
@@ -433,7 +434,8 @@ impl View {
 
     fn show(self: &Rc<Self>, shown: Shown) {
         self.header.set_visible(shown.subpage.is_some());
-        self.header_title.set_text(shown.subpage.unwrap_or(""));
+        self.header_title
+            .set_text(&shown.subpage.map(tr).unwrap_or_default());
         let previous = self.wanted.replace(shown);
         if previous.id == shown.id && self.loaded.get() == Some(shown.id) {
             return;

@@ -3,6 +3,7 @@ pub mod assets;
 pub mod config;
 pub mod fuzzy;
 pub mod gsettings;
+pub mod i18n;
 pub mod levenshtein;
 pub mod listeners;
 pub mod paths;

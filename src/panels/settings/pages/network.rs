@@ -3,6 +3,7 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::core::i18n::{tr, trf};
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
 use crate::platform::desktop;
@@ -27,14 +28,14 @@ pub fn manager_running(page: &Page, parent: &impl Parent) -> bool {
     if !page.tools_notice(
         parent,
         &[&tools::NMCLI],
-        "connections are not listed or switched",
+        &tr("connections are not listed or switched"),
     ) {
         return false;
     }
     if tools::system_service(NETWORK_MANAGER) {
         return true;
     }
-    page.notice(parent, "info", MANAGER_STOPPED);
+    page.notice(parent, "info", &tr(MANAGER_STOPPED));
     false
 }
 
@@ -56,15 +57,17 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
     let connections = Connections::new();
 
-    let wired_section = page.section("lan", "Wired");
-    let wired = group(&wired_section, "No wired connection is set up");
+    let wired_section = page.section("lan", &tr("Wired"));
+    let wired = group(&wired_section, &tr("No wired connection is set up"));
 
-    let vpn_section = page.section("vpn_key", "VPN");
-    let vpn = group(&vpn_section, "No VPN is set up");
-    let (set_up, _) = page.icon_button("settings_ethernet", true, "Set up connections", || {
-        let command = config::value_str("/apps/network").unwrap_or_else(|| NETWORK_APP.to_owned());
-        desktop::shell(&command);
-    });
+    let vpn_section = page.section("vpn_key", &tr("VPN"));
+    let vpn = group(&vpn_section, &tr("No VPN is set up"));
+    let (set_up, _) =
+        page.icon_button("settings_ethernet", true, &tr("Set up connections"), || {
+            let command =
+                config::value_str("/apps/network").unwrap_or_else(|| NETWORK_APP.to_owned());
+            desktop::shell(&command);
+        });
     set_up.set_margin_top(BUTTON_TOP);
     vpn_section.append(&set_up);
     let command = config::value_str("/apps/network").unwrap_or_else(|| NETWORK_APP.to_owned());
@@ -73,12 +76,15 @@ pub fn build(context: &Context) -> Rc<Page> {
             set_up.set_sensitive(false);
             page.tip(
                 &set_up,
-                &format!("{program} is not installed. Pick another network connection editor on the Apps page"),
+                &trf(
+                    "%1 is not installed. Pick another network connection editor on the Apps page",
+                    &[&program],
+                ),
             );
         }
         None => page.tip(
             &set_up,
-            "Adding and editing connections is NetworkManager's own job",
+            &tr("Adding and editing connections is NetworkManager's own job"),
         ),
     }
 
@@ -167,9 +173,9 @@ fn row(
     lines.append(&Centred::filling_width(&name));
     let status = text::styled_sized(
         &if connection.active {
-            format!("Connected · {}", connection.device)
+            trf("Connected · %1", &[&connection.device])
         } else {
-            "Not connected".to_owned()
+            tr("Not connected")
         },
         pixel_size::SMALLER,
     );

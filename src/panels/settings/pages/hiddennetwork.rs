@@ -1,6 +1,7 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::services::wifi::Wifi;
 use crate::ui::widgets::text;
@@ -15,25 +16,26 @@ pub fn build(context: &Context) -> Rc<Page> {
     let wifi = Wifi::new();
 
     let section = page.section("", "");
-    let explanation =
-        text::styled("A hidden network does not announce itself, so it has to be named in full");
+    let explanation = text::styled(&tr(
+        "A hidden network does not announce itself, so it has to be named in full",
+    ));
     text::set_color(&explanation, "colSubtext");
     explanation.set_xalign(0.0);
     explanation.set_margin_start(LABEL_START);
     section.append(&explanation);
 
-    let name_group = page.subsection(&section, "Network name", "");
-    let name = TextField::new(&page.theme, Style::Outlined, "Name of the network");
+    let name_group = page.subsection(&section, &tr("Network name"), "");
+    let name = TextField::new(&page.theme, Style::Outlined, &tr("Name of the network"));
     name.root.set_hexpand(true);
     name_group.append(&name.root);
     page.keep(name.clone());
 
     let password_group = page.subsection(
         &section,
-        "Password",
-        "Leave empty for a network without one",
+        &tr("Password"),
+        &tr("Leave empty for a network without one"),
     );
-    let password = page.secret_field(&password_group, "Password");
+    let password = page.secret_field(&password_group, &tr("Password"));
 
     let join: Rc<dyn Fn()> = {
         let wifi = Rc::downgrade(&wifi);
@@ -53,7 +55,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         })
     };
 
-    let (connect, connect_label) = page.icon_button("wifi_add", true, "Connect", {
+    let (connect, connect_label) = page.icon_button("wifi_add", true, &tr("Connect"), {
         let join = join.clone();
         move || join()
     });
@@ -82,17 +84,17 @@ pub fn build(context: &Context) -> Rc<Page> {
             let state = wifi.state.borrow();
             let connecting = state.hidden_connecting;
             connect.set_sensitive(!name.text().trim().is_empty() && !connecting);
-            connect_label.set_text(if connecting {
-                "Connecting…"
+            connect_label.set_text(&if connecting {
+                tr("Connecting…")
             } else {
-                "Connect"
+                tr("Connect")
             });
             match (&state.hidden_status, connecting) {
                 (Some(outcome), false) => {
                     status.set_visible(true);
                     match outcome {
                         Ok(()) => {
-                            status.set_text("Connected");
+                            status.set_text(&tr("Connected"));
                             text::set_color(&status, "colSubtext");
                         }
                         Err(message) => {

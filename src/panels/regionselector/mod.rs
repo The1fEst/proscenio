@@ -13,6 +13,7 @@ use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
+use crate::core::i18n::tr;
 use crate::core::{persistent, process};
 use crate::platform::hypr;
 use crate::services::recording::Recording;
@@ -225,7 +226,9 @@ impl Selection {
             return;
         }
         (self.guide.symbol)(guide_symbol(action));
-        self.guide.description.set_text(guide_description(action));
+        self.guide
+            .description
+            .set_text(&tr(guide_description(action)));
         self.show_description();
     }
 
@@ -286,7 +289,7 @@ impl Selection {
             ("photo_camera", "Capture")
         };
         controls.capture_symbol.set_text(icon);
-        controls.capture_tip.set_text(tip);
+        controls.capture_tip.set_text(&tr(tip));
     }
 
     fn toggle_options(&self) {
@@ -1272,7 +1275,7 @@ impl RegionSelector {
         let symbol = text::symbol(guide_symbol(Action::Copy), GUIDE_ICON);
         text::set_color(&symbol, "colOnPrimary");
         let (symbol_holder, set_symbol) = text::animate_change(&symbol);
-        let description = text::styled(guide_description(Action::Copy));
+        let description = text::styled(&tr(guide_description(Action::Copy)));
         text::set_color(&description, "colOnPrimary");
         description.set_margin_start(GUIDE_SPACING - GUIDE_TEXT_INSET);
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -1312,10 +1315,16 @@ impl RegionSelector {
         layer.set_can_target(false);
         layer.put(&guide_widget, 0.0, 0.0);
 
-        let tabs = TabBar::new(&self.theme, &MODES.map(|(_, icon, name)| (icon, name)));
+        let names = MODES.map(|(_, _, name)| tr(name));
+        let entries: Vec<(&str, &str)> = MODES
+            .iter()
+            .zip(&names)
+            .map(|((_, icon, _), name)| (*icon, name.as_str()))
+            .collect();
+        let tabs = TabBar::new(&self.theme, &entries);
         let tune = text::symbol("tune", TOOLBAR_ICON);
         text::set_color(&tune, "m3onBackground");
-        let options_label = text::styled("Options");
+        let options_label = text::styled(&tr("Options"));
         let arrow = text::symbol("keyboard_arrow_up", ARROW_ICON);
         text::set_color(&arrow, "m3onBackground");
         let options_row = gtk4::Box::new(gtk4::Orientation::Horizontal, OPTIONS_SPACING);
@@ -1328,8 +1337,8 @@ impl RegionSelector {
         bar.append(&toolbar::separator());
         bar.append(&options);
         let (capture, capture_symbol, capture_tip) =
-            toolbar::paired_fab(&self.theme, "photo_camera", "Capture");
-        let (close_button, _, _) = toolbar::paired_fab(&self.theme, "close", "Close");
+            toolbar::paired_fab(&self.theme, "photo_camera", &tr("Capture"));
+        let (close_button, _, _) = toolbar::paired_fab(&self.theme, "close", &tr("Close"));
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, CONTROLS_SPACING);
         row.append(&bar);
         row.append(&capture);
@@ -1468,7 +1477,7 @@ impl RegionSelector {
         selection
             .guide
             .description
-            .set_text(guide_description(action));
+            .set_text(&tr(guide_description(action)));
         let mut width = selection.guide.width.get();
         width.jump(selection.guide_width(true));
         selection.guide.width.set(width);
@@ -1568,7 +1577,7 @@ fn options_menu(
     menu.set_halign(gtk4::Align::End);
     menu.set_margin_bottom(CONTROLS_MARGIN);
 
-    let label = text::styled("Wait before capturing");
+    let label = text::styled(&tr("Wait before capturing"));
     text::set_color(&label, "colSubtext");
     label.set_xalign(0.0);
     let heading = Centred::filling_width(&label);
@@ -1580,7 +1589,7 @@ fn options_menu(
         COUNTDOWNS
             .iter()
             .map(|(value, name)| {
-                let label = text::styled(name);
+                let label = text::styled(&tr(name));
                 let content = Centred::integral(&label);
                 let width =
                     content.measure(gtk4::Orientation::Horizontal, -1).1 + CHOICE_PADDING.0 * 2;
@@ -1650,7 +1659,7 @@ fn options_menu(
 
     let options = &config.region;
     let save_tip = if options.save_path.is_empty() {
-        "No folder is set yet — pick one in Settings".to_owned()
+        tr("No folder is set yet — pick one in Settings")
     } else {
         options.save_path.clone()
     };
@@ -1683,7 +1692,7 @@ fn options_menu(
     let mut switches = Vec::new();
     for (index, (icon, name, checked, apply)) in rows.into_iter().enumerate() {
         let slot: Rc<RefCell<Weak<ConfigSwitch>>> = Rc::new(RefCell::new(Weak::new()));
-        let switch = ConfigSwitch::new(theme, icon, name, {
+        let switch = ConfigSwitch::new(theme, icon, &tr(name), {
             let config = config.clone();
             let slot = slot.clone();
             move |on| {

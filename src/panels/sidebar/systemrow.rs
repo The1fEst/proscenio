@@ -2,6 +2,7 @@ use gtk4::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::core::i18n::{tr, trf};
 use crate::core::process::detach;
 use crate::core::scope::Scope;
 use crate::core::shell;
@@ -17,8 +18,6 @@ use crate::ui::widgets::{customicon, text, tooltip};
 const ICON: i32 = 25;
 const BUTTON: f64 = 40.0;
 const SYMBOL: f64 = 22.0;
-const EDIT_TIP: &str = "Edit quick toggles";
-const EDITING_TIP: &str = "Edit quick toggles\nDrag to move, add and remove\nRMB to toggle size";
 
 pub struct Actions {
     pub close: Rc<dyn Fn()>,
@@ -46,13 +45,18 @@ pub fn build(
     group.set_padding(4.0);
 
     if let Some(edit) = actions.edit {
-        let (button, tip, set_toggled) = quick_toggle(theme, "edit", EDIT_TIP);
+        let (button, tip, set_toggled) = quick_toggle(theme, "edit", &tr("Edit quick toggles"));
         let editing = Rc::new(Cell::new(false));
         button.connect_clicked(move || {
             let now = !editing.get();
             editing.set(now);
             set_toggled(now);
-            tip.set_text(if now { EDITING_TIP } else { EDIT_TIP });
+            let mut text = tr("Edit quick toggles");
+            if now {
+                text.push('\n');
+                text.push_str(&tr("Drag to move, add and remove\nRMB to toggle size"));
+            }
+            tip.set_text(&text);
             edit(now);
         });
         group.append(&button);
@@ -61,7 +65,7 @@ pub fn build(
     let (reload, _, _) = quick_toggle(
         theme,
         "restart_alt",
-        &format!("Reload Hyprland & {}", shell::name()),
+        &trf("Reload Hyprland & %1", &[shell::name()]),
     );
     reload.connect_clicked(|| {
         detach(&["hyprctl", "reload"]);
@@ -69,7 +73,7 @@ pub fn build(
     });
     group.append(&reload);
 
-    let (settings, _, _) = quick_toggle(theme, "settings", "Settings");
+    let (settings, _, _) = quick_toggle(theme, "settings", &tr("Settings"));
     let close = actions.close;
     let window = actions.settings;
     settings.connect_clicked(move || {
@@ -78,7 +82,7 @@ pub fn build(
     });
     group.append(&settings);
 
-    let (power, _, _) = quick_toggle(theme, "power_settings_new", "Session");
+    let (power, _, _) = quick_toggle(theme, "power_settings_new", &tr("Session"));
     power.connect_clicked({
         let session = session.clone();
         move || session.open()
@@ -146,7 +150,7 @@ fn uptime_pill(background: &Rc<BackgroundTasks>, scope: &Scope) -> gtk4::Widget 
     let pill = Centred::integral(&inside);
     pill.add_css_class("uptime-pill");
 
-    let tick = move || label.set_text(&format!("Up {}", uptime()));
+    let tick = move || label.set_text(&trf("Up %1", &[&uptime()]));
     tick();
     scope.keep(background.add_scoped("uptime", move || {
         tick();

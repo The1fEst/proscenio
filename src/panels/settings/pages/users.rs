@@ -3,6 +3,7 @@ use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+use crate::core::i18n::{tr, trf};
 use crate::core::tools;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::services::accounts::{self, User};
@@ -44,9 +45,9 @@ pub fn build(context: &Context) -> Rc<Page> {
     let user = Rc::new(RefCell::new(User::default()));
     let shown: Show = Rc::new(RefCell::new(None));
 
-    let account = page.section("person", "Account");
+    let account = page.section("person", &tr("Account"));
     if !tools::system_service(ACCOUNTS) {
-        page.notice(&account, "info", NO_ACCOUNTS);
+        page.notice(&account, "info", &tr(NO_ACCOUNTS));
     }
     let header = gtk4::Box::new(gtk4::Orientation::Horizontal, HEADER_SPACING);
     header.set_halign(gtk4::Align::Center);
@@ -69,7 +70,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     header.append(&names);
     account.append(&header);
 
-    let real_name = page.subsection(&account, "Name", "");
+    let real_name = page.subsection(&account, &tr("Name"), "");
     let real_name = page.text_field(
         &real_name,
         Style::Outlined,
@@ -83,11 +84,11 @@ pub fn build(context: &Context) -> Rc<Page> {
             move |value| write(&user, &shown, "RealName", &value)
         },
     );
-    let email = page.subsection(&account, "Email address", "");
+    let email = page.subsection(&account, &tr("Email address"), "");
     let email = page.text_field(
         &email,
         Style::Outlined,
-        "name@example.com",
+        &tr("name@example.com"),
         {
             let user = user.clone();
             move || user.borrow().email.clone()
@@ -99,7 +100,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
 
     let form: Rc<RefCell<Weak<Form>>> = Rc::new(RefCell::new(Weak::new()));
-    let (opener, _) = page.icon_button("password", true, "Change password…", {
+    let (opener, _) = page.icon_button("password", true, &tr("Change password…"), {
         let form = form.clone();
         move || {
             if let Some(form) = form.borrow().upgrade() {
@@ -109,9 +110,9 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
     account.append(&opener);
     let root = gtk4::Box::new(gtk4::Orientation::Vertical, FORM_SPACING);
-    let current = page.secret_field(&root, "Current password");
-    let next = page.secret_field(&root, "New password");
-    let repeat = page.secret_field(&root, "Repeat new password");
+    let current = page.secret_field(&root, &tr("Current password"));
+    let next = page.secret_field(&root, &tr("New password"));
+    let repeat = page.secret_field(&root, &tr("Repeat new password"));
     let error = text::styled("");
     text::set_color(&error, "m3error");
     error.set_wrap(true);
@@ -120,7 +121,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     root.append(&error);
     let buttons = gtk4::Box::new(gtk4::Orientation::Horizontal, FORM_SPACING);
     buttons.set_halign(gtk4::Align::End);
-    let (cancel, _) = page.icon_button("close", true, "Cancel", {
+    let (cancel, _) = page.icon_button("close", true, &tr("Cancel"), {
         let form = form.clone();
         move || {
             if let Some(form) = form.borrow().upgrade() {
@@ -129,7 +130,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     });
     buttons.append(&cancel);
-    let (confirm, confirm_label) = page.icon_button("check", true, "Change password", {
+    let (confirm, confirm_label) = page.icon_button("check", true, &tr("Change password"), {
         let form = form.clone();
         move || {
             let form = form.borrow().upgrade();
@@ -172,12 +173,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         let avatar = avatar.clone();
         Rc::new(move |account: User| {
             name.set_text(account.display_name());
-            let kind = if account.administrator {
-                "Administrator"
+            role.set_text(&if account.administrator {
+                trf("%1 · Administrator", &[&account.user_name])
             } else {
-                "Standard"
-            };
-            role.set_text(&format!("{} · {kind}", account.user_name));
+                trf("%1 · Standard", &[&account.user_name])
+            });
             show_avatar(&avatar, &account.icon_file);
             let placeholder = account.user_name.clone();
             user.replace(account);
@@ -257,9 +257,9 @@ impl Form {
     fn update(&self) {
         let changing = self.changing.get();
         let message = if self.mismatched() {
-            "The new passwords do not match".to_owned()
+            tr("The new passwords do not match")
         } else if *self.complaint.borrow() == AUTHENTICATION_FAILURE {
-            "The current password is not correct".to_owned()
+            tr("The current password is not correct")
         } else {
             self.complaint.borrow().clone()
         };
@@ -268,10 +268,10 @@ impl Form {
         self.cancel.set_sensitive(!changing);
         self.confirm
             .set_sensitive(self.filled() && !self.mismatched() && !changing);
-        self.confirm_label.set_text(if changing {
-            "Changing…"
+        self.confirm_label.set_text(&if changing {
+            tr("Changing…")
         } else {
-            "Change password"
+            tr("Change password")
         });
     }
 

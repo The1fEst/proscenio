@@ -6,6 +6,7 @@ use serde_json::Value;
 use std::rc::Rc;
 
 use crate::core::config::Config;
+use crate::core::i18n::tr;
 use crate::platform::grab;
 use crate::ui::widgets::flow::Flow;
 
@@ -199,10 +200,10 @@ fn grouped() -> Vec<(String, Vec<Bind>)> {
 }
 
 fn category(config: &Rc<Config>, name: &str, binds: &[Bind]) -> gtk4::Widget {
-    let title = gtk4::Label::new(Some(if name.is_empty() {
-        "Uncategorized"
+    let title = gtk4::Label::new(Some(&if name.is_empty() {
+        tr("Uncategorized")
     } else {
-        name
+        name.to_owned()
     }));
     title.add_css_class("cheatsheet-title");
     title.set_xalign(0.0);

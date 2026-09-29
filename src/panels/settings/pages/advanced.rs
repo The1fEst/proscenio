@@ -2,6 +2,7 @@ use gtk4::prelude::*;
 use serde_json::Value;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::{config, process};
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::privacy;
@@ -19,18 +20,18 @@ const RENDERER_TIPS: [&str; 3] = [
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
-    let scrolling = page.section("swipe", "Scrolling");
+    let scrolling = page.section("swipe", &tr("Scrolling"));
     page.config_switch(
         &scrolling,
         "touch_app",
-        "Faster touchpad scrolling",
+        &tr("Faster touchpad scrolling"),
         "/interactions/scrolling/fasterTouchpadScroll",
         false,
     );
     page.config_spin(
         &scrolling,
         "mouse",
-        "Mouse scroll distance",
+        &tr("Mouse scroll distance"),
         "/interactions/scrolling/mouseScrollFactor",
         120,
         (10, 1000),
@@ -39,7 +40,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &scrolling,
         "touchpad_mouse",
-        "Touchpad scroll distance",
+        &tr("Touchpad scroll distance"),
         "/interactions/scrolling/touchpadScrollFactor",
         450,
         (10, 1000),
@@ -48,7 +49,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let (threshold, _) = page.config_spin(
         &scrolling,
         "conversion_path",
-        "Mouse detection threshold",
+        &tr("Mouse detection threshold"),
         "/interactions/scrolling/mouseScrollDeltaThreshold",
         120,
         (1, 500),
@@ -56,25 +57,25 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &threshold,
-        "Scroll events at least this large are treated as coming from a mouse instead of a touchpad",
+        &tr("Scroll events at least this large are treated as coming from a mouse instead of a touchpad"),
     );
 
-    let workarounds = page.section("bug_report", "Workarounds");
+    let workarounds = page.section("bug_report", &tr("Workarounds"));
     let dead_pixel = page.config_switch(
         &workarounds,
         "border_outer",
-        "Dead pixel workaround",
+        &tr("Dead pixel workaround"),
         "/interactions/deadPixelWorkaround/enable",
         false,
     );
     page.tip(
         &dead_pixel.button,
-        "Hyprland leaves out one pixel on the right and bottom edges for interactions. Enable if screen corners don't react to your cursor.",
+        &tr("Hyprland leaves out one pixel on the right and bottom edges for interactions. Enable if screen corners don't react to your cursor."),
     );
     let (delay, _) = page.config_spin(
         &workarounds,
         "hourglass",
-        "Race condition delay (ms)",
+        &tr("Race condition delay (ms)"),
         "/hacks/arbitraryRaceConditionDelay",
         20,
         (0, 500),
@@ -82,14 +83,14 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &delay,
-        "Increase if things occasionally show up in the wrong place or size on a slow system",
+        &tr("Increase if things occasionally show up in the wrong place or size on a slow system"),
     );
 
-    let rendering = page.section("brush", "Rendering");
+    let rendering = page.section("brush", &tr("Rendering"));
     let renderer = page.subsection(
         &rendering,
-        "Renderer",
-        "After the restart a window asks whether to keep the new renderer, and the previous one comes back unless you keep it within 15 seconds. `proscenio ipc call renderer reset` returns to Cairo from a terminal. A GSK_RENDERER set in the environment wins over this choice.",
+        &tr("Renderer"),
+        &tr("After the restart a window asks whether to keep the new renderer, and the previous one comes back unless you keep it within 15 seconds. `proscenio ipc call renderer reset` returns to Cairo from a terminal. A GSK_RENDERER set in the environment wins over this choice."),
     );
     let choice = |label: &str, icon: &'static str, value: &str| Choice {
         label: label.to_owned(),
@@ -113,15 +114,15 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     for (index, tip) in RENDERER_TIPS.iter().enumerate() {
         if let Some(button) = renderers.button(index) {
-            page.tip(button, tip);
+            page.tip(button, &tr(tip));
         }
     }
     let pending = page.notice(
         &rendering,
         "restart_alt",
-        "The shell tries the new renderer once it restarts.",
+        &tr("The shell tries the new renderer once it restarts."),
     );
-    let (restart, _) = page.icon_button("restart_alt", true, "Restart shell", || {
+    let (restart, _) = page.icon_button("restart_alt", true, &tr("Restart shell"), || {
         process::restart_shell_on_settings("advanced")
     });
     restart.set_valign(gtk4::Align::Center);
@@ -134,7 +135,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     follow();
     page.watch(config::RENDERER, follow);
 
-    let usage = page.section("monitor_heart", "Shell usage");
+    let usage = page.section("monitor_heart", &tr("Shell usage"));
     let top = page.uniform_row(&usage);
     let cpu = privacy::tile(&top, "memory", "");
     let memory = privacy::tile(&top, "memory_alt", "");
@@ -147,10 +148,10 @@ pub fn build(context: &Context) -> Rc<Page> {
         let tiles = tiles.clone();
         meter.sample(move |usage| {
             let [cpu, memory, gpu, video] = tiles.as_ref();
-            cpu.set_text(&format!("CPU {}", percent(usage.cpu)));
-            memory.set_text(&format!("Memory {}", bytes(usage.memory)));
-            gpu.set_text(&format!("GPU {}", percent(usage.gpu)));
-            video.set_text(&format!("Video memory {}", bytes(usage.video)));
+            cpu.set_text(&format!("{} {}", tr("CPU"), percent(usage.cpu)));
+            memory.set_text(&format!("{} {}", tr("Memory"), bytes(usage.memory)));
+            gpu.set_text(&format!("{} {}", tr("GPU"), percent(usage.gpu)));
+            video.set_text(&format!("{} {}", tr("Video memory"), bytes(usage.video)));
         });
     });
     page

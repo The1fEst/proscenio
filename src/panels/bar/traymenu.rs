@@ -5,6 +5,7 @@ use gtk4::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::platform::dbusmenu::{self, Entry, Toggle};
 use crate::ui::anim::{self, EXPRESSIVE_EFFECTS};
 use crate::ui::theme::{SharedTheme, pixel_size, rounding};
@@ -241,7 +242,7 @@ fn page(menu: &Rc<Menu>, parent: &Entry, submenu: bool, pin: Option<Pin>) -> gtk
         let button = entry_button(menu);
         let content = Row::new(SPACING);
         content.append(&text::symbol("chevron_left", ICON as f64));
-        let label = text::styled("Back");
+        let label = text::styled(&tr("Back"));
         label.set_xalign(0.0);
         label.set_hexpand(true);
         content.append(&label);
@@ -257,7 +258,7 @@ fn page(menu: &Rc<Menu>, parent: &Entry, submenu: bool, pin: Option<Pin>) -> gtk
         let button = entry_button(menu);
         let content = Row::new(SPACING);
         content.append(&text::symbol("push_pin", PIN_ICON));
-        let label = text::styled(if pin.pinned { "Unpin" } else { "Pin" });
+        let label = text::styled(&tr(if pin.pinned { "Unpin" } else { "Pin" }));
         label.set_xalign(0.0);
         label.set_hexpand(true);
         content.append(&label);

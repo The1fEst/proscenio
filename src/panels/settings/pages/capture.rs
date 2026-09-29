@@ -1,38 +1,39 @@
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Style};
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
-    let paths = page.section("folder", "Save paths");
+    let paths = page.section("folder", &tr("Save paths"));
     page.tools_notice(
         &paths,
         &[&tools::GRIM, &tools::MAGICK, &tools::WL_COPY, &tools::SATTY],
-        "screenshots and the snip actions that need them fail",
+        &tr("screenshots and the snip actions that need them fail"),
     );
     page.tools_notice(
         &paths,
         &[&tools::WF_RECORDER, &tools::SLURP],
-        "screen recording fails",
+        &tr("screen recording fails"),
     );
     let screenshots = page.subsection(
         &paths,
-        "Screenshots",
-        "A screenshot always goes to the clipboard. Turn this on to keep a file as well.",
+        &tr("Screenshots"),
+        &tr("A screenshot always goes to the clipboard. Turn this on to keep a file as well."),
     );
     page.config_switch(
         &screenshots,
         "save",
-        "Also save to a file",
+        &tr("Also save to a file"),
         "/screenSnip/save",
         false,
     );
     let snip_path = page.config_text(
         &screenshots,
         Style::Filled,
-        "e.g. ~/Pictures/Screenshots",
+        &tr("e.g. ~/Pictures/Screenshots"),
         "/screenSnip/savePath",
         "",
     );
@@ -47,54 +48,57 @@ pub fn build(context: &Context) -> Rc<Page> {
     enable();
     page.watch("/screenSnip/save", enable);
 
-    let recordings = page.subsection(&paths, "Screen recordings", "");
+    let recordings = page.subsection(&paths, &tr("Screen recordings"), "");
     let videos = gtk4::glib::user_special_dir(gtk4::glib::UserDirectory::Videos)
         .map(|folder| folder.to_string_lossy().into_owned())
         .unwrap_or_default();
     page.config_text(
         &recordings,
         Style::Filled,
-        "e.g. ~/Videos/Recordings",
+        &tr("e.g. ~/Videos/Recordings"),
         "/screenRecord/savePath",
         &videos,
     );
 
-    let selector = page.section("screenshot_frame_2", "Region selector (screen snipping)");
+    let selector = page.section(
+        "screenshot_frame_2",
+        &tr("Region selector (screen snipping)"),
+    );
     page.config_switch(
         &selector,
         "arrow_selector_tool",
-        "Include the pointer",
+        &tr("Include the pointer"),
         "/regionSelector/showPointer",
         false,
     );
 
-    let hints = page.subsection(&selector, "Hint target regions", "");
+    let hints = page.subsection(&selector, &tr("Hint target regions"), "");
     let kinds = page.row(&hints);
     page.config_switch(
         &kinds,
         "select_window",
-        "Windows",
+        &tr("Windows"),
         "/regionSelector/targetRegions/windows",
         true,
     );
     page.config_switch(
         &kinds,
         "right_panel_open",
-        "Layers",
+        &tr("Layers"),
         "/regionSelector/targetRegions/layers",
         false,
     );
     page.config_switch(
         &hints,
         "label",
-        "Show region labels",
+        &tr("Show region labels"),
         "/regionSelector/targetRegions/showLabel",
         false,
     );
     page.config_spin_scaled(
         &hints,
         "opacity",
-        "Hint opacity (%)",
+        &tr("Hint opacity (%)"),
         "/regionSelector/targetRegions/opacity",
         0.3,
         100.0,
@@ -104,27 +108,27 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &hints,
         "padding",
-        "Selection padding",
+        &tr("Selection padding"),
         "/regionSelector/targetRegions/selectionPadding",
         5,
         (0, 50),
         1,
     );
 
-    let rectangle = page.subsection(&selector, "Rectangular selection", "");
+    let rectangle = page.subsection(&selector, &tr("Rectangular selection"), "");
     page.config_switch(
         &rectangle,
         "point_scan",
-        "Show aim lines",
+        &tr("Show aim lines"),
         "/regionSelector/rect/showAimLines",
         true,
     );
 
-    let circle = page.subsection(&selector, "Circle selection", "");
+    let circle = page.subsection(&selector, &tr("Circle selection"), "");
     page.config_spin(
         &circle,
         "eraser_size_3",
-        "Stroke width",
+        &tr("Stroke width"),
         "/regionSelector/circle/strokeWidth",
         6,
         (1, 20),
@@ -133,7 +137,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &circle,
         "screenshot_frame_2",
-        "Padding",
+        &tr("Padding"),
         "/regionSelector/circle/padding",
         10,
         (0, 100),

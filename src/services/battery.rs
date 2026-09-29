@@ -4,6 +4,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::core::config::{self, Config};
+use crate::core::i18n::{tr, trf};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::detach;
 use crate::platform::dbus;
@@ -163,25 +164,29 @@ impl Battery {
         };
         if now.low && !before.low {
             notify(
-                "Low battery",
-                "Consider plugging in your device",
+                &tr("Low battery"),
+                &tr("Consider plugging in your device"),
                 Urgency::Critical,
             );
             sound("dialog-warning");
         }
         if now.critical && !before.critical {
-            let body = format!(
-                "Please charge!\nAutomatic suspend triggers at {}%",
-                (config.battery_suspend * 100.0).round()
+            let body = trf(
+                "Please charge!\nAutomatic suspend triggers at %1%",
+                &[&(config.battery_suspend * 100.0).round().to_string()],
             );
-            notify("Critically low battery", &body, Urgency::Critical);
+            notify(&tr("Critically low battery"), &body, Urgency::Critical);
             sound("suspend-error");
         }
         if now.suspending && !before.suspending {
             detach(&["bash", "-c", "systemctl suspend || loginctl suspend"]);
         }
         if now.full && !before.full {
-            notify("Battery full", "Please unplug the charger", Urgency::Normal);
+            notify(
+                &tr("Battery full"),
+                &tr("Please unplug the charger"),
+                Urgency::Normal,
+            );
             sound("complete");
         }
         if let (Some(was), Some(plugged)) = (before.plugged, now.plugged) {

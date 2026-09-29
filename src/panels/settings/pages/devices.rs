@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::{Context, Page};
 use crate::platform::inputdevices::{self, Device, Group, Kind};
 use crate::services::deviceoptions::DeviceOptions;
@@ -23,7 +24,7 @@ fn icon(kind: Kind) -> &'static str {
 
 fn caption(device: &Device) -> String {
     if device.main {
-        format!("{} · main keyboard, {}", device.name, device.keymap)
+        trf("%1 · main keyboard, %2", &[&device.name, &device.keymap])
     } else {
         device.name.clone()
     }
@@ -33,8 +34,8 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let devices = DeviceOptions::new();
 
-    let section = page.section("devices_other", "Input devices");
-    page.notice(&section, "info", NOTICE);
+    let section = page.section("devices_other", &tr("Input devices"));
+    page.notice(&section, "info", &tr(NOTICE));
     let list = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     section.append(&list);
 

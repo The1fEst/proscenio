@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
+use crate::core::i18n::{tr, trf};
 use crate::core::scope::Scope;
 use crate::core::watch;
 use crate::services::background::BackgroundTasks;
@@ -32,10 +33,10 @@ pub fn build(
     let details = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
     let (today, today_label) = popup::header_with_label("calendar_month", "");
     details.append(&today);
-    let (uptime_row, uptime_value) = popup::value("timelapse", "System uptime:", &uptime());
+    let (uptime_row, uptime_value) = popup::value("timelapse", &tr("System uptime:"), &uptime());
     details.append(&uptime_row);
     let tasks = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    tasks.append(&popup::value("checklist", "To Do:", "").0);
+    tasks.append(&popup::value("checklist", &tr("To Do:"), "").0);
     let pending = popup::note(&pending_tasks());
     tasks.append(&pending);
     details.append(&tasks);
@@ -235,7 +236,7 @@ fn pending_tasks() -> String {
         .filter_map(|item| item.get("content").and_then(Value::as_str))
         .collect();
     if pending.is_empty() {
-        return "No pending tasks".to_owned();
+        return tr("No pending tasks");
     }
 
     let mut text = pending
@@ -246,7 +247,10 @@ fn pending_tasks() -> String {
         .collect::<Vec<_>>()
         .join("\n");
     if pending.len() > 5 {
-        text.push_str(&format!("\n  ... and {} more", pending.len() - 5));
+        text.push_str(&format!(
+            "\n  {}",
+            trf("... and %1 more", &[&(pending.len() - 5).to_string()])
+        ));
     }
     text
 }

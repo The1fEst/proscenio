@@ -22,7 +22,7 @@ const SECTIONS: [&str; 2] = ["section", "busy_section"];
 const SUBSECTIONS: [&str; 2] = ["subsection", "unkept_subsection"];
 
 pub fn settings(source: &str) -> Vec<Found> {
-    let tokens = tokenize(source);
+    let tokens = untranslated(tokenize(source));
     let mut containers: HashMap<String, Container> = HashMap::new();
     let mut found: Vec<Found> = Vec::new();
     for index in 0..tokens.len() {
@@ -319,7 +319,6 @@ fn shell_format(argument: &[Token]) -> Option<String> {
     let [
         Token::Punct('&'),
         Token::Ident(format),
-        Token::Punct('!'),
         Token::Punct('('),
         Token::Str(text),
         Token::Punct(','),
@@ -329,16 +328,41 @@ fn shell_format(argument: &[Token]) -> Option<String> {
         return None;
     };
     let shell_name = [
+        Token::Punct('&'),
+        Token::Punct('['),
         Token::Ident("shell".into()),
         Token::Punct(':'),
         Token::Punct(':'),
         Token::Ident("name".into()),
         Token::Punct('('),
         Token::Punct(')'),
+        Token::Punct(']'),
         Token::Punct(')'),
     ];
-    (format == "format" && rest == shell_name && text.matches("{}").count() == 1)
-        .then(|| text.clone())
+    (format == "trf" && rest == shell_name && text.matches("%1").count() == 1).then(|| text.clone())
+}
+
+fn untranslated(tokens: Vec<Token>) -> Vec<Token> {
+    let mut plain = Vec::with_capacity(tokens.len());
+    let mut index = 0;
+    while index < tokens.len() {
+        if let [
+            Token::Ident(call),
+            Token::Punct('('),
+            Token::Str(text),
+            Token::Punct(')'),
+            ..,
+        ] = &tokens[index..]
+            && call == "tr"
+        {
+            plain.push(Token::Str(text.clone()));
+            index += 4;
+            continue;
+        }
+        plain.push(tokens[index].clone());
+        index += 1;
+    }
+    plain
 }
 
 fn container_name(argument: &[Token]) -> Option<String> {
@@ -495,14 +519,14 @@ mod tests {
         let source = r#"
             pub fn build(context: &Context) -> Rc<Page> {
                 // page.config_switch(&main, "x", "Commented out", "/x", true);
-                let main = page.section("lock", "Screen");
+                let main = page.section("lock", &tr("Screen"));
                 let blurred = page.subsection(&main, "Style: Blurred", "");
-                page.config_switch(&blurred, "blur_on", "Enable blur", BLUR, true);
+                page.config_switch(&blurred, "blur_on", &tr("Enable blur"), BLUR, true);
                 let (radius_row, radius) = page.config_spin(&blurred, "", "Blur radius", "/r", 100, (0, 300), 10);
                 let row = page.row(&blurred);
                 hyprrows::switch(&page, &row, &options, "blur_on", "Behind windows", "decoration:blur:enabled");
                 hyprrows::spin(&page, &row, &options, &spin("blur_circular", "Passes", 1));
-                option_switch(&page, &blurred, &options, ("animation", "Reduced motion"), |o| true);
+                option_switch(&page, &blurred, &options, ("animation", tr("Reduced motion")), |o| true);
                 idle_timeout_row(&page, &main, &options, &IdleTimeout {
                     what: "lock",
                     title: "Automatic Screen Lock",
@@ -511,7 +535,7 @@ mod tests {
                     switch_text: "Lock the session",
                     fallback_minutes: 30,
                 });
-                page.config_switch(&main, "water_drop", &format!("Use Hyprlock (instead of {})", shell::name()), "/h", false);
+                page.config_switch(&main, "water_drop", &trf("Use Hyprlock (instead of %1)", &[shell::name()]), "/h", false);
                 page.selection(&main, vec![choice("Top", "vertical_align_top", "top")], "/p", Value::Null, |_| {});
                 let (content, _) = page.unkept_subsection(&main, &group.label, "");
                 page.config_switch(&content, "check", "Inside a named group", "/g", false);
@@ -529,7 +553,7 @@ mod tests {
                 found(&["Screen", "Style: Blurred"], "Reduced motion"),
                 found(&["Screen"], "Automatic Screen Lock"),
                 found(&["Screen", "Automatic Screen Lock"], "Lock the session"),
-                found(&["Screen"], "Use Hyprlock (instead of {})"),
+                found(&["Screen"], "Use Hyprlock (instead of %1)"),
                 found(&["Screen"], "Inside a named group"),
             ]
         );

@@ -4,6 +4,7 @@ use std::f64::consts::PI;
 use std::rc::Rc;
 
 use crate::core::config::Config;
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::panels::mediacontrols::{MediaControls, clean_title};
 use crate::panels::notifications::indicator;
@@ -189,7 +190,7 @@ fn media_button(
     );
 
     let details = popup::column();
-    details.append(&popup::header("music_note", "Media"));
+    details.append(&popup::header("music_note", &tr("Media")));
     let track = text::styled("");
     text::set_color(&track, "colOnSurfaceVariant");
     track.set_xalign(0.0);
@@ -202,7 +203,7 @@ fn media_button(
                 .as_ref()
                 .map(|track| clean_title(&track.title))
                 .filter(|title| !title.is_empty())
-                .unwrap_or_else(|| "No media".to_owned());
+                .unwrap_or_else(|| tr("No media"));
             let artist = active.map(|track| track.artist).unwrap_or_default();
             track.set_text(&if artist.is_empty() {
                 title

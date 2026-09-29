@@ -5,6 +5,7 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::platform::hypr;
 use crate::services::polkit::Polkit;
 use crate::ui::theme::SharedTheme;
@@ -118,7 +119,7 @@ impl PolkitWindows {
         text::set_color(&icon, "colSecondary");
         dialog.column.add(&Centred::integral(&icon), Place::wide());
 
-        let title = windowdialog::title("Authentication");
+        let title = windowdialog::title(&tr("Authentication"));
         title.set_xalign(0.5);
         title.set_justify(gtk4::Justification::Center);
         dialog.column.add(&title, Place::wide());
@@ -137,8 +138,8 @@ impl PolkitWindows {
 
         let (row, mut place) = windowdialog::button_row();
         place.bottom = BUTTON_ROW_BOTTOM;
-        let cancel = windowdialog::button(&self.theme, "Cancel");
-        let ok = windowdialog::button(&self.theme, "OK");
+        let cancel = windowdialog::button(&self.theme, &tr("Cancel"));
+        let ok = windowdialog::button(&self.theme, &tr("OK"));
         ok.set_sensitive(false);
         row.append(&windowdialog::spacer());
         row.append(&cancel);
@@ -214,5 +215,5 @@ fn clean_prompt(prompt: &str, visible: bool) -> String {
     if !cleaned.is_empty() {
         return cleaned.to_owned();
     }
-    if visible { "Input" } else { "Password" }.to_owned()
+    tr(if visible { "Input" } else { "Password" })
 }

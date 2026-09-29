@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::actions;
+use crate::core::i18n::{tr, trf};
 use crate::core::process;
 use crate::core::scope::Scope;
 use crate::panels::bar::bluetooth;
@@ -64,7 +65,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
                 status: name.clone(),
                 has_status: true,
                 icon: services.net.symbol.borrow().clone(),
-                tooltip: format!("{name} | Right-click to configure"),
+                tooltip: trf("%1 | Right-click to configure", &[&name]),
                 toggled: *services.net.wifi_status.borrow() != "disabled",
                 available: true,
             }
@@ -73,14 +74,12 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             let connected = services.bluez.connected_name.borrow().clone();
             Look {
                 name: "Bluetooth",
-                status: connected
-                    .clone()
-                    .unwrap_or_else(|| "Not connected".to_owned()),
+                status: connected.clone().unwrap_or_else(|| tr("Not connected")),
                 has_status: true,
                 icon: bluetooth::symbol(&services.bluez).to_owned(),
-                tooltip: format!(
-                    "{} | Right-click to configure",
-                    connected.unwrap_or_else(|| "Bluetooth".to_owned())
+                tooltip: trf(
+                    "%1 | Right-click to configure",
+                    &[&connected.unwrap_or_else(|| tr("Bluetooth"))],
                 ),
                 toggled: services.bluez.powered.get(),
                 available: services.bluez.available.get(),
@@ -91,7 +90,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             status: String::new(),
             has_status: true,
             icon: "vpn_key".to_owned(),
-            tooltip: "WireGuard".to_owned(),
+            tooltip: tr("WireGuard"),
             toggled: services.net.wireguard.get(),
             available: true,
         },
@@ -102,10 +101,10 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
                 .is_some_and(|audio| audio.sink_muted.get());
             Look {
                 name: "Audio output",
-                status: if muted { "Muted" } else { "Unmuted" }.to_owned(),
+                status: tr(if muted { "Muted" } else { "Unmuted" }),
                 has_status: true,
                 icon: if muted { "volume_off" } else { "volume_up" }.to_owned(),
-                tooltip: "Audio output | Right-click for volume mixer & device selector".to_owned(),
+                tooltip: tr("Audio output | Right-click for volume mixer & device selector"),
                 toggled: !muted,
                 available: true,
             }
@@ -117,10 +116,10 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
                 .is_some_and(|audio| audio.source_muted.get());
             Look {
                 name: "Audio input",
-                status: if muted { "Muted" } else { "Enabled" }.to_owned(),
+                status: tr(if muted { "Muted" } else { "Enabled" }),
                 has_status: true,
                 icon: if muted { "mic_off" } else { "mic" }.to_owned(),
-                tooltip: "Audio input | Right-click for volume mixer & device selector".to_owned(),
+                tooltip: tr("Audio input | Right-click for volume mixer & device selector"),
                 toggled: !muted,
                 available: true,
             }
@@ -129,7 +128,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             let shown = !services.notifications.silent.get();
             Look {
                 name: "Notifications",
-                status: if shown { "Show" } else { "Silent" }.to_owned(),
+                status: tr(if shown { "Show" } else { "Silent" }),
                 has_status: true,
                 icon: if shown {
                     "notifications_active"
@@ -137,7 +136,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
                     "notifications_paused"
                 }
                 .to_owned(),
-                tooltip: "Show notifications".to_owned(),
+                tooltip: tr("Show notifications"),
                 toggled: shown,
                 available: true,
             }
@@ -147,7 +146,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             status: String::new(),
             has_status: false,
             icon: "screenshot_region".to_owned(),
-            tooltip: "Screen snip".to_owned(),
+            tooltip: tr("Screen snip"),
             toggled: false,
             available: true,
         },
@@ -156,7 +155,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             status: String::new(),
             has_status: false,
             icon: "colorize".to_owned(),
-            tooltip: "Color picker".to_owned(),
+            tooltip: tr("Color picker"),
             toggled: false,
             available: true,
         },
@@ -164,12 +163,11 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             let profile = services.power.profile.borrow().clone();
             Look {
                 name: "Power Profile",
-                status: match profile.as_str() {
+                status: tr(match profile.as_str() {
                     "power-saver" => "Power Saver",
                     "performance" => "Performance",
                     _ => "Balanced",
-                }
-                .to_owned(),
+                }),
                 has_status: true,
                 icon: match profile.as_str() {
                     "power-saver" => "energy_savings_leaf",
@@ -177,7 +175,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
                     _ => "airwave",
                 }
                 .to_owned(),
-                tooltip: "Click to cycle through power profiles".to_owned(),
+                tooltip: tr("Click to cycle through power profiles"),
                 toggled: profile != "balanced",
                 available: true,
             }
@@ -187,7 +185,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             status: String::new(),
             has_status: true,
             icon: "graphic_eq".to_owned(),
-            tooltip: "EasyEffects | Right-click to configure".to_owned(),
+            tooltip: tr("EasyEffects | Right-click to configure"),
             toggled: services.easyeffects.active.get(),
             available: services.easyeffects.available.get(),
         },
@@ -196,7 +194,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             status: String::new(),
             has_status: true,
             icon: "cloud_lock".to_owned(),
-            tooltip: "Cloudflare WARP (1.1.1.1)".to_owned(),
+            tooltip: tr("Cloudflare WARP (1.1.1.1)"),
             toggled: services.warp.connected.get(),
             available: services.warp.available.get(),
         },
@@ -210,7 +208,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
                 "keyboard"
             }
             .to_owned(),
-            tooltip: "On-screen keyboard".to_owned(),
+            tooltip: tr("On-screen keyboard"),
             toggled: services.states.osk_open.get(),
             available: true,
         },
@@ -219,7 +217,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             status: String::new(),
             has_status: true,
             icon: "coffee".to_owned(),
-            tooltip: "Keep system awake".to_owned(),
+            tooltip: tr("Keep system awake"),
             toggled: services.session.awake.get(),
             available: true,
         },
@@ -230,27 +228,26 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
                 name: "Night Light",
                 status: format!(
                     "{}{}",
-                    if auto { "Auto, " } else { "" },
-                    if on { "Active" } else { "Inactive" }
+                    if auto { tr("Auto, ") } else { String::new() },
+                    tr(if on { "Active" } else { "Inactive" })
                 ),
                 has_status: true,
                 icon: if auto { "night_sight_auto" } else { "bedtime" }.to_owned(),
-                tooltip: "Night Light | Right-click to configure".to_owned(),
+                tooltip: tr("Night Light | Right-click to configure"),
                 toggled: on,
                 available: true,
             }
         }
         _ => Look {
             name: "Dark Mode",
-            status: if services.session.dark.get() {
+            status: tr(if services.session.dark.get() {
                 "Dark"
             } else {
                 "Light"
-            }
-            .to_owned(),
+            }),
             has_status: true,
             icon: "contrast".to_owned(),
-            tooltip: "Dark Mode".to_owned(),
+            tooltip: tr("Dark Mode"),
             toggled: services.session.dark.get(),
             available: true,
         },

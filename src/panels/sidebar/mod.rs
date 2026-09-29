@@ -12,6 +12,7 @@ use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 use crate::core::config::Config;
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::scope::Scope;
 use crate::panels::notifications::list;
@@ -295,7 +296,7 @@ fn sliders(
                 } else {
                     vec![0.3 + level * 0.7]
                 });
-                slider.set_tooltip(&format!("Gamma {gamma}%"));
+                slider.set_tooltip(&format!("{} {gamma}%", tr("Gamma")));
             })
         };
         show(&slider);

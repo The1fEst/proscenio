@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page, Style};
 
 const TWENTY_FOUR_HOUR: &str = "hh:mm";
@@ -11,22 +12,22 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
     let main = page.section("", "");
-    let format = page.subsection(&main, "Time Format", "");
+    let format = page.subsection(&main, &tr("Time Format"), "");
     page.selection(
         &format,
         vec![
             Choice {
-                label: "24h".to_owned(),
+                label: tr("24h"),
                 icon: "",
                 value: Value::from(TWENTY_FOUR_HOUR),
             },
             Choice {
-                label: "12h am/pm".to_owned(),
+                label: tr("12h am/pm"),
                 icon: "",
                 value: Value::from("h:mm ap"),
             },
             Choice {
-                label: "12h AM/PM".to_owned(),
+                label: tr("12h AM/PM"),
                 icon: "",
                 value: Value::from("h:mm AP"),
             },
@@ -40,45 +41,51 @@ pub fn build(context: &Context) -> Rc<Page> {
         },
     );
 
-    let clock = page.section("nest_clock_farsight_analog", "Clock & Calendar");
-    let seconds = page.config_switch(&clock, "pace", "Seconds", "/time/secondPrecision", false);
+    let clock = page.section("nest_clock_farsight_analog", &tr("Clock & Calendar"));
+    let seconds = page.config_switch(
+        &clock,
+        "pace",
+        &tr("Seconds"),
+        "/time/secondPrecision",
+        false,
+    );
     page.tip(
         &seconds.button,
-        "Enable if you want clocks to show seconds accurately",
+        &tr("Enable if you want clocks to show seconds accurately"),
     );
     let dates = page.subsection(
         &clock,
-        "Date formats",
-        "Qt date format strings, see https://doc.qt.io/qt-6/qdate.html#toString",
+        &tr("Date formats"),
+        &tr("Qt date format strings, see https://doc.qt.io/qt-6/qdate.html#toString"),
     );
     page.config_text(
         &dates,
         Style::Outlined,
-        "Date (e.g. ddd, dd/MM)",
+        &tr("Date (e.g. ddd, dd/MM)"),
         "/time/dateFormat",
         "ddd d MMM",
     );
     page.config_text(
         &dates,
         Style::Outlined,
-        "Short date (e.g. dd/MM)",
+        &tr("Short date (e.g. dd/MM)"),
         "/time/shortDateFormat",
         "dd/MM",
     );
     page.config_text(
         &dates,
         Style::Outlined,
-        "Date with year (e.g. dd/MM/yyyy)",
+        &tr("Date with year (e.g. dd/MM/yyyy)"),
         "/time/dateWithYearFormat",
         "dd/MM/yyyy",
     );
 
-    let pomodoro = page.section("timer", "Pomodoro");
+    let pomodoro = page.section("timer", &tr("Pomodoro"));
     let first = page.uniform_row(&pomodoro);
     page.config_spin_multiple(
         &first,
         "target",
-        "Focus (min)",
+        &tr("Focus (min)"),
         "/time/pomodoro/focus",
         1500,
         60,
@@ -88,7 +95,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin_multiple(
         &first,
         "coffee",
-        "Break (min)",
+        &tr("Break (min)"),
         "/time/pomodoro/breakTime",
         300,
         60,
@@ -99,7 +106,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin_multiple(
         &second,
         "airline_seat_recline_extra",
-        "Long break (min)",
+        &tr("Long break (min)"),
         "/time/pomodoro/longBreak",
         900,
         60,
@@ -109,13 +116,13 @@ pub fn build(context: &Context) -> Rc<Page> {
     let (cycles, _) = page.config_spin(
         &second,
         "repeat",
-        "Cycles before long break",
+        &tr("Cycles before long break"),
         "/time/pomodoro/cyclesBeforeLongBreak",
         4,
         (1, 12),
         1,
     );
-    page.tip(&cycles, "Cycles before long break");
+    page.tip(&cycles, &tr("Cycles before long break"));
     page
 }
 

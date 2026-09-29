@@ -5,6 +5,7 @@ use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+use crate::core::i18n::{tr, trf};
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::platform::defaultapps::{self, Role};
@@ -99,14 +100,14 @@ fn app_dialog(
     dialog
         .column
         .add(&windowdialog::title(prompt), Place::default());
-    let search = TextField::new(theme, Style::Outlined, "Search applications");
+    let search = TextField::new(theme, Style::Outlined, &tr("Search applications"));
     dialog.column.add(&search.root, Place::wide());
     dialog
         .column
         .add(&windowdialog::separator(), windowdialog::separator_place());
 
     let list = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    let empty = text::styled("No matches");
+    let empty = text::styled(&tr("No matches"));
     text::set_color(&empty, "colSubtext");
     empty.set_xalign(0.0);
     empty.set_margin_start(windowdialog::PADDING as i32);
@@ -185,7 +186,7 @@ fn app_dialog(
         .add(&windowdialog::separator(), windowdialog::separator_place());
     let (buttons, place) = windowdialog::button_row();
     buttons.append(&windowdialog::spacer());
-    let cancel = windowdialog::button(theme, "Cancel");
+    let cancel = windowdialog::button(theme, &tr("Cancel"));
     cancel.connect_clicked({
         let dialog = Rc::downgrade(&dialog);
         move |_| {
@@ -229,13 +230,13 @@ fn summary(rule: &Rule) -> String {
         return format!("{} = {}", rule.rule, rule.value);
     };
     match kind {
-        Kind::Fixed(_) => (*name).to_owned(),
+        Kind::Fixed(_) => tr(name),
         Kind::Percent => format!(
             "{}: {}%",
-            name.replace(" (%)", ""),
+            tr(name).replace(" (%)", ""),
             (rule.value.parse::<f64>().unwrap_or(f64::NAN) * 100.0).round()
         ),
-        Kind::Text => format!("{name}: {}", rule.value),
+        Kind::Text => format!("{}: {}", tr(name), rule.value),
     }
 }
 
@@ -281,7 +282,7 @@ impl Roles {
         }
         let mut combos = Vec::new();
         for role in found {
-            let (group, _) = page.unkept_subsection(&self.holder, role.title, "");
+            let (group, _) = page.unkept_subsection(&self.holder, &tr(role.title), "");
             let combo = ComboBox::new(&page.theme);
             combo.set_icon(role_icon(role.key));
             combo.button.set_hexpand(true);
@@ -289,14 +290,14 @@ impl Roles {
             let mut names: Vec<String> = Vec::new();
             let mut entries: Vec<Option<String>> = Vec::new();
             if role.default.is_empty() {
-                names.push(NOT_SET.to_owned());
+                names.push(tr(NOT_SET));
                 entries.push(None);
             }
             for candidate in role.candidates {
                 names.push(candidate.name);
                 entries.push(Some(candidate.entry));
             }
-            names.push(OTHER.to_owned());
+            names.push(tr(OTHER));
             let index = entries
                 .iter()
                 .position(|entry| entry.as_deref().unwrap_or_default() == role.default)
@@ -321,7 +322,7 @@ impl Roles {
                             if let Some(combo) = combo.upgrade() {
                                 combo.set_items(&names, index as i32);
                             }
-                            let dialog = app_dialog(&theme, role_prompt(key), {
+                            let dialog = app_dialog(&theme, &tr(role_prompt(key)), {
                                 let roles = Rc::downgrade(&roles);
                                 move |entry| {
                                     defaultapps::set(key, &entry);
@@ -398,7 +399,7 @@ impl Rules {
                 }
             });
             inside.append(&remove);
-            rows.push(Box::new(page.unkept_tip(&remove, "Remove")));
+            rows.push(Box::new(page.unkept_tip(&remove, &tr("Remove"))));
             card.append(&inside);
             self.list.append(&card);
         }
@@ -409,7 +410,7 @@ impl Rules {
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
-    let defaults = page.section("apps", "Default Apps");
+    let defaults = page.section("apps", &tr("Default Apps"));
     let roles = Rc::new(Roles {
         page: Rc::downgrade(&page),
         holder: defaults.clone(),
@@ -442,9 +443,9 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.keep(roles);
     page.keep(Disconnect(monitor, Some(watched), rescan));
 
-    let windows = page.section("select_window", "Window rules");
-    let listed = page.subsection(&windows, "What each application's windows do", "");
-    let empty = text::styled("No rules yet");
+    let windows = page.section("select_window", &tr("Window rules"));
+    let listed = page.subsection(&windows, &tr("What each application's windows do"), "");
+    let empty = text::styled(&tr("No rules yet"));
     text::set_color(&empty, "colSubtext");
     let empty = Centred::new(&empty);
     empty.set_halign(gtk4::Align::Start);
@@ -460,10 +461,12 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let adding = page.subsection(
         &windows,
-        "Add a rule",
-        "The application is matched by its window class, which is what hyprctl clients calls class",
+        &tr("Add a rule"),
+        &tr(
+            "The application is matched by its window class, which is what hyprctl clients calls class",
+        ),
     );
-    let class_field = TextField::new(&page.theme, Style::Outlined, "Window class");
+    let class_field = TextField::new(&page.theme, Style::Outlined, &tr("Window class"));
     class_field.root.set_hexpand(true);
     adding.append(&class_field.root);
     let classes = Rc::new(RefCell::new(Vec::new()));
@@ -505,10 +508,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
     let chosen = Rc::new(Cell::new(0usize));
     let kinds = page.combo(&adding, "rule");
-    let names: Vec<String> = RULE_KINDS
-        .iter()
-        .map(|(name, _, _)| (*name).to_owned())
-        .collect();
+    let names: Vec<String> = RULE_KINDS.iter().map(|(name, _, _)| tr(name)).collect();
     kinds.set_items(&names, 0);
     let value_field = TextField::new(&page.theme, Style::Outlined, "");
     value_field.root.set_hexpand(true);
@@ -522,10 +522,10 @@ pub fn build(context: &Context) -> Rc<Page> {
             };
             let kind = RULE_KINDS[chosen.get()].2;
             field.root.set_visible(!matches!(kind, Kind::Fixed(_)));
-            field.set_placeholder(if kind == Kind::Percent {
-                "100"
+            field.set_placeholder(&if kind == Kind::Percent {
+                tr("100")
             } else {
-                "e.g. 3 or special:magic"
+                tr("e.g. 3 or special:magic")
             });
         }
     };
@@ -542,7 +542,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             show_kind();
         }
     });
-    let (add, _) = page.icon_button("add", true, "Add rule", {
+    let (add, _) = page.icon_button("add", true, &tr("Add rule"), {
         let class_field = Rc::downgrade(&class_field);
         let value_field = Rc::downgrade(&value_field);
         let rules = Rc::downgrade(&rules);
@@ -596,10 +596,10 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.keep(value_field);
     page.keep(rules);
 
-    let commands = page.section("terminal", "Commands");
-    let opened = page.subsection(&commands, "What the shell's own buttons open", "");
+    let commands = page.section("terminal", &tr("Commands"));
+    let opened = page.subsection(&commands, &tr("What the shell's own buttons open"), "");
     for (placeholder, pointer, default) in COMMANDS {
-        page.config_text(&opened, Style::Outlined, placeholder, pointer, default);
+        page.config_text(&opened, Style::Outlined, &tr(placeholder), pointer, default);
     }
     let shown: Rc<RefCell<Option<gtk4::Box>>> = Rc::new(RefCell::new(None));
     let follow = {
@@ -613,9 +613,9 @@ pub fn build(context: &Context) -> Rc<Page> {
             }
             let missing = missing_commands();
             if !missing.is_empty() {
-                let message = format!(
-                    "Not installed: {}. The buttons that run these do nothing until the command names an installed program.",
-                    missing.join(", ")
+                let message = trf(
+                    "Not installed: %1. The buttons that run these do nothing until the command names an installed program.",
+                    &[&missing.join(", ")],
                 );
                 shown.replace(Some(page.notice(&opened, "info", &message)));
             }
@@ -634,7 +634,7 @@ fn missing_commands() -> Vec<String> {
         .filter_map(|(name, pointer, default)| {
             let command = config::value_str(pointer).unwrap_or_else(|| (*default).to_owned());
             let program = tools::command_missing(&command)?;
-            Some(format!("{program} ({name})"))
+            Some(format!("{program} ({})", tr(name)))
         })
         .collect()
 }

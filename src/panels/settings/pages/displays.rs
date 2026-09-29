@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use crate::core::i18n::{tr, trf};
 use crate::core::{config, tools};
 use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Choice, Context, Page, Style};
@@ -178,27 +179,27 @@ fn position<T: PartialEq>(values: &[T], current: &T) -> i32 {
 }
 
 fn labels<T>(list: &[(&str, T)]) -> Vec<String> {
-    list.iter().map(|(label, _)| (*label).to_owned()).collect()
+    list.iter().map(|(label, _)| tr(label)).collect()
 }
 
 fn color_profiles(monitor: &Monitor) -> Vec<(String, &'static str)> {
-    let model = |fallback: &str| {
+    let model = |fallback: String| {
         if monitor.model.is_empty() {
-            fallback.to_owned()
+            fallback
         } else {
             monitor.model.clone()
         }
     };
     vec![
-        ("Automatic".to_owned(), "auto"),
-        ("sRGB".to_owned(), "srgb"),
-        ("DCI P3".to_owned(), "dcip3"),
-        ("Display P3".to_owned(), "dp3"),
-        ("Adobe RGB".to_owned(), "adobe"),
-        ("Wide color".to_owned(), "wide"),
-        (model("Display profile"), "edid"),
-        ("HDR".to_owned(), "hdr"),
-        (format!("HDR ({})", model("display profile")), "hdredid"),
+        (tr("Automatic"), "auto"),
+        (tr("sRGB"), "srgb"),
+        (tr("DCI P3"), "dcip3"),
+        (tr("Display P3"), "dp3"),
+        (tr("Adobe RGB"), "adobe"),
+        (tr("Wide color"), "wide"),
+        (model(tr("Display profile")), "edid"),
+        (tr("HDR"), "hdr"),
+        (trf("HDR (%1)", &[&model(tr("display profile"))]), "hdredid"),
     ]
 }
 
@@ -319,21 +320,21 @@ impl State {
         let primary = self.displays.primary();
         let target = self.mirror_target(&monitor);
         let mut use_as_values = vec!["main".to_owned(), "extend".to_owned()];
-        let mut use_as_labels = vec!["Main display".to_owned(), "Extended display".to_owned()];
+        let mut use_as_labels = vec![tr("Main display"), tr("Extended display")];
         for other in &others {
             use_as_values.push(other.name.clone());
-            use_as_labels.push(format!(
-                "Mirror for {}",
-                if other.model.is_empty() {
-                    &other.name
+            use_as_labels.push(trf(
+                "Mirror for %1",
+                &[if other.model.is_empty() {
+                    other.name.as_str()
                 } else {
-                    &other.model
-                }
+                    other.model.as_str()
+                }],
             ));
         }
         if can_turn_off(&monitor, &others) {
             use_as_values.push("off".to_owned());
-            use_as_labels.push("Off".to_owned());
+            use_as_labels.push(tr("Off"));
         }
         let current_use = if monitor.disabled {
             "off".to_owned()
@@ -364,7 +365,10 @@ impl State {
             .iter()
             .map(|mode| {
                 if mode.native {
-                    format!("{} × {} (Default)", mode.width, mode.height)
+                    trf(
+                        "%1 × %2 (Default)",
+                        &[&mode.width.to_string(), &mode.height.to_string()],
+                    )
                 } else {
                     format!("{} × {}", mode.width, mode.height)
                 }
@@ -378,7 +382,10 @@ impl State {
             .iter()
             .map(|rate| rate.round() as i64)
             .collect();
-        let rate_labels: Vec<String> = rates.iter().map(|rate| format!("{rate} Hz")).collect();
+        let rate_labels: Vec<String> = rates
+            .iter()
+            .map(|rate| trf("%1 Hz", &[&rate.to_string()]))
+            .collect();
         widgets.rate.set_items(
             &rate_labels,
             position(&rates, &(monitor.refresh_rate.round() as i64)),
@@ -433,7 +440,7 @@ impl State {
         );
         let icc = self.displays.value_of(&name, "icc");
         let mut icc_values = vec![String::new()];
-        let mut icc_labels = vec!["None".to_owned()];
+        let mut icc_labels = vec![tr("None")];
         for path in &self.displays.icc_profiles {
             icc_values.push(path.clone());
             icc_labels.push(path.rsplit('/').next().unwrap_or(path).to_owned());
@@ -498,7 +505,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let main = page.section("", "");
     let choices = gtk4::Box::new(gtk4::Orientation::Horizontal, 4);
     main.append(&choices);
-    let (rescan, _) = page.icon_button("refresh", true, "Rescan displays", {
+    let (rescan, _) = page.icon_button("refresh", true, &tr("Rescan displays"), {
         let state = Rc::downgrade(&state);
         move || {
             hypr::request("dispatch hl.dsp.force_renderer_reload()");
@@ -511,10 +518,10 @@ pub fn build(context: &Context) -> Rc<Page> {
     choices.append(&rescan);
     page.tip(
         &rescan,
-        "Asks every monitor what it can do again. Modes a display only reports after it is fully awake show up after this.",
+        &tr("Asks every monitor what it can do again. Modes a display only reports after it is fully awake show up after this."),
     );
 
-    let use_as_group = page.subsection(&main, "Use as", "");
+    let use_as_group = page.subsection(&main, &tr("Use as"), "");
     let use_as = page.combo(&use_as_group, "desktop_windows");
     use_as.connect_activated({
         let state = Rc::downgrade(&state);
@@ -593,7 +600,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     });
 
-    let resolution_group = page.subsection(&main, "Resolution", "");
+    let resolution_group = page.subsection(&main, &tr("Resolution"), "");
     let resolution = page.combo(&resolution_group, "aspect_ratio");
     resolution.connect_activated({
         let state = Rc::downgrade(&state);
@@ -617,7 +624,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             ]);
         }
     });
-    let all = page.switch(&main, "list", "Show all resolutions", {
+    let all = page.switch(&main, "list", &tr("Show all resolutions"), {
         let state = Rc::downgrade(&state);
         move |on| {
             if let Some(state) = state.upgrade() {
@@ -635,7 +642,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     });
 
-    let rate_group = page.subsection(&main, "Refresh rate", "");
+    let rate_group = page.subsection(&main, &tr("Refresh rate"), "");
     let rate = page.combo(&rate_group, "refresh");
     rate.connect_activated({
         let state = Rc::downgrade(&state);
@@ -652,15 +659,27 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     });
 
-    let rotation = keyed_combo(&page, &state, &main, "Rotation", "", "screen_rotation", {
-        move |index| ("transform", ROTATIONS[index].1.to_string())
-    });
-    let vrr = keyed_combo(&page, &state, &main, "Variable refresh rate", "", "sync", {
-        move |index| ("vrr", VRR[index].1.to_string())
-    });
+    let rotation = keyed_combo(
+        &page,
+        &state,
+        &main,
+        &tr("Rotation"),
+        "",
+        "screen_rotation",
+        move |index| ("transform", ROTATIONS[index].1.to_string()),
+    );
+    let vrr = keyed_combo(
+        &page,
+        &state,
+        &main,
+        &tr("Variable refresh rate"),
+        "",
+        "sync",
+        move |index| ("vrr", VRR[index].1.to_string()),
+    );
 
-    let color = page.section("palette", "Color");
-    let profile_group = page.subsection(&color, "Color profile", "");
+    let color = page.section("palette", &tr("Color"));
+    let profile_group = page.subsection(&color, &tr("Color profile"), "");
     let profile = page.combo(&profile_group, "colors");
     profile.connect_activated({
         let state = Rc::downgrade(&state);
@@ -676,14 +695,14 @@ pub fn build(context: &Context) -> Rc<Page> {
             }
         }
     });
-    let depth = keyed_combo(&page, &state, &color, "Bit depth", "", "gradient", {
+    let depth = keyed_combo(&page, &state, &color, &tr("Bit depth"), "", "gradient", {
         move |index| ("bitdepth", DEPTHS[index].1.to_string())
     });
     let wide = keyed_combo(
         &page,
         &state,
         &color,
-        "Force wide color",
+        &tr("Force wide color"),
         "",
         "invert_colors",
         move |index| ("supports_wide_color", FORCED[index].1.to_string()),
@@ -692,8 +711,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         &page,
         &state,
         &color,
-        "Force HDR",
-        "Forcing this on a display that does not report HDR can leave the screen black.",
+        &tr("Force HDR"),
+        &tr("Forcing this on a display that does not report HDR can leave the screen black."),
         "hdr_on",
         move |index| ("supports_hdr", FORCED[index].1.to_string()),
     );
@@ -701,47 +720,55 @@ pub fn build(context: &Context) -> Rc<Page> {
         &page,
         &state,
         &color,
-        "SDR transfer function",
+        &tr("SDR transfer function"),
         "",
         "functions",
         move |index| ("sdr_eotf", EOTFS[index].1.to_owned()),
     );
-    let icc = keyed_combo(&page, &state, &color, "ICC profile", "", "description", {
-        let state = Rc::downgrade(&state);
-        move |index| {
-            let path = match index {
-                0 => String::new(),
-                other => state
-                    .upgrade()
-                    .and_then(|state| state.displays.icc_profiles.get(other - 1).cloned())
-                    .unwrap_or_default(),
-            };
-            ("icc", path)
-        }
-    });
+    let icc = keyed_combo(
+        &page,
+        &state,
+        &color,
+        &tr("ICC profile"),
+        "",
+        "description",
+        {
+            let state = Rc::downgrade(&state);
+            move |index| {
+                let path = match index {
+                    0 => String::new(),
+                    other => state
+                        .upgrade()
+                        .and_then(|state| state.displays.icc_profiles.get(other - 1).cloned())
+                        .unwrap_or_default(),
+                };
+                ("icc", path)
+            }
+        },
+    );
 
     let mut spins = Vec::new();
-    let luminance = page.section("brightness_6", "Luminance");
+    let luminance = page.section("brightness_6", &tr("Luminance"));
     for rule in &SDR_RULES {
         let (row, spin) = rule_spin(&page, &state, &luminance, rule);
         if rule.key == "sdrbrightness" {
             page.tip(
                 &row,
-                "How bright content that is not HDR is drawn while the display is in HDR",
+                &tr("How bright content that is not HDR is drawn while the display is in HDR"),
             );
         }
         spins.push(spin);
     }
     let display_group = page.subsection(
         &luminance,
-        "Display",
-        "A luminance of −1 leaves the figure to what the display reports.",
+        &tr("Display"),
+        &tr("A luminance of −1 leaves the figure to what the display reports."),
     );
     for rule in &DISPLAY_RULES {
         spins.push(rule_spin(&page, &state, &display_group, rule).1);
     }
 
-    let reserved = page.section("border_outer", "Reserved area");
+    let reserved = page.section("border_outer", &tr("Reserved area"));
     for (side, icon, label) in [
         ("top", "vertical_align_top", "Top"),
         ("right", "align_horizontal_right", "Right"),
@@ -753,7 +780,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             &state,
             &reserved,
             icon,
-            label,
+            &tr(label),
             (0, 2000),
             1,
             0,
@@ -765,11 +792,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         spins.push(spin);
     }
 
-    let every = page.section("desktop_windows", "All displays");
+    let every = page.section("desktop_windows", &tr("All displays"));
     let auto_group = page.subsection(
         &every,
-        "Auto HDR",
-        "Switches to HDR while a fullscreen window has HDR content.",
+        &tr("Auto HDR"),
+        &tr("Switches to HDR while a fullscreen window has HDR content."),
     );
     let auto_hdr = page.combo(&auto_group, "hdr_auto");
     auto_hdr.connect_activated({
@@ -784,8 +811,8 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
     let sync_group = page.subsection(
         &every,
-        "Variable refresh rate",
-        "What a display set to follow the global setting does.",
+        &tr("Variable refresh rate"),
+        &tr("What a display set to follow the global setting does."),
     );
     hyprrows::combo(
         &page,
@@ -795,26 +822,30 @@ pub fn build(context: &Context) -> Rc<Page> {
         (GLOBAL_VRR, "0"),
         &GLOBAL_VRR_MODES,
     );
-    let xwayland = page.subsection(&every, "X11 apps", "");
+    let xwayland = page.subsection(&every, &tr("X11 apps"), "");
     let sharp = hyprrows::switch(
         &page,
         &xwayland,
         &state.options,
         "high_density",
-        "Keep X11 apps sharp on scaled displays",
+        &tr("Keep X11 apps sharp on scaled displays"),
         ZERO_SCALING,
     );
     page.tip(
         &sharp.button,
-        "X11 apps are drawn unscaled instead of stretched. They look sharp, and small unless they scale themselves (GDK_SCALE, QT_SCALE_FACTOR).",
+        &tr("X11 apps are drawn unscaled instead of stretched. They look sharp, and small unless they scale themselves (GDK_SCALE, QT_SCALE_FACTOR)."),
     );
 
-    let night = page.section("nightlight", "Night light");
-    page.tools_notice(&night, &[&tools::HYPRSUNSET], "night light does nothing");
+    let night = page.section("nightlight", &tr("Night light"));
+    page.tools_notice(
+        &night,
+        &[&tools::HYPRSUNSET],
+        &tr("night light does nothing"),
+    );
     page.config_switch(
         &night,
         "schedule",
-        "Automatic schedule",
+        &tr("Automatic schedule"),
         NIGHT_AUTOMATIC,
         true,
     );
@@ -822,7 +853,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let from = page.text_field(
         &times,
         Style::Outlined,
-        "From (HH:mm)",
+        &tr("From (HH:mm)"),
         || config::value_str("/light/night/from").unwrap_or_else(|| "19:00".to_owned()),
         |text| config::store_value("/light/night/from", Value::from(text.trim())),
     );
@@ -830,7 +861,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let to = page.text_field(
         &times,
         Style::Outlined,
-        "To (HH:mm)",
+        &tr("To (HH:mm)"),
         || config::value_str("/light/night/to").unwrap_or_else(|| "06:30".to_owned()),
         |text| config::store_value("/light/night/to", Value::from(text.trim())),
     );
@@ -845,7 +876,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &night,
         "thermostat",
-        "Color temperature (K)",
+        &tr("Color temperature (K)"),
         "/light/night/colorTemperature",
         5000,
         (1000, 6500),
@@ -958,7 +989,7 @@ fn rule_spin(
         state,
         parent,
         rule.icon,
-        rule.label,
+        &tr(rule.label),
         rule.range,
         rule.step,
         rule.decimals,

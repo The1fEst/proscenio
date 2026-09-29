@@ -8,6 +8,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Choice, Context, Page, Style};
 use crate::services::session;
@@ -44,7 +45,7 @@ const AUTOMATIC_TRANSPARENCY: &str = "/appearance/transparency/automatic";
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
-    let colors = page.section("format_paint", "Wallpaper & Colors");
+    let colors = page.section("format_paint", &tr("Wallpaper & Colors"));
     let top = Row::new(LAYOUT_SPACING);
     top.append(&preview(&page));
     top.append(&wallpaper_controls(&page));
@@ -53,15 +54,15 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.selection(
         &colors,
         vec![
-            choice("Auto", "auto"),
-            choice("Content", "scheme-content"),
-            choice("Expressive", "scheme-expressive"),
-            choice("Fidelity", "scheme-fidelity"),
-            choice("Fruit Salad", "scheme-fruit-salad"),
-            choice("Monochrome", "scheme-monochrome"),
-            choice("Neutral", "scheme-neutral"),
-            choice("Rainbow", "scheme-rainbow"),
-            choice("Tonal Spot", "scheme-tonal-spot"),
+            choice(&tr("Auto"), "auto"),
+            choice(&tr("Content"), "scheme-content"),
+            choice(&tr("Expressive"), "scheme-expressive"),
+            choice(&tr("Fidelity"), "scheme-fidelity"),
+            choice(&tr("Fruit Salad"), "scheme-fruit-salad"),
+            choice(&tr("Monochrome"), "scheme-monochrome"),
+            choice(&tr("Neutral"), "scheme-neutral"),
+            choice(&tr("Rainbow"), "scheme-rainbow"),
+            choice(&tr("Tonal Spot"), "scheme-tonal-spot"),
         ],
         "/appearance/palette/type",
         Value::from("auto"),
@@ -74,7 +75,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let accent = page.text_field(
         &colors,
         Style::Outlined,
-        "Accent color (e.g. #8caaee, empty to use the wallpaper's)",
+        &tr("Accent color (e.g. #8caaee, empty to use the wallpaper's)"),
         || config::value_str("/appearance/palette/accentColor").unwrap_or_default(),
         |text| {
             config::store_value("/appearance/palette/accentColor", Value::from(text.trim()));
@@ -88,37 +89,37 @@ pub fn build(context: &Context) -> Rc<Page> {
     let tint = page.config_switch(
         &colors,
         "invert_colors",
-        "Extra background tint",
+        &tr("Extra background tint"),
         "/appearance/extraBackgroundTint",
         true,
     );
     page.tip(
         &tint.button,
-        "Tints backgrounds of shell surfaces more strongly with the accent color",
+        &tr("Tints backgrounds of shell surfaces more strongly with the accent color"),
     );
     page.config_switch(
         &colors,
         "ev_shadow",
-        "Transparency",
+        &tr("Transparency"),
         ENABLE_TRANSPARENCY,
         false,
     );
     let automatic = page.config_switch(
         &colors,
         "auto_awesome",
-        "Automatic transparency values",
+        &tr("Automatic transparency values"),
         AUTOMATIC_TRANSPARENCY,
         true,
     );
     page.tip(
         &automatic.button,
-        "Derives the values below from the wallpaper instead of using them as entered",
+        &tr("Derives the values below from the wallpaper instead of using them as entered"),
     );
     let amounts = page.uniform_row(&colors);
     let (background_row, background) = page.config_spin_scaled(
         &amounts,
         "background_replace",
-        "Background (%)",
+        &tr("Background (%)"),
         "/appearance/transparency/backgroundTransparency",
         0.11,
         PERCENT,
@@ -128,7 +129,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let (content_row, content) = page.config_spin_scaled(
         &amounts,
         "select_window",
-        "Content (%)",
+        &tr("Content (%)"),
         "/appearance/transparency/contentTransparency",
         0.57,
         PERCENT,
@@ -137,7 +138,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &content_row,
-        "Affects how surfaces are layered even when transparency is off",
+        &tr("Affects how surfaces are layered even when transparency is off"),
     );
     let follow = move || {
         let enabled = config::value_bool(ENABLE_TRANSPARENCY, false);
@@ -152,21 +153,21 @@ pub fn build(context: &Context) -> Rc<Page> {
         page.watch(pointer, move || follow());
     }
 
-    let screen = page.section("screenshot_monitor", "Bar & screen");
+    let screen = page.section("screenshot_monitor", &tr("Bar & screen"));
     let bar = page.row(&screen);
-    let position = page.subsection(&bar, "Bar position", "");
+    let position = page.subsection(&bar, &tr("Bar position"), "");
     bar_position(&page, &position);
-    let style = page.subsection(&bar, "Bar style", "");
+    let style = page.subsection(&bar, &tr("Bar style"), "");
     corner_style(&page, &style);
 
     let corners = page.row(&screen);
-    let rounding = page.subsection(&corners, "Screen round corner", "");
+    let rounding = page.subsection(&corners, &tr("Screen round corner"), "");
     page.selection(
         &rounding,
         vec![
-            icon_choice("No", "close", 0),
-            icon_choice("Yes", "check", 1),
-            icon_choice("When not fullscreen", "fullscreen_exit", 2),
+            icon_choice(&tr("No"), "close", 0),
+            icon_choice(&tr("Yes"), "check", 1),
+            icon_choice(&tr("When not fullscreen"), "fullscreen_exit", 2),
         ],
         "/appearance/fakeScreenRounding",
         Value::from(2),
@@ -187,10 +188,10 @@ pub fn bar_position(page: &Page, parent: &gtk4::Box) {
     page.selection_of(
         parent,
         vec![
-            icon_choice("Top", "arrow_upward", 0),
-            icon_choice("Left", "arrow_back", VERTICAL_BIT),
-            icon_choice("Bottom", "arrow_downward", BOTTOM_BIT),
-            icon_choice("Right", "arrow_forward", BOTTOM_BIT | VERTICAL_BIT),
+            icon_choice(&tr("Top"), "arrow_upward", 0),
+            icon_choice(&tr("Left"), "arrow_back", VERTICAL_BIT),
+            icon_choice(&tr("Bottom"), "arrow_downward", BOTTOM_BIT),
+            icon_choice(&tr("Right"), "arrow_forward", BOTTOM_BIT | VERTICAL_BIT),
         ],
         &["/bar/bottom", "/bar/vertical"],
         || {
@@ -212,9 +213,9 @@ pub fn corner_style(page: &Page, parent: &gtk4::Box) {
     page.selection(
         parent,
         vec![
-            icon_choice("Hug", "line_curve", 0),
-            icon_choice("Float", "page_header", 1),
-            icon_choice("Rect", "toolbar", 2),
+            icon_choice(&tr("Hug"), "line_curve", 0),
+            icon_choice(&tr("Float"), "page_header", 1),
+            icon_choice(&tr("Rect"), "toolbar", 2),
         ],
         "/bar/cornerStyle",
         Value::from(0),
@@ -320,19 +321,19 @@ pub fn choose_wallpaper(page: &Page) -> RippleButton {
     let choose = shortcut_button(
         page,
         "wallpaper",
-        "Choose file",
+        &tr("Choose file"),
         &["Ctrl", &super_key()],
         "T",
     );
     choose.connect_clicked(|_| switchwall::detach(&[]));
     let missing = tools::missing(&[&tools::KDIALOG]);
     if missing.is_empty() {
-        page.tip(&choose, "Pick wallpaper image on your system");
+        page.tip(&choose, &tr("Pick wallpaper image on your system"));
     } else {
         choose.set_sensitive(false);
         page.tip(
             &choose,
-            &tools::missing_message(&missing, "there is no file picker"),
+            &tools::missing_message(&missing, &tr("there is no file picker")),
         );
     }
     choose
@@ -397,7 +398,10 @@ fn mode_button(page: &Page, dark: bool) -> (RippleButton, [gtk4::Label; 2]) {
     let icon_box = Centred::integral(&icon);
     icon_box.set_halign(gtk4::Align::Center);
     column.append(&icon_box);
-    let name = text::styled_sized(if dark { "Dark" } else { "Light" }, pixel_size::SMALLER);
+    let name = text::styled_sized(
+        &if dark { tr("Dark") } else { tr("Light") },
+        pixel_size::SMALLER,
+    );
     let name_box = Centred::new(&name);
     name_box.set_halign(gtk4::Align::Center);
     column.append(&name_box);

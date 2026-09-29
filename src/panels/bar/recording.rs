@@ -1,5 +1,6 @@
 use gtk4::prelude::*;
 
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::services::recording::Recording;
 use crate::ui::theme::{SharedTheme, pixel_size, rounding};
@@ -38,7 +39,7 @@ pub fn build(recording: &Recording, theme: &SharedTheme, scope: &Scope) -> gtk4:
 
     let tip = tooltip::Tooltip::new(&button, theme, tooltip::Kind::Popup);
     tip.below();
-    tip.set_text("Stop the recording");
+    tip.set_text(&tr("Stop the recording"));
     tooltip::hover_delay(&button, &tip, 0);
 
     let holder = Centred::new(&button);

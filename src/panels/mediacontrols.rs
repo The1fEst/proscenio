@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::core::config::Config;
+use crate::core::i18n::tr;
 use crate::core::process;
 use crate::core::scope::Scope;
 use crate::platform::{appicon, grab};
@@ -250,11 +251,11 @@ pub fn build(
 }
 
 fn placeholder() -> gtk4::Widget {
-    let title = text::styled_sized("No active player", pixel_size::LARGE);
+    let title = text::styled_sized(&tr("No active player"), pixel_size::LARGE);
     title.set_xalign(0.0);
-    let hint = text::styled(
+    let hint = text::styled(&tr(
         "Make sure your player has MPRIS support\nor try turning off duplicate player filtering",
-    );
+    ));
     text::set_color(&hint, "colSubtext");
     hint.set_xalign(0.0);
 
@@ -574,7 +575,8 @@ impl Card {
         } else {
             track.identity.as_str()
         };
-        let title = if title.is_empty() { "Untitled" } else { title };
+        let untitled = tr("Untitled");
+        let title = if title.is_empty() { &untitled } else { title };
         change(&self.title, &self.set_title, title, animate);
         if self.has_metadata.replace(has_metadata) != has_metadata {
             self.time_holder.set_visible(has_metadata);

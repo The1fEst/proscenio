@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use crate::core::i18n::{tr, trf};
 use crate::core::{config, shell, tools};
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::power::{
@@ -47,85 +48,89 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.tools_notice(
         &main,
         &[&tools::HYPRLOCK],
-        &format!("the session always locks with {}", shell::name()),
+        &trf("the session always locks with %1", &[shell::name()]),
     );
     let hyprlock = page.config_switch(
         &main,
         "water_drop",
-        &format!("Use Hyprlock (instead of {})", shell::name()),
+        &trf("Use Hyprlock (instead of %1)", &[shell::name()]),
         "/lock/useHyprlock",
         false,
     );
     page.tip(
         &hyprlock.button,
-        "If you want to somehow use fingerprint unlock...",
+        &tr("If you want to somehow use fingerprint unlock..."),
     );
     page.config_switch(
         &main,
         "account_circle",
-        "Launch on startup",
+        &tr("Launch on startup"),
         "/lock/launchOnStartup",
         false,
     );
 
-    let security = page.subsection(&main, "Security", "");
+    let security = page.subsection(&main, &tr("Security"), "");
     let power = page.config_switch(
         &security,
         "settings_power",
-        "Require password to power off/restart",
+        &tr("Require password to power off/restart"),
         "/lock/security/requirePasswordToPower",
         false,
     );
     page.tip(
         &power.button,
-        "Remember that on most devices one can always hold the power button to force shutdown\nThis only makes it a tiny bit harder for accidents to happen",
+        &tr(
+            "Remember that on most devices one can always hold the power button to force shutdown\nThis only makes it a tiny bit harder for accidents to happen",
+        ),
     );
     page.tools_notice(
         &security,
         &[&tools::GNOME_KEYRING],
-        "unlocking leaves the keyring as it is",
+        &tr("unlocking leaves the keyring as it is"),
     );
     let keyring = page.config_switch(
         &security,
         "key_vertical",
-        "Also unlock keyring",
+        &tr("Also unlock keyring"),
         "/lock/security/unlockKeyring",
         true,
     );
     page.tip(
         &keyring.button,
-        "This is usually safe and needed for your browser anyway\nMostly useful for those who use lock on startup instead of a display manager that does it (GDM, SDDM, etc.)",
+        &tr(
+            "This is usually safe and needed for your browser anyway\nMostly useful for those who use lock on startup instead of a display manager that does it (GDM, SDDM, etc.)",
+        ),
     );
 
-    let general = page.subsection(&main, "Style: general", "");
+    let general = page.subsection(&main, &tr("Style: general"), "");
     page.config_switch(
         &general,
         "center_focus_weak",
-        "Center clock",
+        &tr("Center clock"),
         "/lock/centerClock",
         true,
     );
     page.config_switch(
         &general,
         "info",
-        "Show \"Locked\" text",
+        &tr("Show \"Locked\" text"),
         "/lock/showLockedText",
         true,
     );
     page.config_switch(
         &general,
         "shapes",
-        "Use varying shapes for password characters",
+        &tr("Use varying shapes for password characters"),
         "/lock/materialShapeChars",
         true,
     );
 
-    let blurred = page.subsection(&main, "Style: Blurred", "");
-    page.config_switch(&blurred, "blur_on", "Enable blur", BLUR, true);
+    let blurred = page.subsection(&main, &tr("Style: Blurred"), "");
+    page.config_switch(&blurred, "blur_on", &tr("Enable blur"), BLUR, true);
     let (zoom_row, zoom) = page.config_spin_scaled(
         &blurred,
         "loupe",
-        "Extra wallpaper zoom (%)",
+        &tr("Extra wallpaper zoom (%)"),
         "/lock/blur/extraZoom",
         1.1,
         100.0,
@@ -135,7 +140,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let (radius_row, radius) = page.config_spin(
         &blurred,
         "blur_circular",
-        "Blur radius",
+        &tr("Blur radius"),
         "/lock/blur/radius",
         100,
         (0, 300),

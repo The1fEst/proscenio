@@ -9,6 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{assets, config, process};
 use crate::platform::notify::{self, Notification};
@@ -350,7 +351,7 @@ impl Audio {
                 .get_str("node.nick")
                 .filter(|nick| !nick.is_empty())
                 .or(description)
-                .unwrap_or_else(|| "Unknown".to_owned())
+                .unwrap_or_else(|| tr("Unknown"))
         };
         if sink {
             introspect.get_sink_info_list(move |result| match result {
@@ -437,14 +438,14 @@ impl Audio {
         let last = self.last_volume.get();
         if part - last > protection.max_allowed_increase {
             self.set_sink_volume(last);
-            self.protect("Illegal increment");
+            self.protect(&tr("Illegal increment"));
             return;
         }
         if part > protection.max_allowed || part > HARD_MAX {
             let allowed = last.min(protection.max_allowed);
             self.set_sink_volume(allowed);
             self.last_volume.set(allowed);
-            self.protect("Exceeded max allowed");
+            self.protect(&tr("Exceeded max allowed"));
             return;
         }
         self.last_volume.set(part);
@@ -479,12 +480,12 @@ fn open(mainloop: &Mainloop) -> Option<Context> {
 }
 
 fn announce_microphone(muted: bool) {
-    let state = if muted { "Muted" } else { "Unmuted" };
+    let state = tr(if muted { "Muted" } else { "Unmuted" });
     let icon = assets::microphone_icon().unwrap_or_default();
     notify::send(&Notification {
         app: "Microphone",
-        summary: "Microphone",
-        body: state,
+        summary: &tr("Microphone"),
+        body: &state,
         icon: &icon.to_string_lossy(),
         transient: true,
         ..Default::default()

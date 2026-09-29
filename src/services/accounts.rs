@@ -2,6 +2,8 @@ use gtk4::gio;
 use gtk4::glib::{self, Variant};
 use gtk4::prelude::*;
 
+use crate::core::i18n::tr;
+
 const BUS: &str = "org.freedesktop.Accounts";
 const PATH: &str = "/org/freedesktop/Accounts";
 const USER: &str = "org.freedesktop.Accounts.User";
@@ -75,7 +77,7 @@ pub fn change_password(current: &str, next: &str, done: impl FnOnce(Result<(), S
     launcher.setenv("LC_ALL", "C", true);
     launcher.setenv("LANG", "C", true);
     let Ok(process) = launcher.spawn(&[std::ffi::OsStr::new("passwd")]) else {
-        done(Err(PASSWORD_FAILED.to_owned()));
+        done(Err(tr(PASSWORD_FAILED)));
         return;
     };
     glib::spawn_future_local(async move {
@@ -101,7 +103,7 @@ fn password_outcome(output: &str) -> Result<(), String> {
         .map(str::trim)
         .filter(|line| !line.is_empty() && *line != "password unchanged")
         .last();
-    Err(complaint.unwrap_or(PASSWORD_FAILED).to_owned())
+    Err(complaint.map_or_else(|| tr(PASSWORD_FAILED), str::to_owned))
 }
 
 async fn fetch() -> Option<User> {
@@ -179,7 +181,7 @@ mod tests {
                 "New password: BAD PASSWORD: The password is shorter than 8 characters\npasswd: Have exhausted maximum number of retries for service\npasswd: password unchanged\n",
                 Err("Have exhausted maximum number of retries for service".to_owned()),
             ),
-            ("", Err(PASSWORD_FAILED.to_owned())),
+            ("", Err(tr(PASSWORD_FAILED))),
         ];
         for (output, expected) in cases {
             assert_eq!(password_outcome(output), expected, "{output:?}");

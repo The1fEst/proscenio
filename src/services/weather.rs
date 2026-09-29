@@ -5,6 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, process, watch};
 use crate::platform::geoclue;
@@ -95,8 +96,8 @@ impl Weather {
             || {
                 notify::send(&Notification {
                     app: "Shell",
-                    summary: "Weather Service",
-                    body: "Cannot find a GPS service. Using the fallback method instead.",
+                    summary: &tr("Weather Service"),
+                    body: &tr("Cannot find a GPS service. Using the fallback method instead."),
                     ..Default::default()
                 });
             },
@@ -181,8 +182,8 @@ impl Weather {
             city: area
                 .and_then(|node| node.pointer("/areaName/0/value"))
                 .and_then(Value::as_str)
-                .unwrap_or("City")
-                .to_owned(),
+                .map(str::to_owned)
+                .unwrap_or_else(|| tr("City")),
             wind,
             precipitation,
             visibility,

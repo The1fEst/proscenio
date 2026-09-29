@@ -9,6 +9,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::services::Services;
 use crate::services::brightness::Change;
 use crate::services::states;
@@ -149,7 +150,7 @@ impl Value {
         icon.set_margin_top(VERTICAL_PADDING);
         icon.set_margin_bottom(VERTICAL_PADDING);
 
-        let name = text::styled(reading.name);
+        let name = text::styled(&tr(reading.name));
         text::set_color(&name, "colOnLayer0");
         name.set_xalign(0.0);
         let name_holder = Centred::filling_width(&name);
@@ -213,7 +214,7 @@ impl Value {
             layout.set_text(reading.icon);
         }
         self.icon.queue_draw();
-        self.name.set_text(reading.name);
+        self.name.set_text(&tr(reading.name));
         self.reading.set_text(&percent(reading.value));
         self.bar.set_value(reading.position());
 

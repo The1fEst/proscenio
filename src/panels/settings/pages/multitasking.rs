@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
 use crate::platform::hyprconfig;
@@ -132,15 +133,15 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let options = HyprOptions::new(&OPTIONS);
 
-    let tiling = page.section("grid_view", "Tiling");
-    let layout_group = page.subsection(&tiling, "Layout", "");
+    let tiling = page.section("grid_view", &tr("Tiling"));
+    let layout_group = page.subsection(&tiling, &tr("Layout"), "");
     let layouts = Selection::new(
         &page.theme,
         vec![
-            choice("Dwindle", "splitscreen_right", Value::from("dwindle")),
-            choice("Master", "splitscreen_left", Value::from("master")),
-            choice("Scrolling", "view_week", Value::from("scrolling")),
-            choice("Monocle", "fullscreen", Value::from("monocle")),
+            choice(&tr("Dwindle"), "splitscreen_right", Value::from("dwindle")),
+            choice(&tr("Master"), "splitscreen_left", Value::from("master")),
+            choice(&tr("Scrolling"), "view_week", Value::from("scrolling")),
+            choice(&tr("Monocle"), "fullscreen", Value::from("monocle")),
         ],
         {
             let options = Rc::downgrade(&options);
@@ -154,7 +155,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     layout_group.append(&layouts.root);
     page.keep(layouts.clone());
 
-    let spacing = page.subsection(&tiling, "Spacing", "");
+    let spacing = page.subsection(&tiling, &tr("Spacing"), "");
     for spec in [
         spin(
             "width",
@@ -187,21 +188,21 @@ pub fn build(context: &Context) -> Rc<Page> {
         &page,
         &spacing,
         "crop_free",
-        "Smart gaps",
+        &tr("Smart gaps"),
         hyprconfig::SMART_GAPS,
     );
     page.tip(
         &smart.button,
-        "No gaps, border or rounding around a workspace's only tiled window, or a maximized one",
+        &tr("No gaps, border or rounding around a workspace's only tiled window, or a maximized one"),
     );
 
-    let dwindle = page.subsection(&tiling, "Dwindle", "");
+    let dwindle = page.subsection(&tiling, &tr("Dwindle"), "");
     hyprrows::switch(
         &page,
         &dwindle,
         &options,
         "splitscreen",
-        "Keep the split direction when a window closes",
+        &tr("Keep the split direction when a window closes"),
         "dwindle:preserve_split",
     );
     hyprrows::switch(
@@ -209,7 +210,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &dwindle,
         &options,
         "aspect_ratio",
-        "Split along the longer side",
+        &tr("Split along the longer side"),
         "dwindle:smart_split",
     );
     hyprrows::switch(
@@ -217,7 +218,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &dwindle,
         &options,
         "open_in_full",
-        "Resize towards the edge being dragged",
+        &tr("Resize towards the edge being dragged"),
         "dwindle:smart_resizing",
     );
     hyprrows::spin(
@@ -234,7 +235,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let master = page.subsection(&tiling, "Master", "");
+    let master = page.subsection(&tiling, &tr("Master"), "");
     hyprrows::combo(
         &page,
         &master,
@@ -256,7 +257,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &master,
         &options,
         "vertical_align_top",
-        "New windows join at the top",
+        &tr("New windows join at the top"),
         "master:new_on_top",
     );
     hyprrows::spin(
@@ -273,7 +274,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let scrolling = page.subsection(&tiling, "Scrolling", "");
+    let scrolling = page.subsection(&tiling, &tr("Scrolling"), "");
     hyprrows::spin(
         &page,
         &scrolling,
@@ -308,7 +309,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &scrolling,
         &options,
         "center_focus_strong",
-        "Scroll to the focused window",
+        &tr("Scroll to the focused window"),
         "scrolling:follow_focus",
     );
     hyprrows::switch(
@@ -316,21 +317,21 @@ pub fn build(context: &Context) -> Rc<Page> {
         &scrolling,
         &options,
         "fullscreen",
-        "A single column fills the screen",
+        &tr("A single column fills the screen"),
         "scrolling:fullscreen_on_one_column",
     );
 
     let snapping = page.subsection(
         &tiling,
-        "Snapping",
-        "Applies to floating windows being dragged",
+        &tr("Snapping"),
+        &tr("Applies to floating windows being dragged"),
     );
     hyprrows::switch(
         &page,
         &snapping,
         &options,
         "grid_goldenratio",
-        "Snap to other windows and to the screen",
+        &tr("Snap to other windows and to the screen"),
         "general:snap:enabled",
     );
     let gaps = page.uniform_row(&snapping);
@@ -361,13 +362,13 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let resizing = page.subsection(&tiling, "Resizing", "");
+    let resizing = page.subsection(&tiling, &tr("Resizing"), "");
     hyprrows::switch(
         &page,
         &resizing,
         &options,
         "resize",
-        "Resize windows by dragging their borders",
+        &tr("Resize windows by dragging their borders"),
         "general:resize_on_border",
     );
     let grab_area = hyprrows::spin(
@@ -384,7 +385,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let focus = page.section("arrow_selector_tool", "Focus");
+    let focus = page.section("arrow_selector_tool", &tr("Focus"));
     hyprrows::combo(
         &page,
         &focus,
@@ -406,36 +407,36 @@ pub fn build(context: &Context) -> Rc<Page> {
         &focus,
         &options,
         "open_in_new",
-        "Let apps take focus when they ask for it",
+        &tr("Let apps take focus when they ask for it"),
         "misc:focus_on_activate",
     );
 
-    let overview = page.section("overview_key", "Overview");
-    page.config_switch(&overview, "check", "Enable", "/overview/enable", true);
-    let looks = page.subsection(&overview, "Looks", "");
+    let overview = page.section("overview_key", &tr("Overview"));
+    page.config_switch(&overview, "check", &tr("Enable"), "/overview/enable", true);
+    let looks = page.subsection(&overview, &tr("Looks"), "");
     page.config_switch(
         &looks,
         "center_focus_strong",
-        "Center icons",
+        &tr("Center icons"),
         "/overview/centerIcons",
         true,
     );
     page.config_spin_scaled(
         &looks,
         "loupe",
-        "Scale (%)",
+        &tr("Scale (%)"),
         "/overview/scale",
         0.18,
         100.0,
         (1, 100),
         1,
     );
-    let grid = page.subsection(&overview, "Workspace grid", "");
+    let grid = page.subsection(&overview, &tr("Workspace grid"), "");
     let size = page.uniform_row(&grid);
     page.config_spin(
         &size,
         "splitscreen_bottom",
-        "Rows",
+        &tr("Rows"),
         "/overview/rows",
         2,
         (1, 20),
@@ -444,7 +445,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &size,
         "splitscreen_right",
-        "Columns",
+        &tr("Columns"),
         "/overview/columns",
         5,
         (1, 20),
@@ -466,8 +467,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         page.selection_of(
             &order,
             vec![
-                choice(first.0, first.1, Value::from(0)),
-                choice(second.0, second.1, Value::from(1)),
+                choice(&tr(first.0), first.1, Value::from(0)),
+                choice(&tr(second.0), second.1, Value::from(1)),
             ],
             &[pointer],
             move || Value::from(i64::from(config::value_bool(pointer, false))),
@@ -475,7 +476,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         );
     }
 
-    let workspaces = page.section("select_window_2", "Workspaces");
+    let workspaces = page.section("select_window_2", &tr("Workspaces"));
     for (icon, label, option) in [
         (
             "history",
@@ -503,13 +504,13 @@ pub fn build(context: &Context) -> Rc<Page> {
             "misc:close_special_on_empty",
         ),
     ] {
-        hyprrows::switch(&page, &workspaces, &options, icon, label, option);
+        hyprrows::switch(&page, &workspaces, &options, icon, &tr(label), option);
     }
 
     let swiping = page.subsection(
         &workspaces,
-        "Swiping between workspaces",
-        "Which fingers do the swiping is set in the Hyprland configuration; these are the numbers behind it",
+        &tr("Swiping between workspaces"),
+        &tr("Which fingers do the swiping is set in the Hyprland configuration; these are the numbers behind it"),
     );
     let swipe_row = page.uniform_row(&swiping);
     hyprrows::spin(
@@ -556,7 +557,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &swiping,
         &options,
         "swap_horiz",
-        "A swipe keeps the direction it started in",
+        &tr("A swipe keeps the direction it started in"),
         "gestures:workspace_swipe_direction_lock",
     );
     let lock_after = hyprrows::spin(
@@ -577,7 +578,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &swiping,
         &options,
         "add_box",
-        "Swiping past the last workspace makes a new one",
+        &tr("Swiping past the last workspace makes a new one"),
         "gestures:workspace_swipe_create_new",
     );
     hyprrows::switch(
@@ -585,13 +586,13 @@ pub fn build(context: &Context) -> Rc<Page> {
         &swiping,
         &options,
         "all_inclusive",
-        "Keep swiping without lifting the fingers",
+        &tr("Keep swiping without lifting the fingers"),
         "gestures:workspace_swipe_forever",
     );
     let distance = page.subsection(
         &workspaces,
-        "Distance between workspaces",
-        "How far apart two workspaces sit while the switch is animating",
+        &tr("Distance between workspaces"),
+        &tr("How far apart two workspaces sit while the switch is animating"),
     );
     hyprrows::spin(
         &page,

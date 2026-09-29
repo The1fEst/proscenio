@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::platform::hypr;
 
@@ -11,7 +12,7 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let main = page.section("", "");
     let notifications = context.services.notifications.clone();
-    let silent = page.switch(&main, "notifications_paused", "Do not disturb", {
+    let silent = page.switch(&main, "notifications_paused", &tr("Do not disturb"), {
         let notifications = notifications.clone();
         move |on| notifications.set_silent(on)
     });
@@ -19,13 +20,13 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.refresh_on("/notifications/silent", &silent);
     page.tip(
         &silent.button,
-        "Notifications still arrive and are kept; they just do not pop up.",
+        &tr("Notifications still arrive and are kept; they just do not pop up."),
     );
 
     let (timeout, _) = page.config_spin(
         &main,
         "av_timer",
-        "Stays on screen for (ms)",
+        &tr("Stays on screen for (ms)"),
         "/notifications/timeout",
         config::NOTIFICATION_TIMEOUT,
         (1000, 60000),
@@ -33,20 +34,20 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &timeout,
-        "Used for notifications that do not ask for a time of their own",
+        &tr("Used for notifications that do not ask for a time of their own"),
     );
 
-    let placement = page.subsection(&main, "Placement", "");
+    let placement = page.subsection(&main, &tr("Placement"), "");
     let forced = page.config_switch(
         &placement,
         "monitor",
-        "Always on one display",
+        &tr("Always on one display"),
         "/notifications/forceMonitor/enable",
         false,
     );
     page.tip(
         &forced.button,
-        "With multiple monitors, keeps notifications on the one picked below",
+        &tr("With multiple monitors, keeps notifications on the one picked below"),
     );
 
     let listed = Rc::new(RefCell::new(Vec::new()));
@@ -95,11 +96,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     }));
 
-    let osd = page.section("voting_chip", "On-screen display");
+    let osd = page.section("voting_chip", &tr("On-screen display"));
     page.config_spin(
         &osd,
         "av_timer",
-        "Stays on screen for (ms)",
+        &tr("Stays on screen for (ms)"),
         "/osd/timeout",
         config::OSD_TIMEOUT,
         (100, 3000),

@@ -5,6 +5,7 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::process;
 use crate::core::scope::Scope;
 use crate::services::Services;
@@ -70,11 +71,11 @@ pub fn build(
     monitor: &gdk::Monitor,
     scope: &Scope,
 ) -> Rc<SessionScreen> {
-    let title = gtk4::Label::new(Some("Session"));
+    let title = gtk4::Label::new(Some(&tr("Session")));
     title.add_css_class("session-title");
-    let hint = gtk4::Label::new(Some(
+    let hint = gtk4::Label::new(Some(&tr(
         "Arrow keys to navigate, Enter to select\nEsc or click anywhere to cancel",
-    ));
+    )));
     hint.add_css_class("session-hint");
     hint.set_justify(gtk4::Justification::Center);
 
@@ -118,8 +119,8 @@ pub fn build(
         let focus = gtk4::EventControllerFocus::new();
         focus.connect_enter({
             let subtitle = subtitle.clone();
-            let label = *label;
-            move |_| subtitle.set_text(label)
+            let label = tr(label);
+            move |_| subtitle.set_text(&label)
         });
         button.add_controller(focus);
         grid.attach(
@@ -131,8 +132,10 @@ pub fn build(
         );
     }
 
-    let downloads = warning("There might be a download in progress. Check your Downloads folder.");
-    let packages = warning("Your package manager is running");
+    let downloads = warning(&tr(
+        "There might be a download in progress. Check your Downloads folder.",
+    ));
+    let packages = warning(&tr("Your package manager is running"));
     let notes = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
     notes.set_halign(gtk4::Align::Center);
     notes.set_margin_top(10);
@@ -313,7 +316,7 @@ impl SessionAction {
         button.animate_radius(RADIUS_MILLIS, EXPRESSIVE_EFFECTS);
         button.set_content(&Centred::new(&symbol), 0, 0);
         let tip = Tooltip::new(&button, theme, tooltip::Kind::Styled);
-        tip.set_text(label);
+        tip.set_text(&tr(label));
         tooltip::hover_delay(&button, &tip, 0);
 
         let action = Rc::new(SessionAction {

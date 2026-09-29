@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::i18n::tr;
 use crate::core::tools;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::content::{Context, Page};
@@ -46,18 +47,18 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let controls = page.section("", "");
     if !tools::system_service(BLUEZ) {
-        page.notice(&controls, "info", NO_BLUEZ);
+        page.notice(&controls, "info", &tr(NO_BLUEZ));
         return page;
     }
     page.tools_notice(
         &controls,
         &[&tools::BLUETOOTHCTL],
-        "pairing a device that asks for confirmation fails",
+        &tr("pairing a device that asks for confirmation fails"),
     );
     let bluez = context.services.bluez.clone();
     let setup = Setup::new(&bluez);
 
-    let switch = page.switch(&controls, "bluetooth", "Bluetooth", {
+    let switch = page.switch(&controls, "bluetooth", &tr("Bluetooth"), {
         let bluez = bluez.clone();
         move |wanted| {
             if bluez.powered.get() != wanted {
@@ -72,17 +73,17 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let missing = placeholder(
         &page,
-        "No Bluetooth Found",
-        "Plug in a dongle to use Bluetooth",
+        &tr("No Bluetooth Found"),
+        &tr("Plug in a dongle to use Bluetooth"),
     );
     let off = placeholder(
         &page,
-        "Bluetooth Turned Off",
-        "Turn on to connect devices and receive file transfers",
+        &tr("Bluetooth Turned Off"),
+        &tr("Turn on to connect devices and receive file transfers"),
     );
 
-    let (devices, busy) = page.busy_section("devices", "Devices");
-    let searching = text::styled("Searching for devices…");
+    let (devices, busy) = page.busy_section("devices", &tr("Devices"));
+    let searching = text::styled(&tr("Searching for devices…"));
     text::set_color(&searching, "colSubtext");
     searching.set_xalign(0.0);
     searching.set_margin_start(SEARCHING_MARGIN);
@@ -256,18 +257,18 @@ fn row(
     name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
     lines.append(&Centred::filling_width(&name));
     let status = text::styled_sized(
-        if pairing {
-            "Pairing…"
+        &if pairing {
+            tr("Pairing…")
         } else if connecting {
-            "Connecting…"
+            tr("Connecting…")
         } else if device.connected {
-            "Connected"
+            tr("Connected")
         } else if refused {
-            "Could not connect. Wake the device and try again"
+            tr("Could not connect. Wake the device and try again")
         } else if device.paired {
-            "Paired"
+            tr("Paired")
         } else {
-            "Not set up"
+            tr("Not set up")
         },
         pixel_size::SMALLER,
     );
@@ -278,7 +279,7 @@ fn row(
     inside.append(&lines);
 
     if device.paired {
-        let (forget, _) = icon_button(&page.theme, "delete", true, "Forget");
+        let (forget, _) = icon_button(&page.theme, "delete", true, &tr("Forget"));
         forget.connect_clicked({
             let bluez = bluez.clone();
             let path = device.path.clone();
@@ -288,11 +289,11 @@ fn row(
     }
 
     let (icon, label) = match (device.paired, device.connected) {
-        (false, _) => ("link", "Pair"),
-        (true, true) => ("bluetooth_disabled", "Disconnect"),
-        (true, false) => ("bluetooth", "Connect"),
+        (false, _) => ("link", tr("Pair")),
+        (true, true) => ("bluetooth_disabled", tr("Disconnect")),
+        (true, false) => ("bluetooth", tr("Connect")),
     };
-    let (action, _) = icon_button(&page.theme, icon, true, label);
+    let (action, _) = icon_button(&page.theme, icon, true, &label);
     action.set_sensitive(!pairing && !connecting);
     action.connect_clicked({
         let setup = Rc::downgrade(setup);

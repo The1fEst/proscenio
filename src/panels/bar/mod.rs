@@ -22,6 +22,7 @@ use std::f64::consts::PI;
 use std::rc::Rc;
 
 use crate::core::config::Config;
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::panels::notifications::indicator;
 use crate::services::Services;
@@ -174,7 +175,7 @@ fn left_section(
         } else {
             "wb_twilight"
         },
-        "Scroll to change brightness",
+        &tr("Scroll to change brightness"),
         theme,
     ));
     let area = gtk4::Overlay::new();
@@ -364,7 +365,7 @@ fn right_section(
 
     let hint = Rc::new(scrollhint::Hint::new(
         "volume_up",
-        "Scroll to change volume",
+        &tr("Scroll to change volume"),
         theme,
     ));
     let slot = Centred::new(&hint.holder);

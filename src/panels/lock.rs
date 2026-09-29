@@ -7,6 +7,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::scope::Scope;
 use crate::core::{config, persistent};
@@ -737,7 +738,7 @@ impl Lock {
         field.set_hexpand(true);
         let dots = gtk4::DrawingArea::new();
         dots.set_size_request(FIELD_WIDTH, BUTTON);
-        let placeholder = text::styled("Enter password");
+        let placeholder = text::styled(&tr("Enter password"));
         text::set_color(&placeholder, "colSubtext");
         placeholder.set_xalign(0.0);
         let placeholder_box = Centred::filling_width(&placeholder);
@@ -911,11 +912,11 @@ impl Lock {
                     surface.field.add_css_class("plain");
                 }
                 surface.placeholder.set_visible(text.is_empty());
-                surface.placeholder.set_text(if context.failed.get() {
+                surface.placeholder.set_text(&tr(if context.failed.get() {
                     "Incorrect password"
                 } else {
                     "Enter password"
-                });
+                }));
                 let busy = context.in_progress.get();
                 surface.field.set_sensitive(!busy);
                 surface.confirm.set_sensitive(!busy);

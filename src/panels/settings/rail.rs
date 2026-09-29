@@ -7,6 +7,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::i18n::tr;
 use crate::core::{config, process};
 use crate::panels::settings::index::{self, Hit};
 use crate::panels::settings::pages::PAGES;
@@ -132,7 +133,7 @@ impl Rail {
         fab.set_overflow(gtk4::Overflow::Hidden);
         let fab_icon = text::symbol("edit", FAB_ICON);
         text::set_color(&fab_icon, "colOnPrimaryContainer");
-        let fab_text = text::styled_sized("Config file", TAB_TEXT);
+        let fab_text = text::styled_sized(&tr("Config file"), TAB_TEXT);
         text::set_color(&fab_text, "colOnPrimaryContainer");
         fab_text.set_margin_start(FAB_TEXT_GAP);
         let fab_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -145,7 +146,7 @@ impl Rail {
         fab.set_content(&fab_row, 0, 0);
         column.append(&fab);
 
-        let search = TextField::new(theme, Style::Outlined, "Search");
+        let search = TextField::new(theme, Style::Outlined, &tr("Search"));
         search.root.set_margin_start(FIELD_MARGIN);
         search.root.set_margin_end(FIELD_MARGIN);
         column.append(&search.root);
@@ -183,7 +184,9 @@ impl Rail {
         root.set_child(&column);
 
         let fab_tip = Tooltip::new(&fab, theme, tooltip::Kind::Styled);
-        fab_tip.set_text("Open the shell config file\nAlternatively right-click to copy path");
+        fab_tip.set_text(&tr(
+            "Open the shell config file\nAlternatively right-click to copy path",
+        ));
         tooltip::hover_delay(&fab, &fab_tip, 0);
 
         let rail = Rc::new(Rail {
@@ -412,7 +415,7 @@ impl Rail {
         }
         let hits = index::search(query);
         if searching && hits.is_empty() {
-            let nothing = text::styled_sized("No settings found", TAB_TEXT);
+            let nothing = text::styled_sized(&tr("No settings found"), TAB_TEXT);
             text::set_color(&nothing, "colSubtext");
             nothing.set_margin_top(RESULT_PADDING);
             self.results.append(&nothing);
@@ -463,7 +466,7 @@ impl Rail {
             .clipboard()
             .set_text(&config::config_path().to_string_lossy());
         self.fab_icon.set_text("check");
-        self.fab_text.set_text("Path copied");
+        self.fab_text.set_text(&tr("Path copied"));
         if let Some(pending) = self.copied.take() {
             pending.remove();
         }
@@ -471,7 +474,7 @@ impl Rail {
         let label = self.fab_text.clone();
         let pending = glib::timeout_add_local_once(COPIED, move || {
             icon.set_text("edit");
-            label.set_text("Config file");
+            label.set_text(&tr("Config file"));
         });
         self.copied.replace(Some(pending));
     }
@@ -555,7 +558,8 @@ impl Tab {
         let icon_box = Centred::integral(&icon);
         icon_box.set_size_request(BASE, HIGHLIGHT_HEIGHT);
         icon_box.set_valign(gtk4::Align::Center);
-        let label = text::styled_sized(info.name, TAB_TEXT);
+        let name = tr(info.name);
+        let label = text::styled_sized(&name, TAB_TEXT);
         text::set_color(&label, "colOnLayer1");
         label.set_valign(gtk4::Align::Center);
         let visual_width = BASE + LABEL_GAP + label.measure(gtk4::Orientation::Horizontal, -1).1;
@@ -574,7 +578,7 @@ impl Tab {
         pointer_cursor(button.upcast_ref());
 
         let tip = Tooltip::new(&button, theme, tooltip::Kind::Styled);
-        tip.set_text(info.name);
+        tip.set_text(&name);
 
         let tab = Rc::new(Tab {
             page,

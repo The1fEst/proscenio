@@ -3,6 +3,7 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::network::manager_running;
@@ -36,8 +37,8 @@ pub fn build(context: &Context) -> Rc<Page> {
     let placeholder = Placeholder::build(
         &page.theme,
         "wifi_off",
-        Some("No Saved Networks"),
-        Some("Saved Wi-Fi networks will appear here"),
+        Some(&tr("No Saved Networks")),
+        Some(&tr("Saved Wi-Fi networks will appear here")),
         Shape::Clover4Leaf,
     );
     let empty = gtk4::CenterBox::new();
@@ -109,12 +110,12 @@ fn row(page: &Page, wifi: &Rc<Wifi>, parent: &gtk4::Box, network: &Saved) -> Vec
     name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
     lines.append(&Centred::filling_width(&name));
     let status = text::styled_sized(
-        if connected {
-            "Connected"
+        &if connected {
+            tr("Connected")
         } else if network.automatic {
-            "Joins on its own"
+            tr("Joins on its own")
         } else {
-            "Only when chosen"
+            tr("Only when chosen")
         },
         pixel_size::SMALLER,
     );
@@ -124,7 +125,7 @@ fn row(page: &Page, wifi: &Rc<Wifi>, parent: &gtk4::Box, network: &Saved) -> Vec
     inside.append(&lines);
 
     let uuid = network.uuid.clone();
-    let automatic = ConfigSwitch::new(&page.theme, "autorenew", "Automatic", {
+    let automatic = ConfigSwitch::new(&page.theme, "autorenew", &tr("Automatic"), {
         let wifi = Rc::downgrade(wifi);
         let uuid = uuid.clone();
         move |wanted| {
@@ -138,10 +139,10 @@ fn row(page: &Page, wifi: &Rc<Wifi>, parent: &gtk4::Box, network: &Saved) -> Vec
     inside.append(&automatic.button);
     let tip = page.unkept_tip(
         &automatic.button,
-        "Join this network whenever it is in range",
+        &tr("Join this network whenever it is in range"),
     );
 
-    let (forget, _) = icon_button(&page.theme, "delete", true, "Forget");
+    let (forget, _) = icon_button(&page.theme, "delete", true, &tr("Forget"));
     forget.connect_clicked({
         let wifi = Rc::downgrade(wifi);
         move |_| {

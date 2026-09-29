@@ -23,7 +23,8 @@ and writes it back when turned off. Escape closes the window. Closing it sends a
 Below the titlebar is a `ContentPage` in a `m3surfaceContainerLow` box with these
 sections:
 
-- **Language**: the UI language, "Auto (System)" and every translation.
+- **Language**: "Select language", a selection of "Auto (System)" and every
+  catalog's code, for `language.ui`.
 - **Displays**: a monitor choice and the arrangement (both only with more than one
   monitor), then resolution and refresh rate, as on the Displays page.
 - **Sound**: output and input devices.
@@ -72,7 +73,8 @@ Differences from qs:
   The "Show next time" switch only brings the window back. The compat build
   copies `first_run.txt` to `defaults_applied.txt`, so an installation greeted
   earlier keeps its settings.
-- **Language is left out.** proscenio has no translations, and its Region &
-  Language settings page is a placeholder.
+- **Choosing a language restarts the shell.** The new language applies only
+  on a restart, so the choice writes `language.ui` and restarts the shell
+  with `PROSCENIO_OPEN_WELCOME` set, which opens the welcome window again.
 - **The page wraps to the window.** In qs the language row does not wrap and
   pushes the whole page off to the side, clipped and unscrollable.

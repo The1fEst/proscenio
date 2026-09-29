@@ -6,6 +6,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::core::config::Config;
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::services::battery::{Battery, Charge, FULLY_CHARGED};
 use crate::ui::theme::{SharedTheme, transparentize};
@@ -258,10 +259,10 @@ struct Details {
 impl Details {
     fn new() -> Self {
         let column = popup::column();
-        column.append(&popup::header("battery_android_full", "Battery"));
-        let (time_row, time_value) = popup::value("schedule", "Time to empty:", "");
-        let (rate_row, rate_value) = popup::value("bolt", "Discharging:", "");
-        let (health_row, health) = popup::value("heart_check", "Health:", "");
+        column.append(&popup::header("battery_android_full", &tr("Battery")));
+        let (time_row, time_value) = popup::value("schedule", &tr("Time to empty:"), "");
+        let (rate_row, rate_value) = popup::value("bolt", &tr("Discharging:"), "");
+        let (health_row, health) = popup::value("heart_check", &tr("Health:"), "");
         column.append(&time_row);
         column.append(&rate_row);
         column.append(&health_row);
@@ -291,20 +292,20 @@ impl Details {
         };
         self.time_row
             .set_visible(!(charge.state == FULLY_CHARGED || remaining <= 0 || charge.rate <= 0.01));
-        self.time_name.set_text(if charge.charging() {
+        self.time_name.set_text(&tr(if charge.charging() {
             "Time to full:"
         } else {
             "Time to empty:"
-        });
+        }));
         set_value(&self.time_value, &duration(remaining));
 
         self.rate_row
             .set_visible(!(charge.state != FULLY_CHARGED && charge.rate == 0.0));
-        self.rate_name.set_text(match charge.state {
+        self.rate_name.set_text(&tr(match charge.state {
             FULLY_CHARGED => "Fully charged",
             state if state == crate::services::battery::CHARGING => "Charging:",
             _ => "Discharging:",
-        });
+        }));
         set_value(
             &self.rate_value,
             &if charge.state == FULLY_CHARGED {

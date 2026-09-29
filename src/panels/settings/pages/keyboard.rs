@@ -6,6 +6,7 @@ use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::panels::settings::hyprrows;
 use crate::panels::settings::pages::quick::key;
@@ -288,7 +289,7 @@ impl Keyboard {
                         }
                     }
                 });
-                kept.push(Box::new(page.unkept_tip(&button, tip)));
+                kept.push(Box::new(page.unkept_tip(&button, &tr(tip))));
                 inside.append(&button);
             }
             card.append(&inside);
@@ -378,7 +379,7 @@ fn option_combo(
     group_code: &'static str,
     none: &'static str,
 ) -> Rc<dyn Fn()> {
-    let group = page.subsection(parent, title, "");
+    let group = page.subsection(parent, &tr(title), "");
     let combo = page.combo(&group, icon);
     let values: Rc<RefCell<Vec<String>>> = Rc::default();
     let show: Rc<dyn Fn()> = Rc::new({
@@ -394,7 +395,7 @@ fn option_combo(
                 .option_groups
                 .iter()
                 .find(|group| group.code == group_code);
-            let mut labels = vec![none.to_owned()];
+            let mut labels = vec![tr(none)];
             let mut codes = vec![String::new()];
             for option in group.map(|group| group.options.as_slice()).unwrap_or(&[]) {
                 labels.push(option.name.clone());
@@ -556,10 +557,10 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let options = HyprOptions::new(&OPTIONS);
 
-    let sources_section = page.section("keyboard", "Input Sources");
+    let sources_section = page.section("keyboard", &tr("Input Sources"));
     let listed = page.subsection(
         &sources_section,
-        "Keyboard layouts, in the order they are cycled through",
+        &tr("Keyboard layouts, in the order they are cycled through"),
         "",
     );
     let rows = gtk4::Box::new(gtk4::Orientation::Vertical, 2);
@@ -576,11 +577,11 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
 
     let choosing = Rc::new(Cell::new(false));
-    let chooser = page.subsection(&sources_section, "Add an input source", "");
+    let chooser = page.subsection(&sources_section, &tr("Add an input source"), "");
     let chooser_root = Page::subsection_root(&chooser);
     chooser_root.set_visible(false);
     let toggle_label: Rc<RefCell<Option<(gtk4::Label, gtk4::Label)>>> = Rc::default();
-    let search = TextField::new(&page.theme, Style::Outlined, "Search layouts");
+    let search = TextField::new(&page.theme, Style::Outlined, &tr("Search layouts"));
     search.root.set_hexpand(true);
     let set_choosing: Rc<dyn Fn(bool)> = Rc::new({
         let choosing = choosing.clone();
@@ -597,11 +598,15 @@ pub fn build(context: &Context) -> Rc<Page> {
             }
             if let Some((symbol, name)) = toggle_label.borrow().as_ref() {
                 symbol.set_text(if on { "close" } else { "add" });
-                name.set_text(if on { "Cancel" } else { "Add input source" });
+                name.set_text(&if on {
+                    tr("Cancel")
+                } else {
+                    tr("Add input source")
+                });
             }
         }
     });
-    let (toggle, toggle_name) = page.icon_button("add", true, "Add input source", {
+    let (toggle, toggle_name) = page.icon_button("add", true, &tr("Add input source"), {
         let choosing = choosing.clone();
         let set_choosing = set_choosing.clone();
         move || set_choosing(!choosing.get())
@@ -631,7 +636,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     chooser.append(&chooser_list(&page, &keyboard, set_choosing.clone()));
     page.keep(search);
 
-    let switching = page.section("swap_horiz", "Input Source Switching");
+    let switching = page.section("swap_horiz", &tr("Input Source Switching"));
     let show_switching = option_combo(
         &page,
         &switching,
@@ -645,12 +650,12 @@ pub fn build(context: &Context) -> Rc<Page> {
         &switching,
         &options,
         "pin",
-        "Num Lock when the session starts",
+        &tr("Num Lock when the session starts"),
         "input:numlock_by_default",
     );
 
-    let special = page.section("emoji_symbols", "Special Character Entry");
-    let ways = text::styled("Ways of typing symbols and letter variants");
+    let special = page.section("emoji_symbols", &tr("Special Character Entry"));
+    let ways = text::styled(&tr("Ways of typing symbols and letter variants"));
     text::set_color(&ways, "colSubtext");
     let ways = Centred::new(&ways);
     ways.set_halign(gtk4::Align::Start);
@@ -673,7 +678,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         "None",
     );
 
-    let modifiers = page.section("keyboard_command_key", "Modifier Keys");
+    let modifiers = page.section("keyboard_command_key", &tr("Modifier Keys"));
     let show_caps = option_combo(
         &page,
         &modifiers,
@@ -699,20 +704,22 @@ pub fn build(context: &Context) -> Rc<Page> {
         "Default",
     );
 
-    let shortcuts = page.section("shortcut", "Keyboard Shortcuts");
+    let shortcuts = page.section("shortcut", &tr("Keyboard Shortcuts"));
     let by_symbol = hyprrows::switch(
         &page,
         &shortcuts,
         &options,
         "language",
-        "Shortcuts follow the symbol on the key",
+        &tr("Shortcuts follow the symbol on the key"),
         "input:resolve_binds_by_sym",
     );
     page.tip(
         &by_symbol.button,
-        "On: a shortcut is the letter it types, so it moves with the layout.\nOff: a shortcut is the place on the keyboard, so it stays put in any layout.",
+        &tr(
+            "On: a shortcut is the letter it types, so it moves with the layout.\nOff: a shortcut is the place on the keyboard, so it stays put in any layout.",
+        ),
     );
-    let shortcut_search = TextField::new(&page.theme, Style::Outlined, "Search shortcuts");
+    let shortcut_search = TextField::new(&page.theme, Style::Outlined, &tr("Search shortcuts"));
     shortcut_search.root.set_hexpand(true);
     shortcuts.append(&shortcut_search.root);
     let groups = gtk4::Box::new(gtk4::Orientation::Vertical, 4);

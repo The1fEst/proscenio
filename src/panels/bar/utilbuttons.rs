@@ -2,6 +2,7 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::config::{self, Config};
+use crate::core::i18n::trf;
 use crate::core::process::detach;
 use crate::core::scope::Scope;
 use crate::core::watch;
@@ -35,7 +36,10 @@ pub fn build(
             let updates = services.updates.clone();
             move || {
                 button.set_visible(updates.advised());
-                tip.set_text(&format!("{} packages can be updated", updates.count.get()));
+                tip.set_text(&trf(
+                    "%1 packages can be updated",
+                    &[&updates.count.get().to_string()],
+                ));
                 text::set_color(
                     &icon,
                     if updates.strongly_advised() {

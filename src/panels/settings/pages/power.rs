@@ -2,6 +2,7 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::core::tools;
 use crate::panels::settings::content::{Context, Page, Parent};
 use crate::services::idleoptions::IdleOptions;
@@ -21,7 +22,7 @@ pub fn hypridle_available(page: &Page, parent: &impl Parent) -> bool {
     page.tools_notice(
         parent,
         &[&tools::HYPRIDLE],
-        "the session never blanks, locks or suspends on its own",
+        &tr("the session never blanks, locks or suspends on its own"),
     )
 }
 
@@ -38,7 +39,7 @@ pub fn general_switch(
         let options = Rc::downgrade(options);
         move || options.upgrade().is_some_and(|options| read(&options))
     };
-    let switch = page.switch(parent, icon, label, {
+    let switch = page.switch(parent, icon, &tr(label), {
         let options = Rc::downgrade(options);
         let current = current.clone();
         move |wanted| {
@@ -77,7 +78,7 @@ pub fn idle_timeout_row(
     options: &Rc<IdleOptions>,
     row: &IdleTimeout,
 ) {
-    let group = page.subsection(parent, row.title, row.tip);
+    let group = page.subsection(parent, &tr(row.title), &tr(row.tip));
     let line = page.row(&group);
     line.set_halign(gtk4::Align::Start);
     let what = row.what;
@@ -90,7 +91,7 @@ pub fn idle_timeout_row(
         }
     };
     let fallback = row.fallback_minutes;
-    let switch = page.switch(&line, row.switch_icon, row.switch_text, {
+    let switch = page.switch(&line, row.switch_icon, &tr(row.switch_text), {
         let options = Rc::downgrade(options);
         let minutes = minutes.clone();
         move |wanted| {
@@ -115,7 +116,7 @@ pub fn idle_timeout_row(
             }
         }
     });
-    let spin_line = page.spin_row(&line, "timer", "after (min)", &spin);
+    let spin_line = page.spin_row(&line, "timer", &tr("after (min)"), &spin);
     let follow = move || {
         let current = minutes();
         switch.refresh();
@@ -130,7 +131,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let options = IdleOptions::new();
 
-    let saving = page.section("energy_savings_leaf", "Power Saving");
+    let saving = page.section("energy_savings_leaf", &tr("Power Saving"));
     let idle = hypridle_available(&page, &saving);
     if idle {
         idle_timeout_row(
@@ -167,19 +168,21 @@ pub fn build(context: &Context) -> Rc<Page> {
         );
         page.tip(
             &apps.button,
-            "Video players, calls and games can hold off blanking, locking and suspend while they play",
+            &tr(
+                "Video players, calls and games can hold off blanking, locking and suspend while they play",
+            ),
         );
     }
 
-    let battery = page.section("battery_android_full", "Battery");
+    let battery = page.section("battery_android_full", &tr("Battery"));
     if !tools::system_service(UPOWER) {
-        page.notice(&battery, "info", UPOWER_MISSING);
+        page.notice(&battery, "info", &tr(UPOWER_MISSING));
     }
     let warnings = page.uniform_row(&battery);
     page.config_spin(
         &warnings,
         "warning",
-        "Low warning",
+        &tr("Low warning"),
         "/battery/low",
         20,
         (0, 100),
@@ -188,7 +191,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &warnings,
         "dangerous",
-        "Critical warning",
+        &tr("Critical warning"),
         "/battery/critical",
         5,
         (0, 100),
@@ -199,15 +202,16 @@ pub fn build(context: &Context) -> Rc<Page> {
     let automatic = page.config_switch(
         &suspend,
         "pause",
-        "Automatic suspend",
+        &tr("Automatic suspend"),
         AUTOMATIC_SUSPEND,
         true,
     );
     page.tip(
         &automatic.button,
-        "Automatically suspends the system when battery is low",
+        &tr("Automatically suspends the system when battery is low"),
     );
-    let (at_row, at) = page.config_spin(&suspend, "", "at", "/battery/suspend", 3, (0, 100), 5);
+    let (at_row, at) =
+        page.config_spin(&suspend, "", &tr("at"), "/battery/suspend", 3, (0, 100), 5);
     let follow = move || {
         Page::set_spin_row_enabled(&at_row, &at, config::value_bool(AUTOMATIC_SUSPEND, true));
     };
@@ -217,7 +221,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &full,
         "charger",
-        "Full warning",
+        &tr("Full warning"),
         "/battery/full",
         101,
         (0, 101),
@@ -225,7 +229,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
 
     if idle {
-        let sleeping = page.section("bedtime", "Automatic Suspend");
+        let sleeping = page.section("bedtime", &tr("Automatic Suspend"));
         idle_timeout_row(
             &page,
             &sleeping,

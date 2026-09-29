@@ -3,6 +3,7 @@ use std::rc::Rc;
 use gtk4::prelude::*;
 use serde_json::Value;
 
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Page, Parent};
 use crate::platform::{hypr, hyprconfig};
 use crate::services::hyproptions::HyprOptions;
@@ -50,12 +51,12 @@ pub fn option_switch(
     page: &Page,
     parent: &impl Parent,
     options: &Rc<HyprOptions>,
-    (icon, label): (&str, &str),
+    (icon, label): (&str, impl AsRef<str>),
     current: impl Fn(&HyprOptions) -> bool + 'static,
     committed: impl Fn(&Rc<HyprOptions>, bool) + 'static,
 ) -> Rc<ConfigSwitch> {
     let current = Rc::new(current);
-    let switch = page.switch(parent, icon, label, {
+    let switch = page.switch(parent, icon, label.as_ref(), {
         let options = Rc::downgrade(options);
         let current = current.clone();
         move |wanted| {
@@ -124,7 +125,7 @@ pub fn spin(
             }
         }
     });
-    let row = page.spin_row(parent, spec.icon, spec.label, &spin);
+    let row = page.spin_row(parent, spec.icon, &tr(spec.label), &spin);
     (row, spin)
 }
 
@@ -137,7 +138,7 @@ pub fn combo(
     list: &'static [(&'static str, &'static str)],
 ) -> Rc<ComboBox> {
     let combo = page.combo(parent, icon);
-    let labels: Vec<String> = list.iter().map(|(label, _)| (*label).to_owned()).collect();
+    let labels: Vec<String> = list.iter().map(|(label, _)| tr(label)).collect();
     let show = {
         let combo = Rc::downgrade(&combo);
         let options = Rc::downgrade(options);

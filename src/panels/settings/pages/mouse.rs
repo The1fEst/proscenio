@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page, slider_row};
 use crate::panels::settings::gestures;
 use crate::panels::settings::hyprrows::{self, Spin};
@@ -93,27 +94,27 @@ pub fn build(context: &Context) -> Rc<Page> {
     let options = HyprOptions::new(&OPTIONS);
     let devices = DeviceOptions::new();
 
-    let general = page.section("mouse", "General");
+    let general = page.section("mouse", &tr("General"));
     let primary = page.subsection(
         &general,
-        "Primary button",
-        "Order of the physical buttons on mice and touchpads",
+        &tr("Primary button"),
+        &tr("Order of the physical buttons on mice and touchpads"),
     );
     hyprrows::selection(
         &page,
         &primary,
         &options,
         vec![
-            choice("Left", "arrow_back", Value::Bool(false)),
-            choice("Right", "arrow_forward", Value::Bool(true)),
+            choice(&tr("Left"), "arrow_back", Value::Bool(false)),
+            choice(&tr("Right"), "arrow_forward", Value::Bool(true)),
         ],
         |options| Value::Bool(options.flag("input:left_handed")),
         |options, value| options.set("input:left_handed", &value.to_string()),
     );
 
-    let mouse = page.section("mouse", "Mouse");
-    let speed_group = page.subsection(&mouse, "Pointer speed", "");
-    let (speed, _) = slider_row(&page.theme, &speed_group, "speed", "Speed", SPEED);
+    let mouse = page.section("mouse", &tr("Mouse"));
+    let speed_group = page.subsection(&mouse, &tr("Pointer speed"), "");
+    let (speed, _) = slider_row(&page.theme, &speed_group, "speed", &tr("Speed"), SPEED);
     let show_general_speed = {
         let speed = Rc::downgrade(&speed);
         let options = Rc::downgrade(&options);
@@ -145,7 +146,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &page,
         &mouse,
         &options,
-        ("trending_up", "Mouse acceleration"),
+        ("trending_up", tr("Mouse acceleration")),
         |options| options.text("input:accel_profile") != "flat",
         |options, accelerated| {
             options.set(
@@ -156,20 +157,20 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &acceleration.button,
-        "Off moves the pointer exactly as far as the mouse moved, which games and drawing want.\nOn speeds the pointer up as the mouse moves faster.",
+        &tr("Off moves the pointer exactly as far as the mouse moved, which games and drawing want.\nOn speeds the pointer up as the mouse moves faster."),
     );
-    let scrolling = page.subsection(&mouse, "Scrolling", "");
+    let scrolling = page.subsection(&mouse, &tr("Scrolling"), "");
     let natural = hyprrows::switch(
         &page,
         &scrolling,
         &options,
         "swap_vert",
-        "Natural scrolling",
+        &tr("Natural scrolling"),
         "input:natural_scroll",
     );
     page.tip(
         &natural.button,
-        "Scrolling moves the content rather than the view.",
+        &tr("Scrolling moves the content rather than the view."),
     );
     hyprrows::combo(
         &page,
@@ -193,8 +194,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let only = page.section("usb", "This mouse only");
-    let empty = text::styled("No pointing device is connected");
+    let only = page.section("usb", &tr("This mouse only"));
+    let empty = text::styled(&tr("No pointing device is connected"));
     text::set_color(&empty, "colSubtext");
     let empty = Centred::new(&empty);
     empty.set_halign(gtk4::Align::Start);
@@ -202,8 +203,8 @@ pub fn build(context: &Context) -> Rc<Page> {
     only.append(&empty);
     let device_group = page.subsection(
         &only,
-        "Device",
-        "A device with nothing set here follows the general settings above",
+        &tr("Device"),
+        &tr("A device with nothing set here follows the general settings above"),
     );
     let chosen = Rc::new(Cell::new(0usize));
     let device = {
@@ -218,7 +219,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     };
     let device = Rc::new(device);
     let picker = page.combo(&device_group, "mouse");
-    let (device_speed, _) = slider_row(&page.theme, &device_group, "speed", "Speed", SPEED);
+    let (device_speed, _) = slider_row(&page.theme, &device_group, "speed", &tr("Speed"), SPEED);
     device_speed.on_moved({
         let devices = Rc::downgrade(&devices);
         let device = device.clone();
@@ -286,17 +287,18 @@ pub fn build(context: &Context) -> Rc<Page> {
         switch.bind(move || current());
         switch
     };
-    let device_enabled = device_switch("power_settings_new", "Enabled", "enabled");
+    let device_enabled = device_switch("power_settings_new", &tr("Enabled"), "enabled");
     page.tip(
         &device_enabled.button,
-        "A disabled device stops moving the pointer until it is turned back on here.",
+        &tr("A disabled device stops moving the pointer until it is turned back on here."),
     );
-    let device_acceleration = device_switch("trending_up", "Mouse acceleration", "accel_profile");
-    let device_natural = device_switch("swap_vert", "Natural scrolling", "natural_scroll");
+    let device_acceleration =
+        device_switch("trending_up", &tr("Mouse acceleration"), "accel_profile");
+    let device_natural = device_switch("swap_vert", &tr("Natural scrolling"), "natural_scroll");
     let (reset, _) = page.icon_button(
         "settings_backup_restore",
         true,
-        "Follow the general settings",
+        &tr("Follow the general settings"),
         {
             let devices = Rc::downgrade(&devices);
             let device = device.clone();
@@ -358,8 +360,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         show_device();
     });
 
-    let pointer = page.section("highlight_mouse_cursor", "Pointer");
-    let hiding = page.subsection(&pointer, "Hiding", "");
+    let pointer = page.section("highlight_mouse_cursor", &tr("Pointer"));
+    let hiding = page.subsection(&pointer, &tr("Hiding"), "");
     let (still, _) = hyprrows::spin(
         &page,
         &hiding,
@@ -375,17 +377,17 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &still,
-        "Zero keeps the pointer on screen no matter how long it sits still.",
+        &tr("Zero keeps the pointer on screen no matter how long it sits still."),
     );
     hyprrows::switch(
         &page,
         &hiding,
         &options,
         "keyboard_hide",
-        "Hide while typing",
+        &tr("Hide while typing"),
         "cursor:hide_on_key_press",
     );
-    let drawing = page.subsection(&pointer, "Drawing", "");
+    let drawing = page.subsection(&pointer, &tr("Drawing"), "");
     let hardware = hyprrows::combo(
         &page,
         &drawing,
@@ -396,42 +398,42 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &hardware.button,
-        "A pointer the screen draws itself stays smooth whatever the rest of the screen is doing.\nPick the last choice if the pointer disappears or is drawn in the wrong place.",
+        &tr("A pointer the screen draws itself stays smooth whatever the rest of the screen is doing.\nPick the last choice if the pointer disappears or is drawn in the wrong place."),
     );
     hyprrows::switch(
         &page,
         &drawing,
         &options,
         "animated_images",
-        "Use hyprcursor themes",
+        &tr("Use hyprcursor themes"),
         "cursor:enable_hyprcursor",
     );
 
-    let touchpad = page.section("touch_app", "Touchpad");
+    let touchpad = page.section("touch_app", &tr("Touchpad"));
     hyprrows::switch(
         &page,
         &touchpad,
         &options,
         "keyboard",
-        "Disable while typing",
+        &tr("Disable while typing"),
         "input:touchpad:disable_while_typing",
     );
-    let clicking = page.subsection(&touchpad, "Clicking", "");
+    let clicking = page.subsection(&touchpad, &tr("Clicking"), "");
     let tap = hyprrows::switch(
         &page,
         &clicking,
         &options,
         "touch_app",
-        "Tap to click",
+        &tr("Tap to click"),
         "input:touchpad:tap_to_click",
     );
-    page.tip(&tap.button, "Quickly touch the touchpad to click.");
+    page.tip(&tap.button, &tr("Quickly touch the touchpad to click."));
     hyprrows::switch(
         &page,
         &clicking,
         &options,
         "drag_pan",
-        "Tap and drag",
+        &tr("Tap and drag"),
         "input:touchpad:tap_and_drag",
     );
     hyprrows::switch(
@@ -439,29 +441,37 @@ pub fn build(context: &Context) -> Rc<Page> {
         &clicking,
         &options,
         "pan_tool",
-        "Middle click with three fingers",
+        &tr("Middle click with three fingers"),
         "input:touchpad:middle_button_emulation",
     );
-    let secondary = page.subsection(&clicking, "Secondary click", "");
+    let secondary = page.subsection(&clicking, &tr("Secondary click"), "");
     hyprrows::selection(
         &page,
         &secondary,
         &options,
         vec![
-            choice("Corner push", "south_west", Value::Bool(false)),
-            choice("Two finger push", "touch_app", Value::Bool(true)),
+            choice(&tr("Corner push"), "south_west", Value::Bool(false)),
+            choice(&tr("Two finger push"), "touch_app", Value::Bool(true)),
         ],
         |options| Value::Bool(options.flag("input:touchpad:clickfinger_behavior")),
         |options, value| options.set("input:touchpad:clickfinger_behavior", &value.to_string()),
     );
-    let taps = page.subsection(&clicking, "Tap with two or three fingers", "");
+    let taps = page.subsection(&clicking, &tr("Tap with two or three fingers"), "");
     hyprrows::selection(
         &page,
         &taps,
         &options,
         vec![
-            choice("Right, then middle", "arrow_forward", Value::from("lrm")),
-            choice("Middle, then right", "arrow_upward", Value::from("lmr")),
+            choice(
+                &tr("Right, then middle"),
+                "arrow_forward",
+                Value::from("lrm"),
+            ),
+            choice(
+                &tr("Middle, then right"),
+                "arrow_upward",
+                Value::from("lmr"),
+            ),
         ],
         |options| {
             let map = options.text("input:touchpad:tap_button_map");
@@ -477,13 +487,13 @@ pub fn build(context: &Context) -> Rc<Page> {
             }
         },
     );
-    let touch_scrolling = page.subsection(&touchpad, "Scrolling", "");
+    let touch_scrolling = page.subsection(&touchpad, &tr("Scrolling"), "");
     hyprrows::switch(
         &page,
         &touch_scrolling,
         &options,
         "swap_vert",
-        "Natural scrolling",
+        &tr("Natural scrolling"),
         "input:touchpad:natural_scroll",
     );
     hyprrows::spin(

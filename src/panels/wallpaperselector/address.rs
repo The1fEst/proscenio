@@ -5,6 +5,7 @@ use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::ui::theme::{SharedTheme, pixel_size, rounding};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::group::{GroupButton, Look as GroupLook};
@@ -87,7 +88,7 @@ impl AddressBar {
         );
         edit.set_valign(gtk4::Align::Center);
         let tip = Tooltip::new(&edit, theme, tooltip::Kind::Styled);
-        tip.set_text("Edit directory");
+        tip.set_text(&tr("Edit directory"));
         tooltip::hover_delay(&edit, &tip, 0);
 
         let widget = gtk4::Box::new(gtk4::Orientation::Horizontal, SPACING);

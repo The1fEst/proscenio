@@ -59,7 +59,7 @@ fn hits() -> impl Iterator<Item = (Hit, String)> {
             let hit = Hit {
                 page: setting.page,
                 path: setting.path,
-                title: setting.title.replace("{}", shell::name()),
+                title: setting.title.replace("%1", shell::name()),
                 trail,
                 setting: true,
             };

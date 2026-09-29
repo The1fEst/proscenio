@@ -1,6 +1,7 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::services::accounts;
 
@@ -11,21 +12,21 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.link_row(
         &main,
         "language",
-        "Region & Language",
-        "What language the interface is in",
+        &tr("Region & Language"),
+        &tr("What language the interface is in"),
         context.subpage_opener("region"),
     );
     page.link_row(
         &main,
         "nest_clock_farsight_analog",
-        "Date & Time",
-        "Clock format, date formats and the pomodoro timer",
+        &tr("Date & Time"),
+        &tr("Clock format, date formats and the pomodoro timer"),
         context.subpage_opener("datetime"),
     );
     let user = page.link_row(
         &main,
         "person",
-        "Users",
+        &tr("Users"),
         "",
         context.subpage_opener("users"),
     );
@@ -39,24 +40,24 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.link_row(
         &main,
         "info",
-        "About",
-        "What this machine is and what it runs",
+        &tr("About"),
+        &tr("What this machine is and what it runs"),
         context.subpage_opener("about"),
     );
 
-    let shell = page.section("tune", "The shell itself");
+    let shell = page.section("tune", &tr("The shell itself"));
     page.link_row(
         &shell,
         "settings",
-        "Services",
-        "Weather, updates, resources and the conflict killer",
+        &tr("Services"),
+        &tr("Weather, updates, resources and the conflict killer"),
         context.subpage_opener("services"),
     );
     page.link_row(
         &shell,
         "construction",
-        "Advanced",
-        "Workarounds and settings that can break things",
+        &tr("Advanced"),
+        &tr("Workarounds and settings that can break things"),
         context.subpage_opener("advanced"),
     );
     page

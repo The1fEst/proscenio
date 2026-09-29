@@ -3,6 +3,7 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::config::Config;
+use crate::core::i18n::{tr, trf};
 use crate::core::scope::Scope;
 use crate::platform::notify::{self, Notification};
 use crate::services::weather::{self, Weather};
@@ -66,8 +67,8 @@ pub fn build(weather: &Weather, config: &Rc<Config>, scope: &Scope) -> gtk4::Wid
             weather.fetch();
             notify::send(&Notification {
                 app: "Shell",
-                summary: "Weather",
-                body: "Refreshing (manually triggered)",
+                summary: &tr("Weather"),
+                body: &tr("Refreshing (manually triggered)"),
                 ..Default::default()
             });
         }
@@ -153,8 +154,9 @@ impl Panel {
     fn show(&self, report: &weather::Report) {
         self.city.set_text(&report.city);
         self.feels.set_text(&format!(
-            "{} • Feels like {}",
-            report.temperature, report.feels_like
+            "{} • {}",
+            report.temperature,
+            trf("Feels like %1", &[&report.feels_like])
         ));
         let readings = [
             report.uv.clone(),
@@ -170,14 +172,14 @@ impl Panel {
             label.set_text(&reading);
         }
         self.footer
-            .set_text(&format!("Last refresh: {}", report.refreshed));
+            .set_text(&trf("Last refresh: %1", &[&report.refreshed]));
     }
 }
 
 fn card(title: &str, icon: &str) -> (gtk4::Widget, gtk4::Label) {
     let symbol = text::symbol(icon, pixel_size::NORMAL as f64);
     text::set_color(&symbol, "colOnSurfaceVariant");
-    let name = text::styled_sized(title, pixel_size::SMALLER);
+    let name = text::styled_sized(&tr(title), pixel_size::SMALLER);
     text::set_color(&name, "colOnSurfaceVariant");
 
     let head = gtk4::Box::new(gtk4::Orientation::Horizontal, LAYOUT_SPACING);

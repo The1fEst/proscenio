@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
 use crate::core::config::{self, HYPRLAND_GAPS_OUT};
+use crate::core::i18n::tr;
 use crate::platform::{grab, hypr};
 use crate::services::thumbnails::Size;
 use crate::services::wallpapers::{Entry, Progress, Wallpapers, pictures};
@@ -199,7 +200,7 @@ impl View {
         let theme = &selector.theme;
         let wallpapers = &selector.wallpapers;
 
-        let label = text::styled_sized("Pick a wallpaper", pixel_size::NORMAL);
+        let label = text::styled_sized(&tr("Pick a wallpaper"), pixel_size::NORMAL);
         text::set_font(&label, Family::Main, pixel_size::NORMAL as f64, "wght=500");
         label.set_xalign(0.0);
         let title_text = Centred::filling_width(&label);
@@ -223,7 +224,7 @@ impl View {
         for (icon, name, path) in quick_dirs() {
             let symbol = text::symbol_filled(icon, pixel_size::LARGER as f64, 0.0);
             text::set_color(&symbol, "colOnLayer1");
-            let label = text::styled(name);
+            let label = text::styled(&tr(name));
             text::set_color(&label, "colOnLayer1");
             label.set_xalign(0.0);
             let name_holder = Centred::integral(&label);
@@ -297,16 +298,22 @@ impl View {
         tips.push(tip(
             theme,
             &open_button,
-            "Use the system file picker instead\nRight-click to make this the default behavior",
+            &tr(
+                "Use the system file picker instead\nRight-click to make this the default behavior",
+            ),
         ));
         let (random_button, _) = tool(theme, "ifl");
-        tips.push(tip(theme, &random_button, "Pick random from this folder"));
+        tips.push(tip(
+            theme,
+            &random_button,
+            &tr("Pick random from this folder"),
+        ));
         let dark = theme.borrow().m3.darkmode;
         let (mode_button, mode_symbol) = tool(theme, if dark { "dark_mode" } else { "light_mode" });
         tips.push(tip(
             theme,
             &mode_button,
-            "Click to toggle light/dark mode\n(applied when wallpaper is chosen)",
+            &tr("Click to toggle light/dark mode\n(applied when wallpaper is chosen)"),
         ));
 
         let filter = gtk4::Entry::new();
@@ -314,7 +321,7 @@ impl View {
         filter.set_has_frame(false);
         filter.set_size_request(FILTER_WIDTH, TOOL_SIZE);
         filter.set_valign(gtk4::Align::Center);
-        filter.set_placeholder_text(Some("Hit \"/\" to search"));
+        filter.set_placeholder_text(Some(&tr("Hit \"/\" to search")));
         filter.set_attributes(&{
             let attributes = pango::AttrList::new();
             attributes.insert(pango::AttrFontDesc::new(&text::font(
@@ -331,7 +338,7 @@ impl View {
         bar.append(&mode_button);
         bar.append(&filter);
         let (close_button, _, close_tip) =
-            toolbar::paired_fab(theme, "close", "Cancel wallpaper selection");
+            toolbar::paired_fab(theme, "close", &tr("Cancel wallpaper selection"));
         tips.push(close_tip);
         let options = gtk4::Box::new(gtk4::Orientation::Horizontal, TOOLBAR_SPACING);
         options.set_halign(gtk4::Align::Center);
@@ -571,7 +578,7 @@ impl View {
         let placeholder = |text: &'static str| {
             move |focus: &gtk4::EventControllerFocus| {
                 if let Some(filter) = focus.widget().and_downcast::<gtk4::Entry>() {
-                    filter.set_placeholder_text(Some(text));
+                    filter.set_placeholder_text(Some(&tr(text)));
                 }
             }
         };

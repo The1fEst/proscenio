@@ -2,6 +2,7 @@ use gtk4::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::services::wifi::{AccessPoint, State, Wifi};
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::centred::Centred;
@@ -121,9 +122,9 @@ impl Item {
         let name_box = Centred::filling_width(&name);
         name_box.set_hexpand(true);
         row.append(&name_box);
-        let (disconnect, _) = icon_button(theme, "link_off", true, "Disconnect");
+        let (disconnect, _) = icon_button(theme, "link_off", true, &tr("Disconnect"));
         row.append(&disconnect);
-        let (forget, _) = icon_button(theme, "delete", true, "Forget");
+        let (forget, _) = icon_button(theme, "delete", true, &tr("Forget"));
         row.append(&forget);
         let status = text::symbol("", ICON);
         text::set_color(&status, "colOnSurfaceVariant");
@@ -131,13 +132,13 @@ impl Item {
 
         let prompt = gtk4::Box::new(gtk4::Orientation::Vertical, PROMPT_SPACING);
         prompt.set_margin_top(PROMPT_TOP);
-        let password = TextField::secret(theme, Style::Outlined, "Password");
+        let password = TextField::secret(theme, Style::Outlined, &tr("Password"));
         password.root.set_hexpand(true);
         prompt.append(&password.root);
         let actions = gtk4::Box::new(gtk4::Orientation::Horizontal, PROMPT_SPACING);
         actions.append(&spacer());
-        let cancel = button(theme, "Cancel");
-        let confirm = button(theme, "Connect");
+        let cancel = button(theme, &tr("Cancel"));
+        let confirm = button(theme, &tr("Connect"));
         confirm.set_sensitive(false);
         password.connect_changed({
             let confirm = confirm.clone();

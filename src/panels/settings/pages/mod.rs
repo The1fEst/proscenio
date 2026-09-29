@@ -21,6 +21,7 @@ pub mod panels;
 pub mod power;
 pub mod privacy;
 pub mod quick;
+pub mod region;
 pub mod savednetworks;
 pub mod search;
 pub mod services;
@@ -32,6 +33,7 @@ pub mod wifi;
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::{Context, Page};
 use crate::ui::widgets::text;
 
@@ -440,6 +442,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "privacy" => privacy::build(context),
         "capture" => capture::build(context),
         "system" => system::build(context),
+        "region" => region::build(context),
         "datetime" => datetime::build(context),
         "users" => users::build(context),
         "about" => about::build(context),
@@ -457,7 +460,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
 fn placeholder(name: &str, context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let section = page.section("", "");
-    let label = text::styled(&format!("{name} is not ported yet"));
+    let label = text::styled(&trf("%1 is not ported yet", &[&tr(name)]));
     text::set_color(&label, "colSubtext");
     label.set_halign(gtk4::Align::Center);
     section.append(&label);

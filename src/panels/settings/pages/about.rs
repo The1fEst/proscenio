@@ -2,6 +2,7 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::{BASE_WIDTH, Context, Page};
 use crate::services::sysinfo::{self, Disk};
 use crate::ui::theme::{SharedTheme, pixel_size};
@@ -37,14 +38,14 @@ struct Link {
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
-    let device = page.section("memory", "Device");
+    let device = page.section("memory", &tr("Device"));
     let machine = sysinfo::machine();
-    fact(&device, "Name", &machine.hostname);
-    fact(&device, "Processor", &machine.processor);
-    let graphics = fact(&device, "Graphics", "");
-    fact(&device, "Memory", &machine.memory);
-    fact(&device, "Kernel", &machine.kernel);
-    fact(&device, "Session", &machine.session);
+    fact(&device, &tr("Name"), &machine.hostname);
+    fact(&device, &tr("Processor"), &machine.processor);
+    let graphics = fact(&device, &tr("Graphics"), "");
+    fact(&device, &tr("Memory"), &machine.memory);
+    fact(&device, &tr("Kernel"), &machine.kernel);
+    fact(&device, &tr("Session"), &machine.session);
     let graphics = graphics.downgrade();
     sysinfo::graphics(move |found| {
         if let Some(graphics) = graphics.upgrade() {
@@ -52,7 +53,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     });
 
-    let storage = page.section("storage", "Storage");
+    let storage = page.section("storage", &tr("Storage"));
     if let Some(section) = storage.parent() {
         section.set_visible(false);
     }
@@ -83,7 +84,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
 
     let release = sysinfo::os_release();
-    let distro = page.section("box", "Distro");
+    let distro = page.section("box", &tr("Distro"));
     distro.append(&banner(
         &release.logo,
         &release.name,
@@ -119,13 +120,13 @@ pub fn build(context: &Context) -> Rc<Page> {
         ],
     ));
 
-    let dotfiles = page.section("folder_managed", "Dotfiles");
+    let dotfiles = page.section("folder_managed", &tr("Dotfiles"));
     dotfiles.append(&banner(
         "illogical-impulse",
-        "illogical-impulse",
+        &tr("illogical-impulse"),
         &[
             Line::Link(DOTFILES, pixel_size::NORMAL),
-            Line::Credit("Forked from ", UPSTREAM),
+            Line::Credit("Forked from %1", UPSTREAM),
         ],
     ));
     dotfiles.append(&links(
@@ -237,10 +238,12 @@ fn disk_card(theme: &SharedTheme, disk: &Disk) -> gtk4::Widget {
     column.append(&bar);
 
     let free = text::styled_sized(
-        &format!(
-            "{} free of {}",
-            sysinfo::human_size((disk.size - disk.used.min(disk.size)) as f64),
-            sysinfo::human_size(disk.size as f64)
+        &trf(
+            "%1 free of %2",
+            &[
+                &sysinfo::human_size((disk.size - disk.used.min(disk.size)) as f64),
+                &sysinfo::human_size(disk.size as f64),
+            ],
         ),
         pixel_size::SMALLER,
     );
@@ -281,12 +284,9 @@ fn banner(icon: &str, title: &str, lines: &[Line]) -> gtk4::Box {
     for line in lines {
         let (label, size) = match line {
             Line::Link(url, size) => (link_label(&link_markup(url, &colour)), *size),
-            Line::Credit(lead, url) => {
-                let markup = format!(
-                    "{}{}",
-                    glib::markup_escape_text(lead),
-                    link_markup(url, &colour)
-                );
+            Line::Credit(template, url) => {
+                let markup = glib::markup_escape_text(&tr(template))
+                    .replace("%1", &link_markup(url, &colour));
                 let label = link_label(&markup);
                 text::set_color(&label, "colSubtext");
                 (label, pixel_size::SMALLER)
@@ -335,7 +335,8 @@ fn links(page: &Page, links: Vec<Link>) -> Flow {
     flow.set_hexpand(true);
     for link in links {
         let url = link.url;
-        let (button, _) = page.icon_button(link.icon, link.filled, link.label, move || open(&url));
+        let (button, _) =
+            page.icon_button(link.icon, link.filled, &tr(link.label), move || open(&url));
         flow.append(&button);
     }
     flow

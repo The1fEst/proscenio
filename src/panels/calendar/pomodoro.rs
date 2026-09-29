@@ -5,6 +5,7 @@ use std::cell::Cell;
 use std::f64::consts::PI;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::panels::calendar::laps::Laps;
 use crate::services::timer::Timer;
@@ -192,7 +193,7 @@ impl Pomodoro {
 
         let (toggle, toggle_label) = button(theme);
         let (reset, reset_label) = button(theme);
-        reset_label.set_text("Reset");
+        reset_label.set_text(&tr("Reset"));
         text::set_color(&reset_label, "colOnErrorContainer");
         reset.set_look(Look {
             background: |theme| theme.colors.col_error_container,
@@ -272,24 +273,24 @@ impl Pomodoro {
 
         self.time
             .set_text(&format!("{:02}:{:02}", left / 60, left % 60));
-        self.phase.set_text(if timer.pomodoro_long_break() {
+        self.phase.set_text(&tr(if timer.pomodoro_long_break() {
             "Long break"
         } else if timer.pomodoro_break() {
             "Break"
         } else {
             "Focus"
-        });
+        }));
         self.cycle
             .set_text(&(timer.pomodoro_cycle() + 1).to_string());
 
         let running = timer.pomodoro_running();
-        self.toggle_label.set_text(if running {
+        self.toggle_label.set_text(&tr(if running {
             "Pause"
         } else if left == timer.focus_time() {
             "Start"
         } else {
             "Resume"
-        });
+        }));
         if self.running.replace(Some(running)) != Some(running) {
             text::set_color(
                 &self.toggle_label,
@@ -457,15 +458,15 @@ impl Stopwatch {
         self.centis.set_text(&format!(":{:02}", elapsed % 100));
 
         let running = timer.stopwatch_running();
-        self.toggle_label.set_text(if running {
+        self.toggle_label.set_text(&tr(if running {
             "Pause"
         } else if elapsed == 0 {
             "Start"
         } else {
             "Resume"
-        });
+        }));
         self.second_label
-            .set_text(if running { "Lap" } else { "Reset" });
+            .set_text(&tr(if running { "Lap" } else { "Reset" }));
         if self.running.replace(Some(running)) != Some(running) {
             self.restyle(running);
         }

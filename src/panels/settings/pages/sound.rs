@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, slider_row};
 use crate::services::audio::{self, Audio, Card, Device, Stream};
 use crate::ui::theme::SharedTheme;
@@ -55,16 +56,16 @@ fn show_percent(slider: &Slider, value: f64) {
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let Some(audio) = context.services.audio.clone() else {
-        let section = page.section("volume_off", "Sound");
-        page.notice(&section, "info", NO_SERVER);
+        let section = page.section("volume_off", &tr("Sound"));
+        page.notice(&section, "info", &tr(NO_SERVER));
         return page;
     };
 
     let output = side(&page, &audio, true);
     let input = side(&page, &audio, false);
 
-    let levels_section = page.section("tune", "Volume Levels");
-    let empty = text::styled("Nothing is playing");
+    let levels_section = page.section("tune", &tr("Volume Levels"));
+    let empty = text::styled(&tr("Nothing is playing"));
     text::set_color(&empty, "colSubtext");
     empty.set_xalign(0.0);
     empty.set_margin_start(EMPTY_MARGIN);
@@ -77,25 +78,32 @@ pub fn build(context: &Context) -> Rc<Page> {
         shown: RefCell::new(Vec::new()),
     });
 
-    let alerts = page.section("notification_sound", "Alert Sound");
+    let alerts = page.section("notification_sound", &tr("Alert Sound"));
     if audio::sound_themes().is_empty() {
-        page.notice(&alerts, "info", NO_THEME);
+        page.notice(&alerts, "info", &tr(NO_THEME));
     }
     let kinds = page.uniform_row(&alerts);
     page.config_switch(
         &kinds,
         "battery_android_full",
-        "Battery",
+        &tr("Battery"),
         "/sounds/battery",
         false,
     );
-    page.config_switch(&kinds, "av_timer", "Pomodoro", "/sounds/pomodoro", false);
-    let microphone = page.config_switch(&kinds, "mic", "Microphone", "/sounds/microphone", true);
+    page.config_switch(
+        &kinds,
+        "av_timer",
+        &tr("Pomodoro"),
+        "/sounds/pomodoro",
+        false,
+    );
+    let microphone =
+        page.config_switch(&kinds, "mic", &tr("Microphone"), "/sounds/microphone", true);
     page.tip(
         &microphone.button,
-        "Played when the microphone is muted or unmuted",
+        &tr("Played when the microphone is muted or unmuted"),
     );
-    let theme_group = page.subsection(&alerts, "Sound theme", "");
+    let theme_group = page.subsection(&alerts, &tr("Sound theme"), "");
     let themes = page.combo(&theme_group, "notification_sound");
     let theme_names = Rc::new(RefCell::new(Vec::<String>::new()));
     let show_themes = {
@@ -120,22 +128,22 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
     page.watch(THEME, show_themes);
 
-    let cards_section = page.section("speaker", "Sound cards");
+    let cards_section = page.section("speaker", &tr("Sound cards"));
     let cards_holder = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
     cards_section.append(&cards_holder);
     load_cards(&page, &cards_holder);
 
-    let protection = page.section("hearing", "Earbang protection");
-    let enable = page.config_switch(&protection, "hearing", "Enable", PROTECTION, false);
+    let protection = page.section("hearing", &tr("Earbang protection"));
+    let enable = page.config_switch(&protection, "hearing", &tr("Enable"), PROTECTION, false);
     page.tip(
         &enable.button,
-        "Prevents abrupt increments and restricts volume limit",
+        &tr("Prevents abrupt increments and restricts volume limit"),
     );
     let limits = page.row(&protection);
     let (increase_row, increase) = page.config_spin(
         &limits,
         "arrow_warm_up",
-        "Max allowed increase",
+        &tr("Max allowed increase"),
         "/audio/protection/maxAllowedIncrease",
         10,
         (0, 100),
@@ -144,7 +152,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let (limit_row, limit) = page.config_spin(
         &limits,
         "vertical_align_top",
-        "Volume limit",
+        &tr("Volume limit"),
         "/audio/protection/maxAllowed",
         99,
         (0, 154),
@@ -184,11 +192,11 @@ fn side(page: &Page, audio: &Audio, sink: bool) -> Rc<Side> {
     } else {
         ("mic", "Input", "mic", "mic_off")
     };
-    let section = page.section(icon, title);
-    let group = page.subsection(&section, "Device", "");
+    let section = page.section(icon, &tr(title));
+    let group = page.subsection(&section, &tr("Device"), "");
     let combo = page.combo(&group, if sink { "speaker" } else { "mic" });
-    let (slider, _) = slider_row(&page.theme, &section, slider_icon, "Volume", PERCENT);
-    let mute = page.switch(&section, mute_icon, "Mute", {
+    let (slider, _) = slider_row(&page.theme, &section, slider_icon, &tr("Volume"), PERCENT);
+    let mute = page.switch(&section, mute_icon, &tr("Mute"), {
         let audio = audio.clone();
         move |wanted| {
             let muted = if sink {
@@ -345,7 +353,7 @@ fn fill_cards(page: &Rc<Page>, holder: &gtk4::Box, held: &Held, cards: Vec<Card>
         let (group, tip) = page.unkept_subsection(
             holder,
             &card.description,
-            "Which of the card's input and output configurations PipeWire uses",
+            &tr("Which of the card's input and output configurations PipeWire uses"),
         );
         let combo = ComboBox::new(&page.theme);
         combo.set_icon("tune");

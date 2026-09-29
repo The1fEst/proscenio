@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::i18n::tr;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::wifinetwork::{NetworkList, Options};
@@ -32,7 +33,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let wifi = Wifi::new();
 
     let controls = page.section("", "");
-    let switch = page.switch(&controls, "wifi", "Wi-Fi", {
+    let switch = page.switch(&controls, "wifi", &tr("Wi-Fi"), {
         let wifi = Rc::downgrade(&wifi);
         move |wanted| {
             if let Some(wifi) = wifi.upgrade() {
@@ -50,27 +51,27 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.link_row(
         &controls,
         "bookmark",
-        "Saved Networks",
+        &tr("Saved Networks"),
         "",
         context.subpage_opener("savednetworks"),
     );
     page.link_row(
         &controls,
         "wifi_password",
-        "Connect to Hidden Network…",
+        &tr("Connect to Hidden Network…"),
         "",
         context.subpage_opener("hiddennetwork"),
     );
 
     let missing = placeholder(
         &page,
-        "No Wi-Fi Found",
-        "Plug in an adapter and make sure NetworkManager is running",
+        &tr("No Wi-Fi Found"),
+        &tr("Plug in an adapter and make sure NetworkManager is running"),
     );
-    let off = placeholder(&page, "Wi-Fi Off", "Turn on to use Wi-Fi");
+    let off = placeholder(&page, &tr("Wi-Fi Off"), &tr("Turn on to use Wi-Fi"));
 
-    let (visible, busy) = page.busy_section("wifi_find", "Visible Networks");
-    let searching = text::styled("Searching for networks…");
+    let (visible, busy) = page.busy_section("wifi_find", &tr("Visible Networks"));
+    let searching = text::styled(&tr("Searching for networks…"));
     text::set_color(&searching, "colSubtext");
     searching.set_xalign(0.0);
     searching.set_margin_start(SEARCHING_MARGIN);

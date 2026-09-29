@@ -10,7 +10,8 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::core::{actions, config, paths, watch};
+use crate::core::i18n::{self, tr, trf};
+use crate::core::{actions, config, paths, process, watch};
 use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Choice, Page};
 use crate::panels::settings::pages::power::{IdleTimeout, hypridle_available, idle_timeout_row};
@@ -187,8 +188,8 @@ impl Welcome {
                 }
                 notify::send(&Notification {
                     app: "Shell",
-                    summary: "Welcome app",
-                    body: "Enjoy! You can reopen the welcome app any time with <tt>Super+Shift+Alt+/</tt>. To open the settings app, hit <tt>Super+I</tt>",
+                    summary: &tr("Welcome app"),
+                    body: &tr("Enjoy! You can reopen the welcome app any time with <tt>Super+Shift+Alt+/</tt>. To open the settings app, hit <tt>Super+I</tt>"),
                     ..Default::default()
                 });
             }
@@ -203,14 +204,14 @@ impl Welcome {
 
     fn titlebar(self: &Rc<Self>) -> (gtk4::CenterBox, Centred, Rc<Switch>, Rc<Tooltip>) {
         let bar = gtk4::CenterBox::new();
-        let title = gtk4::Label::new(Some("Hi there! First things first..."));
+        let title = gtk4::Label::new(Some(&tr("Hi there! First things first...")));
         text::set_font(&title, Family::Title, pixel_size::TITLE as f64, "wght=550");
         text::set_color(&title, "colOnLayer0");
         let placed = Centred::new(&title);
         placed.set_vexpand(true);
 
         let controls = gtk4::Box::new(gtk4::Orientation::Horizontal, CONTROLS_SPACING);
-        let next_time = text::styled_sized("Show next time", pixel_size::SMALLER);
+        let next_time = text::styled_sized(&tr("Show next time"), pixel_size::SMALLER);
         controls.append(&Centred::new(&next_time));
         let switch = Switch::new(&self.theme);
         switch.set_scale(SWITCH_SCALE);
@@ -247,7 +248,7 @@ impl Welcome {
             }
         });
         let tip = Tooltip::new(&close, &self.theme, tooltip::Kind::Styled);
-        tip.set_text("Tip: Close a window with Super+Q");
+        tip.set_text(&tr("Tip: Close a window with Super+Q"));
         tooltip::hover_delay(&close, &tip, 0);
         controls.append(&close);
         bar.set_end_widget(Some(&controls));
@@ -257,17 +258,18 @@ impl Welcome {
 
 fn content(theme: &SharedTheme, services: &Rc<Services>) -> Rc<Page> {
     let page = Page::new(theme, true);
+    language(&page);
     displays(&page, services);
     sound(&page, services);
 
-    let bar = page.section("screenshot_monitor", "Bar");
+    let bar = page.section("screenshot_monitor", &tr("Bar"));
     let row = page.row(&bar);
-    let position = page.subsection(&row, "Bar position", "");
+    let position = page.subsection(&row, &tr("Bar position"), "");
     bar_position(&page, &position);
-    let style = page.subsection(&row, "Bar style", "");
+    let style = page.subsection(&row, &tr("Bar style"), "");
     corner_style(&page, &style);
 
-    let styling = page.section("format_paint", "Style & wallpaper");
+    let styling = page.section("format_paint", &tr("Style & wallpaper"));
     let modes = ButtonGroup::new(&page.theme);
     modes.set_halign(gtk4::Align::Center);
     modes.append(&preference::build(&page, false));
@@ -276,9 +278,9 @@ fn content(theme: &SharedTheme, services: &Rc<Services>) -> Rc<Page> {
     let choose = quick::choose_wallpaper(&page);
     choose.set_halign(gtk4::Align::Center);
     styling.append(&choose);
-    page.notice(&styling, "info", NOTICE);
+    page.notice(&styling, "info", &tr(NOTICE));
 
-    let power = page.section("bedtime", "Power saving");
+    let power = page.section("bedtime", &tr("Power saving"));
     if hypridle_available(&page, &power) {
         let options = IdleOptions::new();
         idle_timeout_row(
@@ -310,27 +312,61 @@ fn content(theme: &SharedTheme, services: &Rc<Services>) -> Rc<Page> {
         page.keep(options);
     }
 
-    let info = page.section("info", "Info");
+    let info = page.section("info", &tr("Info"));
     let links = Flow::new(FLOW_SPACING);
     let keybinds = quick::shortcut_button(
         &page,
         "keyboard_alt",
-        "Keybinds",
+        &tr("Keybinds"),
         &[&quick::super_key()],
         "/",
     );
     keybinds.connect_clicked(|_| actions::run("cheatsheetToggle"));
     links.append(&keybinds);
-    links.append(&link(&page, "help", "Usage", USAGE));
-    links.append(&link(&page, "construction", "Configuration", CONFIGURATION));
+    links.append(&link(&page, "help", &tr("Usage"), USAGE));
+    links.append(&link(
+        &page,
+        "construction",
+        &tr("Configuration"),
+        CONFIGURATION,
+    ));
     info.append(&links);
 
-    let useless = page.section("monitoring", "Useless buttons");
+    let useless = page.section("monitoring", &tr("Useless buttons"));
     let buttons = Flow::new(FLOW_SPACING);
-    buttons.append(&nerd_link(&page, "\u{f02a4}", "GitHub", GITHUB));
-    buttons.append(&link(&page, "favorite", "Funny number", SPONSORS));
+    buttons.append(&nerd_link(&page, "\u{f02a4}", &tr("GitHub"), GITHUB));
+    buttons.append(&link(&page, "favorite", &tr("Funny number"), SPONSORS));
     useless.append(&buttons);
     page
+}
+
+fn language(page: &Rc<Page>) {
+    let section = page.section("language", &tr("Language"));
+    let group = page.subsection(&section, &tr("Select language"), "");
+    let mut choices = vec![Choice {
+        label: tr("Auto (System)"),
+        icon: "",
+        value: Value::from(i18n::AUTO),
+    }];
+    choices.extend(i18n::available().into_iter().map(|code| Choice {
+        label: code.to_owned(),
+        icon: "",
+        value: Value::from(code),
+    }));
+    let chosen = i18n::chosen();
+    page.selection(
+        &group,
+        choices,
+        i18n::LANGUAGE,
+        Value::from(i18n::AUTO),
+        move |value| {
+            if value.as_str() == Some(chosen.as_str()) {
+                return;
+            }
+            config::store_value(i18n::LANGUAGE, value);
+            process::restart_shell_on_welcome();
+        },
+    );
 }
 
 fn displays(page: &Rc<Page>, services: &Rc<Services>) {
@@ -350,7 +386,7 @@ fn displays(page: &Rc<Page>, services: &Rc<Services>) {
         }
     }
 
-    let section = page.section("display_settings", "Displays");
+    let section = page.section("display_settings", &tr("Displays"));
     let state = Rc::new(State {
         displays: Displays::new(),
         selected: RefCell::new(String::new()),
@@ -360,9 +396,9 @@ fn displays(page: &Rc<Page>, services: &Rc<Services>) {
     let arrangement = Arrangement::new(&page.theme);
     section.append(&arrangement.paint);
     let row = page.row(&section);
-    let resolution_group = page.subsection(&row, "Resolution", "");
+    let resolution_group = page.subsection(&row, &tr("Resolution"), "");
     let resolution = page.combo(&resolution_group, "aspect_ratio");
-    let rate_group = page.subsection(&row, "Refresh rate", "");
+    let rate_group = page.subsection(&row, &tr("Refresh rate"), "");
     let rate = page.combo(&rate_group, "refresh");
 
     let selection: Rc<RefCell<Option<(Vec<String>, Rc<Selection>)>>> = Rc::default();
@@ -458,7 +494,10 @@ fn displays(page: &Rc<Page>, services: &Rc<Services>) {
                 .iter()
                 .map(|mode| {
                     if mode.native {
-                        format!("{} × {} (Default)", mode.width, mode.height)
+                        trf(
+                            "%1 × %2 (Default)",
+                            &[&mode.width.to_string(), &mode.height.to_string()],
+                        )
                     } else {
                         format!("{} × {}", mode.width, mode.height)
                     }
@@ -469,7 +508,10 @@ fn displays(page: &Rc<Page>, services: &Rc<Services>) {
                 .iter()
                 .map(|rate| rate.round() as i64)
                 .collect();
-            let rate_labels: Vec<String> = rates.iter().map(|rate| format!("{rate} Hz")).collect();
+            let rate_labels: Vec<String> = rates
+                .iter()
+                .map(|rate| trf("%1 Hz", &[&rate.to_string()]))
+                .collect();
             rate.set_items(
                 &rate_labels,
                 index_of(&rates, &(monitor.refresh_rate.round() as i64)),
@@ -564,9 +606,9 @@ fn sound(page: &Rc<Page>, services: &Rc<Services>) {
     let Some(audio) = services.audio.clone() else {
         return;
     };
-    let section = page.section("volume_up", "Sound");
+    let section = page.section("volume_up", &tr("Sound"));
     for (sink, title, icon) in [(true, "Output", "speaker"), (false, "Input", "mic")] {
-        let group = page.subsection(&section, title, "");
+        let group = page.subsection(&section, &tr(title), "");
         let combo = page.combo(&group, icon);
         let names: Rc<RefCell<Vec<String>>> = Rc::default();
         combo.connect_activated({

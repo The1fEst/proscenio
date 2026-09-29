@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crate::core::i18n::{tr, trf};
 use crate::core::{assets, config, gsettings, paths, process};
 use crate::platform::hypr;
 use crate::platform::notify::{self, Notification};
@@ -109,7 +110,7 @@ fn start(arguments: &[String], jobs: &mut Vec<JoinHandle<()>>) -> glib::ExitCode
             "--getopenfilename",
             &folder,
             "--title",
-            "Choose wallpaper",
+            &tr("Choose wallpaper"),
         ])
         .filter(|path| !path.is_empty());
     }
@@ -305,18 +306,29 @@ fn offer_upscale(image: &str) {
     if image_width >= width && image_height >= height {
         return;
     }
-    let body = format!(
-        "Image resolution ({image_width}x{image_height}) is lower than screen resolution ({width}x{height})"
+    let body = trf(
+        "Image resolution (%1x%2) is lower than screen resolution (%3x%4)",
+        &[
+            &image_width.to_string(),
+            &image_height.to_string(),
+            &width.to_string(),
+            &height.to_string(),
+        ],
     );
-    if !ask("Upscale?", &body, "", ("open_upscayl", "Open Upscayl")) {
+    if !ask(
+        &tr("Upscale?"),
+        &body,
+        "",
+        ("open_upscayl", &tr("Open Upscayl")),
+    ) {
         return;
     }
     if !process::exists("upscayl") {
         let install = ask(
-            "Install Upscayl?",
+            &tr("Install Upscayl?"),
             "paru -S upscayl-bin",
             "im.error",
-            ("install_upscayl", "Install Upscayl (Arch)"),
+            ("install_upscayl", &tr("Install Upscayl (Arch)")),
         );
         if !install {
             return;
@@ -334,10 +346,10 @@ fn offer_install(missing: &[&str]) {
     println!("Missing deps: {names}");
     println!("Arch: sudo pacman -S {names}");
     let install = ask(
-        "Can't switch to video wallpaper",
-        &format!("Missing dependencies: {names}"),
+        &tr("Can't switch to video wallpaper"),
+        &trf("Missing dependencies: %1", &[&names]),
         "im.error",
-        ("install_arch", "Install (Arch)"),
+        ("install_arch", &tr("Install (Arch)")),
     );
     if !install {
         return;
@@ -348,8 +360,8 @@ fn offer_install(missing: &[&str]) {
     if process::exists("mpvpaper") && process::exists("ffmpeg") {
         notify::send_blocking(&Notification {
             app: APP_NAME,
-            summary: APP_NAME,
-            body: "Alright, try again!",
+            summary: &tr(APP_NAME),
+            body: &tr("Alright, try again!"),
             ..Default::default()
         });
     }

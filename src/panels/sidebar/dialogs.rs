@@ -3,6 +3,7 @@ use gtk4::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::Settings;
 use crate::panels::sidebar::toggles::Menu;
@@ -69,7 +70,7 @@ fn scroller(child: &impl IsA<gtk4::Widget>) -> gtk4::ScrolledWindow {
 }
 
 fn done_button(context: &Context, dialog: &Rc<WindowDialog>) -> RippleButton {
-    let done = button(&context.theme, "Done");
+    let done = button(&context.theme, &tr("Done"));
     let weak = Rc::downgrade(dialog);
     done.connect_clicked(move |_| {
         if let Some(dialog) = weak.upgrade() {
@@ -86,7 +87,7 @@ fn footer(
     page: impl Fn() -> &'static str + 'static,
 ) {
     let (row, place) = button_row();
-    let open = button(&context.theme, details);
+    let open = button(&context.theme, &tr(details));
     let close = context.close_sidebar.clone();
     let settings = context.settings.clone();
     open.connect_clicked(move |_| {
@@ -115,7 +116,7 @@ fn wifi(context: &Context) -> Rc<WindowDialog> {
     let dialog = WindowDialog::new(theme, Some(600.0));
     dialog
         .column
-        .add(&title("Connect to Wi-Fi"), Place::default());
+        .add(&title(&tr("Connect to Wi-Fi")), Place::default());
     let rule = separator();
     rule.set_visible(false);
     dialog.column.add(&rule, separator_place());
@@ -195,7 +196,7 @@ fn bluetooth(context: &Context) -> Rc<WindowDialog> {
     let dialog = WindowDialog::new(theme, Some(600.0));
     dialog
         .column
-        .add(&title("Bluetooth devices"), Place::default());
+        .add(&title(&tr("Bluetooth devices")), Place::default());
     let rule = separator();
     dialog.column.add(&rule, separator_place());
     let bar = progress(theme);
@@ -256,19 +257,19 @@ fn bluetooth_item(
     ));
     let names = Column::filling_width(2);
     names.append(&elided(tinted(
-        &text::styled(if device.name.is_empty() {
-            "Unknown device"
+        &text::styled(&if device.name.is_empty() {
+            tr("Unknown device")
         } else {
-            &device.name
+            device.name.clone()
         }),
         "colOnSurfaceVariant",
     )));
     if device.paired {
-        let mut status = if device.connected {
-            "Connected".to_owned()
+        let mut status = tr(if device.connected {
+            "Connected"
         } else {
-            "Paired".to_owned()
-        };
+            "Paired"
+        });
         if let Some(battery) = device.battery {
             status.push_str(&format!(" • {}%", (battery * 100.0).round()));
         }
@@ -296,7 +297,7 @@ fn bluetooth_item(
         let paired = device.paired;
         let first = action_button(
             theme,
-            if paired { "Forget" } else { "Always connect" },
+            &tr(if paired { "Forget" } else { "Always connect" }),
             if paired {
                 Look {
                     background: |theme| theme.colors.col_error,
@@ -330,7 +331,7 @@ fn bluetooth_item(
         let connected = device.connected;
         let second = action_button(
             theme,
-            if connected { "Disconnect" } else { "Connect" },
+            &tr(if connected { "Disconnect" } else { "Connect" }),
             Look {
                 background: |theme| theme.colors.col_primary,
                 hover: |theme| theme.colors.col_primary_hover,
@@ -380,7 +381,7 @@ fn volume(context: &Context, sink: bool) -> Rc<WindowDialog> {
     let theme = &context.theme;
     let dialog = WindowDialog::new(theme, Some(600.0));
     dialog.column.add(
-        &title(if sink { "Audio output" } else { "Audio input" }),
+        &title(&tr(if sink { "Audio output" } else { "Audio input" })),
         Place::default(),
     );
     dialog.column.add(
@@ -400,7 +401,12 @@ fn volume(context: &Context, sink: bool) -> Rc<WindowDialog> {
     apps.set_margin_start(20);
     apps.set_margin_end(20);
     apps.set_valign(gtk4::Align::Start);
-    let empty = Placeholder::titled(theme, "widgets", "No applications", Shape::Cookie7Sided);
+    let empty = Placeholder::titled(
+        theme,
+        "widgets",
+        &tr("No applications"),
+        Shape::Cookie7Sided,
+    );
     let stack = gtk4::Overlay::new();
     stack.set_child(Some(&scroller(&apps)));
     stack.add_overlay(&empty.widget);
@@ -555,11 +561,11 @@ fn mixer_entry(
     badge.add_controller(click);
     let tip = Tooltip::new(&badge, theme, tooltip::Kind::Styled);
     tip.place_like_qt();
-    tip.set_text(if stream.muted {
+    tip.set_text(&tr(if stream.muted {
         "Click to unmute"
     } else {
         "Click to mute"
-    });
+    }));
     tooltip::hover_delay(&badge, &tip, 0);
     row.append(&badge);
 
@@ -607,7 +613,7 @@ fn dialog_slider(
 ) -> (gtk4::Widget, Rc<Slider>) {
     let column = Column::filling_width(-2);
     if let Some(label) = label {
-        let name = tinted(&text::styled(label), "colSubtext");
+        let name = tinted(&text::styled(&tr(label)), "colSubtext");
         name.set_xalign(0.0);
         name.set_margin_start(2);
         column.append(&name);
@@ -640,16 +646,16 @@ fn night(context: &Context) -> Rc<WindowDialog> {
         ..Place::default()
     };
 
-    column.add(&title("Eye protection"), Place::default());
-    column.add(&section_header("Night Light"), Place::default());
+    column.add(&title(&tr("Eye protection")), Place::default());
+    column.add(&section_header(&tr("Night Light")), Place::default());
     column.add(&separator(), header_rule());
 
     let group = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    let now = ConfigSwitch::new(theme, "check", "Enable now", {
+    let now = ConfigSwitch::new(theme, "check", &tr("Enable now"), {
         let session = session.clone();
         move |on| session.toggle_temperature(Some(on))
     });
-    let automatic = ConfigSwitch::new(theme, "night_sight_auto", "Automatic", {
+    let automatic = ConfigSwitch::new(theme, "night_sight_auto", &tr("Automatic"), {
         let session = session.clone();
         move |on| session.set_automatic(on)
     });
@@ -671,10 +677,10 @@ fn night(context: &Context) -> Rc<WindowDialog> {
     column.add(&group, section);
 
     column.add(
-        &section_header("Anti-flashbang (experimental)"),
+        &section_header(&tr("Anti-flashbang (experimental)")),
         Place::default(),
     );
-    column.add(&section_header("Brightness"), Place::default());
+    column.add(&section_header(&tr("Brightness")), Place::default());
     column.add(&separator(), header_rule());
     let (level, level_slider) = dialog_slider(theme, None, 0.0, 1.0);
     level_slider.on_moved({
@@ -684,7 +690,7 @@ fn night(context: &Context) -> Rc<WindowDialog> {
     });
     column.add(&level, section);
 
-    column.add(&section_header("Gamma"), Place::default());
+    column.add(&section_header(&tr("Gamma")), Place::default());
     column.add(&separator(), header_rule());
     let floor = crate::services::brightness::GAMMA_FLOOR / 100.0;
     let (gamma, gamma_slider) = dialog_slider(theme, None, floor, 1.0);
@@ -750,7 +756,7 @@ fn wireguard(context: &Context) -> Rc<WindowDialog> {
     let dialog = WindowDialog::new(theme, Some(400.0));
     dialog
         .column
-        .add(&title("WireGuard Connections"), Place::default());
+        .add(&title(&tr("WireGuard Connections")), Place::default());
     dialog.column.add(&separator(), separator_place());
     let list = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     dialog.column.add(&scroller(&list), list_place());
@@ -800,7 +806,7 @@ fn wireguard_item(
     names.append(&elided(tinted(&text::styled(name), "colOnSurfaceVariant")));
     names.append(&elided(tinted(
         &text::styled_sized(
-            if up { "Connected" } else { "Disconnected" },
+            &tr(if up { "Connected" } else { "Disconnected" }),
             pixel_size::SMALLER,
         ),
         "colSubtext",

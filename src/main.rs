@@ -104,6 +104,8 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     let settings_window = settings::Settings::new(app, &theme, &services);
     let settings_page = std::env::var(core::process::OPEN_SETTINGS).ok();
     unsafe { std::env::remove_var(core::process::OPEN_SETTINGS) };
+    let reopen_welcome = std::env::var_os(core::process::OPEN_WELCOME).is_some();
+    unsafe { std::env::remove_var(core::process::OPEN_WELCOME) };
     let welcome_window = welcome::Welcome::new(app, &theme, &services);
     let welcome_actions: [(&str, fn(&Rc<welcome::Welcome>)); 3] = [
         ("open", |welcome| welcome.open()),
@@ -329,6 +331,9 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     screen_lock.start();
     services.background.add("trim", unload::trimming());
     welcome::greet_if_first_run(&welcome_window);
+    if reopen_welcome {
+        welcome_window.open();
+    }
     if let Some(page) = settings_page {
         settings_window.open(Some(&page));
     }

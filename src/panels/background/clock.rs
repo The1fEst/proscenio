@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use super::cookie::{Cookie, Look, Moment};
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::core::watch;
 use crate::panels::bar::clock::strftime_from_qt;
 use crate::ui::anim::{EMPHASIZED, EXPRESSIVE_DEFAULT, EXPRESSIVE_EFFECTS, Tween};
@@ -204,8 +205,9 @@ impl Clock {
             (digital_quote.clone().upcast(), 0),
         ]);
 
-        let (safety_row, safety_labels) = status_row("hide_image", "Wallpaper safety enforced");
-        let (lock_row, lock_labels) = status_row("lock", "Locked");
+        let (safety_row, safety_labels) =
+            status_row("hide_image", &tr("Wallpaper safety enforced"));
+        let (lock_row, lock_labels) = status_row("lock", &tr("Locked"));
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, STATUS_SPACING);
         let filler = || {
             let filler = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);

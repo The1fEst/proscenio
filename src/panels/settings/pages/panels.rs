@@ -2,6 +2,7 @@ use gtk4::prelude::*;
 use serde_json::Value;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::{config, tools};
 use crate::panels::osk::layouts::LAYOUTS;
 use crate::panels::settings::content::{Choice, Context, Page};
@@ -48,45 +49,45 @@ fn choice(label: &str, icon: &'static str, value: &str) -> Choice {
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
-    let dock = page.section("call_to_action", "Dock");
-    page.config_switch(&dock, "check", "Enable", "/dock/enable", false);
-    let reveal = page.subsection(&dock, "Reveal", "");
+    let dock = page.section("call_to_action", &tr("Dock"));
+    page.config_switch(&dock, "check", &tr("Enable"), "/dock/enable", false);
+    let reveal = page.subsection(&dock, &tr("Reveal"), "");
     let reveal_row = page.uniform_row(&reveal);
     page.config_switch(
         &reveal_row,
         "highlight_mouse_cursor",
-        "Hover to reveal",
+        &tr("Hover to reveal"),
         HOVER_TO_REVEAL,
         true,
     );
     page.config_switch(
         &reveal_row,
         "keep",
-        "Pinned on startup",
+        &tr("Pinned on startup"),
         "/dock/pinnedOnStartup",
         false,
     );
     let hover_region = page.config_spin(
         &reveal,
         "highlight_mouse_cursor",
-        "Hover region height (px)",
+        &tr("Hover region height (px)"),
         "/dock/hoverRegionHeight",
         2,
         (1, 50),
         1,
     );
-    let looks = page.subsection(&dock, "Looks", "");
+    let looks = page.subsection(&dock, &tr("Looks"), "");
     page.config_switch(
         &looks,
         "colors",
-        "Tint app icons",
+        &tr("Tint app icons"),
         "/dock/monochromeIcons",
         true,
     );
     page.config_spin(
         &looks,
         "height",
-        "Height (px)",
+        &tr("Height (px)"),
         "/dock/height",
         60,
         (30, 150),
@@ -94,38 +95,40 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     let pinned = page.subsection(
         &dock,
-        "Pinned apps",
-        "Comma-separated desktop entry IDs, in the order they should appear",
+        &tr("Pinned apps"),
+        &tr("Comma-separated desktop entry IDs, in the order they should appear"),
     );
     page.config_list(
         &pinned,
-        "e.g. org.kde.dolphin, kitty",
+        &tr("e.g. org.kde.dolphin, kitty"),
         "/dock/pinnedApps",
         &["org.kde.dolphin", "kitty"],
     );
     let ignored = page.subsection(
         &dock,
-        "Ignored apps",
-        "Comma-separated regexes. Matching windows won't get a dock entry.",
+        &tr("Ignored apps"),
+        &tr("Comma-separated regexes. Matching windows won't get a dock entry."),
     );
     page.config_list(
         &ignored,
-        "e.g. ^steam_app_.*",
+        &tr("e.g. ^steam_app_.*"),
         "/dock/ignoredAppRegexes",
         &[],
     );
 
-    let sidebars = page.section("side_navigation", "Sidebars");
+    let sidebars = page.section("side_navigation", &tr("Sidebars"));
     let toggles = page.subsection(
         &sidebars,
-        "Quick toggles",
-        "Which toggles are shown, their size and their order are edited in the sidebar itself, with its edit mode",
+        &tr("Quick toggles"),
+        &tr(
+            "Which toggles are shown, their size and their order are edited in the sidebar itself, with its edit mode",
+        ),
     );
     let styles = page.selection(
         &toggles,
         vec![
-            choice("Classic", "password_2", "classic"),
-            choice("Android", "action_key", "android"),
+            choice(&tr("Classic"), "password_2", "classic"),
+            choice(&tr("Android"), "action_key", "android"),
         ],
         TOGGLES_STYLE,
         Value::from("android"),
@@ -135,14 +138,14 @@ pub fn build(context: &Context) -> Rc<Page> {
     let columns = page.config_spin(
         &toggles,
         "splitscreen_left",
-        "Columns",
+        &tr("Columns"),
         "/sidebar/quickToggles/android/columns",
         5,
         (1, 8),
         1,
     );
-    let sliders = page.subsection(&sidebars, "Sliders", "");
-    page.config_switch(&sliders, "check", "Enable", SLIDERS, false);
+    let sliders = page.subsection(&sidebars, &tr("Sliders"), "");
+    page.config_switch(&sliders, "check", &tr("Enable"), SLIDERS, false);
     let shown_sliders: Vec<_> = [
         (
             "brightness_6",
@@ -160,44 +163,51 @@ pub fn build(context: &Context) -> Rc<Page> {
     ]
     .into_iter()
     .map(|(icon, label, pointer, default)| {
-        page.config_switch(&sliders, icon, label, pointer, default)
+        page.config_switch(&sliders, icon, &tr(label), pointer, default)
     })
     .collect();
 
     let corners = page.subsection(
         &sidebars,
-        "Corner open",
-        "Allows you to open sidebars by clicking or hovering screen corners regardless of bar position",
+        &tr("Corner open"),
+        &tr(
+            "Allows you to open sidebars by clicking or hovering screen corners regardless of bar position",
+        ),
     );
     let enable_row = page.uniform_row(&corners);
-    page.config_switch(&enable_row, "check", "Enable", CORNER_OPEN, true);
+    page.config_switch(&enable_row, "check", &tr("Enable"), CORNER_OPEN, true);
     let clickless = page.config_switch(
         &corners,
         "highlight_mouse_cursor",
-        "Hover to trigger",
+        &tr("Hover to trigger"),
         CLICKLESS,
         false,
     );
-    page.tip(&clickless.button, "When this is off you'll have to click");
+    page.tip(
+        &clickless.button,
+        &tr("When this is off you'll have to click"),
+    );
     let corner_end_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     corner_end_row.set_halign(gtk4::Align::Start);
     corners.append(&corner_end_row);
     let corner_end = page.config_switch(
         &corner_end_row,
         "",
-        "Force hover open at absolute corner",
+        &tr("Force hover open at absolute corner"),
         "/sidebar/cornerOpen/clicklessCornerEnd",
         true,
     );
     corner_end.button.set_hexpand(false);
     page.tip(
         &corner_end.button,
-        "When the previous option is off and this is on,\nyou can still hover the corner's end to open sidebar,\nand the remaining area can be used for volume/brightness scroll",
+        &tr(
+            "When the previous option is off and this is on,\nyou can still hover the corner's end to open sidebar,\nand the remaining area can be used for volume/brightness scroll",
+        ),
     );
     let offset = page.config_spin(
         &corner_end_row,
         "arrow_cool_down",
-        "with vertical offset",
+        &tr("with vertical offset"),
         "/sidebar/cornerOpen/clicklessCornerVerticalOffset",
         1,
         (0, 20),
@@ -208,29 +218,34 @@ pub fn build(context: &Context) -> Rc<Page> {
     offset.0.set_hexpand(false);
     page.tip(
         &offset.0,
-        "Why this is cool:\nFor non-0 values, it won't trigger when you reach the\nscreen corner along the horizontal edge, but it will when\nyou do along the vertical edge",
+        &tr(
+            "Why this is cool:\nFor non-0 values, it won't trigger when you reach the\nscreen corner along the horizontal edge, but it will when\nyou do along the vertical edge",
+        ),
     );
     let placing = page.uniform_row(&corners);
     let bottom = page.config_switch(
         &placing,
         "vertical_align_bottom",
-        "Place at bottom",
+        &tr("Place at bottom"),
         "/sidebar/cornerOpen/bottom",
         false,
     );
-    page.tip(&bottom.button, "Place the corners to trigger at the bottom");
+    page.tip(
+        &bottom.button,
+        &tr("Place the corners to trigger at the bottom"),
+    );
     let value_scroll = page.config_switch(
         &placing,
         "unfold_more_double",
-        "Value scroll",
+        &tr("Value scroll"),
         "/sidebar/cornerOpen/valueScroll",
         true,
     );
-    page.tip(&value_scroll.button, "Brightness and volume");
+    page.tip(&value_scroll.button, &tr("Brightness and volume"));
     let visualize = page.config_switch(
         &corners,
         "visibility",
-        "Visualize region",
+        &tr("Visualize region"),
         "/sidebar/cornerOpen/visualize",
         false,
     );
@@ -238,7 +253,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let region_width = page.config_spin(
         &region,
         "arrow_range",
-        "Region width",
+        &tr("Region width"),
         "/sidebar/cornerOpen/cornerRegionWidth",
         250,
         (1, 300),
@@ -247,41 +262,41 @@ pub fn build(context: &Context) -> Rc<Page> {
     let region_height = page.config_spin(
         &region,
         "height",
-        "Region height",
+        &tr("Region height"),
         "/sidebar/cornerOpen/cornerRegionHeight",
         5,
         (1, 300),
         1,
     );
 
-    let selector = page.section("wallpaper_slideshow", "Wallpaper selector");
+    let selector = page.section("wallpaper_slideshow", &tr("Wallpaper selector"));
     page.tools_notice(
         &selector,
         &[&tools::KDIALOG],
-        "the system file picker does not open",
+        &tr("the system file picker does not open"),
     );
     page.config_switch(
         &selector,
         "ad",
-        "Use system file picker",
+        &tr("Use system file picker"),
         "/wallpaperSelector/useSystemFileDialog",
         false,
     );
 
-    let osk = page.section("keyboard", "On-screen keyboard");
+    let osk = page.section("keyboard", &tr("On-screen keyboard"));
     page.tools_notice(
         &osk,
         &[&tools::YDOTOOL],
-        "the on-screen keyboard types nothing",
+        &tr("the on-screen keyboard types nothing"),
     );
     page.config_switch(
         &osk,
         "keep",
-        "Pinned on startup",
+        &tr("Pinned on startup"),
         "/osk/pinnedOnStartup",
         false,
     );
-    let layout = page.subsection(&osk, "Layout", "");
+    let layout = page.subsection(&osk, &tr("Layout"), "");
     let layouts = page.combo(&layout, "keyboard_alt");
     let names: Vec<String> = LAYOUTS
         .iter()
@@ -302,11 +317,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         config::store_value(OSK_LAYOUT, Value::from(LAYOUTS[index].name));
     });
 
-    let cheatsheet = page.section("keyboard_keys", "Cheat sheet");
+    let cheatsheet = page.section("keyboard_keys", &tr("Cheat sheet"));
     let super_key = page.subsection(
         &cheatsheet,
-        "Super key symbol",
-        "You can also manually edit cheatsheet.superKey",
+        &tr("Super key symbol"),
+        &tr("You can also manually edit cheatsheet.superKey"),
     );
     let keys = Selection::with_family(
         &page.theme,
@@ -327,7 +342,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     super_key.append(&keys.root);
     page.keep(keys);
 
-    let symbols = page.subsection(&cheatsheet, "Symbols", "");
+    let symbols = page.subsection(&cheatsheet, &tr("Symbols"), "");
     for (icon, label, pointer, tip) in [
         (
             "󰘵",
@@ -348,26 +363,28 @@ pub fn build(context: &Context) -> Rc<Page> {
             "Replace 󱕐   for \"Scroll ↓\", 󱕑   \"Scroll ↑\", L󰍽   \"LMB\", R󰍽   \"RMB\", 󱕒   \"Scroll ↑/↓\" and ⇞/⇟ for \"Page_↑/↓\"",
         ),
     ] {
-        let switch = page.config_switch(&symbols, icon, label, pointer, false);
-        page.tip(&switch.button, tip);
+        let switch = page.config_switch(&symbols, icon, &tr(label), pointer, false);
+        page.tip(&switch.button, &tr(tip));
     }
-    let keycaps = page.subsection(&cheatsheet, "Keycaps", "");
+    let keycaps = page.subsection(&cheatsheet, &tr("Keycaps"), "");
     let split = page.config_switch(
         &keycaps,
         "highlight_keyboard_focus",
-        "Split buttons",
+        &tr("Split buttons"),
         "/cheatsheet/splitButtons",
         false,
     );
     page.tip(
         &split.button,
-        "Display modifiers and keys in multiple keycap (e.g., \"Ctrl + A\" instead of \"Ctrl A\" or \"󰘴 + A\" instead of \"󰘴 A\")",
+        &tr(
+            "Display modifiers and keys in multiple keycap (e.g., \"Ctrl + A\" instead of \"Ctrl A\" or \"󰘴 + A\" instead of \"󰘴 A\")",
+        ),
     );
     let sizes = page.uniform_row(&keycaps);
     page.config_spin(
         &sizes,
         "",
-        "Keybind font size",
+        &tr("Keybind font size"),
         "/cheatsheet/fontSize/key",
         12,
         (8, 30),
@@ -376,7 +393,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &sizes,
         "",
-        "Description font size",
+        &tr("Description font size"),
         "/cheatsheet/fontSize/comment",
         12,
         (8, 30),

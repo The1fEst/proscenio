@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::core::config::{self, Config};
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::panels::overview::launcher::{IconType, Item, Launcher, Run};
 use crate::platform::grab;
@@ -332,11 +333,12 @@ impl Overview {
     }
 
     fn delete_current(&self) {
+        let delete = tr("Delete");
         let run = self.rows.borrow().get(self.current.get()).and_then(|row| {
             row.item
                 .actions
                 .iter()
-                .find(|action| action.name == "Delete")
+                .find(|action| action.name == delete)
                 .map(|action| action.run.clone())
         });
         if let Some(run) = run {
@@ -569,7 +571,7 @@ impl Overview {
         let kind_row = gtk4::Overlay::new();
         let kind_holder = Centred::filling_width(&kind);
         kind_holder.set_hexpand(true);
-        kind_holder.set_visible(!item.kind.is_empty() && item.kind != "App");
+        kind_holder.set_visible(!item.kind.is_empty() && item.kind != tr("App"));
         kind_row.set_child(Some(&kind_holder));
 
         let mut symbols = Vec::new();
@@ -803,7 +805,7 @@ impl Overview {
             inner.set_valign(gtk4::Align::Center);
             inner.set_vexpand(true);
             let symbol = text::symbol("visibility_off", BLUR_ICON);
-            let label = text::styled_sized("Image hidden", pixel_size::SMALLIE);
+            let label = text::styled_sized(&tr("Image hidden"), pixel_size::SMALLIE);
             text::set_color(&label, "colOnSurface");
             inner.append(&Centred::new(&symbol));
             inner.append(&Centred::new(&label));
@@ -1004,7 +1006,7 @@ pub fn build(
     let entry = gtk4::Entry::new();
     entry.add_css_class("search-input");
     entry.set_has_frame(false);
-    entry.set_placeholder_text(Some("Search, calculate or run"));
+    entry.set_placeholder_text(Some(&tr("Search, calculate or run")));
     entry.set_margin_top(BAR_PADDING);
     entry.set_margin_bottom(BAR_PADDING);
     entry.set_valign(gtk4::Align::Center);

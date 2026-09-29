@@ -5,6 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::f64::consts::PI;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::ui::anim::{Ease, Tween};
 use crate::ui::theme::{SharedTheme, pixel_size, rounding, transparentize};
 use crate::ui::widgets::centred::Centred;
@@ -49,7 +50,7 @@ impl SecondaryTabs {
             let symbol = text::symbol(icon, pixel_size::HUGE as f64);
             symbol.add_css_class("color-fade");
             let fill = text::fill_motion(&symbol, pixel_size::HUGE as f64, 0.0);
-            let label = text::styled(name);
+            let label = text::styled(&tr(name));
             label.add_css_class("color-fade");
             let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
             symbol.set_margin_end(ICON_GAP);

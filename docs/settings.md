@@ -238,6 +238,17 @@ Link rows only: Region & Language, Date & Time, Users (its second line the
 account's real name, or its username, from AccountsService) and About, then
 "The shell itself" with Services and Advanced.
 
+### 9.1 Region & Language (subpage)
+
+One untitled section with the subsection "Language", its tooltip "Select the
+language for the user interface. "Auto" will use your system's locale.", and a
+combo box with the `language` icon: "Auto (System)", then every bundled
+catalog as its native name and code, such as "Русский (ru_RU)". Each starts
+with a left-to-right mark, so a right-to-left name keeps its code on the
+right. Choosing another entry writes `language.ui` and restarts the shell on
+this page, since the interface is translated once at start (see
+[foundations.md](foundations.md) §10).
+
 ## 10. Date & Time (subpage)
 
 "Time Format": 24h (`hh:mm`), 12h am/pm (`h:mm ap`) and 12h AM/PM

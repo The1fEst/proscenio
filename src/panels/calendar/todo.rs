@@ -1,6 +1,7 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::services::todo::Todo;
 use crate::ui::anim::{EXPRESSIVE_DEFAULT, EXPRESSIVE_EFFECTS, Fader};
@@ -67,14 +68,21 @@ pub fn build(theme: &SharedTheme, todo: &Todo, scope: &Scope) -> Rc<TodoPage> {
     let swipe = Swipe::new(PAGE_GAP);
     swipe.set_vexpand(true);
     swipe.set_margin_top(PAGE_GAP);
-    let unfinished = TaskList::new(theme, todo, scope, false, "check_circle", "Nothing here!");
+    let unfinished = TaskList::new(
+        theme,
+        todo,
+        scope,
+        false,
+        "check_circle",
+        &tr("Nothing here!"),
+    );
     let finished = TaskList::new(
         theme,
         todo,
         scope,
         true,
         "checklist",
-        "Finished tasks will go here",
+        &tr("Finished tasks will go here"),
     );
     swipe.append(&unfinished.widget);
     swipe.append(&finished.widget);
@@ -286,7 +294,7 @@ fn fab(theme: &SharedTheme) -> RippleButton {
 }
 
 fn dialog(theme: &SharedTheme) -> (gtk4::Box, gtk4::Entry, RippleButton, RippleButton) {
-    let title = text::styled_sized("Add task", pixel_size::LARGER);
+    let title = text::styled_sized(&tr("Add task"), pixel_size::LARGER);
     text::set_color(&title, "m3onSurface");
     title.set_xalign(0.0);
     title.set_margin_top(DIALOG_PADDING);
@@ -295,7 +303,7 @@ fn dialog(theme: &SharedTheme) -> (gtk4::Box, gtk4::Entry, RippleButton, RippleB
 
     let entry = gtk4::Entry::new();
     entry.add_css_class("todo-field");
-    entry.set_placeholder_text(Some("Task description"));
+    entry.set_placeholder_text(Some(&tr("Task description")));
     entry.set_margin_start(DIALOG_PADDING);
     entry.set_margin_end(DIALOG_PADDING);
     let (family, weight) = text::application_font();
@@ -307,8 +315,8 @@ fn dialog(theme: &SharedTheme) -> (gtk4::Box, gtk4::Entry, RippleButton, RippleB
     attributes.insert(gtk4::pango::AttrFontDesc::new(&font));
     entry.set_attributes(&attributes);
 
-    let cancel = windowdialog::button(theme, "Cancel");
-    let accept = windowdialog::button(theme, "Add");
+    let cancel = windowdialog::button(theme, &tr("Cancel"));
+    let accept = windowdialog::button(theme, &tr("Add"));
     let buttons = gtk4::Box::new(gtk4::Orientation::Horizontal, ITEM_SPACING);
     buttons.set_halign(gtk4::Align::End);
     buttons.set_margin_bottom(DIALOG_PADDING);

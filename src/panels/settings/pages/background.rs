@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page, Parent, Style};
 use crate::panels::settings::pages::appearance::family_options;
 use crate::services::appearance::DesktopAppearance;
@@ -58,7 +59,7 @@ fn placement_row(
     strategy: &str,
 ) {
     let row = page.row(parent);
-    let switch = page.config_switch(&row, "check", "Enable", enable, default);
+    let switch = page.config_switch(&row, "check", &tr("Enable"), enable, default);
     switch.button.set_hexpand(false);
     let spacer = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     spacer.set_hexpand(true);
@@ -69,8 +70,8 @@ fn placement_row(
         placement,
         strategy,
         vec![
-            choice("Draggable", "drag_pan", "free"),
-            choice("Random", "shuffle", "random"),
+            choice(&tr("Draggable"), "drag_pan", "free"),
+            choice(&tr("Random"), "shuffle", "random"),
         ],
     );
     selection.root.set_hexpand(false);
@@ -80,58 +81,58 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let appearance = DesktopAppearance::new();
 
-    let wallpaper = page.section("wallpaper", "Wallpaper");
+    let wallpaper = page.section("wallpaper", &tr("Wallpaper"));
     let fullscreen = page.config_switch(
         &wallpaper,
         "fullscreen",
-        "Hide when a window is fullscreen",
+        &tr("Hide when a window is fullscreen"),
         "/background/hideWhenFullscreen",
         true,
     );
     page.tip(
         &fullscreen.button,
-        "Saves a bit of resources while gaming or watching videos",
+        &tr("Saves a bit of resources while gaming or watching videos"),
     );
 
-    let parallax = page.section("sync_alt", "Parallax");
+    let parallax = page.section("sync_alt", &tr("Parallax"));
     let vertical = page.uniform_row(&parallax);
     page.config_switch(
         &vertical,
         "unfold_more_double",
-        "Vertical",
+        &tr("Vertical"),
         "/background/parallax/vertical",
         false,
     );
     let auto_vertical = page.config_switch(
         &vertical,
         "aspect_ratio",
-        "Vertical for tall wallpapers",
+        &tr("Vertical for tall wallpapers"),
         "/background/parallax/autoVertical",
         false,
     );
     page.tip(
         &auto_vertical.button,
-        "Automatically pans vertically when the wallpaper is taller than it is wide",
+        &tr("Automatically pans vertically when the wallpaper is taller than it is wide"),
     );
     let follows = page.uniform_row(&parallax);
     page.config_switch(
         &follows,
         "counter_1",
-        "Depends on workspace",
+        &tr("Depends on workspace"),
         "/background/parallax/enableWorkspace",
         true,
     );
     page.config_switch(
         &follows,
         "side_navigation",
-        "Depends on sidebars",
+        &tr("Depends on sidebars"),
         "/background/parallax/enableSidebar",
         true,
     );
     page.config_spin_scaled(
         &parallax,
         "loupe",
-        "Preferred wallpaper zoom (%)",
+        &tr("Preferred wallpaper zoom (%)"),
         "/background/parallax/workspaceZoom",
         1.07,
         100.0,
@@ -141,7 +142,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let (movement, _) = page.config_spin_scaled(
         &parallax,
         "widgets",
-        "Widget movement (%)",
+        &tr("Widget movement (%)"),
         "/background/parallax/widgetsFactor",
         1.2,
         100.0,
@@ -150,10 +151,10 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &movement,
-        "How much the clock and weather widgets follow the wallpaper's movement",
+        &tr("How much the clock and weather widgets follow the wallpaper's movement"),
     );
 
-    let clock = page.section("clock_loader_40", "Widget: Clock");
+    let clock = page.section("clock_loader_40", &tr("Widget: Clock"));
     placement_row(
         &page,
         &clock,
@@ -165,42 +166,42 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_switch(
         &clock,
         "lock_clock",
-        "Show only when locked",
+        &tr("Show only when locked"),
         SHOW_ONLY_WHEN_LOCKED,
         false,
     );
     let styles = page.row(&clock);
-    let unlocked = page.subsection(&styles, "Clock style", "");
+    let unlocked = page.subsection(&styles, &tr("Clock style"), "");
     let clock_styles = || {
         vec![
-            choice("Digital", "timer_10", "digital"),
-            choice("Cookie", "cookie", "cookie"),
+            choice(&tr("Digital"), "timer_10", "digital"),
+            choice(&tr("Cookie"), "cookie", "cookie"),
         ]
     };
     string_selection(&page, &unlocked, STYLE, "cookie", clock_styles());
     let unlocked = Page::subsection_root(&unlocked);
     unlocked.set_hexpand(true);
-    let locked = page.subsection(&styles, "Clock style (locked)", "");
+    let locked = page.subsection(&styles, &tr("Clock style (locked)"), "");
     string_selection(&page, &locked, STYLE_LOCKED, "cookie", clock_styles());
     Page::subsection_root(&locked).set_hexpand(false);
 
     let digital = page.subsection(
         &clock,
-        "Digital clock settings",
-        "Font width and roundness settings are only available for some fonts like Google Sans Flex",
+        &tr("Digital clock settings"),
+        &tr("Font width and roundness settings are only available for some fonts like Google Sans Flex"),
     );
     let arrangement = page.uniform_row(&digital);
     page.config_switch(
         &arrangement,
         "vertical_distribute",
-        "Vertical",
+        &tr("Vertical"),
         "/background/widgets/clock/digital/vertical",
         false,
     );
     page.config_switch(
         &arrangement,
         "animation",
-        "Animate time change",
+        &tr("Animate time change"),
         "/background/widgets/clock/digital/animateChange",
         true,
     );
@@ -208,23 +209,23 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_switch(
         &extras,
         "date_range",
-        "Show date",
+        &tr("Show date"),
         "/background/widgets/clock/digital/showDate",
         true,
     );
     let adaptive = page.config_switch(
         &extras,
         "activity_zone",
-        "Use adaptive alignment",
+        &tr("Use adaptive alignment"),
         "/background/widgets/clock/digital/adaptiveAlignment",
         true,
     );
     page.tip(
         &adaptive.button,
-        "Aligns the date and quote to left, center or right depending on its position on the screen.",
+        &tr("Aligns the date and quote to left, center or right depending on its position on the screen."),
     );
     let family_row = page.row(&digital);
-    let family_label = text::styled("Font family");
+    let family_label = text::styled(&tr("Font family"));
     text::set_color(&family_label, "colSubtext");
     let family_label = Centred::new(&family_label);
     family_label.set_margin_start(LABEL_START);
@@ -293,25 +294,25 @@ pub fn build(context: &Context) -> Rc<Page> {
             vec![1.0],
         ),
     ] {
-        page.config_slider(&digital, icon, label, pointer, default, range, stops);
+        page.config_slider(&digital, icon, &tr(label), pointer, default, range, stops);
     }
 
-    let cookie = page.subsection(&clock, "Cookie clock settings", "");
+    let cookie = page.subsection(&clock, &tr("Cookie clock settings"), "");
     let sine = page.config_switch(
         &cookie,
         "airwave",
-        "Use old sine wave cookie implementation",
+        &tr("Use old sine wave cookie implementation"),
         "/background/widgets/clock/cookie/useSineCookie",
         false,
     );
     page.tip(
         &sine.button,
-        "Looks a bit softer and more consistent with different number of sides,\nbut has less impressive morphing",
+        &tr("Looks a bit softer and more consistent with different number of sides,\nbut has less impressive morphing"),
     );
     page.config_spin(
         &cookie,
         "add_triangle",
-        "Sides",
+        &tr("Sides"),
         "/background/widgets/clock/cookie/sides",
         14,
         (0, 40),
@@ -320,36 +321,36 @@ pub fn build(context: &Context) -> Rc<Page> {
     let rotate = page.config_switch(
         &cookie,
         "autoplay",
-        "Constantly rotate",
+        &tr("Constantly rotate"),
         "/background/widgets/clock/cookie/constantlyRotate",
         false,
     );
     page.tip(
         &rotate.button,
-        "Makes the clock always rotate. This is extremely expensive\n(expect 50% usage on Intel UHD Graphics) and thus impractical.",
+        &tr("Makes the clock always rotate. This is extremely expensive\n(expect 50% usage on Intel UHD Graphics) and thus impractical."),
     );
     let marks_row = page.row(&cookie);
     let marks = page.config_switch(
         &marks_row,
         "brightness_7",
-        "Hour marks",
+        &tr("Hour marks"),
         "/background/widgets/clock/cookie/hourMarks",
         false,
     );
     page.tip(
         &marks.button,
-        "Can only be turned on using the 'Dots' or 'Full' dial style for aesthetic reasons",
+        &tr("Can only be turned on using the 'Dots' or 'Full' dial style for aesthetic reasons"),
     );
     let digits = page.config_switch(
         &marks_row,
         "timer_10",
-        "Digits in the middle",
+        &tr("Digits in the middle"),
         "/background/widgets/clock/cookie/timeIndicators",
         true,
     );
     page.tip(
         &digits.button,
-        "Can't be turned on when using 'Numbers' dial style for aesthetic reasons",
+        &tr("Can't be turned on when using 'Numbers' dial style for aesthetic reasons"),
     );
 
     let mut cookie_parts = vec![Page::subsection_root(&cookie)];
@@ -361,9 +362,9 @@ pub fn build(context: &Context) -> Rc<Page> {
             "full",
             vec![
                 choice("", "block", "none"),
-                choice("Dots", "graph_6", "dots"),
-                choice("Full", "history_toggle_off", "full"),
-                choice("Numbers", "counter_1", "numbers"),
+                choice(&tr("Dots"), "graph_6", "dots"),
+                choice(&tr("Full"), "history_toggle_off", "full"),
+                choice(&tr("Numbers"), "counter_1", "numbers"),
             ],
         ),
         (
@@ -372,9 +373,9 @@ pub fn build(context: &Context) -> Rc<Page> {
             "fill",
             vec![
                 choice("", "block", "hide"),
-                choice("Classic", "radio", "classic"),
-                choice("Hollow", "circle", "hollow"),
-                choice("Fill", "eraser_size_5", "fill"),
+                choice(&tr("Classic"), "radio", "classic"),
+                choice(&tr("Hollow"), "circle", "hollow"),
+                choice(&tr("Fill"), "eraser_size_5", "fill"),
             ],
         ),
         (
@@ -383,10 +384,10 @@ pub fn build(context: &Context) -> Rc<Page> {
             "medium",
             vec![
                 choice("", "block", "hide"),
-                choice("Classic", "radio", "classic"),
-                choice("Thin", "line_end", "thin"),
-                choice("Medium", "eraser_size_2", "medium"),
-                choice("Bold", "eraser_size_4", "bold"),
+                choice(&tr("Classic"), "radio", "classic"),
+                choice(&tr("Thin"), "line_end", "thin"),
+                choice(&tr("Medium"), "eraser_size_2", "medium"),
+                choice(&tr("Bold"), "eraser_size_4", "bold"),
             ],
         ),
         (
@@ -395,9 +396,9 @@ pub fn build(context: &Context) -> Rc<Page> {
             "dot",
             vec![
                 choice("", "block", "hide"),
-                choice("Classic", "radio", "classic"),
-                choice("Line", "line_end", "line"),
-                choice("Dot", "adjust", "dot"),
+                choice(&tr("Classic"), "radio", "classic"),
+                choice(&tr("Line"), "line_end", "line"),
+                choice(&tr("Dot"), "adjust", "dot"),
             ],
         ),
         (
@@ -406,19 +407,19 @@ pub fn build(context: &Context) -> Rc<Page> {
             "bubble",
             vec![
                 choice("", "block", "hide"),
-                choice("Bubble", "bubble_chart", "bubble"),
-                choice("Border", "rotate_right", "border"),
-                choice("Rect", "rectangle", "rect"),
+                choice(&tr("Bubble"), "bubble_chart", "bubble"),
+                choice(&tr("Border"), "rotate_right", "border"),
+                choice(&tr("Rect"), "rectangle", "rect"),
             ],
         ),
     ] {
         let seconds = title == "Second hand";
         let tip = if seconds {
-            "Shown only while Date & Time › Seconds is on"
+            tr("Shown only while Date & Time › Seconds is on")
         } else {
-            ""
+            String::new()
         };
-        let group = page.subsection(&clock, title, tip);
+        let group = page.subsection(&clock, &tr(title), &tip);
         string_selection(&page, &group, pointer, default, choices);
         if seconds {
             second_hand = Some(Page::subsection_root(&group));
@@ -426,18 +427,18 @@ pub fn build(context: &Context) -> Rc<Page> {
         cookie_parts.push(Page::subsection_root(&group));
     }
 
-    let quote = page.subsection(&clock, "Quote", "");
+    let quote = page.subsection(&clock, &tr("Quote"), "");
     page.config_switch(
         &quote,
         "check",
-        "Enable",
+        &tr("Enable"),
         "/background/widgets/clock/quote/enable",
         false,
     );
     page.config_text(
         &quote,
         Style::Filled,
-        "Quote",
+        &tr("Quote"),
         "/background/widgets/clock/quote/text",
         "",
     );
@@ -469,7 +470,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
     page.watch("/time/secondPrecision", move || follow());
 
-    let weather = page.section("weather_mix", "Widget: Weather");
+    let weather = page.section("weather_mix", &tr("Widget: Weather"));
     placement_row(
         &page,
         &weather,

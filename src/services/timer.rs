@@ -5,6 +5,7 @@ use std::rc::{Rc, Weak};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::core::config;
+use crate::core::i18n::{tr, trf};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::persistent;
 use crate::core::watch;
@@ -224,15 +225,24 @@ impl Timer {
 
             let config = config::current();
             let message = if self.pomodoro_long_break() {
-                format!("🌿 Long break: {} minutes", config.pomodoro_long_break / 60)
+                trf(
+                    "🌿 Long break: %1 minutes",
+                    &[&(config.pomodoro_long_break / 60).to_string()],
+                )
             } else if self.pomodoro_break() {
-                format!("☕ Break: {} minutes", config.pomodoro_break / 60)
+                trf(
+                    "☕ Break: %1 minutes",
+                    &[&(config.pomodoro_break / 60).to_string()],
+                )
             } else {
-                format!("🔴 Focus: {} minutes", config.pomodoro_focus / 60)
+                trf(
+                    "🔴 Focus: %1 minutes",
+                    &[&(config.pomodoro_focus / 60).to_string()],
+                )
             };
             notify::send(&Notification {
                 app: "Shell",
-                summary: "Pomodoro",
+                summary: &tr("Pomodoro"),
                 body: &message,
                 ..Default::default()
             });

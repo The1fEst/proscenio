@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
 use crate::services::appearance::DesktopAppearance;
@@ -40,9 +41,9 @@ pub fn build(context: &Context) -> Rc<Page> {
     let options = HyprOptions::new(&OPTIONS);
     let appearance = DesktopAppearance::new();
 
-    let seeing = page.section("visibility", "Seeing");
+    let seeing = page.section("visibility", &tr("Seeing"));
     let cursor = SpinBox::new(&page.theme, 8, 128, 4, 0);
-    page.spin_row(&seeing, "height", "Cursor size", &cursor);
+    page.spin_row(&seeing, "height", &tr("Cursor size"), &cursor);
     let show_cursor = {
         let cursor = Rc::downgrade(&cursor);
         let appearance = Rc::downgrade(&appearance);
@@ -67,20 +68,20 @@ pub fn build(context: &Context) -> Rc<Page> {
         &page,
         &seeing,
         &options,
-        ("animation", "Reduced motion"),
+        ("animation", tr("Reduced motion")),
         |options| !options.flag("animations:enabled"),
         |options, reduced| options.set("animations:enabled", &(!reduced).to_string()),
     );
     page.tip(
         &reduced.button,
-        "Windows and workspaces appear at once instead of moving.",
+        &tr("Windows and workspaces appear at once instead of moving."),
     );
     hyprrows::switch(
         &page,
         &seeing,
         &options,
         "open_with",
-        "Animate manual resizes",
+        &tr("Animate manual resizes"),
         "misc:animate_manual_resizes",
     );
     hyprrows::switch(
@@ -88,15 +89,15 @@ pub fn build(context: &Context) -> Rc<Page> {
         &seeing,
         &options,
         "drag_pan",
-        "Animate windows being dragged",
+        &tr("Animate windows being dragged"),
         "misc:animate_mouse_windowdragging",
     );
 
-    let typing = page.section("keyboard", "Typing");
+    let typing = page.section("keyboard", &tr("Typing"));
     let repeat = page.subsection(
         &typing,
-        "Repeat keys",
-        "Key presses repeat when the key is held down",
+        &tr("Repeat keys"),
+        &tr("Key presses repeat when the key is held down"),
     );
     let repeat_row = page.uniform_row(&repeat);
     hyprrows::spin(
@@ -126,11 +127,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let zoom = page.section("zoom_in", "Zoom");
+    let zoom = page.section("zoom_in", &tr("Zoom"));
     let magnifier = page.subsection(
         &zoom,
-        "Magnifier",
-        "The whole screen, magnified around the pointer. 100% is no magnification.",
+        &tr("Magnifier"),
+        &tr("The whole screen, magnified around the pointer. 100% is no magnification."),
     );
     hyprrows::spin(
         &page,
@@ -150,7 +151,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &magnifier,
         &options,
         "grid_on",
-        "Keep the magnified image sharp",
+        &tr("Keep the magnified image sharp"),
         "cursor:zoom_disable_aa",
     );
 

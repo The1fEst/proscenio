@@ -2,6 +2,7 @@ use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
 
+use crate::core::i18n::trf;
 use crate::core::process;
 
 pub struct Tool {
@@ -55,7 +56,7 @@ fn listed(items: &[&str]) -> String {
     match items {
         [] => String::new(),
         [only] => (*only).to_owned(),
-        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
+        [rest @ .., last] => trf("%1 and %2", &[&rest.join(", "), *last]),
     }
 }
 
@@ -67,21 +68,21 @@ pub fn missing_message(missing: &[&Tool], effect: &str) -> String {
             packages.push(tool.package);
         }
     }
-    let (verb, pronoun) = if programs.len() == 1 {
-        ("is", "It comes")
-    } else {
-        ("are", "They come")
-    };
-    let noun = if packages.len() == 1 {
-        "package"
-    } else {
-        "packages"
-    };
-    format!(
-        "{} {verb} not installed, so {effect}. {pronoun} with the {} {noun}.",
-        listed(&programs),
-        listed(&packages)
-    )
+    let arguments: [&str; 3] = [&listed(&programs), effect, &listed(&packages)];
+    match (programs.len(), packages.len()) {
+        (1, _) => trf(
+            "%1 is not installed, so %2. It comes with the %3 package.",
+            &arguments,
+        ),
+        (_, 1) => trf(
+            "%1 are not installed, so %2. They come with the %3 package.",
+            &arguments,
+        ),
+        _ => trf(
+            "%1 are not installed, so %2. They come with the %3 packages.",
+            &arguments,
+        ),
+    }
 }
 
 pub fn system_service(name: &str) -> bool {

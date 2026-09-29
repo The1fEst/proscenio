@@ -2,6 +2,7 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::config::Config;
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::services::sysinfo::{Resources, Usage};
 use crate::ui::theme::SharedTheme;
@@ -123,7 +124,7 @@ pub fn build(
     cpu_column.set_valign(gtk4::Align::Start);
     cpu_column.append(&popup::header("planner_review", "CPU"));
     let cpu_rows = popup::column();
-    let (load_row, load) = popup::value("bolt", "Load:", "0%");
+    let (load_row, load) = popup::value("bolt", &tr("Load:"), "0%");
     load_row.set_halign(gtk4::Align::Start);
     cpu_rows.append(&load_row);
     cpu_column.append(&cpu_rows);
@@ -168,9 +169,9 @@ fn meter_column(icon: &str, name: &str) -> (gtk4::Box, [gtk4::Label; 3]) {
     column.append(&popup::header(icon, name));
 
     let rows = popup::column();
-    let (used_row, used) = popup::value("clock_loader_60", "Used:", "0");
-    let (free_row, free) = popup::value("check_circle", "Free:", "0");
-    let (total_row, total) = popup::value("empty_dashboard", "Total:", "0");
+    let (used_row, used) = popup::value("clock_loader_60", &tr("Used:"), "0");
+    let (free_row, free) = popup::value("check_circle", &tr("Free:"), "0");
+    let (total_row, total) = popup::value("empty_dashboard", &tr("Total:"), "0");
     for row in [&used_row, &free_row, &total_row] {
         row.set_halign(gtk4::Align::Start);
         rows.append(row);

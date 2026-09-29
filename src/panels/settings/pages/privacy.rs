@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
+use crate::core::i18n::tr;
 use crate::core::tools;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::services::privacy;
@@ -23,31 +24,31 @@ pub struct Tile {
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
-    let system = page.section("tune", "System");
+    let system = page.section("tune", &tr("System"));
     page.link_row(
         &system,
         "lock",
-        "Screen Lock",
-        "What the lock screen looks like and what it lets through",
+        &tr("Screen Lock"),
+        &tr("What the lock screen looks like and what it lets through"),
         context.subpage_opener("lock"),
     );
     page.link_row(
         &system,
         "screenshot_frame_2",
-        "Screenshots & Recording",
-        "Where captures go and how the region selector behaves",
+        &tr("Screenshots & Recording"),
+        &tr("Where captures go and how the region selector behaves"),
         context.subpage_opener("capture"),
     );
 
-    let devices = page.section("sensors", "Devices");
+    let devices = page.section("sensors", &tr("Devices"));
     page.tools_notice(
         &devices,
         &[&tools::PW_DUMP],
-        "the microphone and screen always read as unused",
+        &tr("the microphone and screen always read as unused"),
     );
     let row = page.uniform_row(&devices);
-    let microphone = tile(&row, "mic", "Microphone idle");
-    let screen = tile(&row, "screen_share", "Screen not shared");
+    let microphone = tile(&row, "mic", &tr("Microphone idle"));
+    let screen = tile(&row, "screen_share", &tr("Screen not shared"));
     page.every(POLL, move || {
         let microphone = (microphone.icon.clone(), microphone.label.clone());
         let screen = (screen.icon.clone(), screen.label.clone());
@@ -55,56 +56,56 @@ pub fn build(context: &Context) -> Rc<Page> {
             show(
                 &microphone,
                 activity.microphone,
-                "Microphone in use",
-                "Microphone idle",
+                &tr("Microphone in use"),
+                &tr("Microphone idle"),
             );
             show(
                 &screen,
                 activity.screen,
-                "Screen being shared",
-                "Screen not shared",
+                &tr("Screen being shared"),
+                &tr("Screen not shared"),
             );
         });
     });
 
-    let safety = page.section("work_alert", "Work safety");
+    let safety = page.section("work_alert", &tr("Work safety"));
     page.config_switch(
         &safety,
         "assignment",
-        "Hide clipboard images copied from sussy sources",
+        &tr("Hide clipboard images copied from sussy sources"),
         "/workSafety/enable/clipboard",
         false,
     );
     page.config_switch(
         &safety,
         "wallpaper",
-        "Hide sussy/anime wallpapers",
+        &tr("Hide sussy/anime wallpapers"),
         "/workSafety/enable/wallpaper",
         false,
     );
     let keywords = page.subsection(
         &safety,
-        "Trigger keywords",
-        "Comma-separated. Work safety kicks in when one of these shows up.",
+        &tr("Trigger keywords"),
+        &tr("Comma-separated. Work safety kicks in when one of these shows up."),
     );
     keyword_field(
         &page,
         &keywords,
-        "Network names",
+        &tr("Network names"),
         "/workSafety/triggerCondition/networkNameKeywords",
         |config| &config.safety_networks,
     );
     keyword_field(
         &page,
         &keywords,
-        "File names",
+        &tr("File names"),
         "/workSafety/triggerCondition/fileKeywords",
         |config| &config.safety_files,
     );
     keyword_field(
         &page,
         &keywords,
-        "Links",
+        &tr("Links"),
         "/workSafety/triggerCondition/linkKeywords",
         |config| &config.safety_links,
     );

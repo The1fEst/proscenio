@@ -4,6 +4,7 @@ use gtk4::gsk;
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::panels::settings::content::Page;
 use crate::services::session;
 use crate::theming::switchwall;
@@ -177,7 +178,7 @@ pub fn build(page: &Page, dark: bool) -> RippleButton {
     preview.add_overlay(&skeleton);
     preview.set_measure_overlay(&skeleton, true);
 
-    let name = text::styled(if dark { "Dark" } else { "Light" });
+    let name = text::styled(&tr(if dark { "Dark" } else { "Light" }));
     name.set_halign(gtk4::Align::Center);
 
     let column = gtk4::Box::new(gtk4::Orientation::Vertical, 5);

@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
+use crate::core::i18n::{tr, trf};
 use crate::core::process;
 use crate::platform::{hypr, ipc};
 use crate::ui::theme::Theme;
@@ -61,7 +62,7 @@ fn ask(app: &gtk4::Application, shell: &'static str, trying: &str, fallback: &st
     let icon = text::symbol("brush", ICON);
     text::set_color(&icon, "colSecondary");
     dialog.column.add(&Centred::integral(&icon), Place::wide());
-    let title = windowdialog::title(&format!("Keep the {} renderer?", name(trying)));
+    let title = windowdialog::title(&trf("Keep the %1 renderer?", &[&name(trying)]));
     title.set_xalign(0.5);
     title.set_justify(gtk4::Justification::Center);
     dialog.column.add(&title, Place::wide());
@@ -73,8 +74,8 @@ fn ask(app: &gtk4::Application, shell: &'static str, trying: &str, fallback: &st
     dialog.column.add(&description, Place::wide());
     let (row, mut place) = windowdialog::button_row();
     place.bottom = BUTTON_ROW_BOTTOM;
-    let revert = windowdialog::button(&theme, "Revert");
-    let keep = windowdialog::button(&theme, "Keep");
+    let revert = windowdialog::button(&theme, &tr("Revert"));
+    let keep = windowdialog::button(&theme, &tr("Keep"));
     row.append(&windowdialog::spacer());
     row.append(&revert);
     row.append(&keep);
@@ -108,9 +109,9 @@ fn ask(app: &gtk4::Application, shell: &'static str, trying: &str, fallback: &st
         let description = description.clone();
         let left = left.clone();
         move || {
-            description.set_text(&format!(
-                "{fallback_name} comes back in {} s unless you keep this one.",
-                left.get()
+            description.set_text(&trf(
+                "%1 comes back in %2 s unless you keep this one.",
+                &[&fallback_name, &left.get().to_string()],
             ));
         }
     };

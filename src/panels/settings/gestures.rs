@@ -3,6 +3,7 @@ use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::Page;
 use crate::platform::gestures::{self, Gesture, Listed};
 use crate::platform::hypr;
@@ -49,7 +50,7 @@ fn label_of(pairs: &[(&str, &str)], key: &str) -> String {
     pairs
         .iter()
         .find(|(known, _)| *known == key)
-        .map_or_else(|| key.to_owned(), |(_, label)| (*label).to_owned())
+        .map_or_else(|| key.to_owned(), |(_, label)| tr(label))
 }
 
 fn title(gesture: &Gesture) -> String {
@@ -58,16 +59,19 @@ fn title(gesture: &Gesture) -> String {
     } else {
         format!("{} + ", gesture.mods)
     };
-    format!(
-        "{mods}{} fingers · {}",
-        gesture.fingers,
-        label_of(&DIRECTIONS, &gesture.direction)
-    )
+    let described = trf(
+        "%1 fingers · %2",
+        &[
+            &gesture.fingers.to_string(),
+            &label_of(&DIRECTIONS, &gesture.direction),
+        ],
+    );
+    format!("{mods}{described}")
 }
 
 fn action_label(gesture: &Gesture) -> String {
     if gesture.action.is_empty() {
-        "Custom action".to_owned()
+        tr("Custom action")
     } else {
         label_of(&ACTIONS, &gesture.action)
     }
@@ -100,7 +104,10 @@ impl Gestures {
         let before_errors = gesture_errors();
         let (_, before) = gestures::read();
         if let Err(error) = gestures::write(&settings) {
-            self.say(&format!("settings.lua could not be written: {error}"));
+            self.say(&trf(
+                "settings.lua could not be written: %1",
+                &[&error.to_string()],
+            ));
             return;
         }
         hypr::request("reload");
@@ -111,7 +118,7 @@ impl Gestures {
         if let Some(error) = fresh.first() {
             let _ = gestures::write(&before);
             hypr::request("reload");
-            self.say(&format!("Hyprland refused it: {error}"));
+            self.say(&trf("Hyprland refused it: %1", &[error]));
         } else {
             self.say("");
         }
@@ -127,10 +134,9 @@ impl Gestures {
         let (defaults, settings) = gestures::read();
         let list = gestures::effective(&defaults, &settings);
         if let Some(taken) = gestures::conflict(&list, gesture) {
-            self.say(&format!(
-                "{} already covers this ({}). Remove it first.",
-                title(taken),
-                action_label(taken)
+            self.say(&trf(
+                "%1 already covers this (%2). Remove it first.",
+                &[&title(taken), &action_label(taken)],
             ));
             return;
         }
@@ -185,7 +191,7 @@ impl Gestures {
                 }
             });
             inside.append(&remove);
-            rows.push(Box::new(page.unkept_tip(&remove, "Remove")));
+            rows.push(Box::new(page.unkept_tip(&remove, &tr("Remove"))));
             card.append(&inside);
             self.list.append(&card);
         }
@@ -213,43 +219,39 @@ fn picker(page: &Page, parent: &gtk4::Box, icon: &str, names: Vec<String>) -> Rc
 pub fn section(page: &Rc<Page>, parent: &gtk4::Box) {
     let listed = page.subsection(
         parent,
-        "Gestures",
-        "The defaults come from hyprland/general.lua. Removing one turns it off in settings.lua",
+        &tr("Gestures"),
+        &tr(
+            "The defaults come from hyprland/general.lua. Removing one turns it off in settings.lua",
+        ),
     );
-    let empty = text::styled("No gestures");
+    let empty = text::styled(&tr("No gestures"));
     text::set_color(&empty, "colSubtext");
     let empty = Centred::new(&empty);
     empty.set_halign(gtk4::Align::Start);
     empty.set_margin_start(EMPTY_START);
     listed.append(&empty);
 
-    let adding = page.subsection(parent, "Add a gesture", "");
+    let adding = page.subsection(parent, &tr("Add a gesture"), "");
     let fingers = picker(
         page,
         &adding,
         "touch_app",
         FINGERS
             .iter()
-            .map(|count| format!("{count} fingers"))
+            .map(|count| trf("%1 fingers", &[&count.to_string()]))
             .collect(),
     );
     let direction = picker(
         page,
         &adding,
         "swipe",
-        DIRECTIONS
-            .iter()
-            .map(|(_, label)| (*label).to_owned())
-            .collect(),
+        DIRECTIONS.iter().map(|(_, label)| tr(label)).collect(),
     );
     let action = picker(
         page,
         &adding,
         "bolt",
-        ACTIONS
-            .iter()
-            .map(|(_, label)| (*label).to_owned())
-            .collect(),
+        ACTIONS.iter().map(|(_, label)| tr(label)).collect(),
     );
     let status = text::styled("");
     text::set_color(&status, "colError");
@@ -267,7 +269,7 @@ pub fn section(page: &Rc<Page>, parent: &gtk4::Box) {
     });
     gestures.reload();
 
-    let (add, _) = page.icon_button("add", true, "Add gesture", {
+    let (add, _) = page.icon_button("add", true, &tr("Add gesture"), {
         let gestures = Rc::downgrade(&gestures);
         move || {
             if let Some(gestures) = gestures.upgrade() {

@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::time::{Duration, Instant};
 
+use crate::core::i18n::tr;
 use crate::platform::dbus;
 use crate::services::net::{BUS, nmcli, split_escaped};
 
@@ -334,7 +335,7 @@ impl Wifi {
                     if result.success {
                         Ok(())
                     } else {
-                        Err("Could not connect".to_owned())
+                        Err(tr("Could not connect"))
                     }
                 }
                 (Some(system), old) => {
@@ -346,7 +347,7 @@ impl Wifi {
                     }
                     status
                 }
-                (None, _) => Err("Could not connect".to_owned()),
+                (None, _) => Err(tr("Could not connect")),
             };
             if let Some(wifi) = weak.upgrade() {
                 {
@@ -441,10 +442,10 @@ async fn wireless_device(system: &gio::DBusConnection) -> Option<String> {
 }
 
 async fn add_and_activate(system: &gio::DBusConnection, settings: Variant) -> Result<(), String> {
-    const FAILED: &str = "Could not connect";
-    let device = wireless_device(system).await.ok_or(FAILED)?;
-    let device = ObjectPath::try_from(device).map_err(|_| FAILED)?;
-    let anywhere = ObjectPath::try_from("/".to_owned()).map_err(|_| FAILED)?;
+    let failed = || tr("Could not connect");
+    let device = wireless_device(system).await.ok_or_else(failed)?;
+    let device = ObjectPath::try_from(device).map_err(|_| failed())?;
+    let anywhere = ObjectPath::try_from("/".to_owned()).map_err(|_| failed())?;
     let arguments =
         Variant::tuple_from_iter([settings, device.to_variant(), anywhere.to_variant()]);
     let reply = system
@@ -481,7 +482,7 @@ async fn add_and_activate(system: &gio::DBusConnection, settings: Variant) -> Re
             )
             .await;
     }
-    Err(FAILED.to_owned())
+    Err(failed())
 }
 
 async fn activated(system: &gio::DBusConnection, active: &str) -> bool {

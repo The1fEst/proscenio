@@ -3,6 +3,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process;
 use crate::platform::notify::{self, Notification};
@@ -20,7 +21,10 @@ pub fn run(arguments: &[String]) -> glib::ExitCode {
         match argument.as_str() {
             "--region" => {
                 let Some(value) = rest.next() else {
-                    notify("Recording cancelled", "No region specified for --region");
+                    notify(
+                        &tr("Recording cancelled"),
+                        &tr("No region specified for --region"),
+                    );
                     return glib::ExitCode::FAILURE;
                 };
                 region = Some(value.clone());
@@ -32,7 +36,7 @@ pub fn run(arguments: &[String]) -> glib::ExitCode {
     }
 
     if process::run(&["pgrep", "wf-recorder"]) {
-        notify("Recording Stopped", "Stopped");
+        notify(&tr("Recording Stopped"), &tr("Stopped"));
         process::run(&["pkill", "wf-recorder"]);
         return glib::ExitCode::SUCCESS;
     }
@@ -60,7 +64,7 @@ pub fn run(arguments: &[String]) -> glib::ExitCode {
             None => match process::output(&["slurp"]) {
                 Some(region) => region,
                 None => {
-                    notify("Recording cancelled", "Selection was cancelled");
+                    notify(&tr("Recording cancelled"), &tr("Selection was cancelled"));
                     return glib::ExitCode::FAILURE;
                 }
             },
@@ -75,7 +79,7 @@ pub fn run(arguments: &[String]) -> glib::ExitCode {
             .and_then(|now| now.format("%Y-%m-%d_%H.%M.%S").ok())
             .unwrap_or_default()
     );
-    notify("Starting recording", &name);
+    notify(&tr("Starting recording"), &name);
     let mut arguments = vec![
         "wf-recorder".to_owned(),
         "--pixel-format".to_owned(),

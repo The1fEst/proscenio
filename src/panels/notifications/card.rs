@@ -6,6 +6,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Duration;
 
+use crate::core::i18n::tr;
 use crate::panels::notifications::icon;
 use crate::services::notifications::{Group, Notification, Notifications};
 use crate::ui::anim;
@@ -630,7 +631,7 @@ fn friendly(time: i64) -> String {
     let now = glib::real_time() / 1000;
     let difference = now - time;
     if difference < 60_000 {
-        return "Now".to_owned();
+        return tr("Now");
     }
     let Ok(then) = glib::DateTime::from_unix_local(time / 1000) else {
         return String::new();
@@ -649,7 +650,7 @@ fn friendly(time: i64) -> String {
         && then.day_of_year() == yesterday.day_of_year()
         && then.year() == yesterday.year()
     {
-        return "Yesterday".to_owned();
+        return tr("Yesterday");
     }
     then.format("%B %d").map(Into::into).unwrap_or_default()
 }

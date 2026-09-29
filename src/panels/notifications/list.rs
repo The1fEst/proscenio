@@ -4,6 +4,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::core::i18n::{tr, trf};
 use crate::core::scope::Scope;
 use crate::panels::notifications::card;
 use crate::panels::notifications::card::Placement;
@@ -37,7 +38,7 @@ pub fn build(notifications: &Notifications, theme: &SharedTheme, scope: &Scope) 
     scroll.add_css_class("notif-scroll");
     scroll.set_overflow(gtk4::Overflow::Hidden);
 
-    let empty = Placeholder::new(theme, "notifications_active", "Nothing");
+    let empty = Placeholder::new(theme, "notifications_active", &tr("Nothing"));
     let stack = gtk4::Overlay::new();
     stack.set_vexpand(true);
     stack.set_child(Some(&scroll));
@@ -81,7 +82,7 @@ pub fn build(notifications: &Notifications, theme: &SharedTheme, scope: &Scope) 
 
             let held = notifications.list.borrow().len();
             empty.show(held == 0);
-            count(&format!("{held} notifications"));
+            count(&trf("%1 notifications", &[&held.to_string()]));
             let silenced = notifications.silent.get();
             silent.set_toggled(silenced);
             silent_text(if silenced { "on" } else { "" });

@@ -5,6 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::f64::consts::PI;
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::ui::anim::{EXPRESSIVE_DEFAULT, EXPRESSIVE_EFFECTS, Tween};
 use crate::ui::theme::{SharedTheme, Theme, pixel_size, rounding, transparentize};
 use crate::ui::widgets::centred::Centred;
@@ -402,7 +403,7 @@ impl QuickToggle {
             image.set_opacity(if self.expanded { 1.0 } else { faded });
         }
         if let Some(name) = &self.name {
-            name.set_text(look.name);
+            name.set_text(&tr(look.name));
             text::set_color(name, text_token);
             name.set_opacity(faded);
         }
@@ -410,7 +411,7 @@ impl QuickToggle {
             let text = if !look.has_status {
                 String::new()
             } else if look.status.is_empty() {
-                if look.toggled { "On" } else { "Off" }.to_owned()
+                tr(if look.toggled { "On" } else { "Off" })
             } else {
                 look.status.clone()
             };

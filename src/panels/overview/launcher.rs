@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use crate::core::config::{self, Config};
 use crate::core::fuzzy::{self, Prepared};
+use crate::core::i18n::{tr, trf};
 use crate::core::levenshtein;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process;
@@ -292,11 +293,11 @@ impl Launcher {
 
         let answer = self.math.borrow().clone();
         let math = Item {
-            kind: "Math result".to_owned(),
+            kind: tr("Math result"),
             monospace: true,
             icon: "calculate".to_owned(),
             icon_type: IconType::Material,
-            verb: "Copy".to_owned(),
+            verb: tr("Copy"),
             ..Item::new(&answer, Run::Clipboard(answer.clone()))
         };
         let command_name = query
@@ -304,11 +305,11 @@ impl Launcher {
             .unwrap_or(&query)
             .replace("file://", "");
         let command = Item {
-            kind: "Command".to_owned(),
+            kind: tr("Command"),
             monospace: true,
             icon: "terminal".to_owned(),
             icon_type: IconType::Material,
-            verb: "Run".to_owned(),
+            verb: tr("Run"),
             ..Item::new(&command_name, Run::Shell(self.command_line(&query)))
         };
 
@@ -379,10 +380,10 @@ impl Launcher {
                     })
                     .collect();
                 Item {
-                    kind: "App".to_owned(),
+                    kind: tr("App"),
                     icon: app.icon.clone(),
                     icon_type: IconType::System,
-                    verb: "Open".to_owned(),
+                    verb: tr("Open"),
                     actions,
                     ..Item::new(&app.name, Run::App(app.clone()))
                 }
@@ -420,12 +421,12 @@ impl Launcher {
                         Item {
                             icon: "content_copy".to_owned(),
                             icon_type: IconType::Material,
-                            ..Item::new("Copy", Run::CopyEntry(entry.clone()))
+                            ..Item::new(&tr("Copy"), Run::CopyEntry(entry.clone()))
                         },
                         Item {
                             icon: "delete".to_owned(),
                             icon_type: IconType::Material,
-                            ..Item::new("Delete", Run::DeleteEntry(entry.clone()))
+                            ..Item::new(&tr("Delete"), Run::DeleteEntry(entry.clone()))
                         },
                     ],
                     ..Item::new(cliphist::clean(entry), Run::CopyEntry(entry.clone()))
@@ -465,11 +466,11 @@ impl Launcher {
             .map(|line| {
                 let emoji = line.split_whitespace().next().unwrap_or("").to_owned();
                 Item {
-                    kind: "Emoji".to_owned(),
+                    kind: tr("Emoji"),
                     raw: line.clone(),
                     icon: emoji.clone(),
                     icon_type: IconType::Text,
-                    verb: "Copy".to_owned(),
+                    verb: tr("Copy"),
                     ..Item::new(cliphist::without_first_word(line), Run::Clipboard(emoji))
                 }
             })
@@ -500,10 +501,10 @@ impl Launcher {
                     &full
                 };
                 Some(Item {
-                    kind: "Action".to_owned(),
+                    kind: tr("Action"),
                     icon: "settings_suggest".to_owned(),
                     icon_type: IconType::Material,
-                    verb: "Run".to_owned(),
+                    verb: tr("Run"),
                     ..Item::new(shown, run)
                 })
             })
@@ -575,9 +576,10 @@ impl Launcher {
             let prefix = &self.config().search_action;
             notify::send(&Notification {
                 app: "Shell",
-                summary: "Superpaste",
-                body: &format!(
-                    "Usage: <tt>{prefix}superpaste NUM_OF_ENTRIES[i]</tt>\nSupply <tt>i</tt> when you want images\nExamples:\n<tt>{prefix}superpaste 4i</tt> for the last 4 images\n<tt>{prefix}superpaste 7</tt> for the last 7 entries"
+                summary: &tr("Superpaste"),
+                body: &trf(
+                    "Usage: <tt>%1superpaste NUM_OF_ENTRIES[i]</tt>\nSupply <tt>i</tt> when you want images\nExamples:\n<tt>%1superpaste 4i</tt> for the last 4 images\n<tt>%1superpaste 7</tt> for the last 7 entries",
+                    &[prefix],
                 ),
                 ..Default::default()
             });

@@ -6,6 +6,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::core::config;
+use crate::core::i18n::{tr, trf};
 use crate::core::process::{self, detach};
 use crate::platform::hypr;
 use crate::ui::theme::SharedTheme;
@@ -56,12 +57,15 @@ fn ask(app: &gtk4::Application, theme: &SharedTheme, running: Vec<String>) {
     text::set_color(&icon, "colSecondary");
     dialog.column.add(&Centred::integral(&icon), Place::wide());
 
-    let title = windowdialog::title(&format!("Stop {}?", running.join(" and ")));
+    let title = windowdialog::title(&trf("Stop %1?", &[&running.join(" and ")]));
     title.set_xalign(0.5);
     title.set_justify(gtk4::Justification::Center);
     dialog.column.add(&title, Place::wide());
 
-    let description = text::styled("Conflicts with the shell's notification implementation.");
+    let description = text::styled(&format!(
+        "{}.",
+        tr("Conflicts with the shell's notification implementation")
+    ));
     text::set_color(&description, "colOnSurfaceVariant");
     description.set_wrap(true);
     description.set_xalign(0.5);
@@ -70,9 +74,9 @@ fn ask(app: &gtk4::Application, theme: &SharedTheme, running: Vec<String>) {
 
     let (row, mut place) = windowdialog::button_row();
     place.bottom = BUTTON_ROW_BOTTOM;
-    let always = windowdialog::button(theme, "Always");
-    let no = windowdialog::button(theme, "No");
-    let yes = windowdialog::button(theme, "Yes");
+    let always = windowdialog::button(theme, &tr("Always"));
+    let no = windowdialog::button(theme, &tr("No"));
+    let yes = windowdialog::button(theme, &tr("Yes"));
     row.append(&always);
     row.append(&windowdialog::spacer());
     row.append(&no);

@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use crate::core::i18n::tr;
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
 use crate::panels::settings::hyprrows::{self, Spin};
@@ -160,7 +161,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let appearance = DesktopAppearance::new();
     let options = HyprOptions::new(&OPTIONS);
 
-    let desktop = page.section("wallpaper", "Desktop");
+    let desktop = page.section("wallpaper", &tr("Desktop"));
     for (icon, title, subtitle, id) in [
         (
             "texture",
@@ -181,11 +182,17 @@ pub fn build(context: &Context) -> Rc<Page> {
             "panels",
         ),
     ] {
-        page.link_row(&desktop, icon, title, subtitle, context.subpage_opener(id));
+        page.link_row(
+            &desktop,
+            icon,
+            &tr(title),
+            &tr(subtitle),
+            context.subpage_opener(id),
+        );
     }
 
-    let theme = page.section("palette", "Theme");
-    let gtk = page.subsection(&theme, "GTK theme", "");
+    let theme = page.section("palette", &tr("Theme"));
+    let gtk = page.subsection(&theme, &tr("GTK theme"), "");
     theme_combo(
         &page,
         &gtk,
@@ -200,7 +207,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             appearance.set_themes(value, &qt);
         },
     );
-    let qt = page.subsection(&theme, "Qt style", "");
+    let qt = page.subsection(&theme, &tr("Qt style"), "");
     theme_combo(
         &page,
         &qt,
@@ -217,8 +224,8 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     let icons = page.subsection(
         &theme,
-        "Icon theme",
-        "Applied to GTK, Qt and the shell at once.",
+        &tr("Icon theme"),
+        &tr("Applied to GTK, Qt and the shell at once."),
     );
     theme_combo(
         &page,
@@ -232,22 +239,22 @@ pub fn build(context: &Context) -> Rc<Page> {
         |appearance, value| appearance.set_icons(value),
     );
 
-    let colors = page.section("colors", "Color generation");
-    let themed = page.subsection(&colors, "What gets themed", "");
+    let colors = page.section("colors", &tr("Color generation"));
+    let themed = page.subsection(&colors, &tr("What gets themed"), "");
     page.tools_notice(
         &themed,
         &[&tools::MATUGEN],
-        "apps themed through matugen templates keep their colors",
+        &tr("apps themed through matugen templates keep their colors"),
     );
     page.tools_notice(
         &themed,
         &[&tools::PLASMA_APPLY_COLORSCHEME],
-        "Qt apps keep their colors",
+        &tr("Qt apps keep their colors"),
     );
     page.config_switch(
         &themed,
         "hardware",
-        "Shell & utilities",
+        &tr("Shell & utilities"),
         "/appearance/wallpaperTheming/enableAppsAndShell",
         true,
     );
@@ -263,28 +270,28 @@ pub fn build(context: &Context) -> Rc<Page> {
             "/appearance/wallpaperTheming/enableTerminal",
         ),
     ] {
-        let switch = page.config_switch(&themed, icon, label, pointer, true);
+        let switch = page.config_switch(&themed, icon, &tr(label), pointer, true);
         page.tip(
             &switch.button,
-            "Shell & utilities theming must also be enabled",
+            &tr("Shell & utilities theming must also be enabled"),
         );
     }
     let terminal = page.subsection(
         &colors,
-        "Terminal colors",
-        "Ignored if terminal theming is not enabled",
+        &tr("Terminal colors"),
+        &tr("Ignored if terminal theming is not enabled"),
     );
     page.config_switch(
         &terminal,
         "dark_mode",
-        "Force dark mode in terminal",
+        &tr("Force dark mode in terminal"),
         "/appearance/wallpaperTheming/terminalGenerationProps/forceDarkMode",
         false,
     );
     page.config_spin_scaled(
         &terminal,
         "invert_colors",
-        "Harmony (%)",
+        &tr("Harmony (%)"),
         "/appearance/wallpaperTheming/terminalGenerationProps/harmony",
         0.6,
         100.0,
@@ -294,7 +301,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin(
         &terminal,
         "gradient",
-        "Harmonize threshold",
+        &tr("Harmonize threshold"),
         "/appearance/wallpaperTheming/terminalGenerationProps/harmonizeThreshold",
         100,
         (0, 100),
@@ -303,7 +310,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.config_spin_scaled(
         &terminal,
         "format_color_text",
-        "Foreground boost (%)",
+        &tr("Foreground boost (%)"),
         "/appearance/wallpaperTheming/terminalGenerationProps/termFgBoost",
         0.35,
         100.0,
@@ -311,15 +318,15 @@ pub fn build(context: &Context) -> Rc<Page> {
         10,
     );
 
-    let fonts = page.section("text_format", "Fonts");
+    let fonts = page.section("text_format", &tr("Fonts"));
     let roles = page.subsection(
         &fonts,
-        "Apps & panels",
-        "Sizes apply to GTK and Qt apps; panels scale their own.",
+        &tr("Apps & panels"),
+        &tr("Sizes apply to GTK and Qt apps; panels scale their own."),
     );
     for (role, shell_keys, name) in FONT_ROLES {
         let row = page.row(&roles);
-        font_label(&row, name);
+        font_label(&row, &tr(name));
         let combo = page.combo(&row, "font_download");
         let (_, size) = size_spin(&page, &row);
         follow(&page, &appearance, {
@@ -376,8 +383,8 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let bulk = page.subsection(
         &fonts,
-        "Adjust all",
-        "Sets every role above at once. Fixed width keeps its own family so code stays monospaced.",
+        &tr("Adjust all"),
+        &tr("Sets every role above at once. Fixed width keeps its own family so code stays monospaced."),
     );
     let changes_family = Rc::new(Cell::new(true));
     let changes_size = Rc::new(Cell::new(false));
@@ -401,7 +408,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     };
     let what = page.uniform_row(&bulk);
-    let family_switch = page.switch(&what, "font_download", "Family", {
+    let family_switch = page.switch(&what, "font_download", &tr("Family"), {
         let changes_family = changes_family.clone();
         move |on| changes_family.set(on)
     });
@@ -409,7 +416,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         let changes_family = changes_family.clone();
         move || changes_family.get()
     });
-    let size_switch = page.switch(&what, "format_size", "Size", {
+    let size_switch = page.switch(&what, "format_size", &tr("Size"), {
         let changes_size = changes_size.clone();
         move |on| changes_size.set(on)
     });
@@ -472,7 +479,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         let bulk_size = bulk_size.clone();
         move |value| bulk_size.set(Some(value))
     });
-    let (apply, _) = page.icon_button("done_all", true, "Apply to all fonts", {
+    let (apply, _) = page.icon_button("done_all", true, &tr("Apply to all fonts"), {
         let appearance = Rc::downgrade(&appearance);
         move || {
             let Some(appearance) = appearance.upgrade() else {
@@ -495,12 +502,12 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let shell_only = page.subsection(
         &fonts,
-        "Panels only",
-        "Faces the shell uses that GTK and Qt have no equivalent for",
+        &tr("Panels only"),
+        &tr("Faces the shell uses that GTK and Qt have no equivalent for"),
     );
     for (pointer, default, name) in SHELL_FONTS {
         let row = page.row(&shell_only);
-        font_label(&row, name);
+        font_label(&row, &tr(name));
         let combo = page.combo(&row, "font_download");
         let family = move || config::value_str(pointer).unwrap_or_else(|| default.to_owned());
         let update = Rc::new({
@@ -534,11 +541,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         });
     }
 
-    let pointer = page.section("mouse", "Pointer");
+    let pointer = page.section("mouse", &tr("Pointer"));
     let cursor = page.subsection(
         &pointer,
-        "Cursor theme",
-        "Applied to Wayland, XWayland, GTK and Qt at once.",
+        &tr("Cursor theme"),
+        &tr("Applied to Wayland, XWayland, GTK and Qt at once."),
     );
     theme_combo(
         &page,
@@ -555,8 +562,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         },
     );
 
-    let windows = page.section("select_window", "Windows");
-    let corners = page.subsection(&windows, "Corners", "");
+    let windows = page.section("select_window", &tr("Windows"));
+    let corners = page.subsection(&windows, &tr("Corners"), "");
     hyprrows::spin(
         &page,
         &corners,
@@ -585,16 +592,16 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &shape,
-        "2 is a circle, higher squares the corner off while keeping it smooth",
+        &tr("2 is a circle, higher squares the corner off while keeping it smooth"),
     );
 
-    let blur = page.subsection(&windows, "Blur", "");
+    let blur = page.subsection(&windows, &tr("Blur"), "");
     hyprrows::switch(
         &page,
         &blur,
         &options,
         "blur_on",
-        "Blur behind windows",
+        &tr("Blur behind windows"),
         "decoration:blur:enabled",
     );
     let blur_row = page.row(&blur);
@@ -629,15 +636,15 @@ pub fn build(context: &Context) -> Rc<Page> {
         &blur,
         &options,
         "hide_image",
-        "X-ray",
+        &tr("X-ray"),
         "decoration:blur:xray",
     );
     page.tip(
         &xray.button,
-        "A floating window blurs the wallpaper rather than the windows behind it",
+        &tr("A floating window blurs the wallpaper rather than the windows behind it"),
     );
 
-    let opacity = page.subsection(&windows, "Opacity", "");
+    let opacity = page.subsection(&windows, &tr("Opacity"), "");
     let opacity_row = page.row(&opacity);
     for (label, option) in [
         ("Focused window (%)", "decoration:active_opacity"),
@@ -654,21 +661,21 @@ pub fn build(context: &Context) -> Rc<Page> {
         &page,
         &opacity,
         "fullscreen",
-        "Keep fullscreen windows opaque",
+        &tr("Keep fullscreen windows opaque"),
         hyprconfig::OPAQUE_FULLSCREEN,
     );
     page.tip(
         &opaque.button,
-        "Maximized windows too, whether focused or not",
+        &tr("Maximized windows too, whether focused or not"),
     );
 
-    let shadows = page.subsection(&windows, "Shadows", "");
+    let shadows = page.subsection(&windows, &tr("Shadows"), "");
     hyprrows::switch(
         &page,
         &shadows,
         &options,
         "shadow",
-        "Drop shadows under windows",
+        &tr("Drop shadows under windows"),
         "decoration:shadow:enabled",
     );
     let shadow_row = page.row(&shadows);
@@ -703,27 +710,27 @@ pub fn build(context: &Context) -> Rc<Page> {
         &shadows,
         &options,
         "crop_square",
-        "Sharp edge",
+        &tr("Sharp edge"),
         "decoration:shadow:sharp",
     );
 
-    let dimming = page.subsection(&windows, "Dimming", "");
+    let dimming = page.subsection(&windows, &tr("Dimming"), "");
     hyprrows::switch(
         &page,
         &dimming,
         &options,
         "brightness_4",
-        "Dim windows out of focus",
+        &tr("Dim windows out of focus"),
         "decoration:dim_inactive",
     );
     let undimmed = hyprrows::lines_switch(
         &page,
         &dimming,
         "fullscreen",
-        "Keep fullscreen windows undimmed",
+        &tr("Keep fullscreen windows undimmed"),
         hyprconfig::UNDIMMED_FULLSCREEN,
     );
-    page.tip(&undimmed.button, "Maximized windows too");
+    page.tip(&undimmed.button, &tr("Maximized windows too"));
     let dim_strength = hyprrows::spin(
         &page,
         &dimming,
@@ -751,18 +758,18 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let rendering = page.subsection(&windows, "Rendering", "");
+    let rendering = page.subsection(&windows, &tr("Rendering"), "");
     let tearing = hyprrows::switch(
         &page,
         &rendering,
         &options,
         "screenshot_monitor",
-        "Allow tearing",
+        &tr("Allow tearing"),
         "general:allow_tearing",
     );
     page.tip(
         &tearing.button,
-        "Lets a game draw a frame before the display is ready for it, trading a torn line for latency",
+        &tr("Lets a game draw a frame before the display is ready for it, trading a torn line for latency"),
     );
 
     let blur_follows = {
@@ -787,22 +794,22 @@ pub fn build(context: &Context) -> Rc<Page> {
     blur_follows();
     options.connect_changed(blur_follows);
 
-    let shell = page.section("select_window_2", "Shell windows");
+    let shell = page.section("select_window_2", &tr("Shell windows"));
     let titlebar = page.config_switch(
         &shell,
         "toolbar",
-        "Show title bar",
+        &tr("Show title bar"),
         "/windows/showTitlebar",
         true,
     );
     page.tip(
         &titlebar.button,
-        "Client-side decorations for shell apps like this one",
+        &tr("Client-side decorations for shell apps like this one"),
     );
     let center = page.config_switch(
         &shell,
         "format_align_center",
-        "Center title",
+        &tr("Center title"),
         "/windows/centerTitle",
         true,
     );

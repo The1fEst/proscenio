@@ -1,6 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::fs;
 
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 
 #[derive(Clone, Copy, Default)]
@@ -182,7 +183,7 @@ fn parse_os_release(text: &str) -> OsRelease {
     };
     let name = quoted("PRETTY_NAME")
         .or_else(|| quoted("NAME").map(|name| without_linux(&name)))
-        .unwrap_or_else(|| "Unknown".to_owned());
+        .unwrap_or_else(|| tr("Unknown"));
     let logo = unquoted("LOGO").unwrap_or_else(|| format!("{}-symbolic", distro_family(text)));
     OsRelease {
         name,
