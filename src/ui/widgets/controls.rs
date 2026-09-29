@@ -238,7 +238,6 @@ pub struct ConfigSwitch {
     pub button: RippleButton,
     switch: Rc<Switch>,
     bound: RefCell<Option<Box<dyn Fn() -> bool>>>,
-    faded: Vec<gtk4::Widget>,
 }
 
 impl ConfigSwitch {
@@ -250,13 +249,10 @@ impl ConfigSwitch {
     ) -> Rc<Self> {
         let button = RippleButton::new(theme);
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
-        let mut faded = Vec::new();
         if !icon.is_empty() {
             let symbol = text::symbol(icon, pixel_size::LARGER as f64);
             text::set_color(&symbol, "colOnSecondaryContainer");
-            let placed = Centred::integral(&symbol);
-            row.append(&placed);
-            faded.push(placed.upcast());
+            row.append(&Centred::integral(&symbol));
         }
         let name = text::styled(label);
         text::set_application_font(&name, pixel_size::SMALL as f64);
@@ -265,7 +261,6 @@ impl ConfigSwitch {
         let label = Centred::filling_width(&name);
         label.set_hexpand(true);
         row.append(&label);
-        faded.push(label.upcast());
         let switch = Switch::new(theme);
         row.append(&switch.area);
         button.set_content(&row, 8, 8);
@@ -274,7 +269,6 @@ impl ConfigSwitch {
             button: button.clone(),
             switch,
             bound: RefCell::new(None),
-            faded,
         });
         button.connect_down({
             let made = Rc::downgrade(&made);
@@ -322,9 +316,6 @@ impl ConfigSwitch {
 
     pub fn set_enabled(&self, enabled: bool) {
         self.button.set_sensitive(enabled);
-        for widget in &self.faded {
-            widget.set_opacity(if enabled { 1.0 } else { 0.4 });
-        }
     }
 }
 
