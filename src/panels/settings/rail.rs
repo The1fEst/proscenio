@@ -28,7 +28,6 @@ const GROUP_SPACING: i32 = 13;
 const SEPARATOR_MARGIN: i32 = 8;
 const LABEL_GAP: i32 = 20;
 const MIN_WIDTH: i32 = 150;
-const MAX_WIDTH: i32 = 230;
 const SPACING: i32 = 10;
 const TOGGLE_SIZE: i32 = 40;
 const TOGGLE_MARGIN: i32 = 8;
@@ -537,7 +536,7 @@ impl Rail {
 }
 
 fn expanded_width(widest: i32) -> i32 {
-    widest.clamp(MIN_WIDTH, MAX_WIDTH)
+    widest.max(MIN_WIDTH)
 }
 
 impl Tab {

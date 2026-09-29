@@ -32,7 +32,8 @@ pages and stop at the ends; Ctrl+Tab and Ctrl+Shift+Tab wrap around.
 
 It is expanded while the window is wider than 900 px; after the first press
 of its toggle, the toggle alone sets it. Expanded, it is as wide as its widest tab, 56 + 20 + the
-label, kept between 150 and 230; collapsed, 56. The width moves over
+label, and at least 150 (qs also caps it at 230, which clips longer
+translated names); collapsed, 56. The width moves over
 `elementMoveFast` (200 ms, expressive effects). A column with 10 px spacing:
 
 - **The toggle**: 40 px, round, 8 px from the left, `menu_open` or `menu` at
