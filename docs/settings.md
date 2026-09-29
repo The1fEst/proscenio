@@ -32,7 +32,7 @@ pages and stop at the ends; Ctrl+Tab and Ctrl+Shift+Tab wrap around.
 
 It is expanded while the window is wider than 900 px; after the first press
 of its toggle, the toggle alone sets it. Expanded, it is as wide as its widest tab, 56 + 20 + the
-label, and at least 150 (qs also caps it at 230, which clips longer
+label, and at least 230 (qs keeps it between 150 and 230, which clips longer
 translated names); collapsed, 56. The width moves over
 `elementMoveFast` (200 ms, expressive effects). A column with 10 px spacing:
 
@@ -246,9 +246,9 @@ language for the user interface. "Auto" will use your system's locale.", and a
 combo box with the `language` icon: "Auto (System)", then every bundled
 catalog as its native name and code, such as "Русский (ru_RU)". Each starts
 with a left-to-right mark, so a right-to-left name keeps its code on the
-right. Choosing another entry writes `language.ui` and restarts the shell on
-this page, since the interface is translated once at start (see
-[foundations.md](foundations.md) §10).
+right. Choosing another entry writes `language.ui`, sets the system language
+(see [foundations.md](foundations.md) §10) and restarts the shell on this page,
+since the interface is translated once at start.
 
 ## 10. Date & Time (subpage)
 

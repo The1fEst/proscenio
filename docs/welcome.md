@@ -74,7 +74,8 @@ Differences from qs:
   copies `first_run.txt` to `defaults_applied.txt`, so an installation greeted
   earlier keeps its settings.
 - **Choosing a language restarts the shell.** The new language applies only
-  on a restart, so the choice writes `language.ui` and restarts the shell
-  with `PROSCENIO_OPEN_WELCOME` set, which opens the welcome window again.
+  on a restart, so the choice writes `language.ui`, sets the system language
+  as the Region & Language page does, and restarts the shell with
+  `PROSCENIO_OPEN_WELCOME` set, which opens the welcome window again.
 - **The page wraps to the window.** In qs the language row does not wrap and
   pushes the whole page off to the side, clipped and unscrollable.

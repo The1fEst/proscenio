@@ -360,11 +360,10 @@ fn language(page: &Rc<Page>) {
         i18n::LANGUAGE,
         Value::from(i18n::AUTO),
         move |value| {
-            if value.as_str() == Some(chosen.as_str()) {
+            let Some(code) = value.as_str().filter(|code| *code != chosen) else {
                 return;
-            }
-            config::store_value(i18n::LANGUAGE, value);
-            process::restart_shell_on_welcome();
+            };
+            i18n::choose(code, process::restart_shell_on_welcome);
         },
     );
 }

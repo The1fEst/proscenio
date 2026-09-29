@@ -569,6 +569,17 @@ modifier dropped (`ru_RU.UTF-8` → `ru_RU`). The catalog loads on the first
 the built-in catalog is laid over it, so the file adds keys but does not
 replace built-in ones, as in qs.
 
+Choosing a language other than `auto` also makes it the system language, so
+applications and the login screen follow after the next login. The catalog
+code names the locale, `<code>.UTF-8`, except he_HE, which is `he_IL.UTF-8`.
+When `/etc/locale.gen` does not enable that locale or `/etc/locale.conf` does
+not choose it, the shell runs `pkexec proscenio set-system-locale <locale>`,
+which asks for the password through the shell's polkit agent. As root, that
+command enables the locale in `/etc/locale.gen` (uncommenting its line, or
+adding one), runs `locale-gen` when the file changed, and runs `localectl
+set-locale LANG=<locale>`. The shell restarts once it exits, whether or not
+the password was given. `auto` leaves the system language alone.
+
 Text is translated when a widget is built, so a new language takes a restart.
 Static tables (page names, quick toggle names, choice labels) keep their
 English text and are translated where they are displayed. The settings search

@@ -13,6 +13,7 @@
 | `~/.cache/proscenio/notifications/` | images that notifications sent as raw pixels, one `<id>.png` each |
 | `~/.cache/proscenio/coverart/` | downloaded album art |
 | `$XDG_RUNTIME_DIR/proscenio/` | screenshots in progress, decoded clipboard images, the cava config |
+| `~/.config/proscenio/translations/<code>.json` | extra translation keys, read with the built-in catalog ([foundations.md](foundations.md) §10) |
 
 A build with the compat layer ([compat.md](compat.md)) copies on start
 whatever of these is missing from the QML shell's places:
@@ -41,6 +42,7 @@ built into the binary; nothing is read from `~/.config/quickshell`.
 | `proscenio switchwall …` | [colors.md](colors.md) |
 | `proscenio colors generate …`, `scheme-for-image …`, `kde-selection` | [colors.md](colors.md) |
 | `proscenio record [--region WxH+X+Y] [--sound] [--fullscreen]` | starts `wf-recorder` into `screenRecord.savePath` (else the Videos folder), or stops it when one is running |
+| `proscenio set-system-locale LOCALE` | run as root through `pkexec`: enables `LOCALE` (such as `ru_RU.UTF-8`) in `/etc/locale.gen`, generates it, and makes it the system language ([foundations.md](foundations.md) §10) |
 
 `record` takes the sound from the default output's monitor source. The QML
 shell's `record.sh` passes every monitor source at once, which fails when

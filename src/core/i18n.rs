@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::core::{config, paths};
+use crate::platform::locale;
 
 pub const LANGUAGE: &str = "/language/ui";
 pub const AUTO: &str = "auto";
@@ -70,6 +71,15 @@ pub fn display_name(code: &str) -> String {
         Some((_, name)) => format!("\u{200E}{name} ({code})"),
         None => code.to_owned(),
     }
+}
+
+pub fn choose(code: &str, restart: impl FnOnce() + 'static) {
+    config::store_value(LANGUAGE, Value::from(code));
+    if code == AUTO {
+        restart();
+        return;
+    }
+    locale::set(&locale::of_language(code), restart);
 }
 
 pub fn chosen() -> String {

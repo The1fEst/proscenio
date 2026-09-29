@@ -25,7 +25,7 @@ use crate::panels::{
     bar, calendar, conflicts, lock, mediacontrols, osd, osk, polkit, regionselector, renderercheck,
     settings, sidebar, wallpaperselector, welcome,
 };
-use crate::platform::{hypr, ipc, shortcuts};
+use crate::platform::{hypr, ipc, locale, shortcuts};
 use crate::screens::{Screens, Surfaces};
 use crate::services::{Services, mpris, recording, states};
 use crate::theming::{colors, switchwall};
@@ -43,6 +43,9 @@ fn main() -> glib::ExitCode {
     let command = arguments.get(1).map(String::as_str);
     if command == Some("ipc") {
         return ipc::client(APP_ID, &arguments[2..]);
+    }
+    if command == Some(locale::COMMAND) {
+        return locale::run(&arguments[2..]);
     }
     #[cfg(feature = "compat")]
     compat::prepare();

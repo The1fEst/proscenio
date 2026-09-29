@@ -1,8 +1,7 @@
-use serde_json::Value;
 use std::rc::Rc;
 
 use crate::core::i18n::tr;
-use crate::core::{config, i18n, process};
+use crate::core::{i18n, process};
 use crate::panels::settings::content::{Context, Page};
 
 pub fn build(context: &Context) -> Rc<Page> {
@@ -34,8 +33,9 @@ pub fn build(context: &Context) -> Rc<Page> {
         if codes[index] == chosen {
             return;
         }
-        config::store_value(i18n::LANGUAGE, Value::from(codes[index]));
-        process::restart_shell_on_settings("region");
+        i18n::choose(codes[index], || {
+            process::restart_shell_on_settings("region")
+        });
     });
 
     page
