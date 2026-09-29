@@ -53,6 +53,14 @@ pub fn open(
 ) {
     let popover = gtk4::Popover::new();
     popover.set_parent(anchor);
+    anchor.connect_destroy({
+        let popover = popover.downgrade();
+        move |_| {
+            if let Some(popover) = popover.upgrade() {
+                popover.unparent();
+            }
+        }
+    });
     popover.set_position(side);
     popover.set_has_arrow(false);
     if side == gtk4::PositionType::Bottom {
