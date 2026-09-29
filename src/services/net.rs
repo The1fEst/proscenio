@@ -9,6 +9,8 @@ use crate::platform::dbus;
 
 pub const BUS: &str = "org.freedesktop.NetworkManager";
 const ROOT: &str = "/org/freedesktop/NetworkManager";
+const ACTIVE: &str = "org.freedesktop.NetworkManager.Connection.Active";
+const WIREGUARD: &str = "WireGuard";
 
 #[derive(Clone)]
 pub struct Net {
@@ -56,7 +58,7 @@ impl Net {
 
     pub fn toggle_wireguard(&self) {
         let up = !self.wireguard.get();
-        tunnel("WireGuard", up);
+        tunnel(WIREGUARD, up);
     }
 
     pub fn refresh(&self) {
@@ -112,7 +114,12 @@ impl Net {
                 .await
                 .unwrap_or(false);
             net.wifi_enabled.set(enabled);
-            net.wireguard.set(kind == "wireguard");
+            net.wireguard.set(
+                active_names(&system)
+                    .await
+                    .iter()
+                    .any(|name| name == WIREGUARD),
+            );
 
             if kind == "802-3-ethernet" {
                 net.symbol.replace("lan".to_owned());
@@ -182,6 +189,22 @@ fn bars(strength: u32) -> &'static str {
         18..=33 => "network_wifi_1_bar",
         _ => "signal_wifi_0_bar",
     }
+}
+
+async fn active_names(system: &gio::DBusConnection) -> Vec<String> {
+    let Some(paths) = dbus::property(system, BUS, ROOT, BUS, "ActiveConnections").await else {
+        return Vec::new();
+    };
+    let mut names = Vec::new();
+    for path in paths.iter() {
+        let Some(path) = path.get::<glib::variant::ObjectPath>() else {
+            continue;
+        };
+        if let Some(name) = dbus::string_property(system, BUS, path.as_str(), ACTIVE, "Id").await {
+            names.push(name);
+        }
+    }
+    names
 }
 
 async fn access_point(system: &gio::DBusConnection) -> Option<(u32, String)> {
