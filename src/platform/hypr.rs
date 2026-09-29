@@ -53,6 +53,30 @@ pub fn move_window(address: &str, x: f64, y: f64) {
     ));
 }
 
+pub fn show_cursor() {
+    let Some(position) = json("cursorpos") else {
+        return;
+    };
+    let coordinate = |axis: &str| position.get(axis).and_then(Value::as_i64);
+    if let (Some(x), Some(y)) = (coordinate("x"), coordinate("y")) {
+        request(&format!(
+            "dispatch hl.dsp.cursor.move({{ x = {x}, y = {y} }})"
+        ));
+    }
+}
+
+pub fn set_cursor_hides_on_key(hides: bool) {
+    request(&format!(
+        "eval hl.config({{ cursor = {{ hide_on_key_press = {hides} }} }})"
+    ));
+}
+
+pub fn option_bool(name: &str) -> Option<bool> {
+    let reply = request(&format!("getoption {name}"))?;
+    let line = reply.lines().find(|line| line.starts_with("bool: "))?;
+    Some(line[6..].trim() == "true")
+}
+
 pub fn json(command: &str) -> Option<Value> {
     serde_json::from_str(&request(&format!("j/{command}"))?).ok()
 }

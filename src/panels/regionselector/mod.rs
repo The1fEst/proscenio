@@ -1200,11 +1200,15 @@ impl RegionSelector {
 
     fn prepare(self: &Rc<Self>, selection: &Rc<Selection>) {
         let recording = selection.mode.get().recording();
-        let screenshot = screenshot::temp_command(
-            &selection.screen,
-            &selection.path,
-            selection.config.region.show_pointer.get(),
-        );
+        let pointer = selection.config.region.show_pointer.get();
+        let hiding = pointer && hypr::option_bool("cursor:hide_on_key_press") == Some(true);
+        if hiding {
+            hypr::set_cursor_hides_on_key(false);
+        }
+        if pointer {
+            hypr::show_cursor();
+        }
+        let screenshot = screenshot::temp_command(&selection.screen, &selection.path, pointer);
         let selector = Rc::downgrade(self);
         let selection = Rc::downgrade(selection);
         glib::spawn_future_local(async move {
@@ -1214,6 +1218,9 @@ impl RegionSelector {
                 false
             };
             if running {
+                if hiding {
+                    hypr::set_cursor_hides_on_key(true);
+                }
                 crate::core::process::launch_subcommand(&["record"]);
                 if let Some(selector) = selector.upgrade() {
                     selector.dismiss();
@@ -1221,6 +1228,9 @@ impl RegionSelector {
                 return;
             }
             let _ = run(&["bash", "-c", &screenshot]).await;
+            if hiding {
+                hypr::set_cursor_hides_on_key(true);
+            }
             let Some(path) = selection.upgrade().map(|selection| selection.path.clone()) else {
                 return;
             };
