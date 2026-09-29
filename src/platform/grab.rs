@@ -5,10 +5,12 @@ use gtk4::prelude::Cast;
 use std::cell::RefCell;
 use std::os::fd::AsRawFd;
 use std::rc::{Rc, Weak};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use wayland_client::globals::GlobalListContents;
 use wayland_client::protocol::wl_registry::WlRegistry;
 use wayland_client::protocol::wl_surface::WlSurface;
-use wayland_client::{Connection, Dispatch, QueueHandle, delegate_noop, globals};
+use wayland_client::{Connection, Dispatch, EventQueue, QueueHandle, delegate_noop, globals};
 
 use crate::platform::readable;
 
@@ -28,20 +30,19 @@ pub mod protocol {
 use protocol::hyprland_focus_grab_manager_v1::HyprlandFocusGrabManagerV1;
 use protocol::hyprland_focus_grab_v1::{self, HyprlandFocusGrabV1};
 
-#[derive(Default)]
-struct Cleared(Rc<RefCell<bool>>);
+struct State;
 
-impl Dispatch<HyprlandFocusGrabV1, ()> for State {
+impl Dispatch<HyprlandFocusGrabV1, Arc<AtomicBool>> for State {
     fn event(
-        state: &mut State,
+        _: &mut State,
         _: &HyprlandFocusGrabV1,
         event: hyprland_focus_grab_v1::Event,
-        _: &(),
+        cleared: &Arc<AtomicBool>,
         _: &Connection,
         _: &QueueHandle<State>,
     ) {
         if matches!(event, hyprland_focus_grab_v1::Event::Cleared) {
-            state.cleared.0.replace(true);
+            cleared.store(true, Ordering::Relaxed);
         }
     }
 }
@@ -60,13 +61,10 @@ impl Dispatch<WlRegistry, GlobalListContents> for State {
     }
 }
 
-struct State {
-    cleared: Cleared,
-}
-
 thread_local! {
     static PERSISTENT: RefCell<Vec<glib::WeakRef<gdk::Surface>>> = const { RefCell::new(Vec::new()) };
     static GRABS: RefCell<Vec<Weak<Grab>>> = const { RefCell::new(Vec::new()) };
+    static SHARED: RefCell<Option<Rc<Shared>>> = const { RefCell::new(None) };
 }
 
 pub fn add_persistent(surface: &gdk::Surface) {
@@ -111,38 +109,95 @@ fn wl_surface(surface: &gdk::Surface) -> Option<WlSurface> {
         .wl_surface()
 }
 
-pub struct Grab {
+struct Shared {
     connection: Connection,
-    queue: RefCell<wayland_client::EventQueue<State>>,
-    state: RefCell<State>,
+    queue: RefCell<EventQueue<State>>,
     manager: HyprlandFocusGrabManagerV1,
-    held: RefCell<Option<HyprlandFocusGrabV1>>,
     watch: RefCell<Option<glib::SourceId>>,
+}
+
+fn shared(display: &gdk::Display) -> Option<Rc<Shared>> {
+    if let Some(shared) = SHARED.with_borrow(Clone::clone) {
+        return Some(shared);
+    }
+    let display = display
+        .clone()
+        .downcast::<gdk4_wayland::WaylandDisplay>()
+        .ok()?;
+    let native = display.wl_display_raw()?;
+    let backend = unsafe {
+        wayland_backend::sys::client::Backend::from_foreign_display(native.as_ptr().cast())
+    };
+    let connection = Connection::from_backend(backend);
+    let (globals, queue) = globals::registry_queue_init::<State>(&connection).ok()?;
+    let manager: HyprlandFocusGrabManagerV1 = globals.bind(&queue.handle(), 1..=1, ()).ok()?;
+    let shared = Rc::new(Shared {
+        connection,
+        queue: RefCell::new(queue),
+        manager,
+        watch: RefCell::new(None),
+    });
+    SHARED.with_borrow_mut(|slot| *slot = Some(shared.clone()));
+    Some(shared)
+}
+
+impl Shared {
+    fn flush(&self) {
+        let _ = self.connection.flush();
+    }
+
+    fn pump(&self) {
+        let mut queue = self.queue.borrow_mut();
+        let _ = queue.dispatch_pending(&mut State);
+        if let Some(guard) = queue.prepare_read() {
+            let _ = guard.read();
+        }
+        let _ = queue.dispatch_pending(&mut State);
+    }
+
+    fn watch(self: &Rc<Self>) {
+        if self.watch.borrow().is_some() {
+            return;
+        }
+        let shared = Rc::downgrade(self);
+        let fd = self.connection.backend().poll_fd().as_raw_fd();
+        let watch = readable::when_readable(fd, move || {
+            let Some(shared) = shared.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            shared.pump();
+            for grab in grabs() {
+                if grab.cleared.swap(false, Ordering::Relaxed) {
+                    grab.forget();
+                    if let Some(cleared) = grab.on_cleared.take() {
+                        cleared();
+                    }
+                }
+            }
+            if grabs().iter().any(|grab| grab.held.borrow().is_some()) {
+                return glib::ControlFlow::Continue;
+            }
+            shared.watch.take();
+            glib::ControlFlow::Break
+        });
+        self.watch.replace(Some(watch));
+    }
+}
+
+pub struct Grab {
+    shared: Rc<Shared>,
+    cleared: Arc<AtomicBool>,
+    on_cleared: RefCell<Option<Box<dyn Fn()>>>,
+    held: RefCell<Option<HyprlandFocusGrabV1>>,
 }
 
 impl Grab {
     pub fn new(display: &gdk::Display) -> Option<Rc<Self>> {
-        let display = display
-            .clone()
-            .downcast::<gdk4_wayland::WaylandDisplay>()
-            .ok()?;
-        let native = display.wl_display_raw()?;
-        let backend = unsafe {
-            wayland_backend::sys::client::Backend::from_foreign_display(native.as_ptr().cast())
-        };
-        let connection = Connection::from_backend(backend);
-        let (globals, queue) = globals::registry_queue_init::<State>(&connection).ok()?;
-        let manager: HyprlandFocusGrabManagerV1 = globals.bind(&queue.handle(), 1..=1, ()).ok()?;
-
         let grab = Rc::new(Grab {
-            connection,
-            queue: RefCell::new(queue),
-            state: RefCell::new(State {
-                cleared: Cleared::default(),
-            }),
-            manager,
+            shared: shared(display)?,
+            cleared: Arc::new(AtomicBool::new(false)),
+            on_cleared: RefCell::new(None),
             held: RefCell::new(None),
-            watch: RefCell::new(None),
         });
         GRABS.with(|list| list.borrow_mut().push(Rc::downgrade(&grab)));
         Some(grab)
@@ -154,41 +209,29 @@ impl Grab {
             return;
         };
 
-        let queue = self.queue.borrow();
-        let grab = self.manager.create_grab(&queue.handle(), ());
+        self.cleared.store(false, Ordering::Relaxed);
+        let queue = self.shared.queue.borrow();
+        let grab = self
+            .shared
+            .manager
+            .create_grab(&queue.handle(), self.cleared.clone());
         grab.add_surface(&surface);
         for kept in persistent().iter().filter_map(wl_surface) {
             grab.add_surface(&kept);
         }
         grab.commit();
         drop(queue);
-        let _ = self.connection.flush();
+        self.shared.flush();
         self.held.replace(Some(grab));
-
-        let flag = self.state.borrow().cleared.0.clone();
-        flag.replace(false);
-        let grabber = self.clone();
-        let fd = self.connection.backend().poll_fd().as_raw_fd();
-        let watch = readable::when_readable(fd, move || {
-            grabber.pump();
-            if !flag.replace(false) {
-                return glib::ControlFlow::Continue;
-            }
-            grabber.watch.take();
-            grabber.forget();
-            cleared();
-            glib::ControlFlow::Break
-        });
-        self.watch.replace(Some(watch));
+        self.on_cleared.replace(Some(Box::new(cleared)));
+        self.shared.watch();
     }
 
     pub fn release(&self) {
-        if let Some(watch) = self.watch.take() {
-            watch.remove();
-        }
+        self.on_cleared.take();
         if let Some(grab) = self.held.borrow_mut().take() {
             grab.destroy();
-            let _ = self.connection.flush();
+            self.shared.flush();
         }
     }
 
@@ -206,16 +249,6 @@ impl Grab {
             grab.remove_surface(&surface);
         }
         grab.commit();
-        let _ = self.connection.flush();
-    }
-
-    fn pump(&self) {
-        let mut queue = self.queue.borrow_mut();
-        let mut state = self.state.borrow_mut();
-        let _ = queue.dispatch_pending(&mut state);
-        if let Some(guard) = queue.prepare_read() {
-            let _ = guard.read();
-        }
-        let _ = queue.dispatch_pending(&mut state);
+        self.shared.flush();
     }
 }
