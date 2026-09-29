@@ -6,10 +6,13 @@ use std::time::Duration;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process;
 use crate::platform::hypr;
+use crate::ui::anim::EXPRESSIVE_EFFECTS;
 
 pub const GAMMA_FLOOR: f64 = 25.0;
 const STEP: f64 = 0.05;
 const DDC_DELAY: Duration = Duration::from_millis(300);
+const FADE_MICROS: f64 = 200_000.0;
+const FADE_FRAME: Duration = Duration::from_millis(16);
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Change {
@@ -23,6 +26,7 @@ struct Screen {
     bus: Option<String>,
     max: Cell<f64>,
     level: Cell<f64>,
+    written: Cell<f64>,
     ready: Cell<bool>,
     pending: RefCell<Option<glib::SourceId>>,
 }
@@ -91,6 +95,7 @@ impl Light {
                         bus,
                         max: Cell::new(100.0),
                         level: Cell::new(0.0),
+                        written: Cell::new(0.0),
                         ready: Cell::new(false),
                         pending: RefCell::new(None),
                     })
@@ -144,6 +149,7 @@ impl Light {
                 let moved = screen.ready.get() && screen.level.get() != level;
                 screen.max.set(max);
                 screen.level.set(level);
+                screen.written.set(level);
                 screen.ready.set(true);
                 light.announce(if moved { Change::Level } else { Change::Read });
             }
@@ -177,22 +183,36 @@ impl Light {
         if let Some(pending) = screen.pending.take() {
             pending.remove();
         }
-        let delay = if screen.bus.is_some() {
-            DDC_DELAY
-        } else {
-            Duration::ZERO
-        };
         let light = self.clone();
         let target = screen.clone();
-        let pending = glib::timeout_add_local_once(delay, move || {
-            target.pending.take();
-            light.write(&target);
-        });
+        let pending = if screen.bus.is_some() {
+            glib::timeout_add_local_once(DDC_DELAY, move || {
+                target.pending.take();
+                light.write(&target, target.level.get());
+            })
+        } else {
+            let from = screen.written.get();
+            let started = glib::monotonic_time();
+            glib::timeout_add_local(FADE_FRAME, move || {
+                let part = ((glib::monotonic_time() - started) as f64 / FADE_MICROS).min(1.0);
+                let to = target.level.get();
+                let level = from + (to - from) * EXPRESSIVE_EFFECTS.at(part);
+                if percent(level) != percent(target.written.get()) {
+                    light.write(&target, level);
+                }
+                target.written.set(level);
+                if part < 1.0 {
+                    return glib::ControlFlow::Continue;
+                }
+                target.pending.take();
+                glib::ControlFlow::Break
+            })
+        };
         screen.pending.replace(Some(pending));
     }
 
-    fn write(&self, screen: &Screen) {
-        let level = screen.level.get().max(0.0);
+    fn write(&self, screen: &Screen, level: f64) {
+        let level = level.max(0.0);
         let command: Vec<String> = match &screen.bus {
             Some(bus) => vec![
                 "ddcutil".into(),
@@ -205,7 +225,7 @@ impl Light {
                     .to_string(),
             ],
             None => {
-                let percent = (level * 100.0).floor() as i64;
+                let percent = percent(level);
                 vec![
                     "brightnessctl".into(),
                     "--class".into(),
@@ -256,6 +276,10 @@ impl Light {
         process::start(process::quiet(&["hyprctl", "hyprsunset", "gamma", &gamma]));
         self.announce(Change::Gamma);
     }
+}
+
+fn percent(level: f64) -> i64 {
+    (level.max(0.0) * 100.0).floor() as i64
 }
 
 fn ddc_displays(output: &str) -> Vec<(String, String)> {

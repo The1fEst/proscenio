@@ -256,8 +256,9 @@ The brightness slider drives the monitor its sidebar is on, as
 ports `Brightness.qml`: one level per screen, DDC displays matched to screens
 by DRM connector and read one after another, DDC writes held back 300 ms, and
 one shared writer. The slider follows every change to that level and reads
-the level again each time the sidebar opens; qs does not re-read. The
-backlight is written at once; qs fades it over 200 ms.
+the level again each time the sidebar opens; qs does not re-read. A backlight
+fades to the new level over 200 ms on the `expressiveEffects` curve, as in qs,
+with `brightnessctl` run whenever the whole percentage changes.
 
 A value set from outside eases into place over `elementMoveFast` (200 ms,
 `expressiveEffects`); the pointer moves the handle at once. In qs the value
