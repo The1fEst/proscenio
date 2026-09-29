@@ -130,9 +130,11 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     );
     let fonts = core::watch::config("/appearance/fonts", {
         let screens = screens.clone();
+        let settings = settings_window.clone();
         move || {
             widgets::text::init(&core::config::current());
             screens.rebuild_all();
+            settings.refont();
         }
     });
     let icons = follow_icon_theme(&settings, &screens);

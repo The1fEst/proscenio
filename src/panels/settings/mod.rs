@@ -127,6 +127,12 @@ impl Settings {
         }
     }
 
+    pub fn refont(&self) {
+        if let Some(view) = self.view.borrow().as_ref() {
+            text::refont(view.window.upcast_ref());
+        }
+    }
+
     pub fn toggle(self: &Rc<Self>) {
         if self.view.borrow().is_some() {
             self.close();

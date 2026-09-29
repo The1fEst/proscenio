@@ -126,11 +126,38 @@ pub fn font(which: Family, size: f64, variations: &str) -> pango::FontDescriptio
     font
 }
 
+const ROLE: &str = "proscenio-font-role";
+
 pub fn set_font(label: &gtk4::Label, which: Family, size: f64, variations: &str) {
     let font = font(which, size, variations);
     let attributes = label.attributes().unwrap_or_default();
     attributes.change(pango::AttrFontDesc::new(&font));
     label.set_attributes(Some(&attributes));
+    unsafe {
+        label.set_data(ROLE, which);
+    }
+}
+
+pub fn refont(root: &gtk4::Widget) {
+    if let Some(label) = root.downcast_ref::<gtk4::Label>()
+        && let Some(which) = unsafe { label.data::<Family>(ROLE).map(|role| *role.as_ref()) }
+        && let Some(attributes) = label.attributes()
+    {
+        for attribute in attributes.attributes() {
+            if let Some(font) = attribute.downcast_ref::<pango::AttrFontDesc>() {
+                let mut desc = font.desc();
+                desc.set_family(&family(which));
+                attributes.change(pango::AttrFontDesc::new(&desc));
+            }
+        }
+        label.set_attributes(Some(&attributes));
+    }
+    root.queue_draw();
+    let mut child = root.first_child();
+    while let Some(current) = child {
+        refont(&current);
+        child = current.next_sibling();
+    }
 }
 
 pub fn set_application_font(label: &gtk4::Label, size: f64) {

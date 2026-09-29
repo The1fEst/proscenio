@@ -229,16 +229,14 @@ impl TextField {
             view.set_margin_top(FILLED_TEXT_TOP);
             view.set_margin_bottom(PADDING / 2);
         }
-        let font = text::font(Family::Main, pixel_size::SMALL as f64, "wght=450");
-
         let root: Framed = glib::Object::new();
         view.set_parent(&root);
         if style == Style::Outlined {
             let measured = root.create_pango_layout(None);
-            measured.set_font_description(Some(&font));
             measured.set_wrap(pango::WrapMode::WordChar);
             let shown = editor.clone();
             root.imp().text_height.replace(Some(Box::new(move |width| {
+                measured.set_font_description(Some(&field_font()));
                 let text = shown.shown_text();
                 measured.set_text(if text.is_empty() { " " } else { text.as_str() });
                 measured.set_width(width.max(1) * pango::SCALE);
@@ -250,7 +248,6 @@ impl TextField {
         }
 
         let label = root.create_pango_layout(Some(placeholder));
-        label.set_font_description(Some(&font));
 
         let field = Rc::new(TextField {
             root: root.clone(),
@@ -494,6 +491,7 @@ impl TextField {
         let float = self.float.get().value(now);
         let focused = self.focused.get();
         let (width, height) = (width as f64, height as f64);
+        self.label.set_font_description(Some(&field_font()));
         let (_, logical) = self.label.extents();
         let label_width = logical.width() as f64 / pango::SCALE as f64;
         let label_height = logical.height() as f64 / pango::SCALE as f64;
@@ -567,6 +565,10 @@ impl TextField {
         snapshot.append_layout(&self.label, &label_colour);
         snapshot.restore();
     }
+}
+
+fn field_font() -> pango::FontDescription {
+    text::font(Family::Main, pixel_size::SMALL as f64, "wght=450")
 }
 
 fn source(cr: &gtk4::cairo::Context, colour: RGBA) {
