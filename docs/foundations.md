@@ -583,5 +583,6 @@ the password was given. `auto` leaves the system language alone.
 Text is translated when a widget is built, so a new language takes a restart.
 Static tables (page names, quick toggle names, choice labels) keep their
 English text and are translated where they are displayed. The settings search
-indexes the English titles: the build-time scanner reads `tr("…")` as the
-literal inside it.
+index holds the English titles, since the build-time scanner reads `tr("…")`
+as the literal inside it; the search matches them in every language (see
+[settings.md](settings.md) §2).

@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::core::i18n::tr;
 use crate::core::{config, process};
-use crate::panels::settings::index::{self, Hit};
+use crate::panels::settings::index::{Hit, Index};
 use crate::panels::settings::pages::PAGES;
 use crate::ui::anim::{self, EXPRESSIVE_EFFECTS, EXPRESSIVE_FAST, Tween};
 use crate::ui::theme::{SharedTheme, Theme, pixel_size, rounding, transparentize};
@@ -100,6 +100,7 @@ pub struct Rail {
     results_scroller: gtk4::ScrolledWindow,
     results: gtk4::Box,
     hits: RefCell<Vec<Hit>>,
+    index: RefCell<Option<Index>>,
     highlight: Paint,
     highlight_y: Rc<anim::Motion>,
     tabs: Vec<Rc<Tab>>,
@@ -211,6 +212,7 @@ impl Rail {
             results_scroller,
             results,
             hits: RefCell::new(Vec::new()),
+            index: RefCell::new(None),
             highlight: highlight.clone(),
             highlight_y,
             tabs,
@@ -412,7 +414,14 @@ impl Rail {
         while let Some(child) = self.results.first_child() {
             self.results.remove(&child);
         }
-        let hits = index::search(query);
+        let hits = if searching {
+            self.index
+                .borrow_mut()
+                .get_or_insert_with(Index::new)
+                .search(query)
+        } else {
+            Vec::new()
+        };
         if searching && hits.is_empty() {
             let nothing = text::styled_sized(&tr("No settings found"), TAB_TEXT);
             text::set_color(&nothing, "colSubtext");

@@ -428,7 +428,9 @@ impl View {
             return;
         };
         if let Some(page) = self.page.borrow().as_ref() {
-            page.reveal(hit.path, &hit.title);
+            let path: Vec<String> = hit.path.iter().map(|part| tr(part)).collect();
+            let path: Vec<&str> = path.iter().map(String::as_str).collect();
+            page.reveal(&path, &hit.title);
         }
     }
 

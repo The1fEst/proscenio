@@ -50,7 +50,10 @@ translated names); collapsed, 56. The width moves over
   its page and sections below it at 12 px in `colSubtext` ("Screen Lock ›
   Style: Blurred"). Every word has to match the title or that trail; titles
   that start with the query come first, then titles that hold every word,
-  then the rest. A result is 48 px tall with 12 px padding and a 60-result
+  then the rest. Titles and trails match in English and in every bundled
+  translation, so "мышь" finds "Mouse & Touchpad" whatever the interface
+  language, and results show in the interface language. The translations
+  are gathered on the first query and kept while the rail lives. A result is 48 px tall with 12 px padding and a 60-result
   cap; "No settings found" stands in for an empty list. Pressing a result,
   or Enter for the first, opens its page and scrolls the setting to a third
   of the way down, tinting it `colPrimary` at 20 % for 1.5 s. Collapsing the

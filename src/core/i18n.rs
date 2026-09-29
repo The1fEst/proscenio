@@ -1,7 +1,7 @@
 use gtk4::glib;
 use serde_json::Value;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::core::{config, paths};
 use crate::platform::locale;
@@ -123,17 +123,42 @@ fn load() -> HashMap<String, String> {
     entries
 }
 
+fn shown(found: &str) -> &str {
+    found.strip_suffix(KEEP_SUFFIX).map_or(found, str::trim)
+}
+
 pub fn tr(text: &str) -> String {
     ENTRIES.with_borrow_mut(|entries| {
         let entries = entries.get_or_insert_with(load);
         match entries.get(text) {
-            Some(found) => found
-                .strip_suffix(KEEP_SUFFIX)
-                .map_or(found.as_str(), str::trim)
-                .to_owned(),
+            Some(found) => shown(found).to_owned(),
             None => text.to_owned(),
         }
     })
+}
+
+pub fn every_translation<'a>(keys: &HashSet<&'a str>) -> HashMap<&'a str, Vec<String>> {
+    let mut found: HashMap<&'a str, Vec<String>> = HashMap::new();
+    for (_, text) in CATALOGS {
+        for (key, value) in parse(text) {
+            if let Some(key) = keys.get(key.as_str()) {
+                found
+                    .entry(*key)
+                    .or_default()
+                    .push(shown(&value).to_owned());
+            }
+        }
+    }
+    found
+}
+
+#[cfg(test)]
+pub fn use_language(code: &str) {
+    let text = CATALOGS
+        .iter()
+        .find(|(known, _)| *known == code)
+        .map_or("{}", |(_, text)| *text);
+    ENTRIES.set(Some(parse(text)));
 }
 
 pub fn trf(text: &str, arguments: &[&str]) -> String {
