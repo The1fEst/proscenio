@@ -105,9 +105,11 @@ The art backdrop is blurred with GTK's blur at radius 70 (`ART_BLUR`), which
 differs from `MultiEffect`'s; the result is within about 1.3 levels of qs on
 average.
 
-The art is decoded once, off the main thread, into two copies cropped to
-fill: one the size of the card, one the size of the art square, both in
-device pixels, and the average color is taken from the same decode. The
+The art is decoded once, off the main thread, at the smallest size that still
+fills both the card and the art square (never above the file's own size), then
+cropped to fill into two copies: one the size of the card, one the size of the
+art square, both in device pixels. The average color is taken from the same
+decode. The
 blurred, saturated and washed backdrop is rendered once per art, card size
 and wash color into a texture that the card then draws as is. The wave is
 drawn into an 8-bit mask, blurred there with the three-box Gaussian of

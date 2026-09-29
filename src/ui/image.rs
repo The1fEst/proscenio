@@ -28,7 +28,9 @@ pub async fn cover_textures<T: Send + 'static>(
     measure: impl FnOnce(&Pixbuf) -> T + Send + 'static,
 ) -> Option<(Vec<gdk::Texture>, T)> {
     let (covers, measured) = gio::spawn_blocking(move || {
-        let pixbuf = Pixbuf::from_file(&path).ok()?;
+        let (_, width, height) = Pixbuf::file_info(&path)?;
+        let (width, height) = covering((width, height), &sizes);
+        let pixbuf = Pixbuf::from_file_at_scale(&path, width, height, false).ok()?;
         let covers = sizes
             .into_iter()
             .map(|size| cover(&pixbuf, size).map(|scaled| pixels(&scaled)))
@@ -162,6 +164,20 @@ pub async fn cover_texture(path: PathBuf, size: (i32, i32)) -> Option<gdk::Textu
     Some(upload(pixels))
 }
 
+fn covering((width, height): (i32, i32), sizes: &[(i32, i32)]) -> (i32, i32) {
+    let scale = sizes
+        .iter()
+        .map(|&(wanted_width, wanted_height)| {
+            (wanted_width as f64 / width as f64).max(wanted_height as f64 / height as f64)
+        })
+        .fold(0.0, f64::max)
+        .min(1.0);
+    (
+        ((width as f64 * scale).round() as i32).max(1),
+        ((height as f64 * scale).round() as i32).max(1),
+    )
+}
+
 fn cover(pixbuf: &Pixbuf, (width, height): (i32, i32)) -> Option<Pixbuf> {
     let scale = (width as f64 / pixbuf.width() as f64).max(height as f64 / pixbuf.height() as f64);
     let crop_width = ((width as f64 / scale).round() as i32).min(pixbuf.width());
@@ -210,6 +226,14 @@ mod tests {
                 "{sigma}: {variance}"
             );
         }
+    }
+
+    #[test]
+    fn a_cover_decodes_just_large_enough_to_fill_every_size() {
+        let sizes = [(420, 140), (100, 100)];
+        assert_eq!(covering((6600, 3600), &sizes), (420, 229));
+        assert_eq!(covering((300, 3000), &sizes), (300, 3000));
+        assert_eq!(covering((3000, 300), &sizes), (1400, 140));
     }
 
     #[test]
