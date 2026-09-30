@@ -261,7 +261,11 @@ impl Session {
 
     pub fn logout(&self) {
         close_all_windows();
-        detach(&["pkill", "-i", "Hyprland"]);
+        process::launch(&[
+            "bash",
+            "-c",
+            "systemctl --user stop graphical-session.target; pkill -i Hyprland",
+        ]);
     }
 
     pub fn poweroff(&self) {

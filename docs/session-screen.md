@@ -110,5 +110,13 @@ on the focused monitor's surface. The eight actions are in
 `src/services/session.rs`, `closeAllWindows` included, reading the pids out
 of `hyprctl clients`.
 
+Logout first runs `systemctl --user stop graphical-session.target`, so the
+session's services (the shell itself, kded6, the KDE portal and the rest that
+are `PartOf` it) stop cleanly instead of dying with the compositor. A service
+that crashes when Wayland goes away and restarts at once hits systemd's start
+limit, and a new login cannot start it again. The command runs in a scope of
+its own, since stopping the target stops `proscenio.service`, and kills
+Hyprland once the target has stopped.
+
 The power button in the sidebar's system row calls the screen's `open()`
 directly.
