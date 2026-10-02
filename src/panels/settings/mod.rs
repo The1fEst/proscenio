@@ -300,7 +300,11 @@ impl Settings {
                     return glib::Propagation::Proceed;
                 };
                 if key == gdk::Key::Escape {
-                    settings.close();
+                    let dialog = view.context.dialog.borrow().clone();
+                    match dialog {
+                        Some(dialog) => dialog.dismiss(),
+                        None => settings.close(),
+                    }
                     return glib::Propagation::Stop;
                 }
                 if modifiers != gdk::ModifierType::CONTROL_MASK {
