@@ -10,6 +10,7 @@ use crate::core::{process, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
 use crate::panels::settings::pages::connection::{NEW_WIRED, NEW_WIREGUARD};
 use crate::panels::settings::pages::proxy;
+use crate::platform::firewall;
 use crate::platform::proxy as platform_proxy;
 use crate::services::net::{Connection, Connections, VPN_KINDS, WIRED};
 use crate::services::nmsettings;
@@ -61,7 +62,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let status = page.section("", "");
     if !manager_running(&page, &status) {
-        proxy_link(&page, context);
+        protection_links(&page, context);
         return page;
     }
     if let Some(section) = status.parent() {
@@ -115,7 +116,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
     vpn_section.append(&adding);
     vpn_section.append(&problem);
-    proxy_link(&page, context);
+    protection_links(&page, context);
 
     let follow = {
         let connections = Rc::downgrade(&connections);
@@ -146,11 +147,27 @@ pub fn build(context: &Context) -> Rc<Page> {
     page
 }
 
-fn proxy_link(page: &Page, context: &Context) {
-    let section = page.section("travel_explore", &tr("Proxy"));
+fn protection_links(page: &Page, context: &Context) {
+    let section = page.section("security", &tr("Firewall & Proxy"));
+    let firewall = if tools::missing(&[&tools::UFW]).is_empty() {
+        if firewall::read().enabled {
+            tr("On")
+        } else {
+            tr("Off")
+        }
+    } else {
+        tr("Not installed")
+    };
     page.link_row(
         &section,
-        "",
+        "shield",
+        &tr("Firewall"),
+        &firewall,
+        context.subpage_opener("firewall"),
+    );
+    page.link_row(
+        &section,
+        "travel_explore",
         &tr("Proxy"),
         &proxy::mode_name(platform_proxy::read().mode),
         context.subpage_opener("proxy"),

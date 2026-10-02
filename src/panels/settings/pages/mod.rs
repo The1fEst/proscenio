@@ -11,6 +11,7 @@ pub mod connection;
 pub mod datetime;
 pub mod devices;
 pub mod displays;
+pub mod firewall;
 pub mod hiddennetwork;
 pub mod hotspot;
 pub mod keyboard;
@@ -346,7 +347,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 16] = [
+pub const SUBPAGES: [Subpage; 17] = [
     Subpage {
         id: "savednetworks",
         title: "Saved Networks",
@@ -360,6 +361,11 @@ pub const SUBPAGES: [Subpage; 16] = [
     Subpage {
         id: "proxy",
         title: "Proxy",
+        parent: "network",
+    },
+    Subpage {
+        id: "firewall",
+        title: "Firewall",
         parent: "network",
     },
     Subpage {
@@ -440,6 +446,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "network" => network::build(context),
         "connection" => connection::build(context),
         "proxy" => proxy::build(context),
+        "firewall" => firewall::build(context),
         "bluetooth" => bluetooth::build(context),
         "displays" => displays::build(context),
         "sound" => sound::build(context),

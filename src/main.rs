@@ -41,11 +41,17 @@ fn main() -> glib::ExitCode {
     unload::single_arena();
     let arguments: Vec<String> = std::env::args().collect();
     let command = arguments.get(1).map(String::as_str);
-    if command == Some("ipc") {
-        return ipc::client(APP_ID, &arguments[2..]);
-    }
     if command == Some(locale::COMMAND) {
         return locale::run(&arguments[2..]);
+    }
+    if command == Some(platform::firewall::COMMAND) {
+        return platform::firewall::run(&arguments[2..]);
+    }
+    if std::env::var_os("PKEXEC_UID").is_some() {
+        return glib::ExitCode::FAILURE;
+    }
+    if command == Some("ipc") {
+        return ipc::client(APP_ID, &arguments[2..]);
     }
     #[cfg(feature = "compat")]
     compat::prepare();

@@ -6,6 +6,7 @@ pub mod dbusmenu;
 pub mod defaultapps;
 pub mod desktop;
 pub mod devicesettings;
+pub mod firewall;
 pub mod fprint;
 pub mod gbm;
 pub mod geoclue;

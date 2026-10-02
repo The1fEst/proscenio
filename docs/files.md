@@ -42,7 +42,18 @@ built into the binary; nothing is read from `~/.config/quickshell`.
 | `proscenio switchwall …` | [colors.md](colors.md) |
 | `proscenio colors generate …`, `scheme-for-image …`, `kde-selection` | [colors.md](colors.md) |
 | `proscenio record [--region WxH+X+Y] [--sound] [--fullscreen]` | starts `wf-recorder` into `screenRecord.savePath` (else the Videos folder), or stops it when one is running |
+| `proscenio firewall enable`, `disable`, `default POLICY`, `add …`, `delete …` | run as root through `pkexec`: changes `ufw` for the Firewall page ([settings.md](settings.md) §19.4) |
 | `proscenio set-system-locale LOCALE` | run as root through `pkexec`: enables `LOCALE` (such as `ru_RU.UTF-8`) in `/etc/locale.gen`, generates it, and makes it the system language ([foundations.md](foundations.md) §10) |
+
+The two `pkexec` commands run under the polkit action
+`dev.fEst.Proscenio.system` when `packaging/dev.fEst.Proscenio.policy` is
+installed in `/usr/share/polkit-1/actions/`: it names `/usr/bin/proscenio` as
+its program and keeps an active session's authentication for five minutes
+(`auth_admin_keep`), so several changes in a row ask once. Without it, or for
+a binary elsewhere, `pkexec` asks every time. Started by `pkexec` (with
+`PKEXEC_UID` set), proscenio runs only these two commands and exits with a
+failure for anything else, so the kept authentication cannot start the shell
+or another command as root.
 
 `record` takes the sound from the default output's monitor source. The QML
 shell's `record.sh` passes every monitor source at once, which fails when

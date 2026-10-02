@@ -526,9 +526,10 @@ fields start from the stored profile, read with `nmcli -s`.
 
 ### 19.3 Proxy (subpage)
 
-The Network page ends with a "Proxy" section (`travel_explore`) holding a link
-row whose second line is the current mode; the section shows even while
-NetworkManager is stopped. The subpage has an explanation in `colSubtext` and
+The Network page ends with a "Firewall & Proxy" section (`security`) of two
+link rows, "Firewall" (`shield`, its second line On, Off or Not installed) and
+"Proxy" (`travel_explore`, its second line the current mode); the section
+shows even while NetworkManager is stopped. The Proxy subpage has an explanation in `colSubtext` and
 "Proxy": Off, Automatic or Manual. Automatic adds "Configuration script" (with
 a tooltip: empty finds the proxy with WPAD) and its address; Manual adds the
 HTTP, HTTPS and SOCKS proxies, each a host field and a port spin box (0 to
@@ -565,6 +566,36 @@ waits 800 ms for the next one (or until the page closes), then
   nothing kept them across the session.
 
 A schema that is not installed leaves only a notice.
+
+### 19.4 Firewall (subpage)
+
+The page drives `ufw` (`src/platform/firewall.rs`); without it, only a notice.
+It reads without root: `ENABLED` in `/etc/ufw/ufw.conf`,
+`DEFAULT_INPUT_POLICY` in `/etc/default/ufw`, and the `### tuple ###` lines of
+`/etc/ufw/user.rules` and `user6.rules`. Incoming rules to any address from
+any port are shown, the IPv4 and IPv6 copies of a rule once, with the
+hex-encoded comment decoded; other tuples are left out.
+
+- "Firewall" (`shield`) turns `ufw` on (`ufw --force enable`, and
+  `systemctl enable ufw.service` so it starts with the system) or off.
+- "Incoming connections no rule allows" (with a tooltip): Block, Refuse or
+  Allow (`ufw default deny|reject|allow incoming`).
+- **Rules**: a 48 px card per rule, "Allow 22/tcp" (the application profile,
+  or "every port", in place of the port when that is what the rule names)
+  over "from anywhere" or "from 10.0.0.0/8" and the comment, and a 32 px
+  round remove button with a tooltip; "No rules yet" while there are none.
+- **Add a rule**: the action (Allow, Deny, Reject, Limit, with a tooltip on
+  what Limit does), the protocol (TCP and UDP, TCP, UDP), the port, a range
+  or a list, where the connections come from (empty is anywhere), a comment,
+  and "Add rule". A rule needs a port or a source; a range or a list needs TCP
+  or UDP; a comment holds no quotes or line breaks. A refused rule shows why;
+  an accepted one clears the fields.
+
+Every change runs `pkexec proscenio firewall …` (`enable`, `disable`,
+`default POLICY`, or `add`/`delete` with the action, protocol, port, source,
+application and comment), which checks its arguments again and runs `ufw`
+with them, never through a shell. The page rereads the files afterwards, and
+`ufw`'s last error line shows in `colError` under the switch and the form.
 
 ## 20. Bluetooth
 
