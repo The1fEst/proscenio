@@ -2,6 +2,8 @@ use gtk4::gio;
 use gtk4::glib::{self, Variant, VariantTy};
 use gtk4::prelude::*;
 
+pub const WAIT_FOR_PASSWORD: i32 = i32::MAX;
+
 pub async fn property(
     connection: &gio::DBusConnection,
     bus: &str,

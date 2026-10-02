@@ -6,6 +6,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use crate::core::i18n::tr;
+use crate::platform::dbus::WAIT_FOR_PASSWORD;
 use crate::platform::nmprofile::{Profile, SECRET_SETTINGS, Settings};
 use crate::services::net::{BUS, nmcli, split_escaped};
 use crate::services::wifi::remote_message;
@@ -32,10 +33,13 @@ async fn call(
     let system = gio::bus_get_future(gio::BusType::System)
         .await
         .map_err(|error| error.message().to_owned())?;
-    let flags = if interactive {
-        gio::DBusCallFlags::ALLOW_INTERACTIVE_AUTHORIZATION
+    let (flags, timeout) = if interactive {
+        (
+            gio::DBusCallFlags::ALLOW_INTERACTIVE_AUTHORIZATION,
+            WAIT_FOR_PASSWORD,
+        )
     } else {
-        gio::DBusCallFlags::NONE
+        (gio::DBusCallFlags::NONE, CALL_TIMEOUT)
     };
     system
         .call_future(
@@ -46,7 +50,7 @@ async fn call(
             arguments.as_ref(),
             VariantTy::new(reply).ok(),
             flags,
-            CALL_TIMEOUT,
+            timeout,
         )
         .await
         .map_err(|error| remote_message(&error))

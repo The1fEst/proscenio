@@ -26,6 +26,7 @@ pub mod shellusage;
 pub mod states;
 pub mod sysinfo;
 pub mod thumbnails;
+pub mod timedate;
 pub mod timer;
 pub mod todo;
 pub mod updates;

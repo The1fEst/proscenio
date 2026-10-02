@@ -258,6 +258,29 @@ since the interface is translated once at start.
 
 ## 10. Date & Time (subpage)
 
+"Date & Time" (`schedule`) comes first, over systemd's `timedated`
+(`org.freedesktop.timedate1`, `src/services/timedate.rs`), and follows its
+property changes:
+
+- the local date and time, "Friday 2 October 2026, 10:08:27", every second;
+- "Set the time automatically" (`SetNTP`), dead when `CanNTP` is false, with
+  "Synchronized with a time server" or "Not synchronized yet" under it while
+  on;
+- a "Time zone" link row whose second line is the zone and its offset ("Asia
+  Yekaterinburg · UTC+05:00"); it opens a dialog of every zone `ListTimezones`
+  gives, each with its current offset, a search field that keeps the zones
+  holding every typed word, and Cancel. Picking one calls `SetTimezone`;
+- "Set the time", shown while the time is not set automatically: a date
+  (YYYY-MM-DD) and a time (HH:MM or HH:MM:SS) field, filled with the moment
+  the page opened, and "Set", which reads them in the current zone and calls
+  `SetTime`;
+- "Hardware clock keeps local time" (`SetLocalRTC`, with a tooltip about
+  sharing the computer with Windows);
+- the error of the last call in `colError`.
+
+Each call lets polkit ask for a password and waits for it without a time
+limit.
+
 "Time Format": 24h (`hh:mm`), 12h am/pm (`h:mm ap`) and 12h AM/PM
 (`h:mm AP`) for `time.format`. Choosing also rewrites the hyprlock clock in
 `~/.config/hypr/hyprlock.conf`, the first `TIME12` on a line to `TIME` for 24h
