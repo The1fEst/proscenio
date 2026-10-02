@@ -1,3 +1,4 @@
+use gtk4::prelude::*;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -6,6 +7,19 @@ use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::platform::hypr;
+use crate::services::notifications;
+use crate::ui::theme::pixel_size;
+use crate::ui::widgets::centred::Centred;
+use crate::ui::widgets::controls::ConfigSwitch;
+use crate::ui::widgets::text;
+
+const NOTE_START: i32 = 8;
+const CARD_HEIGHT: i32 = 52;
+const CARD_START: i32 = 12;
+const CARD_END: i32 = 4;
+const CARD_SPACING: i32 = 10;
+const ICON: i32 = 24;
+const SWITCHES_WIDTH: i32 = 300;
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
@@ -96,6 +110,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     }));
 
+    applications(&page);
+
     let osd = page.section("voting_chip", &tr("On-screen display"));
     page.config_spin(
         &osd,
@@ -107,6 +123,90 @@ pub fn build(context: &Context) -> Rc<Page> {
         100,
     );
     page
+}
+
+fn set_member(pointer: &'static str, app_name: &str, member: bool) {
+    let mut names: Vec<String> = config::value(pointer)
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|name| name.as_str().map(str::to_owned))
+        .filter(|name| name != app_name)
+        .collect();
+    if member {
+        names.push(app_name.to_owned());
+    }
+    config::store_value(pointer, Value::from(names));
+}
+
+fn applications(page: &Rc<Page>) {
+    let section = page.section("apps", &tr("Applications"));
+    let apps = notifications::known_apps();
+    if apps.is_empty() {
+        let empty = text::styled(&tr("Apps show up here once they have sent a notification"));
+        text::set_color(&empty, "colSubtext");
+        empty.set_xalign(0.0);
+        empty.set_margin_start(NOTE_START);
+        section.append(&empty);
+    }
+    for app_name in apps {
+        let card = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        card.add_css_class("settings-row-card");
+        card.set_size_request(-1, CARD_HEIGHT);
+        let inside = gtk4::Box::new(gtk4::Orientation::Horizontal, CARD_SPACING);
+        inside.set_margin_start(CARD_START);
+        inside.set_margin_end(CARD_END);
+        inside.set_hexpand(true);
+        let icon = notifications::app_icon_name(&app_name);
+        let image = if icon.starts_with('/') {
+            gtk4::Image::from_file(&icon)
+        } else if icon.is_empty() {
+            gtk4::Image::from_icon_name("dialog-information")
+        } else {
+            gtk4::Image::from_icon_name(&icon)
+        };
+        image.set_pixel_size(ICON);
+        inside.append(&image);
+        let name = text::styled(&app_name);
+        text::set_color(&name, "colOnLayer2");
+        name.set_xalign(0.0);
+        name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        let name = Centred::filling_width(&name);
+        name.set_hexpand(true);
+        inside.append(&name);
+        let controls = gtk4::Box::new(gtk4::Orientation::Horizontal, CARD_SPACING);
+        controls.set_homogeneous(true);
+        controls.set_size_request(SWITCHES_WIDTH, -1);
+        controls.set_hexpand(false);
+        for (label, pointer) in [
+            (tr("Pop up"), notifications::QUIET_APPS),
+            (tr("Keep"), notifications::FORGOTTEN_APPS),
+        ] {
+            let app = app_name.clone();
+            let switch = ConfigSwitch::new(&page.theme, "", &label, move |on| {
+                set_member(pointer, &app, !on);
+            });
+            let app = app_name.clone();
+            switch.bind(move || !notifications::app_in(pointer, &app));
+            controls.append(&switch.button);
+            page.refresh_on(pointer, &switch);
+            page.keep(switch);
+        }
+        inside.append(&controls);
+        card.append(&inside);
+        section.append(&card);
+    }
+    let note = text::styled_sized(
+        &tr(
+            "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends",
+        ),
+        pixel_size::SMALLER,
+    );
+    text::set_color(&note, "colSubtext");
+    note.set_xalign(0.0);
+    note.set_wrap(true);
+    note.set_margin_start(NOTE_START);
+    section.append(&note);
 }
 
 pub fn monitors() -> Vec<(String, String)> {

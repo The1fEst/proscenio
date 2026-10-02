@@ -9,10 +9,13 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::core::config;
 use crate::core::listeners::{Listeners, Subscription};
+use crate::core::{config, persistent};
 use crate::platform::desktop;
 
+pub const QUIET_APPS: &str = "/notifications/quietApps";
+pub const FORGOTTEN_APPS: &str = "/notifications/forgottenApps";
+const KNOWN_APPS: &str = "notificationApps";
 const NAME: &str = "org.freedesktop.Notifications";
 const PATH: &str = "/org/freedesktop/Notifications";
 
@@ -407,18 +410,22 @@ impl Notifications {
             id
         };
 
+        let app_name = text(0);
+        remember_app(&app_name);
+        let quiet = app_in(QUIET_APPS, &app_name);
+        let forgotten = app_in(FORGOTTEN_APPS, &app_name);
         let notification = Notification {
             id,
             actions: labels,
-            app_icon: app_icon(text(2), &hints, &text(0)),
-            app_name: text(0),
+            app_icon: app_icon(text(2), &hints, &app_name),
+            app_name,
             body: text(4),
             image: image(id, &hints),
             summary: text(3),
             time: glib::real_time() / 1000,
             urgency: hint_byte(&hints, "urgency").unwrap_or(1),
-            transient: hint_bool(&hints, "transient").unwrap_or(false),
-            popup: !self.inhibited.get() && !self.silent.get(),
+            transient: forgotten || hint_bool(&hints, "transient").unwrap_or(false),
+            popup: !self.inhibited.get() && !self.silent.get() && !quiet,
             timeout: match expire {
                 0 => 0,
                 positive if positive > 0 => positive,
@@ -429,6 +436,9 @@ impl Notifications {
         };
         let showing = notification.popup;
         let interval = notification.timeout;
+        if !showing && notification.transient {
+            return id;
+        }
 
         {
             let mut list = self.list.borrow_mut();
@@ -497,6 +507,38 @@ impl Notifications {
         );
         std::mem::forget(registration);
     }
+}
+
+pub fn app_in(pointer: &str, app_name: &str) -> bool {
+    config::value(pointer)
+        .and_then(|value| value.as_array().cloned())
+        .is_some_and(|names| names.iter().any(|name| name.as_str() == Some(app_name)))
+}
+
+pub fn known_apps() -> Vec<String> {
+    persistent::read(&[KNOWN_APPS])
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|name| name.as_str().map(str::to_owned))
+        .collect()
+}
+
+fn remember_app(app_name: &str) {
+    if app_name.is_empty() {
+        return;
+    }
+    let mut known = known_apps();
+    if known.iter().any(|name| name == app_name) {
+        return;
+    }
+    known.push(app_name.to_owned());
+    known.sort_by_key(|name| name.to_lowercase());
+    persistent::write(&[KNOWN_APPS], Value::from(known));
+}
+
+pub fn app_icon_name(app_name: &str) -> String {
+    named_icon(app_name)
 }
 
 fn hint(hints: &Variant, key: &str) -> Option<Variant> {

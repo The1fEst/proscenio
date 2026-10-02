@@ -203,8 +203,18 @@ for (ms)" (`notifications.timeout`, 1000 to 60000 in steps of 1000, for
 notifications that name no time), and a "Placement" subsection with "Always
 on one display" (`notifications.forceMonitor.enable`) and a box of the
 monitors, "model (name)", enabled with it, writing
-`notifications.forceMonitor.name`. Then "On-screen display" with its own
-"Stays on screen for (ms)" (`osd.timeout`, 100 to 3000 in steps of 100).
+`notifications.forceMonitor.name`. Then "Applications" (`apps`): a 52 px card
+for every application that has sent a notification, by name, with its icon
+and two switches 300 px wide together, "Pop up" and "Keep"; "Apps show up here
+once they have sent a notification" while there are none, and a 12 px
+`colSubtext` line explaining both switches. Turning "Pop up" off adds the
+name to `notifications.quietApps`: its notifications go to the list without a
+popup. Turning "Keep" off adds it to `notifications.forgottenApps`: its
+notifications count as transient and go once their popup ends, and with
+"Pop up" off as well they are not kept at all. The service remembers each
+application name it has seen in the state file (`notificationApps`). Then
+"On-screen display" with its own "Stays on screen for (ms)" (`osd.timeout`,
+100 to 3000 in steps of 100).
 
 ## 6. Search
 
