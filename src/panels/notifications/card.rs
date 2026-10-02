@@ -107,11 +107,12 @@ pub fn build(
                 _ => 0,
             });
             fill(&items, &group, &notifications, &theme, &alive, open, &drags);
-            let after = measure(&clip, &row, open);
+            let cap = (!open).then_some(COLLAPSED);
             if !animate {
-                clip.set_height(after);
+                clip.follow(cap);
                 return;
             }
+            let after = measure(&clip, &row, open);
             height.jump(before);
             height.to(after as f64);
             let height = height.clone();
@@ -119,10 +120,11 @@ pub fn build(
                 let Some(clip) = widget.downcast_ref::<FixedHeight>() else {
                     return glib::ControlFlow::Break;
                 };
-                clip.set_height(height.get().round() as i32);
                 if height.running() {
+                    clip.set_height(height.get().round() as i32);
                     return glib::ControlFlow::Continue;
                 }
+                clip.follow(cap);
                 glib::ControlFlow::Break
             });
         })

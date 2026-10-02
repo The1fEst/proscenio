@@ -9,6 +9,8 @@ mod imp {
     #[derive(Default)]
     pub struct FixedHeight {
         pub height: Cell<i32>,
+        pub cap: Cell<Option<i32>>,
+        pub following: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -32,9 +34,19 @@ mod imp {
     }
 
     impl WidgetImpl for FixedHeight {
+        fn request_mode(&self) -> gtk4::SizeRequestMode {
+            gtk4::SizeRequestMode::HeightForWidth
+        }
+
         fn measure(&self, orientation: gtk4::Orientation, for_size: i32) -> (i32, i32, i32, i32) {
             if orientation == gtk4::Orientation::Vertical {
-                let height = self.height.get();
+                let height = match self.obj().first_child() {
+                    Some(child) if self.following.get() => {
+                        let natural = child.measure(orientation, for_size).1;
+                        self.cap.get().map_or(natural, |cap| natural.min(cap))
+                    }
+                    _ => self.height.get(),
+                };
                 return (height, height, -1, -1);
             }
             let Some(child) = self.obj().first_child() else {
@@ -66,13 +78,16 @@ impl FixedHeight {
         fixed
     }
 
-    pub fn height(&self) -> i32 {
-        self.imp().height.get()
-    }
-
     pub fn set_height(&self, height: i32) {
-        if self.imp().height.replace(height) != height {
+        let following = self.imp().following.replace(false);
+        if self.imp().height.replace(height) != height || following {
             self.queue_resize();
         }
+    }
+
+    pub fn follow(&self, cap: Option<i32>) {
+        self.imp().cap.set(cap);
+        self.imp().following.set(true);
+        self.queue_resize();
     }
 }
