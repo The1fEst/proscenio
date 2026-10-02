@@ -147,6 +147,13 @@ pub fn all() -> Vec<DesktopEntry> {
     entries
 }
 
+pub fn load(path: &std::path::Path) -> Option<DesktopEntry> {
+    let id = path.file_name()?.to_str()?.to_owned();
+    let file = glib::KeyFile::new();
+    file.load_from_file(path, glib::KeyFileFlags::NONE).ok()?;
+    Some(DesktopEntry { id, file })
+}
+
 pub fn find(id: &str) -> Option<DesktopEntry> {
     let entries = all();
     let wanted = format!("{}.desktop", id.to_lowercase());

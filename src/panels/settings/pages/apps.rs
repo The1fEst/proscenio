@@ -85,7 +85,7 @@ fn role_prompt(key: &str) -> &'static str {
     }
 }
 
-fn app_dialog(
+pub fn app_dialog(
     theme: &SharedTheme,
     prompt: &str,
     picked: impl Fn(String) + 'static,

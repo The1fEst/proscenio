@@ -1,5 +1,6 @@
 pub mod appearance;
 pub mod appicon;
+pub mod autostart;
 pub mod capture;
 pub mod crypt;
 pub mod dbus;

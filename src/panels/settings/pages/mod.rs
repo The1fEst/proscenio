@@ -3,6 +3,7 @@ pub mod accessibility;
 pub mod advanced;
 pub mod appearance;
 pub mod apps;
+pub mod autostart;
 pub mod background;
 pub mod bar;
 pub mod bluetooth;
@@ -347,7 +348,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 17] = [
+pub const SUBPAGES: [Subpage; 18] = [
     Subpage {
         id: "savednetworks",
         title: "Saved Networks",
@@ -401,6 +402,11 @@ pub const SUBPAGES: [Subpage; 17] = [
     Subpage {
         id: "users",
         title: "Users",
+        parent: "system",
+    },
+    Subpage {
+        id: "autostart",
+        title: "Autostart",
         parent: "system",
     },
     Subpage {
@@ -473,6 +479,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "region" => region::build(context),
         "datetime" => datetime::build(context),
         "users" => users::build(context),
+        "autostart" => autostart::build(context),
         "about" => about::build(context),
         "services" => services::build(context),
         "advanced" => advanced::build(context),

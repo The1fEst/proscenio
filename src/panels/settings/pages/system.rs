@@ -39,6 +39,13 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
     page.link_row(
         &main,
+        "start",
+        &tr("Autostart"),
+        &tr("Apps and commands that start with the session"),
+        context.subpage_opener("autostart"),
+    );
+    page.link_row(
+        &main,
         "info",
         &tr("About"),
         &tr("What this machine is and what it runs"),

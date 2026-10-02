@@ -242,8 +242,29 @@ rectangles, and the circle's stroke width and padding.
 ## 9. System
 
 Link rows only: Region & Language, Date & Time, Users (its second line the
-account's real name, or its username, from AccountsService) and About, then
-"The shell itself" with Services and Advanced.
+account's real name, or its username, from AccountsService), Autostart and
+About, then "The shell itself" with Services and Advanced.
+
+### 9.2 Autostart (subpage)
+
+An explanation in `colSubtext`, then "Starts with the session" (`start`): a
+56 px card per `.desktop` file in `~/.config/autostart`, by name, with its
+icon (or `terminal`), the name over the `Exec` line, a switch and a round
+remove button with a tooltip; "Nothing starts with the session yet" while
+there are none. Under them, 5 px apart, "Add application…" opens the Apps
+page's application dialog and copies the chosen entry's desktop file into the
+folder, and "Add command…" asks for a name and a command and writes a
+`.desktop` file named after the name. The switch writes `Hidden` (and
+`X-GNOME-Autostart-enabled` where the file has it); remove deletes the file.
+Errors show in `colError` under the buttons (`src/platform/autostart.rs`).
+
+The shell starts the enabled entries itself, once per session: on start,
+unless `$XDG_RUNTIME_DIR/proscenio/autostarted` exists, it creates that file
+and launches each entry that is not hidden, whose `OnlyShowIn` and
+`NotShowIn` allow `XDG_CURRENT_DESKTOP`, and whose `TryExec` is on `PATH`, as
+the launcher launches applications. The runtime directory goes away at
+logout, so restarting the shell starts nothing twice. Entries in
+`/etc/xdg/autostart` are not read.
 
 ### 9.1 Region & Language (subpage)
 

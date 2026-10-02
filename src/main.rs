@@ -114,6 +114,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     std::mem::forget(polkit::PolkitWindows::new(app, &theme, &services.polkit));
     conflicts::check(app, &theme);
     platform::proxy::apply_at_start();
+    platform::autostart::start_once();
     let settings_window = settings::Settings::new(app, &theme, &services);
     let settings_page = std::env::var(core::process::OPEN_SETTINGS).ok();
     unsafe { std::env::remove_var(core::process::OPEN_SETTINGS) };
