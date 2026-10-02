@@ -497,7 +497,7 @@ async fn activated(system: &gio::DBusConnection, active: &str) -> bool {
     false
 }
 
-fn remote_message(error: &glib::Error) -> String {
+pub fn remote_message(error: &glib::Error) -> String {
     let message = error.message();
     message
         .strip_prefix("GDBus.Error:")

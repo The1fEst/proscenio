@@ -32,6 +32,7 @@ pub const QALC: Tool = tool("qalc", "libqalculate");
 pub const SATTY: Tool = tool("satty", "satty");
 pub const SLURP: Tool = tool("slurp", "slurp");
 pub const WF_RECORDER: Tool = tool("wf-recorder", "wf-recorder");
+pub const WG: Tool = tool("wg", "wireguard-tools");
 pub const WL_COPY: Tool = tool("wl-copy", "wl-clipboard");
 pub const WPCTL: Tool = tool("wpctl", "wireplumber");
 pub const YDOTOOL: Tool = tool("ydotool", "ydotool");

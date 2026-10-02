@@ -6,7 +6,7 @@ use std::rc::Rc;
 use crate::core::i18n::tr;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::content::{Context, Page};
-use crate::panels::settings::pages::network::manager_running;
+use crate::panels::settings::pages::network::{edit_button, manager_running};
 use crate::services::wifi::{Saved, Wifi};
 use crate::ui::shapes::Shape;
 use crate::ui::theme::pixel_size;
@@ -33,6 +33,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         section.set_visible(false);
     }
     let wifi = Wifi::new();
+    let open: Rc<dyn Fn(&str)> = Rc::new(context.subpage_opener_with("connection"));
 
     let placeholder = Placeholder::build(
         &page.theme,
@@ -74,7 +75,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             let mut kept = held.borrow_mut();
             kept.clear();
             for network in &saved {
-                kept.extend(row(&page, &wifi, &rows, network));
+                kept.extend(row(&page, &wifi, &open, &rows, network));
             }
         }
     };
@@ -84,7 +85,13 @@ pub fn build(context: &Context) -> Rc<Page> {
     page
 }
 
-fn row(page: &Page, wifi: &Rc<Wifi>, parent: &gtk4::Box, network: &Saved) -> Vec<Box<dyn Any>> {
+fn row(
+    page: &Page,
+    wifi: &Rc<Wifi>,
+    open: &Rc<dyn Fn(&str)>,
+    parent: &gtk4::Box,
+    network: &Saved,
+) -> Vec<Box<dyn Any>> {
     let connected = network.active;
     let card = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     card.add_css_class("settings-row-card");
@@ -142,6 +149,10 @@ fn row(page: &Page, wifi: &Rc<Wifi>, parent: &gtk4::Box, network: &Saved) -> Vec
         &tr("Join this network whenever it is in range"),
     );
 
+    let edit = edit_button(&page.theme, open, &uuid);
+    let edit_tip = page.unkept_tip(&edit, &tr("Edit"));
+    inside.append(&edit);
+
     let (forget, _) = icon_button(&page.theme, "delete", true, &tr("Forget"));
     forget.connect_clicked({
         let wifi = Rc::downgrade(wifi);
@@ -154,5 +165,5 @@ fn row(page: &Page, wifi: &Rc<Wifi>, parent: &gtk4::Box, network: &Saved) -> Vec
     inside.append(&forget);
     card.append(&inside);
     parent.append(&card);
-    vec![Box::new(automatic), Box::new(tip)]
+    vec![Box::new(automatic), Box::new(tip), Box::new(edit_tip)]
 }

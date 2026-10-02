@@ -76,7 +76,9 @@ translated names); collapsed, 56. The width moves over
 Each page is loaded on its own and unloaded when another is shown. A switch
 fades the old one out over 100 ms, then fades the new one in over 200 ms while
 it drops 20 px into place. A page may open a subpage, which takes its place
-under a header: a 35 px back button and the subpage's name at 19 px.
+under a header: a 35 px back button and the subpage's name at 19 px. A
+subpage opened from another subpage goes back to that one; otherwise back
+returns to the rail's page.
 
 ## 4. The building blocks
 
@@ -130,8 +132,9 @@ the top, with 30 px between sections and 80 px of room below the last.
   | Welcome, Power saving | `hypridle` | notice only |
   | Privacy, Devices | `pw-dump` | notice |
   | Screenshots & Recording | `grim`, `magick`, `wl-copy`, `satty`, `wf-recorder`, `slurp` | notices |
-  | Network, Saved Networks | `nmcli`, `org.freedesktop.NetworkManager` | the page is only a notice |
-  | Network, "Set up connections" | the program of `/apps/network` | button disabled, tooltip names it |
+  | Network, Saved Networks, Connection, Hotspot | `nmcli`, `org.freedesktop.NetworkManager` | the page is only a notice |
+  | Network, "Import from a file…" | `kdialog` | button disabled, tooltip names it |
+  | Connection, "Generate a new key" | `wg` | button disabled, tooltip names it |
   | Bluetooth | `org.bluez`; `bluetoothctl` | the page is only a notice; notice |
   | Appearance, Color generation | `matugen`, `plasma-apply-colorscheme` | notices |
   | Quick, "Choose file" | `kdialog` | button disabled, tooltip names it |
@@ -393,8 +396,8 @@ the three answers under the C locale; success closes and clears the form.
 ## 16. Wi-Fi
 
 - While Wi-Fi is available, an untitled section: a switch that turns the radio
-  on or off, and link rows to "Saved Networks" and "Connect to Hidden
-  Network…".
+  on or off, and link rows to "Saved Networks", "Connect to Hidden
+  Network…" and "Hotspot".
 - Without an adapter a placeholder, `signal_wifi_off`, "No Wi-Fi Found" and
   what to check; with the radio off another, "Wi-Fi Off".
 - While it is on, "Visible Networks", busy while scanning, with "Searching for
@@ -413,8 +416,9 @@ the three answers under the C locale; success closes and clears the form.
   `colLayer2` with radius 12, 12 px in on the left and 8 on the right, 10 px
   between `wifi` (the joined one) or `wifi_lock`, the name over a 12 px
   `colSubtext` line ("Connected", "Joins on its own" or "Only when chosen"),
-  an "Automatic" switch for `connection.autoconnect` with a tooltip, and a
-  Forget button.
+  an "Automatic" switch for `connection.autoconnect` with a tooltip, a 32 px
+  round `edit` button (tooltip "Edit") that opens the profile in the
+  connection editor (§19.1), and a Forget button.
 
 ## 18. Connect to Hidden Network (subpage)
 
@@ -435,10 +439,90 @@ nothing is set up (8 px in) or one card per NetworkManager connection of that
 kind (`802-3-ethernet`; `vpn`, `wireguard`, `tun`, `ip-tunnel`), sorted by
 name: 52 px, `colLayer2` with radius 12, 12 px in on the left and 8 on the
 right, the name over "Connected · device" or "Not connected" at 12 px in
-`colSubtext`, and a `StyledSwitch` that brings the connection up or down and
-then shows what NetworkManager reports. Under the VPNs, 4 px lower, "Set up
-connections" runs `apps.network` (by default KDE's network module), with a
-tooltip. The list follows NetworkManager's changes, 500 ms after the last one.
+`colSubtext`, a 32 px round `edit` button (tooltip "Edit") that opens the
+connection editor, and a `StyledSwitch` that brings the connection up or down
+and then shows what NetworkManager reports. The list follows NetworkManager's
+changes, 500 ms after the last one.
+
+4 px under the wired list, "Add wired connection" opens the editor on a new
+wired profile. Under the VPNs, 4 px lower and 5 px apart, "Add WireGuard"
+opens it on a new WireGuard profile, and "Import from a file…" (with a
+tooltip) asks `kdialog` for a `.conf` or `.ovpn` file and imports it with
+`nmcli connection import`, as WireGuard or, for `.ovpn`, as OpenVPN, which
+needs NetworkManager's OpenVPN plugin; the editor then opens on the imported
+connection. A failure shows NetworkManager's message in `colError` under the
+buttons.
+
+### 19.1 Connection (subpage)
+
+The editor for one NetworkManager profile, opened from a Network or Saved
+Networks card, the add buttons or an import. The header shows the profile's
+name. Opened without a profile, as a search result does, it edits the first
+active connection, or says there is nothing to edit. A new profile is named
+"Wired connection" or "WireGuard", with " 2", " 3" and so on when that name
+is taken.
+
+- The profile is read over D-Bus (`GetSettings` on
+  `org.freedesktop.NetworkManager.Settings.Connection`), and its secrets with
+  `GetSecrets` for each secret-holding setting it has, without asking for
+  authorization. A secret that could not be read shows an empty field with
+  "Stored and hidden. Type to replace it, or press the eye to show it"; the
+  eye then asks again, this time letting polkit ask for a password. With the
+  secrets read, the eye shows and hides the text.
+- Edits change a draft only. "Save" (live while the draft differs and nothing
+  is wrong) writes the whole profile back with `Update2`, to disk, or adds a
+  new one with `AddConnection2`; when the draft holds a typed secret but the
+  stored ones were never read, the stored ones are read first, letting polkit
+  ask, so the others are kept. An active connection is then brought up again
+  ("Saved and reconnected"). "Revert" returns to the stored profile, and
+  "Delete" asks first and then removes the profile and goes back. Under the
+  buttons a line shows "Saving…", the first problem in `colError`, or the
+  outcome.
+- Every text field checks its value as it is typed and shows what is wrong
+  under itself; the IP settings are written as `address-data`, `route-data`
+  and `dns` (or `dns-data` for servers that are not plain addresses),
+  dropping the older `addresses` and `routes` keys. Parsing and writing live
+  in `src/platform/nmprofile.rs`, the D-Bus calls in
+  `src/services/nmsettings.rs`.
+- **General**: the name, "Connect automatically", "Available to all users"
+  (off writes the account into `connection.permissions`, with a tooltip), and
+  "Metered connection" (Automatic, Yes, No, with a tooltip).
+- **Wired**: the device it is tied to ("Any device" or an Ethernet device), the
+  cloned MAC address (an address, or preserve, permanent, random or stable),
+  and the MTU, 0 for automatic.
+- **Wi-Fi**: the network name, "Hidden network", "Security" (None, WPA & WPA2
+  Personal, WPA3 Personal; enterprise and WEP profiles get a notice and keep
+  theirs) with the password, the cloned MAC address and the MTU.
+- **WireGuard**: the interface name (a new profile takes the first `wgN` no
+  profile names), "Keys": the private key (a new profile gets one from `wg genkey`),
+  the public key derived from it with `wg pubkey`, selectable, and "Generate
+  a new key"; the listen port (0 picks one) and the MTU. **Peers**: one
+  subsection per peer with its public key, endpoint (host:port), allowed IPs,
+  optional preshared key and keepalive in seconds, and "Remove peer"; "Add
+  peer" adds an empty one.
+- **VPN** (plugin VPNs): the plugin's name and one field per entry of its
+  `vpn.data`.
+- **IPv4** and **IPv6**: the method (Automatic, Automatic DHCP only for IPv6,
+  Manual, Link-local only, Shared with other computers, Disabled). Manual
+  adds the addresses with their prefix lengths and the gateway; every method
+  that configures addresses has "DNS" (Automatic DNS for the automatic ones,
+  the servers and the search domains), "Routing" (Automatic routes for the
+  automatic ones, and "Only for its own network", `never-default`, with a
+  tooltip) and "Routes" written like `ip route`; automatic IPv6 adds "Privacy
+  extensions" (Default, Off, Prefer the fixed address, Prefer a temporary
+  address).
+- Structural choices (methods, security, peers, switches) rebuild the form
+  and keep the scroll position.
+
+### 19.2 Hotspot (subpage)
+
+An explanation in `colSubtext`, then the network name (the host name until a
+`Hotspot` profile exists), the password (8 to 63 characters), the band
+(Automatic, 2.4 GHz, 5 GHz) and "Share the connection". Turning it on deletes
+the old `Hotspot` profile and runs `nmcli device wifi hotspot` with those
+values; turning it off brings `Hotspot` down. The switch follows whether
+`Hotspot` is active, and NetworkManager's error shows in `colError`. The
+fields start from the stored profile, read with `nmcli -s`.
 
 ## 20. Bluetooth
 
@@ -755,8 +839,8 @@ blur is off.
   kind of rule, its value for opacity (percent, 1 to 100, 100 when it is not
   a number) or a workspace, and "Add rule", dead until there is a class.
   Adding or removing reloads Hyprland.
-- "Commands": outlined fields for the terminal, the task manager, the network
-  editor and the system update command.
+- "Commands": outlined fields for the terminal, the task manager and the
+  system update command.
 - The popup of a box with few items is as tall as they are; it scrolls only
   past 300 px.
 

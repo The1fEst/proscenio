@@ -7,10 +7,12 @@ pub mod background;
 pub mod bar;
 pub mod bluetooth;
 pub mod capture;
+pub mod connection;
 pub mod datetime;
 pub mod devices;
 pub mod displays;
 pub mod hiddennetwork;
+pub mod hotspot;
 pub mod keyboard;
 pub mod lock;
 pub mod mouse;
@@ -343,15 +345,25 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 13] = [
+pub const SUBPAGES: [Subpage; 15] = [
     Subpage {
         id: "savednetworks",
         title: "Saved Networks",
         parent: "wifi",
     },
     Subpage {
+        id: "connection",
+        title: "Connection",
+        parent: "network",
+    },
+    Subpage {
         id: "hiddennetwork",
         title: "Connect to Hidden Network…",
+        parent: "wifi",
+    },
+    Subpage {
+        id: "hotspot",
+        title: "Hotspot",
         parent: "wifi",
     },
     Subpage {
@@ -420,6 +432,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "quick" => quick::build(context),
         "wifi" => wifi::build(context),
         "network" => network::build(context),
+        "connection" => connection::build(context),
         "bluetooth" => bluetooth::build(context),
         "displays" => displays::build(context),
         "sound" => sound::build(context),
@@ -437,6 +450,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "accessibility" => accessibility::build(context),
         "savednetworks" => savednetworks::build(context),
         "hiddennetwork" => hiddennetwork::build(context),
+        "hotspot" => hotspot::build(context),
         "notifications" => notifications::build(context),
         "search" => search::build(context),
         "privacy" => privacy::build(context),

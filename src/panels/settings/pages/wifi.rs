@@ -62,6 +62,13 @@ pub fn build(context: &Context) -> Rc<Page> {
         "",
         context.subpage_opener("hiddennetwork"),
     );
+    page.link_row(
+        &controls,
+        "wifi_tethering",
+        &tr("Hotspot"),
+        "",
+        context.subpage_opener("hotspot"),
+    );
 
     let missing = placeholder(
         &page,

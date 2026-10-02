@@ -1,16 +1,20 @@
+use gtk4::glib;
 use gtk4::prelude::*;
 use std::any::Any;
 use std::cell::RefCell;
+use std::path::Path;
 use std::rc::Rc;
 
 use crate::core::i18n::{tr, trf};
-use crate::core::{config, tools};
+use crate::core::{process, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
-use crate::platform::desktop;
+use crate::panels::settings::pages::connection::{NEW_WIRED, NEW_WIREGUARD};
 use crate::services::net::{Connection, Connections, VPN_KINDS, WIRED};
+use crate::services::nmsettings;
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::controls::Switch;
+use crate::ui::widgets::ripple::RippleButton;
 use crate::ui::widgets::row::Row;
 use crate::ui::widgets::text;
 
@@ -20,9 +24,14 @@ const ROW_END: i32 = 8;
 const ROW_SPACING: i32 = 10;
 const EMPTY_MARGIN: i32 = 8;
 const BUTTON_TOP: i32 = 4;
-const NETWORK_APP: &str = "kcmshell6 kcm_networkmanagement";
+const BUTTON_SPACING: i32 = 5;
+const EDIT_SIZE: i32 = 32;
+const EDIT_ICON: f64 = 20.0;
 const NETWORK_MANAGER: &str = "org.freedesktop.NetworkManager";
 const MANAGER_STOPPED: &str = "NetworkManager is not on the system bus, so connections are not listed or switched. Enable NetworkManager.service.";
+const OPENVPN_PLUGIN: &str = "/usr/lib/NetworkManager/VPN/nm-openvpn-service.name";
+
+type Open = Rc<dyn Fn(&str)>;
 
 pub fn manager_running(page: &Page, parent: &impl Parent) -> bool {
     if !page.tools_notice(
@@ -56,43 +65,60 @@ pub fn build(context: &Context) -> Rc<Page> {
         section.set_visible(false);
     }
     let connections = Connections::new();
+    let open: Open = Rc::new(context.subpage_opener_with("connection"));
 
     let wired_section = page.section("lan", &tr("Wired"));
     let wired = group(&wired_section, &tr("No wired connection is set up"));
+    let (add_wired, _) = page.icon_button("add", true, &tr("Add wired connection"), {
+        let open = open.clone();
+        move || open(NEW_WIRED)
+    });
+    add_wired.set_margin_top(BUTTON_TOP);
+    wired_section.append(&add_wired);
 
     let vpn_section = page.section("vpn_key", &tr("VPN"));
     let vpn = group(&vpn_section, &tr("No VPN is set up"));
-    let (set_up, _) =
-        page.icon_button("settings_ethernet", true, &tr("Set up connections"), || {
-            let command =
-                config::value_str("/apps/network").unwrap_or_else(|| NETWORK_APP.to_owned());
-            desktop::shell(&command);
-        });
-    set_up.set_margin_top(BUTTON_TOP);
-    vpn_section.append(&set_up);
-    let command = config::value_str("/apps/network").unwrap_or_else(|| NETWORK_APP.to_owned());
-    match tools::command_missing(&command) {
-        Some(program) => {
-            set_up.set_sensitive(false);
-            page.tip(
-                &set_up,
-                &trf(
-                    "%1 is not installed. Pick another network connection editor on the Apps page",
-                    &[&program],
-                ),
-            );
-        }
-        None => page.tip(
-            &set_up,
-            &tr("Adding and editing connections is NetworkManager's own job"),
-        ),
+    let adding = gtk4::Box::new(gtk4::Orientation::Horizontal, BUTTON_SPACING);
+    adding.set_margin_top(BUTTON_TOP);
+    let (add_wireguard, _) = page.icon_button("add", true, &tr("Add WireGuard"), {
+        let open = open.clone();
+        move || open(NEW_WIREGUARD)
+    });
+    adding.append(&add_wireguard);
+    let problem = text::styled("");
+    text::set_color(&problem, "colError");
+    problem.set_xalign(0.0);
+    problem.set_wrap(true);
+    problem.set_margin_start(EMPTY_MARGIN);
+    problem.set_visible(false);
+    let (import, _) = page.icon_button("file_open", false, &tr("Import from a file…"), {
+        let open = open.clone();
+        let problem = problem.downgrade();
+        move || import_file(open.clone(), problem.clone())
+    });
+    adding.append(&import);
+    let missing = tools::missing(&[&tools::KDIALOG]);
+    if missing.is_empty() {
+        page.tip(
+            &import,
+            &tr("A WireGuard .conf file, or an OpenVPN .ovpn file with networkmanager-openvpn installed"),
+        );
+    } else {
+        import.set_sensitive(false);
+        page.tip(
+            &import,
+            &tools::missing_message(&missing, &tr("there is no file picker")),
+        );
     }
+    vpn_section.append(&adding);
+    vpn_section.append(&problem);
 
     let follow = {
         let connections = Rc::downgrade(&connections);
         let theme = page.theme.clone();
+        let page = Rc::downgrade(&page);
         move || {
-            let Some(connections) = connections.upgrade() else {
+            let (Some(connections), Some(page)) = (connections.upgrade(), page.upgrade()) else {
                 return;
             };
             let list = connections.list.borrow().clone();
@@ -106,14 +132,59 @@ pub fn build(context: &Context) -> Rc<Page> {
                 .filter(|connection| VPN_KINDS.contains(&connection.kind.as_str()))
                 .cloned()
                 .collect();
-            fill(&theme, &connections, &wired, wired_list);
-            fill(&theme, &connections, &vpn, vpn_list);
+            fill(&theme, &page, &connections, &open, &wired, wired_list);
+            fill(&theme, &page, &connections, &open, &vpn, vpn_list);
         }
     };
     follow();
     connections.connect_changed(follow);
     page.keep(connections);
     page
+}
+
+fn import_file(open: Open, problem: glib::WeakRef<gtk4::Label>) {
+    glib::spawn_future_local(async move {
+        let home = glib::home_dir().to_string_lossy().into_owned();
+        let picker = process::command(&[
+            "kdialog",
+            "--getopenfilename",
+            &home,
+            &format!("*.conf *.ovpn|{}", tr("WireGuard and OpenVPN files")),
+            "--title",
+            &tr("Import a VPN"),
+        ]);
+        let Some(file) = process::capture_text(picker)
+            .await
+            .map(|path| path.trim().to_owned())
+            .filter(|path| !path.is_empty())
+        else {
+            return;
+        };
+        let openvpn = Path::new(&file)
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("ovpn"));
+        let imported = if openvpn && !Path::new(OPENVPN_PLUGIN).exists() {
+            Err(tr(
+                "OpenVPN files need the networkmanager-openvpn package installed",
+            ))
+        } else {
+            let kind = if openvpn { "openvpn" } else { "wireguard" };
+            nmsettings::import(kind, &file).await
+        };
+        let Some(problem) = problem.upgrade() else {
+            return;
+        };
+        match imported {
+            Ok(uuid) => {
+                problem.set_visible(false);
+                open(&uuid);
+            }
+            Err(message) => {
+                problem.set_text(&message);
+                problem.set_visible(true);
+            }
+        }
+    });
 }
 
 fn group(section: &gtk4::Box, empty_text: &str) -> Rc<Group> {
@@ -132,7 +203,14 @@ fn group(section: &gtk4::Box, empty_text: &str) -> Rc<Group> {
     })
 }
 
-fn fill(theme: &SharedTheme, connections: &Rc<Connections>, group: &Group, list: Vec<Connection>) {
+fn fill(
+    theme: &SharedTheme,
+    page: &Page,
+    connections: &Rc<Connections>,
+    open: &Open,
+    group: &Group,
+    list: Vec<Connection>,
+) {
     if group.shown.borrow().as_ref() == Some(&list) {
         return;
     }
@@ -144,17 +222,35 @@ fn fill(theme: &SharedTheme, connections: &Rc<Connections>, group: &Group, list:
     let mut held = group.held.borrow_mut();
     held.clear();
     for connection in &list {
-        held.push(Box::new(row(theme, connections, &group.rows, connection)));
+        held.extend(row(theme, page, connections, open, &group.rows, connection));
     }
     group.shown.replace(Some(list));
 }
 
+pub fn edit_button(theme: &SharedTheme, open: &Open, uuid: &str) -> RippleButton {
+    let edit = RippleButton::new(theme);
+    edit.set_radius(EDIT_SIZE as f64 / 2.0);
+    edit.set_size_request(EDIT_SIZE, EDIT_SIZE);
+    edit.set_valign(gtk4::Align::Center);
+    let symbol = text::symbol("edit", EDIT_ICON);
+    text::set_color(&symbol, "colOnLayer2");
+    edit.set_content(&Centred::integral(&symbol), 0, 0);
+    edit.connect_clicked({
+        let open = open.clone();
+        let uuid = uuid.to_owned();
+        move |_| open(&uuid)
+    });
+    edit
+}
+
 fn row(
     theme: &SharedTheme,
+    page: &Page,
     connections: &Rc<Connections>,
+    open: &Open,
     parent: &gtk4::Box,
     connection: &Connection,
-) -> Rc<Switch> {
+) -> Vec<Box<dyn Any>> {
     let card = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     card.add_css_class("settings-row-card");
     card.set_size_request(-1, ROW_HEIGHT);
@@ -185,6 +281,10 @@ fn row(
     lines.append(&Centred::filling_width(&status));
     inside.append(&lines);
 
+    let edit = edit_button(theme, open, &connection.uuid);
+    let tip = page.unkept_tip(&edit, &tr("Edit"));
+    inside.append(&edit);
+
     let switch = Switch::new(theme);
     switch.set(connection.active);
     switch.connect_clicked({
@@ -199,5 +299,5 @@ fn row(
     inside.append(&switch.area);
     card.append(&inside);
     parent.append(&card);
-    switch
+    vec![Box::new(switch), Box::new(tip)]
 }

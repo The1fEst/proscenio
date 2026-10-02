@@ -71,6 +71,7 @@ struct View {
     page: RefCell<Option<Rc<Page>>>,
     loaded: Cell<Option<&'static str>>,
     wanted: Cell<Shown>,
+    back_to: Cell<Option<Shown>>,
     pending: RefCell<Option<Hit>>,
     switch_start: Cell<i64>,
     switching: Cell<bool>,
@@ -87,6 +88,9 @@ impl Settings {
                 subpage: RefCell::new(None),
                 overlay: glib::WeakRef::new(),
                 dialog: Rc::default(),
+                argument: Rc::default(),
+                heading: glib::WeakRef::new(),
+                back: RefCell::new(None),
             }),
             view: RefCell::new(None),
         })
@@ -111,6 +115,7 @@ impl Settings {
             view.select(index);
         }
         if let Some(subpage) = page.and_then(pages::subpage) {
+            self.context.argument.take();
             if let Some(parent) = pages::index_of(subpage.parent) {
                 view.select(parent);
             }
@@ -189,6 +194,7 @@ impl Settings {
         content.set_hexpand(true);
         content.set_vexpand(true);
         let (header, header_title, back) = self.subpage_header();
+        self.context.heading.set(Some(&header_title));
         content.append(&header);
         let stage = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         stage.set_vexpand(true);
@@ -213,6 +219,7 @@ impl Settings {
                 id: PAGES[0].id,
                 subpage: None,
             }),
+            back_to: Cell::new(None),
             pending: RefCell::new(None),
             switch_start: Cell::new(0),
             switching: Cell::new(false),
@@ -229,15 +236,17 @@ impl Settings {
                 }
             }
         })));
-        view.load();
-        back.connect_clicked({
+        let go_back: Rc<dyn Fn()> = Rc::new({
             let view = Rc::downgrade(&view);
-            move |_| {
+            move || {
                 if let Some(view) = view.upgrade() {
-                    view.select(view.rail.current());
+                    view.back();
                 }
             }
         });
+        self.context.back.replace(Some(go_back.clone()));
+        view.load();
+        back.connect_clicked(move |_| go_back());
 
         rail.connect_selected({
             let view = Rc::downgrade(&view);
@@ -401,6 +410,7 @@ impl View {
     }
 
     fn reveal(self: &Rc<Self>, hit: &Hit) {
+        self.context.argument.take();
         self.pending.replace(hit.setting.then(|| hit.clone()));
         match pages::subpage(hit.page) {
             Some(subpage) => {
@@ -434,7 +444,24 @@ impl View {
         }
     }
 
+    fn back(self: &Rc<Self>) {
+        match self.back_to.take() {
+            Some(previous) => self.show_from(previous, false),
+            None => self.select(self.rail.current()),
+        }
+    }
+
     fn show(self: &Rc<Self>, shown: Shown) {
+        self.show_from(shown, true);
+    }
+
+    fn show_from(self: &Rc<Self>, shown: Shown, remember: bool) {
+        if remember {
+            let current = self.wanted.get();
+            let nested =
+                shown.subpage.is_some() && current.subpage.is_some() && current.id != shown.id;
+            self.back_to.set(nested.then_some(current));
+        }
         self.header.set_visible(shown.subpage.is_some());
         self.header_title
             .set_text(&shown.subpage.map(tr).unwrap_or_default());

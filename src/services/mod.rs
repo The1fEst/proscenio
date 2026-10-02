@@ -15,6 +15,7 @@ pub mod hyprstate;
 pub mod idleoptions;
 pub mod mpris;
 pub mod net;
+pub mod nmsettings;
 pub mod notifications;
 pub mod polkit;
 pub mod power;

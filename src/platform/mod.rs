@@ -19,6 +19,7 @@ pub mod ipc;
 pub mod locale;
 pub mod locknotify;
 pub mod monitorrules;
+pub mod nmprofile;
 pub mod notify;
 pub mod pam;
 pub mod readable;

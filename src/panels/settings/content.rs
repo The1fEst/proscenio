@@ -203,6 +203,9 @@ pub struct Context {
     pub subpage: RefCell<Option<Subpage>>,
     pub overlay: glib::WeakRef<gtk4::Overlay>,
     pub dialog: Rc<RefCell<Option<Rc<WindowDialog>>>>,
+    pub argument: Rc<RefCell<Option<String>>>,
+    pub heading: glib::WeakRef<gtk4::Label>,
+    pub back: RefCell<Option<Rc<dyn Fn()>>>,
 }
 
 impl Context {
@@ -243,9 +246,32 @@ impl Context {
     pub fn subpage_opener(&self, id: &'static str) -> impl Fn() + use<> {
         let open = self.subpage.borrow().clone();
         let title = super::pages::subpage(id).map_or(id, |subpage| subpage.title);
+        let argument = self.argument.clone();
         move || {
+            argument.take();
             if let Some(open) = open.as_ref() {
                 open(title, id);
+            }
+        }
+    }
+
+    pub fn subpage_opener_with(&self, id: &'static str) -> impl Fn(&str) + use<> {
+        let open = self.subpage.borrow().clone();
+        let title = super::pages::subpage(id).map_or(id, |subpage| subpage.title);
+        let argument = self.argument.clone();
+        move |value| {
+            argument.replace(Some(value.to_owned()));
+            if let Some(open) = open.as_ref() {
+                open(title, id);
+            }
+        }
+    }
+
+    pub fn go_back(&self) -> impl Fn() + use<> {
+        let back = self.back.borrow().clone();
+        move || {
+            if let Some(back) = back.as_ref() {
+                back();
             }
         }
     }
@@ -292,16 +318,30 @@ impl Page {
     }
 
     pub fn reveal(&self, path: &[&str], title: &str) {
-        let Some(label) = find_label(self.column.upcast_ref(), path, title) else {
-            return;
-        };
-        let target = found_target(&label);
-        let scroller = self.root.downgrade();
+        let column = self.column.downgrade();
+        let path: Vec<String> = path.iter().map(|part| (*part).to_owned()).collect();
+        let title = title.to_owned();
+        let found: RefCell<Option<gtk4::Widget>> = RefCell::new(None);
         let frames = Cell::new(0);
-        target.add_tick_callback(move |target, _| {
+        self.root.add_tick_callback(move |scroller, _| {
             frames.set(frames.get() + 1);
-            let Some(scroller) = scroller.upgrade() else {
-                return glib::ControlFlow::Break;
+            let waiting = || {
+                if frames.get() < FOUND_FRAMES {
+                    glib::ControlFlow::Continue
+                } else {
+                    glib::ControlFlow::Break
+                }
+            };
+            if found.borrow().is_none() {
+                let Some(column) = column.upgrade() else {
+                    return glib::ControlFlow::Break;
+                };
+                let parts: Vec<&str> = path.iter().map(String::as_str).collect();
+                let label = find_label(column.upcast_ref(), &parts, &title);
+                found.replace(label.map(|label| found_target(&label)));
+            }
+            let Some(target) = found.borrow().clone() else {
+                return waiting();
             };
             let content = scroller.child().and_then(|viewport| viewport.first_child());
             let bounds = content.and_then(|content| target.compute_bounds(&content));
@@ -309,11 +349,7 @@ impl Page {
             let Some(bounds) =
                 bounds.filter(|bounds| bounds.height() > 0.0 && adjustment.page_size() > 0.0)
             else {
-                return if frames.get() < FOUND_FRAMES {
-                    glib::ControlFlow::Continue
-                } else {
-                    glib::ControlFlow::Break
-                };
+                return waiting();
             };
             adjustment.set_value(bounds.y() as f64 - adjustment.page_size() * FOUND_ABOVE);
             target.add_css_class(FOUND_CLASS);
@@ -353,6 +389,14 @@ impl Page {
     }
 
     pub fn section(&self, icon: &str, title: &str) -> gtk4::Box {
+        Self::section_into(&self.column, icon, title)
+    }
+
+    pub fn sections() -> gtk4::Box {
+        gtk4::Box::new(gtk4::Orientation::Vertical, SECTION_SPACING)
+    }
+
+    pub fn section_into(column: &gtk4::Box, icon: &str, title: &str) -> gtk4::Box {
         let section = gtk4::Box::new(gtk4::Orientation::Vertical, SECTION_HEADER_SPACING);
         if !icon.is_empty() || !title.is_empty() {
             let header = gtk4::Box::new(gtk4::Orientation::Horizontal, SECTION_HEADER_SPACING);
@@ -375,7 +419,7 @@ impl Page {
         let content = gtk4::Box::new(gtk4::Orientation::Vertical, SECTION_CONTENT_SPACING);
         content.add_css_class(GROUP_CLASS);
         section.append(&content);
-        self.column.append(&section);
+        column.append(&section);
         content
     }
 
@@ -495,6 +539,16 @@ impl Page {
         label: &str,
         spin: &Rc<SpinBox>,
     ) -> gtk4::Box {
+        self.keep(spin.clone());
+        Self::unkept_spin_row(parent, icon, label, spin)
+    }
+
+    pub fn unkept_spin_row(
+        parent: &impl Parent,
+        icon: &str,
+        label: &str,
+        spin: &Rc<SpinBox>,
+    ) -> gtk4::Box {
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, ROW_SPACING);
         row.set_margin_start(ROW_MARGIN);
         row.set_margin_end(ROW_MARGIN);
@@ -512,7 +566,6 @@ impl Page {
         row.append(&name_box);
         row.append(&spin.root);
         parent.add(&row);
-        self.keep(spin.clone());
         row
     }
 

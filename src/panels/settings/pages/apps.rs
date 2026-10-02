@@ -57,17 +57,12 @@ const RULE_KINDS: [(&str, &str, Kind); 10] = [
     ("Opens on workspace", "workspace", Kind::Text),
 ];
 
-const COMMANDS: [(&str, &str, &str); 4] = [
+const COMMANDS: [(&str, &str, &str); 3] = [
     ("Terminal", "/apps/terminal", "kitty -1"),
     (
         "Task manager",
         "/apps/taskManager",
         "plasma-systemmonitor --page-name Processes",
-    ),
-    (
-        "Network connection editor",
-        "/apps/network",
-        "kcmshell6 kcm_networkmanagement",
     ),
     (
         "System update",
