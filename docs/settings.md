@@ -232,7 +232,8 @@ name to `notifications.quietApps`: its notifications go to the list without a
 popup. Turning "Keep" off adds it to `notifications.forgottenApps`: its
 notifications count as transient and go once their popup ends, and with
 "Pop up" off as well they are not kept at all. The service remembers each
-application name it has seen in the state file (`notificationApps`). Then
+application name it has seen in the state file (`notificationApps`); a new
+name adds its card to the open page. Then
 "On-screen display" with its own "Stays on screen for (ms)" (`osd.timeout`,
 100 to 3000 in steps of 100).
 
