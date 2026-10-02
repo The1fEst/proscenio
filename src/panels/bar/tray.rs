@@ -2,7 +2,7 @@ use gtk4::gdk;
 use gtk4::gio;
 use gtk4::glib::{self, Variant};
 use gtk4::prelude::*;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::config::{self, Config};
@@ -35,6 +35,8 @@ struct Tray {
     vertical: bool,
     collapsed: bool,
     items: RefCell<Vec<gio::SignalSubscription>>,
+    populating: Cell<bool>,
+    again: Cell<bool>,
 }
 
 struct Item {
@@ -71,6 +73,8 @@ pub fn build(
         vertical,
         collapsed,
         items: RefCell::new(Vec::new()),
+        populating: Cell::new(false),
+        again: Cell::new(false),
     });
     refresh(&tray);
     scope.hold(watch::config("/tray/pinnedItems", {
@@ -148,9 +152,20 @@ fn register_host(session: &gio::DBusConnection) {
 }
 
 fn refresh(tray: &Rc<Tray>) {
+    if tray.populating.replace(true) {
+        tray.again.set(true);
+        return;
+    }
     let tray = tray.clone();
     glib::spawn_future_local(async move {
-        populate(&tray).await;
+        loop {
+            tray.again.set(false);
+            populate(&tray).await;
+            if !tray.again.get() {
+                break;
+            }
+        }
+        tray.populating.set(false);
     });
 }
 
