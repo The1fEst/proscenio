@@ -9,6 +9,8 @@ use crate::core::i18n::{tr, trf};
 use crate::core::{process, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
 use crate::panels::settings::pages::connection::{NEW_WIRED, NEW_WIREGUARD};
+use crate::panels::settings::pages::proxy;
+use crate::platform::proxy as platform_proxy;
 use crate::services::net::{Connection, Connections, VPN_KINDS, WIRED};
 use crate::services::nmsettings;
 use crate::ui::theme::{SharedTheme, pixel_size};
@@ -59,6 +61,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let status = page.section("", "");
     if !manager_running(&page, &status) {
+        proxy_link(&page, context);
         return page;
     }
     if let Some(section) = status.parent() {
@@ -112,6 +115,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
     vpn_section.append(&adding);
     vpn_section.append(&problem);
+    proxy_link(&page, context);
 
     let follow = {
         let connections = Rc::downgrade(&connections);
@@ -140,6 +144,17 @@ pub fn build(context: &Context) -> Rc<Page> {
     connections.connect_changed(follow);
     page.keep(connections);
     page
+}
+
+fn proxy_link(page: &Page, context: &Context) {
+    let section = page.section("travel_explore", &tr("Proxy"));
+    page.link_row(
+        &section,
+        "",
+        &tr("Proxy"),
+        &proxy::mode_name(platform_proxy::read().mode),
+        context.subpage_opener("proxy"),
+    );
 }
 
 fn import_file(open: Open, problem: glib::WeakRef<gtk4::Label>) {

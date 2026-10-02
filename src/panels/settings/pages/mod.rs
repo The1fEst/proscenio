@@ -22,6 +22,7 @@ pub mod notifications;
 pub mod panels;
 pub mod power;
 pub mod privacy;
+pub mod proxy;
 pub mod quick;
 pub mod region;
 pub mod savednetworks;
@@ -345,7 +346,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 15] = [
+pub const SUBPAGES: [Subpage; 16] = [
     Subpage {
         id: "savednetworks",
         title: "Saved Networks",
@@ -354,6 +355,11 @@ pub const SUBPAGES: [Subpage; 15] = [
     Subpage {
         id: "connection",
         title: "Connection",
+        parent: "network",
+    },
+    Subpage {
+        id: "proxy",
+        title: "Proxy",
         parent: "network",
     },
     Subpage {
@@ -433,6 +439,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "wifi" => wifi::build(context),
         "network" => network::build(context),
         "connection" => connection::build(context),
+        "proxy" => proxy::build(context),
         "bluetooth" => bluetooth::build(context),
         "displays" => displays::build(context),
         "sound" => sound::build(context),
