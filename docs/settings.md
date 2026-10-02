@@ -20,7 +20,14 @@ Inside, 8 px from every edge, a column with 5 px spacing:
 - **The title bar**, shown with `windows.showTitlebar` (on by default):
   "Settings" in the title font at 22 px, weight 550, `colOnLayer0`, centered
   over the whole width, or 12 px from the left with `windows.centerTitle` off.
-  A 35 px round close button with a 20 px `close` symbol sits on the right.
+  A 35 px round close button with a 20 px `close` symbol sits on the right,
+  4 px after two more of the same size (proscenio only), both with tooltips:
+  "Highlight changed settings" (`ink_highlighter`, filled and `colPrimary`
+  while on), which flips `settings.highlightChanged`, and "Reset this page to
+  defaults" (`settings_backup_restore`), which asks "Reset this page?" with
+  how many of the page's settings differ from their defaults (Settings kept by
+  Hyprland or the system are not counted) and, on Reset, stores every such
+  setting's default.
 - **A row** with 8 px spacing: the navigation rail, 5 px in on every side, and
   the content pane, `m3surfaceContainerLow` with radius
   `windowRounding − 8` (10).
@@ -143,6 +150,14 @@ the top, with 30 px between sections and 80 px of room below the last.
   | Search, Prefixes | `qalc`, `cliphist` | notices |
   | Apps, Commands | the program of each command | one notice, updated as the commands change |
   | Users | `org.freedesktop.Accounts` | notice |
+- **Changed settings** (proscenio only): every row bound to `config.toml`
+  through the page's helpers (switch, spin boxes, slider, selection, text and
+  list fields) is registered with its key and default. While
+  `settings.highlightChanged` is on, a row whose stored value differs from its
+  default (numbers compared as numbers; a missing key counts as the default)
+  takes `colTertiary` at 12 % and a 3 px `colTertiary` bar inside its left
+  edge, following the file as it changes. Rows over Hyprland options, system
+  services and other files are not registered.
 - **A busy section** (`ContentSection { busy: … }`) adds an 18 px
   `MaterialLoadingIndicator` 4 px after its title while busy.
 - **`ContentPlaceholder`**: a whole-page state 220 px tall, with a

@@ -131,6 +131,19 @@ fn found_target(label: &gtk4::Label) -> gtk4::Widget {
         .unwrap_or_else(|| label.clone().upcast())
 }
 
+pub const HIGHLIGHT_CHANGED: &str = "/settings/highlightChanged";
+const CHANGED_CLASS: &str = "settings-changed";
+
+fn mark(widget: &gtk4::Widget, pointer: &str, default: &Value) {
+    let shown =
+        config::value_bool(HIGHLIGHT_CHANGED, false) && differs(config::value(pointer), default);
+    if shown {
+        widget.add_css_class(CHANGED_CLASS);
+    } else {
+        widget.remove_css_class(CHANGED_CLASS);
+    }
+}
+
 pub trait Parent {
     fn add(&self, child: &impl IsA<gtk4::Widget>);
 }
@@ -277,14 +290,77 @@ impl Context {
     }
 }
 
+struct Tracked {
+    pointer: String,
+    default: Value,
+    widget: glib::WeakRef<gtk4::Widget>,
+}
+
+pub fn differs(stored: Option<Value>, default: &Value) -> bool {
+    let Some(stored) = stored else {
+        return false;
+    };
+    match (stored.as_f64(), default.as_f64()) {
+        (Some(stored), Some(default)) => (stored - default).abs() > f64::EPSILON,
+        _ => stored != *default,
+    }
+}
+
 pub struct Page {
     pub root: gtk4::ScrolledWindow,
     column: gtk4::Box,
     pub theme: SharedTheme,
     kept: RefCell<Vec<Box<dyn Any>>>,
+    tracked: RefCell<Vec<Tracked>>,
 }
 
 impl Page {
+    pub fn track(&self, pointer: &str, default: Value, widget: &impl IsA<gtk4::Widget>) {
+        let widget: gtk4::Widget = widget.clone().upcast();
+        mark(&widget, pointer, &default);
+        self.tracked.borrow_mut().push(Tracked {
+            pointer: pointer.to_owned(),
+            default: default.clone(),
+            widget: widget.downgrade(),
+        });
+        let pointer = pointer.to_owned();
+        let widget = widget.downgrade();
+        self.watch(&pointer.clone(), move || {
+            if let Some(widget) = widget.upgrade() {
+                mark(&widget, &pointer, &default);
+            }
+        });
+    }
+
+    pub fn changed_settings(&self) -> usize {
+        self.tracked
+            .borrow()
+            .iter()
+            .filter(|tracked| differs(config::value(&tracked.pointer), &tracked.default))
+            .count()
+    }
+
+    pub fn reset_to_defaults(&self) {
+        let changed: Vec<(String, Value)> = self
+            .tracked
+            .borrow()
+            .iter()
+            .filter(|tracked| differs(config::value(&tracked.pointer), &tracked.default))
+            .map(|tracked| (tracked.pointer.clone(), tracked.default.clone()))
+            .collect();
+        for (pointer, default) in changed {
+            config::store_value(&pointer, default);
+        }
+    }
+
+    pub fn refresh_marks(&self) {
+        for tracked in self.tracked.borrow().iter() {
+            if let Some(widget) = tracked.widget.upgrade() {
+                mark(&widget, &tracked.pointer, &tracked.default);
+            }
+        }
+    }
+
     pub fn new(theme: &SharedTheme, force_width: bool) -> Rc<Self> {
         let column = gtk4::Box::new(gtk4::Orientation::Vertical, SECTION_SPACING);
         column.set_margin_top(TOP);
@@ -305,12 +381,22 @@ impl Page {
         root.set_vexpand(true);
         root.set_child(Some(&holder));
         crate::ui::widgets::flickable::follow_scroll_settings(&root);
-        Rc::new(Page {
+        let page = Rc::new(Page {
             root,
             column,
             theme: theme.clone(),
             kept: RefCell::new(Vec::new()),
-        })
+            tracked: RefCell::new(Vec::new()),
+        });
+        page.watch(HIGHLIGHT_CHANGED, {
+            let page = Rc::downgrade(&page);
+            move || {
+                if let Some(page) = page.upgrade() {
+                    page.refresh_marks();
+                }
+            }
+        });
+        page
     }
 
     pub fn keep(&self, held: impl Any) {
@@ -520,6 +606,7 @@ impl Page {
         });
         switch.bind(move || config::value_bool(pointer, default));
         self.refresh_on(pointer, &switch);
+        self.track(pointer, Value::Bool(default), &switch.button);
         switch
     }
 
@@ -592,6 +679,7 @@ impl Page {
             }
         });
         let row = self.spin_row(parent, icon, label, &spin);
+        self.track(pointer, Value::from(default), &row);
         (row, spin)
     }
 
@@ -623,6 +711,7 @@ impl Page {
             }
         });
         let row = self.spin_row(parent, icon, label, &spin);
+        self.track(pointer, Value::from(default), &row);
         (row, spin)
     }
 
@@ -655,6 +744,7 @@ impl Page {
             }
         });
         let row = self.spin_row(parent, icon, label, &spin);
+        self.track(pointer, Value::from(default), &row);
         (row, spin)
     }
 
@@ -694,6 +784,9 @@ impl Page {
                 }
             }
         });
+        if let Some(row) = slider.area.parent() {
+            self.track(pointer, Value::from(default), &row);
+        }
         self.keep(slider.clone());
         slider
     }
@@ -747,8 +840,11 @@ impl Page {
         default: Value,
         selected: impl Fn(Value) + 'static,
     ) -> Rc<Selection> {
+        let tracked = default.clone();
         let current = move || config::value(pointer).unwrap_or_else(|| default.clone());
-        self.selection_of(parent, choices, &[pointer], current, selected)
+        let selection = self.selection_of(parent, choices, &[pointer], current, selected);
+        self.track(pointer, tracked, &selection.root);
+        selection
     }
 
     pub fn selection_of(
@@ -889,12 +985,14 @@ impl Page {
         pointer: &'static str,
         default: &str,
     ) -> Rc<TextField> {
+        let tracked = Value::from(default);
         let default = default.to_owned();
         let current = move || config::value_str(pointer).unwrap_or_else(|| default.clone());
         let field = self.text_field(parent, style, placeholder, current, move |text| {
             config::store_value(pointer, Value::from(text));
         });
         self.refresh_text_on(pointer, &field);
+        self.track(pointer, tracked, &field.root);
         field
     }
 
@@ -926,6 +1024,7 @@ impl Page {
             config::store_value(pointer, Value::from(items));
         });
         self.refresh_text_on(pointer, &field);
+        self.track(pointer, Value::from(default.to_vec()), &field.root);
         field
     }
 
@@ -936,5 +1035,23 @@ impl Page {
                 field.refresh();
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_setting_differs_only_when_stored_and_not_equal_to_its_default() {
+        assert!(!differs(None, &Value::from(5)));
+        assert!(!differs(Some(Value::from(5.0)), &Value::from(5)));
+        assert!(differs(Some(Value::from(6)), &Value::from(5)));
+        assert!(!differs(Some(Value::from("dd/MM")), &Value::from("dd/MM")));
+        assert!(differs(Some(Value::Bool(true)), &Value::Bool(false)));
+        assert!(differs(
+            Some(Value::from(vec!["a"])),
+            &Value::from(Vec::<String>::new())
+        ));
     }
 }

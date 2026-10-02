@@ -237,6 +237,10 @@ window.settings-window { background-color: var(--m3background); }
 .settings-found {
     background-color: alpha(var(--colPrimary), 0.2);
 }
+.settings-changed {
+    background-color: alpha(var(--colTertiary), 0.12);
+    box-shadow: inset 3px 0 var(--colTertiary);
+}
 .settings-tile {
     background-color: var(--colLayer2);
     border-radius: 12px;

@@ -15,7 +15,7 @@ use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::core::i18n::tr;
+use crate::core::i18n::{tr, trf};
 use crate::core::{config, watch};
 use crate::platform::hypr;
 use crate::services::Services;
@@ -24,7 +24,9 @@ use crate::ui::theme::{SharedTheme, pixel_size, rounding};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::ripple::RippleButton;
 use crate::ui::widgets::text::{self, Family};
-use content::{Context, Page};
+use crate::ui::widgets::tooltip::{self, Tooltip};
+use crate::ui::widgets::windowdialog::{self, Place, WindowDialog};
+use content::{Context, HIGHLIGHT_CHANGED, Page};
 use index::Hit;
 use pages::PAGES;
 use rail::Rail;
@@ -39,6 +41,9 @@ const COLUMN_SPACING: i32 = 5;
 const TITLE_START: i32 = 12;
 const CLOSE_SIZE: i32 = 35;
 const CLOSE_ICON: f64 = 20.0;
+const TOOL_SPACING: i32 = 4;
+const RESET_WIDTH: f64 = 420.0;
+const BUTTON_ROW_BOTTOM: f64 = 10.0;
 const RAIL_MARGIN: i32 = 5;
 const HEADER_MARGIN: i32 = 10;
 const HEADER_SPACING: i32 = 8;
@@ -75,6 +80,8 @@ struct View {
     pending: RefCell<Option<Hit>>,
     switch_start: Cell<i64>,
     switching: Cell<bool>,
+    tips: RefCell<Vec<Rc<Tooltip>>>,
+    highlighting: RefCell<Option<watch::Watch>>,
     _following: watch::Watch,
 }
 
@@ -163,7 +170,7 @@ impl Settings {
         column.set_margin_bottom(PADDING);
         column.set_margin_start(PADDING);
         column.set_margin_end(PADDING);
-        let (titlebar, title) = self.titlebar();
+        let (titlebar, title, tools) = self.titlebar();
         column.append(&titlebar);
         let arrange = move || {
             titlebar.set_visible(config::value_bool("/windows/showTitlebar", true));
@@ -223,8 +230,12 @@ impl Settings {
             pending: RefCell::new(None),
             switch_start: Cell::new(0),
             switching: Cell::new(false),
+            tips: RefCell::new(Vec::new()),
+            highlighting: RefCell::new(None),
             _following: following,
         });
+        let highlighting = self.page_tools(&tools, &view);
+        view.highlighting.replace(Some(highlighting));
         self.context.subpage.replace(Some(Rc::new({
             let view = Rc::downgrade(&view);
             move |name, id| {
@@ -323,7 +334,7 @@ impl Settings {
         view
     }
 
-    fn titlebar(self: &Rc<Self>) -> (gtk4::CenterBox, Centred) {
+    fn titlebar(self: &Rc<Self>) -> (gtk4::CenterBox, Centred, gtk4::Box) {
         let bar = gtk4::CenterBox::new();
         let title = gtk4::Label::new(Some(&tr("Settings")));
         text::set_font(&title, Family::Title, pixel_size::TITLE as f64, "wght=550");
@@ -345,8 +356,60 @@ impl Settings {
                 }
             }
         });
-        bar.set_end_widget(Some(&close));
-        (bar, placed)
+        let tools = gtk4::Box::new(gtk4::Orientation::Horizontal, TOOL_SPACING);
+        tools.append(&close);
+        bar.set_end_widget(Some(&tools));
+        (bar, placed, tools)
+    }
+
+    fn round_button(&self, icon: &str) -> (RippleButton, gtk4::Label) {
+        let button = RippleButton::new(&self.context.theme);
+        button.set_radius(rounding::FULL as f64);
+        button.set_size_request(CLOSE_SIZE, CLOSE_SIZE);
+        button.set_valign(gtk4::Align::Center);
+        let symbol = text::symbol(icon, CLOSE_ICON);
+        button.set_content(&Centred::integral(&symbol), 0, 0);
+        (button, symbol)
+    }
+
+    fn page_tools(&self, tools: &gtk4::Box, view: &Rc<View>) -> watch::Watch {
+        let (highlight, highlight_icon) = self.round_button("ink_highlighter");
+        highlight.connect_clicked(|_| {
+            let on = config::value_bool(HIGHLIGHT_CHANGED, false);
+            config::store_value(HIGHLIGHT_CHANGED, Value::Bool(!on));
+        });
+        let tip = Tooltip::new(&highlight, &self.context.theme, tooltip::Kind::Styled);
+        tip.set_text(&tr("Highlight changed settings"));
+        tooltip::hover_delay(&highlight, &tip, 0);
+        let show = {
+            let icon = highlight_icon.downgrade();
+            move || {
+                if let Some(icon) = icon.upgrade() {
+                    let on = config::value_bool(HIGHLIGHT_CHANGED, false);
+                    text::set_symbol_font(&icon, CLOSE_ICON, if on { 1.0 } else { 0.0 });
+                    text::set_color(&icon, if on { "colPrimary" } else { "colOnLayer0" });
+                }
+            }
+        };
+        show();
+        let following = watch::config(HIGHLIGHT_CHANGED, show);
+
+        let (reset, _) = self.round_button("settings_backup_restore");
+        let reset_tip = Tooltip::new(&reset, &self.context.theme, tooltip::Kind::Styled);
+        reset_tip.set_text(&tr("Reset this page to defaults"));
+        tooltip::hover_delay(&reset, &reset_tip, 0);
+        reset.connect_clicked({
+            let view = Rc::downgrade(view);
+            move |_| {
+                if let Some(view) = view.upgrade() {
+                    view.confirm_reset();
+                }
+            }
+        });
+        tools.prepend(&reset);
+        tools.prepend(&highlight);
+        view.tips.replace(vec![tip, reset_tip]);
+        following
     }
 
     fn subpage_header(&self) -> (gtk4::Box, gtk4::Label, RippleButton) {
@@ -442,6 +505,64 @@ impl View {
             let path: Vec<&str> = path.iter().map(String::as_str).collect();
             page.reveal(&path, &hit.title);
         }
+    }
+
+    fn confirm_reset(self: &Rc<Self>) {
+        let Some(page) = self.page.borrow().clone() else {
+            return;
+        };
+        let theme = &self.context.theme;
+        let changed = page.changed_settings();
+        let dialog = WindowDialog::new(theme, None);
+        dialog.set_background_width(RESET_WIDTH);
+        dialog
+            .column
+            .add(&windowdialog::title(&tr("Reset this page?")), Place::wide());
+        let message = match changed {
+            0 => tr("Every setting on this page that the shell keeps is already at its default"),
+            1 => tr(
+                "One setting on this page goes back to its default. Settings kept by Hyprland or the system stay as they are",
+            ),
+            _ => trf(
+                "%1 settings on this page go back to their defaults. Settings kept by Hyprland or the system stay as they are",
+                &[&changed.to_string()],
+            ),
+        };
+        let description = text::styled(&message);
+        text::set_color(&description, "colOnSurfaceVariant");
+        description.set_wrap(true);
+        description.set_xalign(0.0);
+        dialog.column.add(&description, Place::wide());
+        let (buttons, mut place) = windowdialog::button_row();
+        place.bottom = BUTTON_ROW_BOTTOM;
+        buttons.append(&windowdialog::spacer());
+        let cancel = windowdialog::button(theme, &tr("Cancel"));
+        cancel.connect_clicked({
+            let dialog = Rc::downgrade(&dialog);
+            move |_| {
+                if let Some(dialog) = dialog.upgrade() {
+                    dialog.dismiss();
+                }
+            }
+        });
+        buttons.append(&cancel);
+        let reset = windowdialog::button(theme, &tr("Reset"));
+        reset.set_sensitive(changed > 0);
+        reset.connect_clicked({
+            let dialog = Rc::downgrade(&dialog);
+            let page = Rc::downgrade(&page);
+            move |_| {
+                if let Some(page) = page.upgrade() {
+                    page.reset_to_defaults();
+                }
+                if let Some(dialog) = dialog.upgrade() {
+                    dialog.dismiss();
+                }
+            }
+        });
+        buttons.append(&reset);
+        dialog.column.add(&buttons, place);
+        (self.context.dialog_presenter())(dialog);
     }
 
     fn back(self: &Rc<Self>) {
