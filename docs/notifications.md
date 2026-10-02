@@ -249,6 +249,8 @@ shape, continues the id counter above the largest stored id, honors
 `replaces_id`, applies the `popupInhibited` rule to the unread count, runs the
 expiry timer with the `notifications.timeout` fallback, discards transient
 notifications on expiry, and resets the unread count when the sidebar opens.
+Unlike qs, a transient notification never counts as unread, and `timeoutAll()`
+discards the transient popups it ends instead of leaving them in the list.
 The silent flag is `notifications.silent` in
 `~/.config/proscenio/config.toml`.
 

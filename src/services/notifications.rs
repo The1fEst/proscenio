@@ -282,21 +282,26 @@ impl Notifications {
     }
 
     pub fn timeout_all(&self) {
-        let ids: Vec<u32> = self
+        let popups: Vec<(u32, bool)> = self
             .list
             .borrow()
             .iter()
             .filter(|entry| entry.popup)
-            .map(|entry| entry.id)
+            .map(|entry| (entry.id, entry.transient))
             .collect();
-        if ids.is_empty() {
+        if popups.is_empty() {
             return;
         }
-        for id in &ids {
+        for (id, _) in &popups {
             self.stop_timer(*id);
         }
         for notification in self.list.borrow_mut().iter_mut() {
             notification.popup = false;
+        }
+        for (id, transient) in popups {
+            if transient {
+                self.discard(id, 1);
+            }
         }
         self.announce();
     }
@@ -436,7 +441,8 @@ impl Notifications {
         };
         let showing = notification.popup;
         let interval = notification.timeout;
-        if !showing && notification.transient {
+        let transient = notification.transient;
+        if !showing && transient {
             return id;
         }
 
@@ -448,7 +454,9 @@ impl Notifications {
         write_store(&self.list.borrow());
 
         if showing {
-            self.unread.set(self.unread.get() + 1);
+            if !transient {
+                self.unread.set(self.unread.get() + 1);
+            }
             if interval != 0 {
                 self.arm_timer(id, interval);
             }
