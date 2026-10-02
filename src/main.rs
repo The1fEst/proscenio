@@ -47,6 +47,9 @@ fn main() -> glib::ExitCode {
     if command == Some(platform::firewall::COMMAND) {
         return platform::firewall::run(&arguments[2..]);
     }
+    if command == Some(platform::powersettings::COMMAND) {
+        return platform::powersettings::run(&arguments[2..]);
+    }
     if std::env::var_os("PKEXEC_UID").is_some() {
         return glib::ExitCode::FAILURE;
     }

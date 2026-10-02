@@ -9,8 +9,10 @@ use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::detach;
 use crate::platform::dbus;
 use crate::platform::notify::{self, Notification, Urgency};
-use crate::services::audio;
+use crate::services::{audio, power};
 
+pub const PROFILE_ON_BATTERY: &str = "/battery/profileOnBattery";
+pub const PROFILE_ON_CHARGER: &str = "/battery/profileOnCharger";
 const BUS: &str = "org.freedesktop.UPower";
 const ROOT: &str = "/org/freedesktop/UPower";
 const DISPLAY: &str = "/org/freedesktop/UPower/devices/DisplayDevice";
@@ -196,6 +198,16 @@ impl Battery {
                 } else {
                     "power-unplug"
                 });
+                let wanted = config::value_str(if plugged {
+                    PROFILE_ON_CHARGER
+                } else {
+                    PROFILE_ON_BATTERY
+                });
+                if let (Some(system), Some(profile)) =
+                    (&self.system, wanted.filter(|profile| !profile.is_empty()))
+                {
+                    power::set_active_profile(system, &profile);
+                }
             }
         }
     }

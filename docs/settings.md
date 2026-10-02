@@ -754,9 +754,31 @@ with them, never through a shell. The page rereads the files afterwards, and
   saving" section, exists only when `hypridle` is on `PATH`. Without it the
   "Power Saving" section (the Welcome section, the Screen Lock page) shows a
   notice that hypridle is not installed, and "Automatic Suspend" is left out.
+- "Buttons & Lid" (`power_settings_new`), filled once systemd-logind answers:
+  "Power button", and while UPower reports a lid (`LidIsPresent`) "Lid
+  closed", "Lid closed on the charger" and "Lid closed with an external
+  display", each Nothing, Lock, Suspend, Hibernate (only when `CanHibernate`
+  says yes) or Power off, plus the value in effect when it is none of these.
+  They show `HandlePowerKey`, `HandleLidSwitch`, `HandleLidSwitchExternalPower`
+  and `HandleLidSwitchDocked` from logind; a choice runs `pkexec proscenio
+  power-settings button KEY ACTION`, which writes the key under `[Login]` in
+  `/etc/systemd/logind.conf.d/50-proscenio.conf` and sends logind `SIGHUP` so
+  it rereads its configuration, and the row then shows what logind reports.
+  Errors show in `colError` under the section.
 - "Battery": a uniform row of the low and critical warnings, a row of the
   "Automatic suspend" switch (with a tooltip) and the level it suspends "at",
-  dead while the switch is off, and the full warning.
+  dead while the switch is off, and the full warning. Where the first `BAT*`
+  under `/sys/class/power_supply` has `charge_control_end_threshold`, "Stop
+  charging at (%)" (50 to 100 by 5, with a tooltip): a second after the last
+  change it runs `pkexec proscenio power-settings charge-limit BATTERY
+  PERCENT`, which writes the threshold and keeps it across boots with
+  `/etc/tmpfiles.d/proscenio-charge-limit.conf` (removed again at 100). While
+  power-profiles-daemon is on the bus, "Power profile on battery" (Unchanged,
+  Power saver, Balanced) and "Power profile on the charger" (Unchanged,
+  Balanced, Performance), both with a tooltip, stored as
+  `battery.profileOnBattery` and `battery.profileOnCharger`: when the charger
+  is plugged in or out, the battery service sets that profile, unless it is
+  Unchanged.
 
 ## 24. Screen Lock (subpage)
 

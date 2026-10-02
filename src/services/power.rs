@@ -46,24 +46,9 @@ impl Power {
             ("balanced", false) => "power-saver",
             _ => "power-saver",
         };
-        let Some(system) = self.system.clone() else {
-            return;
-        };
-        let request = set_profile(next);
-        glib::spawn_future_local(async move {
-            let _ = system
-                .call_future(
-                    Some(BUS),
-                    PATH,
-                    "org.freedesktop.DBus.Properties",
-                    "Set",
-                    Some(&request),
-                    None,
-                    gio::DBusCallFlags::NONE,
-                    2000,
-                )
-                .await;
-        });
+        if let Some(system) = &self.system {
+            set_active_profile(system, next);
+        }
     }
 
     fn refresh(&self) {
@@ -92,6 +77,25 @@ impl Power {
             power.listeners.notify();
         });
     }
+}
+
+pub fn set_active_profile(system: &gio::DBusConnection, profile: &str) {
+    let system = system.clone();
+    let request = set_profile(profile);
+    glib::spawn_future_local(async move {
+        let _ = system
+            .call_future(
+                Some(BUS),
+                PATH,
+                "org.freedesktop.DBus.Properties",
+                "Set",
+                Some(&request),
+                None,
+                gio::DBusCallFlags::NONE,
+                2000,
+            )
+            .await;
+    });
 }
 
 fn set_profile(profile: &str) -> glib::Variant {

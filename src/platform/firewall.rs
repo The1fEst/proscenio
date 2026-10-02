@@ -2,8 +2,8 @@ use gtk4::glib;
 use std::process::Command;
 
 use crate::core::i18n::{tr, trf};
-use crate::core::process;
 use crate::platform::nmprofile::{self, Family};
+use crate::platform::privileged;
 
 pub const COMMAND: &str = "firewall";
 const CONF: &str = "/etc/ufw/ufw.conf";
@@ -218,21 +218,7 @@ fn rule_words(rule: &Rule) -> Vec<String> {
 }
 
 pub async fn request(words: Vec<String>) -> Result<(), String> {
-    let mut command = process::command(&["pkexec", &process::executable(), COMMAND]);
-    command.args(&words).env("LANG", "C");
-    let Some(finished) = process::capture(command).await else {
-        return Err(tr("Could not run pkexec"));
-    };
-    if finished.status.success() {
-        return Ok(());
-    }
-    let errors = String::from_utf8_lossy(&finished.stderr);
-    Err(errors
-        .lines()
-        .rev()
-        .find(|line| !line.trim().is_empty())
-        .map(|line| line.trim_start_matches("ERROR: ").to_owned())
-        .unwrap_or_else(|| tr("The firewall was not changed")))
+    privileged::request(COMMAND, words, tr("The firewall was not changed")).await
 }
 
 pub async fn add(rule: &Rule) -> Result<(), String> {

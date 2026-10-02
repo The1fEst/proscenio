@@ -24,6 +24,8 @@ pub mod monitorrules;
 pub mod nmprofile;
 pub mod notify;
 pub mod pam;
+pub mod powersettings;
+pub mod privileged;
 pub mod proxy;
 pub mod readable;
 pub mod sessionlock;
