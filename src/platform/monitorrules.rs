@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::platform::hyprconfig::settings_path;
+use crate::platform::hyprconfig::{self, Area};
 
 const PRIMARY_VARIABLE: &str = "WAYLANDDRV_PRIMARY_MONITOR";
 const BLOCK_START: &str = "hl.monitor({";
@@ -15,20 +15,18 @@ pub struct Requested {
     pub primary: String,
 }
 
-fn contents() -> String {
-    std::fs::read_to_string(settings_path()).unwrap_or_default()
-}
-
 pub fn read() -> Requested {
-    parse(&contents())
+    parse(&hyprconfig::read(Area::Displays))
 }
 
 pub fn write_rule(output: &str, pairs: &[(String, String)]) -> std::io::Result<()> {
-    std::fs::write(settings_path(), with_rule(&contents(), output, pairs))
+    let text = with_rule(&hyprconfig::read(Area::Displays), output, pairs);
+    hyprconfig::write(Area::Displays, &text)
 }
 
 pub fn write_primary(output: &str) -> std::io::Result<()> {
-    std::fs::write(settings_path(), with_primary(&contents(), output))
+    let text = with_primary(&hyprconfig::read(Area::Displays), output);
+    hyprconfig::write(Area::Displays, &text)
 }
 
 fn render(value: &str) -> String {

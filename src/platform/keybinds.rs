@@ -1,7 +1,8 @@
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::platform::{hypr, hyprconfig};
+use crate::platform::hypr;
+use crate::platform::hyprconfig::{self, Area};
 
 const MODIFIERS: [(u32, &str); 8] = [
     (6, "SUPER"),
@@ -193,16 +194,15 @@ fn with_shortcut(text: &str, description: &str, keys: Option<&[Option<String>; 2
 }
 
 pub fn changed() -> Vec<String> {
-    names(&std::fs::read_to_string(hyprconfig::settings_path()).unwrap_or_default())
+    names(&hyprconfig::read(Area::Binds))
 }
 
 pub fn store(changes: &[(String, Option<[Option<String>; 2]>)]) -> std::io::Result<()> {
-    let path = hyprconfig::settings_path();
-    let mut text = std::fs::read_to_string(&path).unwrap_or_default();
+    let mut text = hyprconfig::read(Area::Binds);
     for (description, keys) in changes {
         text = with_shortcut(&text, description, keys.as_ref());
     }
-    std::fs::write(path, text)?;
+    hyprconfig::write(Area::Binds, &text)?;
     hypr::request("reload");
     Ok(())
 }

@@ -9,6 +9,7 @@ use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Choice, Context, Page, Style};
 use crate::panels::settings::hyprrows;
 use crate::platform::hypr;
+use crate::platform::hyprconfig::Area;
 use crate::services::displays::{Displays, Monitor, number, rates_of, shown_modes_of};
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::theme::SharedTheme;
@@ -19,6 +20,7 @@ use crate::ui::widgets::spinbox::SpinBox;
 const AUTO_HDR: &str = "render:cm_auto_hdr";
 const GLOBAL_VRR: &str = "misc:vrr";
 const ZERO_SCALING: &str = "xwayland:force_zero_scaling";
+pub const OPTIONS: [&str; 3] = [AUTO_HDR, GLOBAL_VRR, ZERO_SCALING];
 const GLOBAL_VRR_MODES: [(&str, &str); 4] = [
     ("Off", "0"),
     ("On", "1"),
@@ -460,7 +462,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let state = Rc::new(State {
         theme: page.theme.clone(),
         displays: Displays::new(),
-        options: HyprOptions::new(&[AUTO_HDR, GLOBAL_VRR, ZERO_SCALING]),
+        options: HyprOptions::new(Area::Displays, &OPTIONS),
         selected: RefCell::new(String::new()),
         all_resolutions: Cell::new(false),
         widgets: RefCell::new(None),

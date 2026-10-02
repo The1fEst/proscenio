@@ -15,7 +15,7 @@ use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::spinbox::SpinBox;
 use crate::ui::widgets::text;
 
-const OPTIONS: [&str; 16] = [
+pub const OPTIONS: [&str; 16] = [
     "decoration:rounding",
     "decoration:rounding_power",
     "decoration:blur:enabled",
@@ -159,7 +159,7 @@ fn spin(
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let appearance = DesktopAppearance::new();
-    let options = HyprOptions::new(&OPTIONS);
+    let options = HyprOptions::new(hyprconfig::Area::Appearance, &OPTIONS);
 
     let desktop = page.section("wallpaper", &tr("Desktop"));
     for (icon, title, subtitle, id) in [
@@ -662,7 +662,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &opacity,
         "fullscreen",
         &tr("Keep fullscreen windows opaque"),
-        hyprconfig::OPAQUE_FULLSCREEN,
+        &hyprconfig::OPAQUE_FULLSCREEN,
     );
     page.tip(
         &opaque.button,
@@ -728,7 +728,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &dimming,
         "fullscreen",
         &tr("Keep fullscreen windows undimmed"),
-        hyprconfig::UNDIMMED_FULLSCREEN,
+        &hyprconfig::UNDIMMED_FULLSCREEN,
     );
     page.tip(&undimmed.button, &tr("Maximized windows too"));
     let dim_strength = hyprrows::spin(

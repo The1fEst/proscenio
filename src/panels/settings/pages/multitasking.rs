@@ -10,7 +10,7 @@ use crate::platform::hyprconfig;
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::selection::Selection;
 
-const OPTIONS: [&str; 38] = [
+pub const OPTIONS: [&str; 38] = [
     "general:layout",
     "general:gaps_in",
     "general:gaps_out",
@@ -131,7 +131,7 @@ fn spin(
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
-    let options = HyprOptions::new(&OPTIONS);
+    let options = HyprOptions::new(hyprconfig::Area::Multitasking, &OPTIONS);
 
     let tiling = page.section("grid_view", &tr("Tiling"));
     let layout_group = page.subsection(&tiling, &tr("Layout"), "");
@@ -189,7 +189,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &spacing,
         "crop_free",
         &tr("Smart gaps"),
-        hyprconfig::SMART_GAPS,
+        &hyprconfig::SMART_GAPS,
     );
     page.tip(
         &smart.button,

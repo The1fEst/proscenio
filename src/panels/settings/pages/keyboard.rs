@@ -9,6 +9,7 @@ use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::panels::settings::hyprrows;
 use crate::panels::settings::pages::shortcuts;
+use crate::platform::hyprconfig::Area;
 use crate::platform::keybinds::Shortcut;
 use crate::platform::xkbregistry::{self, Catalogue, OptionGroup};
 use crate::services::hyproptions::HyprOptions;
@@ -19,7 +20,7 @@ use crate::ui::widgets::row::Row;
 use crate::ui::widgets::text;
 use crate::ui::widgets::textfield::TextField;
 
-const OPTIONS: [&str; 5] = [
+pub const OPTIONS: [&str; 5] = [
     "input:kb_layout",
     "input:kb_variant",
     "input:kb_options",
@@ -507,7 +508,7 @@ fn chooser_list(page: &Page, keyboard: &Rc<Keyboard>, choosing: Rc<dyn Fn(bool)>
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
-    let options = HyprOptions::new(&OPTIONS);
+    let options = HyprOptions::new(Area::Keyboard, &OPTIONS);
 
     let sources_section = page.section("keyboard", &tr("Input Sources"));
     let listed = page.subsection(

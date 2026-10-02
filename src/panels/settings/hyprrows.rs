@@ -34,7 +34,7 @@ pub fn lines_switch(
     parent: &impl Parent,
     icon: &str,
     label: &str,
-    lines: &'static [&'static str],
+    lines: &'static hyprconfig::Lines,
 ) -> Rc<ConfigSwitch> {
     let switch = page.switch(parent, icon, label, move |on| {
         if hyprconfig::lines_present(lines) == on {

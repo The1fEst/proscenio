@@ -105,6 +105,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     );
     let watch = theme::watch(&theme, &provider, app);
 
+    let _ = settings::pages::split_legacy_settings();
     let services = Rc::new(Services::new(&config));
     let launcher = launcher::Launcher::new(&services.cliphist, &services.todo, &services.net);
     let osd = osd::Osd::new(app, &services, &theme);

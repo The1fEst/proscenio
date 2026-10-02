@@ -5,11 +5,10 @@ use std::sync::Mutex;
 
 use gtk4::glib;
 
-use crate::platform::hyprconfig::settings_path;
+use crate::platform::hyprconfig::{self, Area};
 
 const SCHEMA: &str = "org.gnome.desktop.interface";
 const SETTINGS: &str = "[Settings]";
-const HYPR_HEADER: &str = "-- Written by the settings app. Hyprland sources it after its own configuration and\n-- before the files in custom/, so anything set here can still be overridden there.\n";
 
 pub const ROLES: [(&str, &str, &str); 6] = [
     ("general", "[General]", "font"),
@@ -298,12 +297,8 @@ pub fn with_start_exec(text: &str, prefix: &str, command: &str) -> String {
 }
 
 fn edit_hypr_settings(edit: impl FnOnce(&str) -> String) {
-    let path = settings_path();
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|_| HYPR_HEADER.to_owned());
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let _ = std::fs::write(path, edit(&text));
+    let text = edit(&hyprconfig::read(Area::Appearance));
+    let _ = hyprconfig::write(Area::Appearance, &text);
 }
 
 fn set_lua_env(name: &str, value: &str) {
@@ -778,8 +773,8 @@ mod tests {
             "hl.env( \"XCURSOR_SIZE\" ,\n \"32\" )\nx\n"
         );
         assert_eq!(
-            with_lua_env(HYPR_HEADER, "QT_ICON_THEME", "Papirus"),
-            format!("{HYPR_HEADER}hl.env(\"QT_ICON_THEME\", \"Papirus\")\n")
+            with_lua_env("-- mine\n", "QT_ICON_THEME", "Papirus"),
+            "-- mine\nhl.env(\"QT_ICON_THEME\", \"Papirus\")\n"
         );
         assert_eq!(
             with_lua_env(

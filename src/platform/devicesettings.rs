@@ -1,4 +1,4 @@
-use crate::platform::hyprconfig::{render, settings_path};
+use crate::platform::hyprconfig::{self, Area, render};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Setting {
@@ -72,16 +72,13 @@ pub fn with_changes(text: &str, changes: &[Change]) -> String {
     format!("{}\n", lines.join("\n").trim_end_matches('\n'))
 }
 
-fn contents() -> String {
-    std::fs::read_to_string(settings_path()).unwrap_or_default()
-}
-
 pub fn read() -> Vec<Setting> {
-    parse(&contents())
+    parse(&hyprconfig::read(Area::Devices))
 }
 
 pub fn apply(changes: &[Change]) -> std::io::Result<()> {
-    std::fs::write(settings_path(), with_changes(&contents(), changes))
+    let text = with_changes(&hyprconfig::read(Area::Devices), changes);
+    hyprconfig::write(Area::Devices, &text)
 }
 
 #[cfg(test)]

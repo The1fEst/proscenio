@@ -1,4 +1,4 @@
-use crate::platform::hyprconfig::{render, settings_path};
+use crate::platform::hyprconfig::{self, Area, render};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rule {
@@ -82,20 +82,18 @@ pub fn without_rule(text: &str, class: &str, rule: &str) -> String {
     joined(&kept(text, class, rule))
 }
 
-fn contents() -> String {
-    std::fs::read_to_string(settings_path()).unwrap_or_default()
-}
-
 pub fn read() -> Vec<Rule> {
-    parse(&contents())
+    parse(&hyprconfig::read(Area::Apps))
 }
 
 pub fn add(class: &str, rule: &str, value: &str) -> std::io::Result<()> {
-    std::fs::write(settings_path(), with_rule(&contents(), class, rule, value))
+    let text = with_rule(&hyprconfig::read(Area::Apps), class, rule, value);
+    hyprconfig::write(Area::Apps, &text)
 }
 
 pub fn remove(class: &str, rule: &str) -> std::io::Result<()> {
-    std::fs::write(settings_path(), without_rule(&contents(), class, rule))
+    let text = without_rule(&hyprconfig::read(Area::Apps), class, rule);
+    hyprconfig::write(Area::Apps, &text)
 }
 
 #[cfg(test)]

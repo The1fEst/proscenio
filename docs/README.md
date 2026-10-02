@@ -23,9 +23,10 @@ It works only on Hyprland, because it depends on Hyprland in these places:
   keybinds, `hyprland-focus-grab-v1` for closing panels on an outside click,
   `hyprland-toplevel-export-v1` for window previews in the dock and the
   overview, `hyprland-lock-notify-v1` for the session's lock state;
-- Hyprland's config: the settings window writes options, monitor rules and
-  window rules to `~/.config/hypr/settings.lua` in Hyprland's Lua syntax and
-  idle timeouts to `hypridle.conf`, and reads live values with `getoption`.
+- Hyprland's config: the settings window writes options, monitor rules,
+  window rules and shortcuts to one file per area in `~/.config/hypr/settings/`
+  in Hyprland's Lua syntax and idle timeouts to `hypridle.conf`, and reads live
+  values with `getoption`.
 
 *Proscenio* is Italian for the proscenium, the front of the stage before the
 curtain.

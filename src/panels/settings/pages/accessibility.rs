@@ -6,11 +6,12 @@ use crate::panels::bellflash;
 use crate::panels::settings::content::{Choice, Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
 use crate::platform::colorfilter;
+use crate::platform::hyprconfig::Area;
 use crate::services::appearance::DesktopAppearance;
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::spinbox::SpinBox;
 
-const OPTIONS: [&str; 9] = [
+pub const OPTIONS: [&str; 9] = [
     "animations:enabled",
     "misc:animate_manual_resizes",
     "misc:animate_mouse_windowdragging",
@@ -53,7 +54,7 @@ fn spin(
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
-    let options = HyprOptions::new(&OPTIONS);
+    let options = HyprOptions::new(Area::Accessibility, &OPTIONS);
     let appearance = DesktopAppearance::new();
 
     let seeing = page.section("visibility", &tr("Seeing"));

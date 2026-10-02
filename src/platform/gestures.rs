@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::platform::hyprconfig::settings_path;
+use crate::platform::hyprconfig::{self, Area};
 
 pub const UNSET: &str = "unset";
 
@@ -248,12 +248,12 @@ pub fn added(settings: &str, defaults: &str, gesture: &Gesture) -> String {
 pub fn read() -> (String, String) {
     (
         std::fs::read_to_string(defaults_path()).unwrap_or_default(),
-        std::fs::read_to_string(settings_path()).unwrap_or_default(),
+        hyprconfig::read(Area::Mouse),
     )
 }
 
 pub fn write(settings: &str) -> std::io::Result<()> {
-    std::fs::write(settings_path(), settings)
+    hyprconfig::write(Area::Mouse, settings)
 }
 
 #[cfg(test)]

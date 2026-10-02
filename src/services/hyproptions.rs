@@ -10,6 +10,7 @@ const WRITE_DELAY: Duration = Duration::from_millis(50);
 const EMPTY: &str = "[[EMPTY]]";
 
 pub struct HyprOptions {
+    area: hyprconfig::Area,
     names: Vec<&'static str>,
     options: RefCell<Map<String, Value>>,
     pending: RefCell<Vec<(String, String)>>,
@@ -18,8 +19,9 @@ pub struct HyprOptions {
 }
 
 impl HyprOptions {
-    pub fn new(names: &[&'static str]) -> Rc<Self> {
+    pub fn new(area: hyprconfig::Area, names: &[&'static str]) -> Rc<Self> {
         let options = Rc::new(HyprOptions {
+            area,
             names: names.to_vec(),
             options: RefCell::new(Map::new()),
             pending: RefCell::new(Vec::new()),
@@ -107,7 +109,7 @@ impl HyprOptions {
         if pairs.is_empty() {
             return false;
         }
-        let _ = hyprconfig::write_options(&pairs);
+        let _ = hyprconfig::write_options(self.area, &pairs);
         hypr::request("reload");
         true
     }

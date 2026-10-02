@@ -4,9 +4,67 @@ use std::path::PathBuf;
 use crate::platform::hypr;
 
 const KINDS: [&str; 6] = ["int", "float", "bool", "str", "css", "vec2"];
+const LEGACY_HEADER: [&str; 2] = [
+    "-- Written by the settings app.",
+    "-- before the files in custom/,",
+];
 
-pub fn settings_path() -> PathBuf {
-    gtk4::glib::user_config_dir().join("hypr/settings.lua")
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Area {
+    Appearance,
+    Displays,
+    Multitasking,
+    Keyboard,
+    Accessibility,
+    Mouse,
+    Devices,
+    Apps,
+    Binds,
+    Other,
+}
+
+impl Area {
+    pub fn name(self) -> &'static str {
+        match self {
+            Area::Appearance => "appearance",
+            Area::Displays => "displays",
+            Area::Multitasking => "multitasking",
+            Area::Keyboard => "keyboard",
+            Area::Accessibility => "accessibility",
+            Area::Mouse => "mouse",
+            Area::Devices => "devices",
+            Area::Apps => "apps",
+            Area::Binds => "binds",
+            Area::Other => "other",
+        }
+    }
+}
+
+pub struct Lines {
+    pub area: Area,
+    pub lines: &'static [&'static str],
+}
+
+fn config_dir() -> PathBuf {
+    gtk4::glib::user_config_dir().join("hypr")
+}
+
+pub fn path(area: Area) -> PathBuf {
+    config_dir()
+        .join("settings")
+        .join(format!("{}.lua", area.name()))
+}
+
+pub fn read(area: Area) -> String {
+    std::fs::read_to_string(path(area)).unwrap_or_default()
+}
+
+pub fn write(area: Area, text: &str) -> std::io::Result<()> {
+    let path = path(area);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, text)
 }
 
 pub fn read_options(names: &[&str]) -> Map<String, Value> {
@@ -22,17 +80,12 @@ pub fn read_options(names: &[&str]) -> Map<String, Value> {
     state
 }
 
-pub fn write_options(pairs: &[(String, String)]) -> std::io::Result<()> {
-    let path = settings_path();
-    let mut text = match std::fs::read_to_string(&path) {
-        Ok(text) => text,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(error) => return Err(error),
-    };
+pub fn write_options(area: Area, pairs: &[(String, String)]) -> std::io::Result<()> {
+    let mut text = read(area);
     for (option, value) in pairs {
         text = set_option(&text, option, value);
     }
-    std::fs::write(path, text)
+    write(area, &text)
 }
 
 pub fn render(value: &str) -> String {
@@ -80,20 +133,29 @@ pub fn set_option(text: &str, option: &str, value: &str) -> String {
     )
 }
 
-pub const SMART_GAPS: &[&str] = &[
-    "hl.workspace_rule({ workspace = \"w[tv1]\", gaps_out = 0, gaps_in = 0 })",
-    "hl.workspace_rule({ workspace = \"f[1]\", gaps_out = 0, gaps_in = 0 })",
-    "hl.window_rule({ name = \"no-gaps-wtv1\", match = { float = false, workspace = \"w[tv1]\" }, border_size = 0, rounding = 0 })",
-    "hl.window_rule({ name = \"no-gaps-f1\", match = { float = false, workspace = \"f[1]\" }, border_size = 0, rounding = 0 })",
-];
+pub const SMART_GAPS: Lines = Lines {
+    area: Area::Multitasking,
+    lines: &[
+        "hl.workspace_rule({ workspace = \"w[tv1]\", gaps_out = 0, gaps_in = 0 })",
+        "hl.workspace_rule({ workspace = \"f[1]\", gaps_out = 0, gaps_in = 0 })",
+        "hl.window_rule({ name = \"no-gaps-wtv1\", match = { float = false, workspace = \"w[tv1]\" }, border_size = 0, rounding = 0 })",
+        "hl.window_rule({ name = \"no-gaps-f1\", match = { float = false, workspace = \"f[1]\" }, border_size = 0, rounding = 0 })",
+    ],
+};
 
-pub const UNDIMMED_FULLSCREEN: &[&str] = &[
-    "hl.window_rule({ name = \"no-dim-fullscreen\", match = { fullscreen = true }, no_dim = true })",
-];
+pub const UNDIMMED_FULLSCREEN: Lines = Lines {
+    area: Area::Appearance,
+    lines: &[
+        "hl.window_rule({ name = \"no-dim-fullscreen\", match = { fullscreen = true }, no_dim = true })",
+    ],
+};
 
-pub const OPAQUE_FULLSCREEN: &[&str] = &[
-    "hl.window_rule({ name = \"opaque-fullscreen\", match = { fullscreen = true }, opacity = \"1 override 1 override\" })",
-];
+pub const OPAQUE_FULLSCREEN: Lines = Lines {
+    area: Area::Appearance,
+    lines: &[
+        "hl.window_rule({ name = \"opaque-fullscreen\", match = { fullscreen = true }, opacity = \"1 override 1 override\" })",
+    ],
+};
 
 fn has_lines(text: &str, lines: &[&str]) -> bool {
     lines
@@ -117,17 +179,110 @@ fn with_lines(text: &str, lines: &[&str], on: bool) -> String {
     joined
 }
 
-pub fn lines_present(lines: &[&str]) -> bool {
-    has_lines(
-        &std::fs::read_to_string(settings_path()).unwrap_or_default(),
-        lines,
-    )
+pub fn lines_present(set: &Lines) -> bool {
+    has_lines(&read(set.area), set.lines)
 }
 
-pub fn set_lines(lines: &[&str], on: bool) -> std::io::Result<()> {
-    let path = settings_path();
-    let text = std::fs::read_to_string(&path).unwrap_or_default();
-    std::fs::write(path, with_lines(&text, lines, on))
+pub fn set_lines(set: &Lines, on: bool) -> std::io::Result<()> {
+    write(set.area, &with_lines(&read(set.area), set.lines, on))
+}
+
+fn statements(text: &str) -> Vec<String> {
+    let mut statements: Vec<String> = Vec::new();
+    for line in text.lines() {
+        let continues = line.starts_with(char::is_whitespace)
+            || line.starts_with('}')
+            || line.starts_with(')')
+            || line.starts_with("end");
+        match statements.last_mut() {
+            Some(last) if continues => {
+                last.push('\n');
+                last.push_str(line);
+            }
+            _ if line.trim().is_empty() => {}
+            _ => statements.push(line.to_owned()),
+        }
+    }
+    statements
+}
+
+fn option_of(statement: &str) -> Option<String> {
+    let mut rest = statement.strip_prefix("hl.config({")?;
+    let mut keys = Vec::new();
+    loop {
+        rest = rest.trim_start();
+        let end = rest.find(|char: char| !(char.is_alphanumeric() || char == '_'))?;
+        keys.push(&rest[..end]);
+        rest = rest[end..].trim_start().strip_prefix('=')?.trim_start();
+        match rest.strip_prefix('{') {
+            Some(inner) => rest = inner,
+            None => return Some(keys.join(":")),
+        }
+    }
+}
+
+fn area_of(statement: &str, option_area: &impl Fn(&str) -> Option<Area>) -> Option<Area> {
+    let first = statement.lines().next().unwrap_or("").trim();
+    if LEGACY_HEADER.iter().any(|header| first.starts_with(header)) {
+        return None;
+    }
+    let among = |set: &Lines| set.lines.contains(&first);
+    Some(if let Some(option) = option_of(first) {
+        option_area(&option).unwrap_or(Area::Other)
+    } else if first.starts_with("hl.monitor(")
+        || first.starts_with("hl.env(\"WAYLANDDRV_PRIMARY_MONITOR\"")
+    {
+        Area::Displays
+    } else if first.starts_with("hl.env(") || first.starts_with("hl.on(\"hyprland.start\"") {
+        Area::Appearance
+    } else if among(&SMART_GAPS) {
+        Area::Multitasking
+    } else if among(&UNDIMMED_FULLSCREEN) || among(&OPAQUE_FULLSCREEN) {
+        Area::Appearance
+    } else if first.starts_with("hl.window_rule(") {
+        Area::Apps
+    } else if first.starts_with("hl.device(") {
+        Area::Devices
+    } else if first.starts_with("hl.gesture(") {
+        Area::Mouse
+    } else if first.starts_with("shortcut(") {
+        Area::Binds
+    } else {
+        Area::Other
+    })
+}
+
+fn split(text: &str, option_area: &impl Fn(&str) -> Option<Area>) -> Vec<(Area, String)> {
+    let mut parts: Vec<(Area, String)> = Vec::new();
+    for statement in statements(text) {
+        let Some(area) = area_of(&statement, option_area) else {
+            continue;
+        };
+        match parts.iter_mut().find(|(known, _)| *known == area) {
+            Some((_, part)) => {
+                part.push_str(&statement);
+                part.push('\n');
+            }
+            None => parts.push((area, format!("{statement}\n"))),
+        }
+    }
+    parts
+}
+
+pub fn split_legacy(option_area: impl Fn(&str) -> Option<Area>) -> std::io::Result<()> {
+    let legacy = config_dir().join("settings.lua");
+    let Ok(text) = std::fs::read_to_string(&legacy) else {
+        return Ok(());
+    };
+    for (area, part) in split(&text, &option_area) {
+        let mut combined = read(area);
+        if !combined.is_empty() && !combined.ends_with('\n') {
+            combined.push('\n');
+        }
+        combined.push_str(&part);
+        write(area, &combined)?;
+    }
+    std::fs::rename(&legacy, config_dir().join("settings.lua.bak"))
 }
 
 #[cfg(test)]
@@ -137,15 +292,13 @@ mod tests {
     #[test]
     fn smart_gaps_are_four_lines_added_and_removed_together() {
         let text = "-- mine\nhl.config({ general = { gaps_in = 4 } })\n";
-        let on = with_lines(text, &SMART_GAPS, true);
-        assert!(has_lines(&on, &SMART_GAPS));
+        let lines = SMART_GAPS.lines;
+        let on = with_lines(text, lines, true);
+        assert!(has_lines(&on, lines));
         assert!(on.starts_with(text));
-        assert_eq!(with_lines(&on, &SMART_GAPS, true), on);
-        assert_eq!(with_lines(&on, &SMART_GAPS, false), text);
-        assert!(!has_lines(
-            &format!("{text}{}\n", SMART_GAPS[0]),
-            &SMART_GAPS
-        ));
+        assert_eq!(with_lines(&on, lines, true), on);
+        assert_eq!(with_lines(&on, lines, false), text);
+        assert!(!has_lines(&format!("{text}{}\n", lines[0]), lines));
     }
 
     #[test]
@@ -163,5 +316,78 @@ mod tests {
             set_option("", "general:layout", "master"),
             "\nhl.config({ general = { layout = \"master\" } })\n"
         );
+    }
+
+    #[test]
+    fn the_single_settings_file_splits_into_its_areas() {
+        let legacy = concat!(
+            "-- Written by the settings app. Hyprland sources it after its own configuration and\n",
+            "-- before the files in custom/, so anything set here can still be overridden there.\n",
+            "hl.env(\"XCURSOR_SIZE\", \"36\")\n",
+            "\n",
+            "hl.on(\"hyprland.start\", function()\n",
+            "\thl.exec_cmd(\"hyprctl setcursor Bibata 36\")\n",
+            "end)\n",
+            "\n",
+            "hl.monitor({\n",
+            "\toutput = \"DP-1\",\n",
+            "\treserved_area = { top = 0, right = 0 },\n",
+            "})\n",
+            "hl.env(\"WAYLANDDRV_PRIMARY_MONITOR\", \"DP-1\")\n",
+            "hl.config({ general = { gaps_in = 2 } })\n",
+            "hl.config({ decoration = { shadow = { range = 10 } } })\n",
+            "hl.config({ misc = { mystery = 1 } })\n",
+            "hl.window_rule({ name = \"no-dim-fullscreen\", match = { fullscreen = true }, no_dim = true })\n",
+            "hl.window_rule({ match = { class = \"^(code)$\" }, workspace = \"special:magic\" })\n",
+            "hl.device({ name = \"mouse\", sensitivity = 0.5 })\n",
+            "hl.gesture({\n",
+            "\tfingers = 3,\n",
+            "\tdirection = \"swipe\",\n",
+            "})\n",
+            "shortcut(\"Window: Close\", \"SUPER + X\", false)\n",
+        );
+        let option_area = |option: &str| match option {
+            "general:gaps_in" => Some(Area::Multitasking),
+            "decoration:shadow:range" => Some(Area::Appearance),
+            _ => None,
+        };
+        let parts = split(legacy, &option_area);
+        let part = |area| {
+            parts
+                .iter()
+                .find(|(known, _)| *known == area)
+                .map(|(_, text)| text.as_str())
+                .unwrap_or("")
+        };
+        assert_eq!(
+            part(Area::Appearance),
+            "hl.env(\"XCURSOR_SIZE\", \"36\")\nhl.on(\"hyprland.start\", function()\n\thl.exec_cmd(\"hyprctl setcursor Bibata 36\")\nend)\nhl.config({ decoration = { shadow = { range = 10 } } })\nhl.window_rule({ name = \"no-dim-fullscreen\", match = { fullscreen = true }, no_dim = true })\n"
+        );
+        assert_eq!(
+            part(Area::Displays),
+            "hl.monitor({\n\toutput = \"DP-1\",\n\treserved_area = { top = 0, right = 0 },\n})\nhl.env(\"WAYLANDDRV_PRIMARY_MONITOR\", \"DP-1\")\n"
+        );
+        assert_eq!(
+            part(Area::Multitasking),
+            "hl.config({ general = { gaps_in = 2 } })\n"
+        );
+        assert_eq!(part(Area::Other), "hl.config({ misc = { mystery = 1 } })\n");
+        assert_eq!(
+            part(Area::Apps),
+            "hl.window_rule({ match = { class = \"^(code)$\" }, workspace = \"special:magic\" })\n"
+        );
+        assert_eq!(
+            part(Area::Devices),
+            "hl.device({ name = \"mouse\", sensitivity = 0.5 })\n"
+        );
+        assert_eq!(
+            part(Area::Mouse),
+            "hl.gesture({\n\tfingers = 3,\n\tdirection = \"swipe\",\n})\n"
+        );
+        assert_eq!(
+            part(Area::Binds),
+            "shortcut(\"Window: Close\", \"SUPER + X\", false)\n"
+        );
+        assert_eq!(parts.len(), 8);
     }
 }

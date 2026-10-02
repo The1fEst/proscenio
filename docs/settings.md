@@ -762,7 +762,7 @@ with them, never through a shell. The page rereads the files afterwards, and
 - "Night light": the automatic schedule switch, a uniform row of the From and
   To times (dead while the schedule is off), and the color temperature.
 - Every change is written to the display's `hl.monitor` block in
-  `~/.config/hypr/settings.lua`, starting from what is running, and Hyprland
+  `~/.config/hypr/settings/displays.lua`, starting from what is running, and Hyprland
   reloads. The block writer (`src/platform/monitorrules.rs`) and the option
   writer (`src/platform/hyprconfig.rs`) are Rust ports of the shell's
   `hypr-monitor.py` and `hypr-config.py` and write the same file byte for
@@ -846,13 +846,27 @@ blur is off.
 
 ## 25. Multitasking
 
+- What the settings app writes for Hyprland lives in `~/.config/hypr/settings/`,
+  one file per area (`src/platform/hyprconfig.rs`, `Area`): `appearance.lua`,
+  `displays.lua`, `multitasking.lua`, `keyboard.lua`, `accessibility.lua`,
+  `mouse.lua` (options of those pages; also cursor and icon `hl.env` lines and
+  the fullscreen rules in `appearance.lua`, monitor blocks and the primary
+  monitor in `displays.lua`, Smart gaps in `multitasking.lua`, gestures in
+  `mouse.lua`), `devices.lua`, `apps.lua` (window rules), `binds.lua`
+  (shortcuts) and `other.lua`. The dots' `hyprland.lua` requires every
+  `.lua` file there in name order, after the keybinds and before the other
+  `custom` files. At start, before any writer runs, proscenio splits a
+  `~/.config/hypr/settings.lua` from before this layout into those files,
+  statement by statement (an option goes to the page whose list holds it,
+  anything unrecognized to `other.lua`), appends each part to its file and
+  renames the old file to `settings.lua.bak`.
 - Hyprland options are read from the running compositor (`getoption`) and
-  written one line each into `settings.lua`, then Hyprland reloads
+  written one line each into the page's file, then Hyprland reloads
   (`src/services/hyproptions.rs`, `src/panels/settings/hyprrows.rs` for the
   `HyprlandSwitch` and the option spin boxes).
 - "Tiling": the layout (Dwindle, Master, Scrolling or Monocle); "Spacing"
   (inner and outer gaps, border width, and "Smart gaps" with a tooltip, on
-  while `settings.lua` holds the four lines of Hyprland's example: workspace
+  while `multitasking.lua` holds the four lines of Hyprland's example: workspace
   rules for `w[tv1]` and `f[1]` with no inner or outer gaps, and the window
   rules `no-gaps-wtv1` and `no-gaps-f1` taking border and rounding off tiled
   windows there; the switch adds or removes the four together and reloads,
@@ -890,7 +904,7 @@ blur is off.
   They come from `src/platform/appearance.rs`, the port of
   `appearance.py`, through `src/services/appearance.rs`: every toolkit keeps
   its own copy (gsettings, `gtk-3.0` and `gtk-4.0` `settings.ini`,
-  `kdeglobals`, `~/.icons/default`, and `hl.env` lines in `settings.lua`), and
+  `kdeglobals`, `~/.icons/default`, and `hl.env` lines in `appearance.lua`), and
   each writer edits one key and leaves the rest of the file alone. The files
   match the script's output byte for byte. Reads and writes run off
   the main thread, one write at a time, and each write rereads everything.
@@ -918,7 +932,7 @@ blur is off.
   off, and the dimming around the special workspace in percent; allow tearing
   (with a tooltip).
 - The two fullscreen switches each own one `hl.window_rule` line in
-  `settings.lua` matching `fullscreen = true`, which Hyprland also sets for
+  `appearance.lua` matching `fullscreen = true`, which Hyprland also sets for
   maximized windows: `no-dim-fullscreen` with `no_dim = true`, and
   `opaque-fullscreen` with `opacity = "1 override 1 override"`. A true
   fullscreen window takes `decoration:fullscreen_opacity` whether focused or
@@ -1037,7 +1051,7 @@ blur is off.
 - "File types" (`description`): a link row, "Every file type", to the File
   types subpage (§30.1).
 - "Window rules": the rules the settings app owns, one `hl.window_rule` line
-  each in `settings.lua` (`src/platform/windowrules.rs`, the port of
+  each in `apps.lua` (`src/platform/windowrules.rs`, the port of
   `hypr-rules.py`, byte for byte), as 48 px `colLayer2` cards of the class,
   what the rule does in `colSubtext` at 12 px and a 32 px round remove button
   with a tooltip, or "No rules yet". "Add a rule" (with a tooltip): the window
@@ -1084,7 +1098,7 @@ default.
   `enabled = false` in its `hl.device` line), acceleration and natural
   scrolling, each showing the general value until the mouse has its own, and
   "Follow the general settings", dead until it has one. Per-device settings are one
-  `hl.device` line each in `settings.lua` (`src/platform/devicesettings.rs`,
+  `hl.device` line each in `devices.lua` (`src/platform/devicesettings.rs`,
   the port of `hypr-device.py`, byte for byte, through
   `src/services/deviceoptions.rs`), batched for 50 ms into one write, then
   Hyprland reloads.
@@ -1100,15 +1114,15 @@ default.
   a round remove button (`src/panels/settings/gestures.rs`). Hyprland has no
   request that lists gestures, so `src/platform/gestures.rs` reads the
   `hl.gesture` calls of `~/.config/hypr/hyprland/general.lua` as the defaults,
-  then applies `settings.lua` in order: an `action = "unset"` line takes the
+  then applies `mouse.lua` in order: an `action = "unset"` line takes the
   default with the same fingers, direction and modifiers away, any other line
   adds a gesture. The `custom` files are not read. Removing a gesture from
-  `settings.lua` deletes its line; removing a default appends an unset line.
+  `mouse.lua` deletes its line; removing a default appends an unset line.
 - "Add a gesture": combos for 3–5 fingers, the direction (swipe any way, left
   or right, up or down, each of the four, pinch, pinch in, pinch out) and the
   action (switch workspace, move, resize, close, toggle floating, toggle
   fullscreen, toggle the special workspace, scroll the layout), and "Add
-  gesture", which appends a one-line `hl.gesture` to `settings.lua`, or
+  gesture", which appends a one-line `hl.gesture` to `mouse.lua`, or
   removes the unset line when it brings back a default. A gesture that one in
   effect would shadow, by Hyprland's own rule (same fingers and modifiers, and
   the same direction, its axis, or a swipe over a horizontal or vertical one),
@@ -1156,7 +1170,7 @@ default.
   it. A combination another shortcut uses shows "Used by “%1”, which loses
   it". "Clear" empties the slot, "Set" applies the combination, and taking
   the action's other slot's combination empties that slot.
-- Changes go into `~/.config/hypr/settings.lua` as one
+- Changes go into `~/.config/hypr/settings/binds.lua` as one
   `shortcut("<description>", "<primary>" or false, "<secondary>" or false)`
   line per changed shortcut, including each one that lost a combination to
   it, and Hyprland reloads. The dots' `hyprland/lib/binds.lua` defines

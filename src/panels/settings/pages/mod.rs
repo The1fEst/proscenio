@@ -42,6 +42,7 @@ use std::rc::Rc;
 
 use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::{Context, Page};
+use crate::platform::hyprconfig::{self, Area};
 use crate::ui::widgets::text;
 
 pub struct Entry {
@@ -452,6 +453,23 @@ pub const SUBPAGES: [Subpage; 20] = [
         parent: "appearance",
     },
 ];
+
+pub fn split_legacy_settings() -> std::io::Result<()> {
+    let owners: [(Area, &[&str]); 6] = [
+        (Area::Appearance, &appearance::OPTIONS),
+        (Area::Displays, &displays::OPTIONS),
+        (Area::Multitasking, &multitasking::OPTIONS),
+        (Area::Keyboard, &keyboard::OPTIONS),
+        (Area::Accessibility, &accessibility::OPTIONS),
+        (Area::Mouse, &mouse::OPTIONS),
+    ];
+    hyprconfig::split_legacy(|option| {
+        owners
+            .iter()
+            .find(|(_, names)| names.iter().any(|name| name.replace('-', "_") == option))
+            .map(|(area, _)| *area)
+    })
+}
 
 pub fn subpage(id: &str) -> Option<&'static Subpage> {
     SUBPAGES.iter().find(|subpage| subpage.id == id)

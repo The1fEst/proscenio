@@ -7,13 +7,14 @@ use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page, slider_row};
 use crate::panels::settings::gestures;
 use crate::panels::settings::hyprrows::{self, Spin};
+use crate::platform::hyprconfig::Area;
 use crate::services::deviceoptions::DeviceOptions;
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::slider::Slider;
 use crate::ui::widgets::text;
 
-const OPTIONS: [&str; 18] = [
+pub const OPTIONS: [&str; 18] = [
     "input:left_handed",
     "input:sensitivity",
     "input:accel_profile",
@@ -91,7 +92,7 @@ fn device_number(devices: &DeviceOptions, device: &str, key: &str, fallback: f64
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
-    let options = HyprOptions::new(&OPTIONS);
+    let options = HyprOptions::new(Area::Mouse, &OPTIONS);
     let devices = DeviceOptions::new();
 
     let general = page.section("mouse", &tr("General"));
