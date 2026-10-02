@@ -24,6 +24,8 @@ const NAME_SPACING: i32 = 5;
 const FORM_SPACING: i32 = 8;
 const AUTHENTICATION_FAILURE: &str = "Authentication failure";
 
+mod others;
+
 struct Form {
     root: gtk4::Box,
     opener: gtk4::Widget,
@@ -69,6 +71,34 @@ pub fn build(context: &Context) -> Rc<Page> {
     names.append(&Centred::filling_width(&role));
     header.append(&names);
     account.append(&header);
+    let pictures = gtk4::Box::new(gtk4::Orientation::Horizontal, FORM_SPACING);
+    pictures.set_halign(gtk4::Align::Center);
+    let picture_problem = text::styled("");
+    text::set_color(&picture_problem, "m3error");
+    picture_problem.set_wrap(true);
+    picture_problem.set_visible(false);
+    let (choose, _) = page.icon_button("add_photo_alternate", true, &tr("Choose picture…"), {
+        let (user, shown) = (user.clone(), shown.clone());
+        let problem = picture_problem.downgrade();
+        move || choose_picture(&user, &shown, problem.clone())
+    });
+    pictures.append(&choose);
+    let missing = tools::missing(&[&tools::KDIALOG]);
+    if !missing.is_empty() {
+        choose.set_sensitive(false);
+        page.tip(
+            &choose,
+            &tools::missing_message(&missing, &tr("there is no file picker")),
+        );
+    }
+    let (remove_picture, _) = page.icon_button("hide_image", false, &tr("Remove picture"), {
+        let (user, shown) = (user.clone(), shown.clone());
+        let problem = picture_problem.downgrade();
+        move || change_picture(&user, &shown, Ok(String::new()), problem.clone())
+    });
+    pictures.append(&remove_picture);
+    account.append(&pictures);
+    account.append(&picture_problem);
 
     let real_name = page.subsection(&account, &tr("Name"), "");
     let real_name = page.text_field(
@@ -193,7 +223,61 @@ pub fn build(context: &Context) -> Rc<Page> {
     shown.replace(Some(show.clone()));
     show_avatar(&avatar, "");
     accounts::read(move |account| show(account));
+    if tools::system_service(ACCOUNTS) {
+        others::build(&page, context);
+    }
     page
+}
+
+fn change_picture(
+    user: &Rc<RefCell<User>>,
+    shown: &Show,
+    file: Result<String, String>,
+    problem: glib::WeakRef<gtk4::Label>,
+) {
+    let path = user.borrow().path.clone();
+    let shown = shown.clone();
+    glib::spawn_future_local(async move {
+        let result = match file {
+            Ok(file) => accounts::set_icon(&path, &file).await,
+            Err(message) => Err(message),
+        };
+        if let Some(problem) = problem.upgrade() {
+            let message = result.err().unwrap_or_default();
+            problem.set_visible(!message.is_empty());
+            problem.set_text(&message);
+        }
+        accounts::read(move |account| {
+            let show = shown.borrow().clone();
+            if let Some(show) = show {
+                show(account);
+            }
+        });
+    });
+}
+
+fn choose_picture(user: &Rc<RefCell<User>>, shown: &Show, problem: glib::WeakRef<gtk4::Label>) {
+    let (user, shown) = (user.clone(), shown.clone());
+    glib::spawn_future_local(async move {
+        let pictures =
+            glib::user_special_dir(glib::UserDirectory::Pictures).unwrap_or_else(glib::home_dir);
+        let picker = crate::core::process::command(&[
+            "kdialog",
+            "--getopenfilename",
+            &pictures.to_string_lossy(),
+            &format!("*.png *.jpg *.jpeg *.webp|{}", tr("Pictures")),
+            "--title",
+            &tr("Choose picture"),
+        ]);
+        let file = crate::core::process::capture_text(picker)
+            .await
+            .map(|file| file.trim().to_owned())
+            .filter(|file| !file.is_empty());
+        if let Some(file) = file {
+            let face = accounts::face_from(&file).await;
+            change_picture(&user, &shown, face, problem);
+        }
+    });
 }
 
 fn write(user: &Rc<RefCell<User>>, shown: &Show, property: &str, value: &str) {

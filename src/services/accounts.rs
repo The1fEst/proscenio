@@ -1,8 +1,11 @@
 use gtk4::gio;
-use gtk4::glib::{self, Variant};
+use gtk4::glib::{self, Variant, VariantTy, variant::ObjectPath};
 use gtk4::prelude::*;
 
 use crate::core::i18n::tr;
+use crate::platform::crypt;
+use crate::platform::dbus::WAIT_FOR_PASSWORD;
+use crate::services::wifi::remote_message;
 
 const BUS: &str = "org.freedesktop.Accounts";
 const PATH: &str = "/org/freedesktop/Accounts";
@@ -10,16 +13,21 @@ const USER: &str = "org.freedesktop.Accounts.User";
 const PROPERTIES: &str = "org.freedesktop.DBus.Properties";
 const TIMEOUT: i32 = 2000;
 const ADMINISTRATOR: i32 = 1;
+const ASK_AT_LOGIN: i32 = 1;
+const USER_NAME_LENGTH: usize = 32;
+const FACE: i32 = 256;
 const PASSWORD_FAILED: &str = "Could not change the password";
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct User {
     pub path: String,
+    pub uid: u64,
     pub user_name: String,
     pub real_name: String,
     pub email: String,
     pub icon_file: String,
     pub administrator: bool,
+    pub password_set: bool,
 }
 
 impl User {
@@ -123,6 +131,178 @@ async fn fetch() -> Option<User> {
         .await
         .ok()?;
     let path = found.child_value(0).str()?.to_owned();
+    user_at(&system, path).await
+}
+
+pub async fn others() -> Vec<User> {
+    let Ok(system) = gio::bus_get_future(gio::BusType::System).await else {
+        return Vec::new();
+    };
+    let Ok(listed) = system
+        .call_future(
+            Some(BUS),
+            PATH,
+            BUS,
+            "ListCachedUsers",
+            None,
+            VariantTy::new("(ao)").ok(),
+            gio::DBusCallFlags::NONE,
+            TIMEOUT,
+        )
+        .await
+    else {
+        return Vec::new();
+    };
+    let own = glib::user_name().to_string_lossy().into_owned();
+    let paths: Vec<ObjectPath> = listed.child_value(0).get().unwrap_or_default();
+    let mut users = Vec::new();
+    for path in paths {
+        if let Some(user) = user_at(&system, path.as_str().to_owned()).await
+            && user.user_name != own
+        {
+            users.push(user);
+        }
+    }
+    users.sort_by_key(|user| user.display_name().to_lowercase());
+    users
+}
+
+async fn call(
+    path: &str,
+    interface: &str,
+    method: &str,
+    arguments: Variant,
+) -> Result<Variant, String> {
+    gio::bus_get_future(gio::BusType::System)
+        .await
+        .map_err(|error| error.message().to_owned())?
+        .call_future(
+            Some(BUS),
+            path,
+            interface,
+            method,
+            Some(&arguments),
+            None,
+            gio::DBusCallFlags::ALLOW_INTERACTIVE_AUTHORIZATION,
+            WAIT_FOR_PASSWORD,
+        )
+        .await
+        .map_err(|error| remote_message(&error))
+}
+
+pub async fn create(
+    user_name: &str,
+    real_name: &str,
+    administrator: bool,
+) -> Result<String, String> {
+    let kind = if administrator { ADMINISTRATOR } else { 0 };
+    let reply = call(
+        PATH,
+        BUS,
+        "CreateUser",
+        (user_name, real_name, kind).to_variant(),
+    )
+    .await?;
+    reply
+        .child_value(0)
+        .get::<ObjectPath>()
+        .map(|path| path.as_str().to_owned())
+        .ok_or_else(|| tr("AccountsService did not name the new account"))
+}
+
+pub async fn delete(uid: u64, remove_files: bool) -> Result<(), String> {
+    call(
+        PATH,
+        BUS,
+        "DeleteUser",
+        (uid as i64, remove_files).to_variant(),
+    )
+    .await?;
+    Ok(())
+}
+
+pub async fn set_administrator(path: &str, administrator: bool) -> Result<(), String> {
+    let kind = if administrator { ADMINISTRATOR } else { 0 };
+    call(path, USER, "SetAccountType", (kind,).to_variant()).await?;
+    Ok(())
+}
+
+pub async fn set_icon(path: &str, file: &str) -> Result<(), String> {
+    call(path, USER, "SetIconFile", (file,).to_variant()).await?;
+    Ok(())
+}
+
+pub async fn face_from(file: &str) -> Result<String, String> {
+    let file = file.to_owned();
+    let target = glib::user_runtime_dir().join("proscenio").join("face.png");
+    gio::spawn_blocking(move || {
+        let unreadable = || tr("The picture could not be read");
+        let (_, width, height) =
+            gtk4::gdk_pixbuf::Pixbuf::file_info(&file).ok_or_else(unreadable)?;
+        let shorter = width.min(height).max(1);
+        let scale =
+            |side: i32| (side as i64 * FACE as i64 / shorter as i64).max(FACE as i64) as i32;
+        let scaled =
+            gtk4::gdk_pixbuf::Pixbuf::from_file_at_scale(&file, scale(width), scale(height), false)
+                .map_err(|_| unreadable())?;
+        let square = scaled.new_subpixbuf(
+            (scaled.width() - FACE) / 2,
+            (scaled.height() - FACE) / 2,
+            FACE,
+            FACE,
+        );
+        if let Some(parent) = target.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        square
+            .savev(&target, "png", &[])
+            .map_err(|error| error.message().to_owned())?;
+        Ok(target.to_string_lossy().into_owned())
+    })
+    .await
+    .unwrap_or_else(|_| Err(tr("The picture could not be read")))
+}
+
+pub async fn set_password(path: &str, password: &str) -> Result<(), String> {
+    let hashed = crypt::hash(password).ok_or_else(|| tr(PASSWORD_FAILED))?;
+    call(path, USER, "SetPassword", (hashed, "").to_variant()).await?;
+    Ok(())
+}
+
+pub async fn ask_password_at_login(path: &str) -> Result<(), String> {
+    call(path, USER, "SetPasswordMode", (ASK_AT_LOGIN,).to_variant()).await?;
+    Ok(())
+}
+
+pub fn valid_user_name(name: &str) -> bool {
+    let mut characters = name.chars();
+    characters
+        .next()
+        .is_some_and(|first| first.is_ascii_lowercase() || first == '_')
+        && characters.all(|character| {
+            character.is_ascii_lowercase()
+                || character.is_ascii_digit()
+                || matches!(character, '_' | '-')
+        })
+        && name.len() <= USER_NAME_LENGTH
+}
+
+pub fn user_name_from(real_name: &str) -> String {
+    let name: String = real_name
+        .split_whitespace()
+        .next()
+        .unwrap_or_default()
+        .to_lowercase()
+        .chars()
+        .filter(|character| character.is_ascii_lowercase() || character.is_ascii_digit())
+        .collect();
+    name.trim_start_matches(|character: char| character.is_ascii_digit())
+        .chars()
+        .take(USER_NAME_LENGTH)
+        .collect()
+}
+
+async fn user_at(system: &gio::DBusConnection, path: String) -> Option<User> {
     let reply = system
         .call_future(
             Some(BUS),
@@ -154,17 +334,40 @@ async fn fetch() -> Option<User> {
         .unwrap_or(0);
     Some(User {
         path,
+        uid: properties
+            .lookup_value("Uid", None)
+            .and_then(|value| value.get::<u64>())
+            .unwrap_or_default(),
         user_name: string("UserName"),
         real_name: string("RealName"),
         email: string("Email"),
         icon_file,
         administrator: account_type == ADMINISTRATOR,
+        password_set: properties
+            .lookup_value("PasswordMode", None)
+            .and_then(|value| value.get::<i32>())
+            .unwrap_or(0)
+            != ASK_AT_LOGIN,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_names_are_lower_case_and_start_from_the_first_name() {
+        assert_eq!(user_name_from("Анна Ivanova"), "");
+        assert_eq!(user_name_from("Jo Doe"), "jo");
+        assert_eq!(user_name_from("42 Agent"), "");
+        assert_eq!(user_name_from("R2D2"), "r2d2");
+        assert!(valid_user_name("jo"));
+        assert!(valid_user_name("_build-1"));
+        assert!(!valid_user_name("Jo"));
+        assert!(!valid_user_name("1jo"));
+        assert!(!valid_user_name(""));
+        assert!(!valid_user_name(&"a".repeat(33)));
+    }
 
     #[test]
     fn password_outcome_keeps_passwds_last_complaint() {

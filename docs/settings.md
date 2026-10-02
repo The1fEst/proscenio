@@ -296,7 +296,13 @@ One "Account" section. A header 10 px from above and below, centered: an
 80 px `colLayer2` circle holding the AccountsService icon, cropped to its
 centered square, or a 40 px `person` in `colSubtext`; 20 px to its right the
 display name at 22 px over "user · Administrator" or "user · Standard" in
-`colSubtext`. Then outlined fields for the real name (its label is the
+`colSubtext`. Under it, centered and 8 px apart, "Choose picture…" (dead
+without `kdialog`, with a tooltip) asks `kdialog` for a PNG, JPEG or WebP
+picture, which is decoded at the size it needs, cropped to its centered
+square at 256 px and saved as `$XDG_RUNTIME_DIR/proscenio/face.png` before
+`SetIconFile` copies it (AccountsService refuses files over 1 MB); "Remove
+picture" sets an empty icon. A refusal shows in `m3error` under them. Then
+outlined fields for the real name (its label is the
 username) and the email address, written through AccountsService's `SetRealName`
 and `SetEmail` when editing finishes, after which the header rereads the
 account. "Change password…" swaps itself for a form, 8 px apart: current, new
@@ -305,6 +311,34 @@ and repeated password, an `m3error` line ("The new passwords do not match",
 `passwd`'s last complaint), and Cancel and "Change password" on the right,
 the latter live only when all three are filled and match. It feeds `passwd`
 the three answers under the C locale; success closes and clears the form.
+
+While AccountsService runs, two more sections follow
+(`src/panels/settings/pages/users/others.rs`):
+
+- **Other users** (`group`): the accounts `ListCachedUsers` gives apart from
+  the current one, by name, or "Nobody else has an account here". Each is a
+  56 px card: `person`, the name over the username (and "password asked at
+  first login" while its `PasswordMode` is 1), an "Administrator" switch
+  (`SetAccountType`), and round `password` and `person_remove` buttons with
+  tooltips. The first opens "Password for NAME": new and repeated password,
+  the mismatch in `m3error`, Cancel and "Set password", live once both match;
+  the password is hashed with libxcrypt's default method (`crypt_gensalt`,
+  `crypt`) and passed to `SetPassword`. The second opens "Delete NAME?" with
+  Cancel on the left and "Keep files" and "Delete files" on the right
+  (`DeleteUser`). Under the list a line reports the last outcome, in
+  `colError` for a failure.
+- **Add a user** (`person_add`): full name, user name (filled from the first
+  word of the full name, lower case, until it is typed into; up to 32
+  lower-case letters, digits, - and _, starting with a letter), "Account
+  type" (Standard or Administrator), and a "Password" subsection (with a
+  tooltip) of a password and its repeat. "Add user" calls `CreateUser`, then
+  `SetPassword`, or with both fields empty `SetPasswordMode(1)` so the
+  password is chosen at the first login; it reads "Adding…" meanwhile and
+  clears the form on success. What blocks it shows in `m3error` under it.
+
+Every call lets polkit ask for a password and waits for it without a time
+limit. Dialogs here and in the connection editor keep 10 px below their
+buttons.
 
 ## 12. About (subpage)
 
