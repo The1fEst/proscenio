@@ -32,8 +32,13 @@ Inside, 8 px from every edge, a column with 5 px spacing:
   the content pane, `m3surfaceContainerLow` with radius
   `windowRounding − 8` (10).
 
-Escape closes the window. Ctrl+Page Down and Ctrl+Page Up step through the
-pages and stop at the ends; Ctrl+Tab and Ctrl+Shift+Tab wrap around.
+Escape closes an open dialog, otherwise the window. Ctrl+Page Down and
+Ctrl+Page Up step through the pages and stop at the ends; Ctrl+Tab and
+Ctrl+Shift+Tab wrap around.
+
+Typing a printable character other than a space, without Ctrl, Alt or Super,
+while no text field has focus and no dialog is open, expands the rail and
+sends the key to its search field, cursor at the end.
 
 ## 2. The navigation rail
 

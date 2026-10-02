@@ -295,7 +295,7 @@ impl Settings {
         keys.connect_key_pressed({
             let settings = Rc::downgrade(self);
             let view = Rc::downgrade(&view);
-            move |_, key, _, modifiers| {
+            move |keys, key, _, modifiers| {
                 let (Some(settings), Some(view)) = (settings.upgrade(), view.upgrade()) else {
                     return glib::Propagation::Proceed;
                 };
@@ -305,6 +305,12 @@ impl Settings {
                         Some(dialog) => dialog.dismiss(),
                         None => settings.close(),
                     }
+                    return glib::Propagation::Stop;
+                }
+                if starts_search(keys, key, modifiers)
+                    && view.context.dialog.borrow().is_none()
+                    && view.rail.type_into_search(keys)
+                {
                     return glib::Propagation::Stop;
                 }
                 if modifiers != gdk::ModifierType::CONTROL_MASK {
@@ -464,6 +470,33 @@ fn focus_once_mapped() {
         }
         glib::ControlFlow::Continue
     });
+}
+
+fn starts_search(
+    keys: &gtk4::EventControllerKey,
+    key: gdk::Key,
+    modifiers: gdk::ModifierType,
+) -> bool {
+    let commands = gdk::ModifierType::CONTROL_MASK
+        | gdk::ModifierType::ALT_MASK
+        | gdk::ModifierType::SUPER_MASK
+        | gdk::ModifierType::META_MASK;
+    if modifiers.intersects(commands) {
+        return false;
+    }
+    let printable = key
+        .to_unicode()
+        .is_some_and(|c| !c.is_control() && !c.is_whitespace());
+    if !printable {
+        return false;
+    }
+    let focus = keys
+        .widget()
+        .and_then(|window| window.root())
+        .and_then(|root| root.focus());
+    !focus.is_some_and(|focus| {
+        focus.is::<gtk4::Text>() || focus.is::<gtk4::TextView>() || focus.is::<gtk4::Editable>()
+    })
 }
 
 impl View {

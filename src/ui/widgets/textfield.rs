@@ -396,6 +396,19 @@ impl TextField {
         self.editor.widget().grab_focus();
     }
 
+    pub fn type_from(&self, keys: &gtk4::EventControllerKey) -> bool {
+        let editor = self.editor.widget();
+        editor.grab_focus();
+        match &self.editor {
+            Editor::Wrapping(view) => {
+                let buffer = view.buffer();
+                buffer.place_cursor(&buffer.end_iter());
+            }
+            Editor::Secret(line) => line.set_position(-1),
+        }
+        keys.forward(&editor)
+    }
+
     pub fn set_placeholder(&self, placeholder: &str) {
         self.label.set_text(placeholder);
         self.root.queue_draw();

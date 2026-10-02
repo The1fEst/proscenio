@@ -332,6 +332,11 @@ impl Rail {
         self.reveal_current();
     }
 
+    pub fn type_into_search(self: &Rc<Self>, keys: &gtk4::EventControllerKey) -> bool {
+        self.set_expanded(true);
+        self.search.type_from(keys)
+    }
+
     pub fn follow_window_width(self: &Rc<Self>, width: i32) {
         if self.chosen.get() {
             return;
