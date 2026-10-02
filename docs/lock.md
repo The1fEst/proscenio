@@ -100,10 +100,15 @@ which has no call to drop it, and every later lock fails until proscenio
 restarts. Only two lockers racing cause it; the dots' `hypridle.conf` starts
 hyprlock only while no shell runs.
 
-The keyring is unlocked in Rust the way `scripts/keyring/unlock.sh` does it:
-kill the running `gnome-keyring-daemon`, then start `--daemonize --login` with
-the password on its standard input. proscenio discards what the daemon
-prints; the script exports it only into its own short-lived bash.
+The keyring is unlocked over D-Bus in the running `gnome-keyring-daemon`,
+never by starting another one: when the `login` collection is locked,
+proscenio opens a `plain` Secret Service session and calls
+`org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface.UnlockWithMasterPassword`
+with the typed password. When there is no `login` collection, it creates one
+with `CreateWithMasterPassword` (label `login`, so the path is
+`/org/freedesktop/secrets/collection/login`), renames it to "Login" and makes
+it the `default` alias if none is set. A keyring prompt an app opened while
+the screen was locked stays open after the unlock.
 
 The password field takes its keys through GTK's own input method, never an
 input method server.

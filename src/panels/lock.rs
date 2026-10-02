@@ -26,6 +26,11 @@ use crate::ui::widgets::text::{self, Shift};
 use crate::ui::widgets::toolbar;
 
 const PAM_SERVICE: &str = "login";
+const SECRETS: &str = "org.freedesktop.secrets";
+const SECRETS_PATH: &str = "/org/freedesktop/secrets";
+const SECRET_SERVICE: &str = "org.freedesktop.Secret.Service";
+const KEYRING_INTERNAL: &str = "org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface";
+const LOGIN_KEYRING: &str = "/org/freedesktop/secrets/collection/login";
 const ISLAND_GAP: i32 = 10;
 const BOTTOM: i32 = 20;
 const BUTTON: i32 = 40;
@@ -1164,38 +1169,108 @@ fn start_ticking(surface: &Rc<Surface>) {
 
 fn unlock_keyring(password: String) {
     let mut secret = password.into_bytes();
-    let locked = std::process::Command::new("busctl")
-        .args([
-            "--user",
-            "get-property",
-            "org.freedesktop.secrets",
-            "/org/freedesktop/secrets/collection/login",
-            "org.freedesktop.Secret.Collection",
-            "Locked",
-        ])
-        .output()
-        .map(|output| String::from_utf8_lossy(&output.stdout).trim() != "b false")
-        .unwrap_or(true);
-    if locked {
-        let user = glib::user_name().to_string_lossy().into_owned();
-        let _ = std::process::Command::new("pkill")
-            .args(["-x", "-u", &user, "gnome-keyring-daemon"])
-            .status();
-        if let Ok(mut daemon) = std::process::Command::new("gnome-keyring-daemon")
-            .args(["--daemonize", "--login"])
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
-        {
-            if let Some(mut input) = daemon.stdin.take() {
-                use std::io::Write;
-                let _ = input.write_all(&secret);
-            }
-            let _ = daemon.wait();
-        }
+    if let Ok(bus) = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE) {
+        unlock_login_keyring(&bus, &secret);
     }
     for byte in secret.iter_mut() {
         unsafe { std::ptr::write_volatile(byte, 0) };
     }
+}
+
+fn unlock_login_keyring(bus: &gio::DBusConnection, secret: &[u8]) -> Option<()> {
+    let call = |path: &str, interface: &str, method: &str, arguments: glib::Variant| {
+        bus.call_sync(
+            Some(SECRETS),
+            path,
+            interface,
+            method,
+            Some(&arguments),
+            None,
+            gio::DBusCallFlags::NONE,
+            -1,
+            gio::Cancellable::NONE,
+        )
+        .ok()
+    };
+    let locked = call(
+        LOGIN_KEYRING,
+        "org.freedesktop.DBus.Properties",
+        "Get",
+        ("org.freedesktop.Secret.Collection", "Locked").to_variant(),
+    )
+    .and_then(|reply| reply.child_value(0).as_variant())
+    .and_then(|value| value.get::<bool>());
+    if locked == Some(false) {
+        return Some(());
+    }
+    let session = call(
+        SECRETS_PATH,
+        SECRET_SERVICE,
+        "OpenSession",
+        ("plain", "".to_variant()).to_variant(),
+    )?
+    .child_value(1);
+    let master = glib::Variant::tuple_from_iter([
+        session.clone(),
+        glib::Variant::array_from_fixed_array::<u8>(&[]),
+        glib::Variant::array_from_fixed_array(secret),
+        "text/plain".to_variant(),
+    ]);
+    if locked.is_some() {
+        let login = glib::variant::ObjectPath::try_from(LOGIN_KEYRING.to_owned()).ok()?;
+        call(
+            SECRETS_PATH,
+            KEYRING_INTERNAL,
+            "UnlockWithMasterPassword",
+            glib::Variant::tuple_from_iter([login.to_variant(), master]),
+        );
+    } else {
+        let properties: std::collections::HashMap<&str, glib::Variant> = [(
+            "org.freedesktop.Secret.Collection.Label",
+            "login".to_variant(),
+        )]
+        .into();
+        let created = call(
+            SECRETS_PATH,
+            KEYRING_INTERNAL,
+            "CreateWithMasterPassword",
+            glib::Variant::tuple_from_iter([properties.to_variant(), master]),
+        )
+        .map(|reply| reply.child_value(0));
+        call(
+            LOGIN_KEYRING,
+            "org.freedesktop.DBus.Properties",
+            "Set",
+            (
+                "org.freedesktop.Secret.Collection",
+                "Label",
+                "Login".to_variant(),
+            )
+                .to_variant(),
+        );
+        let default = call(
+            SECRETS_PATH,
+            SECRET_SERVICE,
+            "ReadAlias",
+            ("default",).to_variant(),
+        )
+        .and_then(|reply| reply.child_value(0).str().map(str::to_owned));
+        if let Some(created) = created
+            && default.as_deref() == Some("/")
+        {
+            call(
+                SECRETS_PATH,
+                SECRET_SERVICE,
+                "SetAlias",
+                glib::Variant::tuple_from_iter(["default".to_variant(), created]),
+            );
+        }
+    }
+    call(
+        session.str()?,
+        "org.freedesktop.Secret.Session",
+        "Close",
+        ().to_variant(),
+    );
+    Some(())
 }
