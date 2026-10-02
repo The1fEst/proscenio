@@ -113,6 +113,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
         wallpaperselector::WallpaperSelector::new(app, &theme, &services.wallpapers);
     std::mem::forget(polkit::PolkitWindows::new(app, &theme, &services.polkit));
     conflicts::check(app, &theme);
+    std::mem::forget(panels::bellflash::watch(app, &services));
     platform::proxy::apply_at_start();
     platform::autostart::start_once();
     let settings_window = settings::Settings::new(app, &theme, &services);

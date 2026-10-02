@@ -45,6 +45,10 @@ impl HyprOptions {
         self.options.borrow().get(name).cloned()
     }
 
+    pub fn has(&self, name: &str) -> bool {
+        self.options.borrow().contains_key(name)
+    }
+
     pub fn number(&self, name: &str) -> f64 {
         match self.raw(name) {
             Some(Value::String(text)) => leading_number(&text),

@@ -1,5 +1,6 @@
 pub mod background;
 pub mod bar;
+pub mod bellflash;
 pub mod calendar;
 pub mod cheatsheet;
 pub mod conflicts;

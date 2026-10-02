@@ -1149,7 +1149,21 @@ proscenio's own page; the QML shell has none.
 - "Seeing": the cursor size (8 to 128 in steps of 4), set with the cursor
   theme through the appearance port; reduced motion (with a tooltip), which
   is Hyprland's animations turned off; animating manual resizes and dragged
-  windows.
+  windows; and "Color filter" (with a tooltip): None, Grayscale, Inverted
+  colors, Red–green (deuteranopia), Red–green (protanopia) and Blue–yellow
+  (tritanopia), plus "Custom shader" while `decoration:screen_shader` names a
+  file of someone else's. A filter writes its fragment shader to
+  `~/.local/state/proscenio/shaders/NAME.frag` (`src/platform/colorfilter.rs`)
+  and sets `decoration:screen_shader` to it; None clears the option. The three
+  color-blindness filters daltonize: they simulate the missing cone in LMS
+  space and move the color difference it loses into channels that are still
+  seen.
+- "Bell" (`notifications_active`): "Play the bell sound" (`misc:bell_sound`,
+  `default` or `none`), shown only when Hyprland has that option, and "Flash
+  the screen" (`accessibility.flashOnBell`, with a tooltip): on Hyprland's
+  `bell` event the shell covers the focused display with a white layer that
+  takes no input, at 35 % fading out over 300 ms, one flash at a time
+  (`src/panels/bellflash.rs`).
 - "Typing": "Repeat keys" (with a tooltip), the delay and the rate side by
   side.
 - "Zoom": "Magnifier" (with a tooltip), the magnification in percent and
