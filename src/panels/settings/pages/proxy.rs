@@ -2,7 +2,7 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use crate::core::i18n::tr;
@@ -213,7 +213,7 @@ fn fill(page: &Rc<Page>, section: &gtk4::Box, current: Proxy) {
             value: Value::from(index),
         })
         .collect();
-    let selection: Rc<RefCell<Option<Rc<Selection>>>> = Rc::default();
+    let selection: Rc<RefCell<Option<Weak<Selection>>>> = Rc::default();
     let created = Selection::new(&page.theme, choices, {
         let writer = Rc::downgrade(&writer);
         let selection = selection.clone();
@@ -223,7 +223,7 @@ fn fill(page: &Rc<Page>, section: &gtk4::Box, current: Proxy) {
             if let Some(writer) = writer.upgrade() {
                 writer.change(|proxy| proxy.mode = mode);
             }
-            if let Some(selection) = selection.borrow().as_ref() {
+            if let Some(selection) = selection.borrow().as_ref().and_then(Weak::upgrade) {
                 selection.set_current(&value);
             }
             show(mode);
@@ -235,9 +235,8 @@ fn fill(page: &Rc<Page>, section: &gtk4::Box, current: Proxy) {
         .unwrap_or(0);
     created.set_current(&Value::from(index));
     mode_group.append(&created.root);
-    selection.replace(Some(created.clone()));
+    selection.replace(Some(Rc::downgrade(&created)));
     page.keep(created);
-    page.keep(selection);
     page.keep(writer);
 }
 
