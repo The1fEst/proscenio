@@ -1134,8 +1134,36 @@ default.
   with "Default" for none. Every one of these boxes replaces its own entry in
   `input:kb_options` and keeps the rest.
 - "Keyboard Shortcuts": shortcuts following the symbol (with a tooltip), a
-  search field, and Hyprland's described binds grouped by the category before
-  the colon, each a label and its keycaps.
+  search field, and one link row per category of Hyprland's described binds
+  (the text before the colon), Shell, App, Window, Workspace, Media,
+  Utilities, Screen, Input and Session first, the row's detail listing its
+  shortcuts. Each opens the "Keyboard Shortcuts" subpage (`shortcuts`, parent
+  `keyboard`) titled with the category. While the search field holds text,
+  the link rows give way to the matching shortcuts, grouped by category and
+  editable in place.
+- A shortcut is one description: its binds outside submaps, at most two key
+  combinations, primary and secondary in the order Hyprland lists them. Its
+  row holds the label, a reset button shown only while the settings app has
+  changed it, and two key buttons in columns sized together, keycaps or an
+  `add` symbol when empty. Rows are sorted by label, numbers by value. Mouse
+  binds show "LMB", "RMB" or "MMB" and their buttons are disabled; keypad
+  keycodes show "KP 0" to "KP 9", "KP −" and "KP +". With "Highlight changed
+  settings" on, a changed row is highlighted.
+- A key button opens "Press the new shortcut" with the action's label. While
+  it is open the window inhibits the compositor's shortcuts, so Hyprland's
+  binds reach it; held modifiers show as keycaps followed by "…", and the
+  first other key completes the combination from the unshifted key under
+  it. A combination another shortcut uses shows "Used by “%1”, which loses
+  it". "Clear" empties the slot, "Set" applies the combination, and taking
+  the action's other slot's combination empties that slot.
+- Changes go into `~/.config/hypr/settings.lua` as one
+  `shortcut("<description>", "<primary>" or false, "<secondary>" or false)`
+  line per changed shortcut, including each one that lost a combination to
+  it, and Hyprland reloads. The dots' `hyprland/lib/binds.lua` defines
+  `shortcut`: it moves the action's own binds, with the fallback binds that
+  share their combination, to the given combinations, and keeps the binds
+  it takes from another action for that action's own line, so lines apply
+  in any order. Reset removes the line.
 - `src/platform/xkbregistry.rs` reads `evdev.xml` as `xkb-layouts.py` does,
   with a small reader for that file rather than an XML library; its catalog
   matches the script's entry for entry.

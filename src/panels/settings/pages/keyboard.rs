@@ -1,7 +1,6 @@
 use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
-use serde_json::Value;
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
@@ -9,8 +8,8 @@ use std::rc::{Rc, Weak};
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::panels::settings::hyprrows;
-use crate::panels::settings::pages::quick::key;
-use crate::platform::hypr;
+use crate::panels::settings::pages::shortcuts;
+use crate::platform::keybinds::Shortcut;
 use crate::platform::xkbregistry::{self, Catalogue, OptionGroup};
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::theme::pixel_size;
@@ -41,18 +40,7 @@ const CANDIDATE_GAP: i32 = 2;
 const CANDIDATE_SIDE: i32 = 8;
 const CANDIDATE_PADDING: i32 = 8;
 const LABEL_START: i32 = 2;
-const BIND_SIDE: i32 = 8;
-const BIND_SPACING: i32 = 8;
-const MODIFIERS: [(u32, &str); 8] = [
-    (2, "Ctrl"),
-    (6, "Super"),
-    (0, "Shift"),
-    (3, "Alt"),
-    (1, "Caps"),
-    (4, "Mod2"),
-    (5, "Mod3"),
-    (7, "Mod5"),
-];
+const FOUND_SPACING: i32 = 4;
 
 #[derive(Clone, Debug, PartialEq)]
 struct Source {
@@ -65,27 +53,6 @@ struct Candidate {
     code: String,
     variant: String,
     name: String,
-}
-
-struct Bind {
-    description: String,
-    keys: Vec<String>,
-}
-
-impl Bind {
-    fn category(&self) -> &str {
-        self.description
-            .find(':')
-            .map_or("", |end| &self.description[..end])
-    }
-
-    fn label(&self) -> &str {
-        self.description
-            .find(':')
-            .map_or(self.description.as_str(), |end| {
-                self.description[end + 1..].trim()
-            })
-    }
 }
 
 fn split(value: &str) -> Vec<String> {
@@ -129,37 +96,22 @@ fn terms(query: &str) -> Vec<String> {
         .collect()
 }
 
-fn binds() -> Vec<Bind> {
-    hypr::json("binds")
-        .and_then(|binds| binds.as_array().cloned())
-        .unwrap_or_default()
-        .iter()
-        .map(|bind| {
-            let modmask = bind.get("modmask").and_then(Value::as_u64).unwrap_or(0);
-            let mut keys: Vec<String> = MODIFIERS
-                .iter()
-                .filter(|(bit, _)| modmask & (1 << bit) != 0)
-                .map(|(_, name)| (*name).to_owned())
-                .collect();
-            keys.push(
-                bind.get("key")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_owned(),
-            );
-            Bind {
-                description: bind
-                    .get("description")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_owned(),
-                keys,
-            }
-        })
-        .collect()
+fn category_icon(category: &str) -> &'static str {
+    match category {
+        "Shell" => "dashboard",
+        "Utilities" => "construction",
+        "Screen" => "zoom_in",
+        "Media" => "music_note",
+        "Window" => "select_window",
+        "Workspace" => "view_carousel",
+        "Session" => "power_settings_new",
+        "Input" => "keyboard",
+        "App" => "apps",
+        _ => "keyboard_command_key",
+    }
 }
 
-fn round_button(page: &Page, icon: &str, enabled: bool) -> RippleButton {
+pub fn round_button(page: &Page, icon: &str, enabled: bool) -> RippleButton {
     let button = RippleButton::new(&page.theme);
     button.set_radius(ROUND_BUTTON as f64 / 2.0);
     button.set_size_request(ROUND_BUTTON, ROUND_BUTTON);
@@ -722,57 +674,64 @@ pub fn build(context: &Context) -> Rc<Page> {
     let shortcut_search = TextField::new(&page.theme, Style::Outlined, &tr("Search shortcuts"));
     shortcut_search.root.set_hexpand(true);
     shortcuts.append(&shortcut_search.root);
-    let groups = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
-    shortcuts.append(&groups);
-    let all_binds = Rc::new(RefCell::new(binds()));
+    let links = gtk4::Box::new(gtk4::Orientation::Vertical, shortcuts.spacing());
+    shortcuts.append(&links);
+    let found = gtk4::Box::new(gtk4::Orientation::Vertical, FOUND_SPACING);
+    shortcuts.append(&found);
+    let editor = shortcuts::Editor::new(context, &page);
+    let open = Rc::new(context.subpage_opener_with("shortcuts"));
     let show_binds = Rc::new({
         let page = Rc::downgrade(&page);
         let search = Rc::downgrade(&shortcut_search);
-        let all_binds = all_binds.clone();
+        let editor = editor.clone();
         move || {
-            let all_binds = all_binds.borrow();
             let (Some(page), Some(search)) = (page.upgrade(), search.upgrade()) else {
                 return;
             };
-            while let Some(child) = groups.first_child() {
-                groups.remove(&child);
-            }
-            let terms = terms(&search.text());
-            let wanted = |bind: &Bind| {
-                let haystack = format!("{} {}", bind.label(), bind.keys.join(" ")).to_lowercase();
-                terms.iter().all(|term| haystack.contains(term.as_str()))
-            };
-            let mut categories: Vec<&str> = Vec::new();
-            for bind in all_binds.iter() {
-                let category = bind.category();
-                if !category.is_empty() && !categories.contains(&category) {
-                    categories.push(category);
+            for parent in [&links, &found] {
+                while let Some(child) = parent.first_child() {
+                    parent.remove(&child);
                 }
             }
-            for category in categories {
-                let matched: Vec<&Bind> = all_binds
+            let terms = terms(&search.text());
+            links.set_visible(terms.is_empty());
+            found.set_visible(!terms.is_empty());
+            let all = editor.shortcuts();
+            for category in editor.categories() {
+                let members: Vec<&Shortcut> = all
                     .iter()
-                    .filter(|bind| bind.category() == category && wanted(bind))
+                    .filter(|shortcut| shortcut.category() == category)
+                    .collect();
+                if terms.is_empty() {
+                    let labels: Vec<&str> =
+                        members.iter().map(|shortcut| shortcut.label()).collect();
+                    let open = open.clone();
+                    let target = category.clone();
+                    page.link_row(
+                        &links,
+                        category_icon(&category),
+                        &category,
+                        &labels.join(", "),
+                        move || open(&target),
+                    );
+                    continue;
+                }
+                let matched: Vec<&Shortcut> = members
+                    .into_iter()
+                    .filter(|shortcut| {
+                        let keys: Vec<&str> =
+                            shortcut.keys.iter().flatten().map(String::as_str).collect();
+                        let haystack =
+                            format!("{} {}", shortcut.label(), keys.join(" ")).to_lowercase();
+                        terms.iter().all(|term| haystack.contains(term.as_str()))
+                    })
                     .collect();
                 if matched.is_empty() {
                     continue;
                 }
-                let (group, _) = page.unkept_subsection(&groups, category, "");
-                for bind in matched {
-                    let row = Row::new(BIND_SPACING);
-                    row.set_margin_start(BIND_SIDE);
-                    row.set_margin_end(BIND_SIDE);
-                    let label = text::styled(bind.label());
-                    text::set_color(&label, "colOnLayer1");
-                    label.set_xalign(0.0);
-                    label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
-                    let label = Centred::filling_width(&label);
-                    label.set_hexpand(true);
-                    row.append(&label);
-                    for name in &bind.keys {
-                        row.append(&key(name));
-                    }
-                    group.append(&row);
+                let (group, _) = page.unkept_subsection(&found, &category, "");
+                for shortcut in matched {
+                    group.append(&editor.row(shortcut));
                 }
             }
         }
@@ -785,13 +744,15 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.keep(shortcut_search);
     page.keep(context.services.events.subscribe({
         let show_binds = show_binds.clone();
+        let editor = editor.clone();
         move |event, _| {
             if event == "configreloaded" {
-                all_binds.replace(binds());
+                editor.reload();
                 show_binds();
             }
         }
     }));
+    page.keep(editor);
 
     let follow = {
         let keyboard = Rc::downgrade(&keyboard);

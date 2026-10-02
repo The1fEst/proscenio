@@ -135,9 +135,11 @@ pub const HIGHLIGHT_CHANGED: &str = "/settings/highlightChanged";
 const CHANGED_CLASS: &str = "settings-changed";
 
 fn mark(widget: &gtk4::Widget, pointer: &str, default: &Value) {
-    let shown =
-        config::value_bool(HIGHLIGHT_CHANGED, false) && differs(config::value(pointer), default);
-    if shown {
+    show_changed(widget, differs(config::value(pointer), default));
+}
+
+pub fn show_changed(widget: &impl IsA<gtk4::Widget>, changed: bool) {
+    if changed && config::value_bool(HIGHLIGHT_CHANGED, false) {
         widget.add_css_class(CHANGED_CLASS);
     } else {
         widget.remove_css_class(CHANGED_CLASS);

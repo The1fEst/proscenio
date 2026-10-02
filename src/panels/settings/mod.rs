@@ -307,10 +307,10 @@ impl Settings {
                     }
                     return glib::Propagation::Stop;
                 }
-                if starts_search(keys, key, modifiers)
-                    && view.context.dialog.borrow().is_none()
-                    && view.rail.type_into_search(keys)
-                {
+                if view.context.dialog.borrow().is_some() {
+                    return glib::Propagation::Proceed;
+                }
+                if starts_search(keys, key, modifiers) && view.rail.type_into_search(keys) {
                     return glib::Propagation::Stop;
                 }
                 if modifiers != gdk::ModifierType::CONTROL_MASK {

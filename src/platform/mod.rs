@@ -20,6 +20,7 @@ pub mod hyprconfig;
 pub mod hypridle;
 pub mod inputdevices;
 pub mod ipc;
+pub mod keybinds;
 pub mod locale;
 pub mod locknotify;
 pub mod monitorrules;

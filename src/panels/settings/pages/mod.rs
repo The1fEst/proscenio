@@ -31,6 +31,7 @@ pub mod region;
 pub mod savednetworks;
 pub mod search;
 pub mod services;
+pub mod shortcuts;
 pub mod sound;
 pub mod system;
 pub mod users;
@@ -349,11 +350,16 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 19] = [
+pub const SUBPAGES: [Subpage; 20] = [
     Subpage {
         id: "filetypes",
         title: "File types",
         parent: "apps",
+    },
+    Subpage {
+        id: "shortcuts",
+        title: "Keyboard Shortcuts",
+        parent: "keyboard",
     },
     Subpage {
         id: "savednetworks",
@@ -487,6 +493,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "users" => users::build(context),
         "autostart" => autostart::build(context),
         "filetypes" => filetypes::build(context),
+        "shortcuts" => shortcuts::build(context),
         "about" => about::build(context),
         "services" => services::build(context),
         "advanced" => advanced::build(context),
