@@ -17,7 +17,6 @@ use crate::ui::widgets::windowdialog::{self, Place, WindowDialog};
 const NAMESPACE: &str = "proscenio:polkit";
 const WIDTH: f64 = 450.0;
 const ICON: f64 = 26.0;
-const BUTTON_ROW_BOTTOM: f64 = 10.0;
 
 struct Surface {
     window: gtk4::ApplicationWindow,
@@ -136,8 +135,7 @@ impl PolkitWindows {
         field.set_enabled(false);
         dialog.column.add(&field.root, Place::wide());
 
-        let (row, mut place) = windowdialog::button_row();
-        place.bottom = BUTTON_ROW_BOTTOM;
+        let (row, place) = windowdialog::button_row();
         let cancel = windowdialog::button(&self.theme, &tr("Cancel"));
         let ok = windowdialog::button(&self.theme, &tr("OK"));
         ok.set_sensitive(false);

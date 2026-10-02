@@ -24,7 +24,6 @@ const CARD_END: i32 = 8;
 const CARD_SPACING: i32 = 10;
 const BUTTON_TOP: i32 = 4;
 const DIALOG_WIDTH: f64 = 420.0;
-const BUTTON_ROW_BOTTOM: f64 = 10.0;
 
 type Present = Rc<dyn Fn(Rc<WindowDialog>)>;
 
@@ -187,8 +186,7 @@ impl Others {
         mismatch.set_xalign(0.0);
         mismatch.set_visible(false);
         dialog.column.add(&mismatch, Place::wide());
-        let (buttons, mut place) = windowdialog::button_row();
-        place.bottom = BUTTON_ROW_BOTTOM;
+        let (buttons, place) = windowdialog::button_row();
         buttons.append(&windowdialog::spacer());
         let cancel = windowdialog::button(theme, &tr("Cancel"));
         cancel.connect_clicked({
@@ -271,8 +269,7 @@ impl Others {
         description.set_wrap(true);
         description.set_xalign(0.0);
         dialog.column.add(&description, Place::wide());
-        let (buttons, mut place) = windowdialog::button_row();
-        place.bottom = BUTTON_ROW_BOTTOM;
+        let (buttons, place) = windowdialog::button_row();
         let cancel = windowdialog::button(theme, &tr("Cancel"));
         cancel.connect_clicked({
             let dialog = Rc::downgrade(&dialog);

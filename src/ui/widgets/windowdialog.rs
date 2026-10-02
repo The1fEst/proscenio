@@ -98,6 +98,10 @@ mod imp {
             (0, size, -1, -1)
         }
 
+        fn request_mode(&self) -> gtk4::SizeRequestMode {
+            gtk4::SizeRequestMode::HeightForWidth
+        }
+
         fn size_allocate(&self, width: i32, height: i32, _baseline: i32) {
             crate::ui::widgets::row::present_popovers(&*self.obj());
             let visible = self.visible();
@@ -232,6 +236,7 @@ mod imp {
             let Some(content) = self.content.borrow().clone() else {
                 return;
             };
+            self.follow_content();
             let (x, y, _, background) = self.geometry(width, height);
             let inner = (background - PADDING * 2.0).max(0.0);
             content.allocate(
@@ -301,6 +306,24 @@ mod imp {
                     .unwrap_or(0.0)
                     + PADDING * 2.0
             })
+        }
+
+        fn follow_content(&self) {
+            if !self.shown.get() {
+                return;
+            }
+            let target = self.target();
+            let now = self.now();
+            let mut height = self.height.get();
+            if (height.target() - target).abs() < 0.5 {
+                return;
+            }
+            if height.running(now) {
+                height.retarget(target, now);
+            } else {
+                height.jump(target);
+            }
+            self.height.set(height);
         }
 
         pub fn geometry(&self, width: i32, height: i32) -> (f64, f64, f64, f64) {

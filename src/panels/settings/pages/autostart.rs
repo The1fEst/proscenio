@@ -29,7 +29,6 @@ const REMOVE_ICON: f64 = 20.0;
 const BUTTON_TOP: i32 = 4;
 const BUTTON_SPACING: i32 = 5;
 const DIALOG_WIDTH: f64 = 420.0;
-const BUTTON_ROW_BOTTOM: f64 = 10.0;
 
 type Present = Rc<dyn Fn(Rc<WindowDialog>)>;
 
@@ -176,8 +175,7 @@ impl Autostart {
         dialog.column.add(&name.root, Place::wide());
         let command = TextField::new(theme, Style::Outlined, &tr("Command"));
         dialog.column.add(&command.root, Place::wide());
-        let (buttons, mut place) = windowdialog::button_row();
-        place.bottom = BUTTON_ROW_BOTTOM;
+        let (buttons, place) = windowdialog::button_row();
         buttons.append(&windowdialog::spacer());
         let cancel = windowdialog::button(theme, &tr("Cancel"));
         cancel.connect_clicked({

@@ -22,7 +22,6 @@ const SAFE_RENDERER: &str = "cairo";
 const SECONDS: u32 = 15;
 const WIDTH: f64 = 400.0;
 const ICON: f64 = 26.0;
-const BUTTON_ROW_BOTTOM: f64 = 10.0;
 
 pub fn start_if_on_trial() {
     if config::renderer_fallback().is_none() {
@@ -72,8 +71,7 @@ fn ask(app: &gtk4::Application, shell: &'static str, trying: &str, fallback: &st
     description.set_xalign(0.5);
     description.set_justify(gtk4::Justification::Center);
     dialog.column.add(&description, Place::wide());
-    let (row, mut place) = windowdialog::button_row();
-    place.bottom = BUTTON_ROW_BOTTOM;
+    let (row, place) = windowdialog::button_row();
     let revert = windowdialog::button(&theme, &tr("Revert"));
     let keep = windowdialog::button(&theme, &tr("Keep"));
     row.append(&windowdialog::spacer());

@@ -17,7 +17,6 @@ use crate::ui::widgets::windowdialog::{self, Place, WindowDialog};
 const NAMESPACE: &str = "proscenio:conflicts";
 const WIDTH: f64 = 400.0;
 const ICON: f64 = 26.0;
-const BUTTON_ROW_BOTTOM: f64 = 10.0;
 const AUTO_KILL: &str = "/conflictKiller/autoKillNotificationDaemons";
 const NOTIFICATION_DAEMONS: &str = "mako|dunst";
 
@@ -72,8 +71,7 @@ fn ask(app: &gtk4::Application, theme: &SharedTheme, running: Vec<String>) {
     description.set_justify(gtk4::Justification::Center);
     dialog.column.add(&description, Place::wide());
 
-    let (row, mut place) = windowdialog::button_row();
-    place.bottom = BUTTON_ROW_BOTTOM;
+    let (row, place) = windowdialog::button_row();
     let always = windowdialog::button(theme, &tr("Always"));
     let no = windowdialog::button(theme, &tr("No"));
     let yes = windowdialog::button(theme, &tr("Yes"));

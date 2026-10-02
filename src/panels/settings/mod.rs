@@ -43,7 +43,6 @@ const CLOSE_SIZE: i32 = 35;
 const CLOSE_ICON: f64 = 20.0;
 const TOOL_SPACING: i32 = 4;
 const RESET_WIDTH: f64 = 420.0;
-const BUTTON_ROW_BOTTOM: f64 = 10.0;
 const RAIL_MARGIN: i32 = 5;
 const HEADER_MARGIN: i32 = 10;
 const HEADER_SPACING: i32 = 8;
@@ -533,8 +532,7 @@ impl View {
         description.set_wrap(true);
         description.set_xalign(0.0);
         dialog.column.add(&description, Place::wide());
-        let (buttons, mut place) = windowdialog::button_row();
-        place.bottom = BUTTON_ROW_BOTTOM;
+        let (buttons, place) = windowdialog::button_row();
         buttons.append(&windowdialog::spacer());
         let cancel = windowdialog::button(theme, &tr("Cancel"));
         cancel.connect_clicked({

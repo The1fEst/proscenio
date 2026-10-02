@@ -33,7 +33,6 @@ const MTU_MAX: i64 = 9000;
 const PORT_MAX: i64 = 65535;
 const KEEPALIVE_MAX: i64 = 3600;
 const DIALOG_WIDTH: f64 = 400.0;
-const BUTTON_ROW_BOTTOM: f64 = 10.0;
 
 const METERED: [(&str, i32); 3] = [("Automatic", 0), ("Yes", 1), ("No", 2)];
 const SECURITY: [(&str, Security); 3] = [
@@ -1241,8 +1240,7 @@ impl Editor {
         description.set_wrap(true);
         description.set_xalign(0.0);
         dialog.column.add(&description, Place::wide());
-        let (buttons, mut place) = windowdialog::button_row();
-        place.bottom = BUTTON_ROW_BOTTOM;
+        let (buttons, place) = windowdialog::button_row();
         buttons.append(&windowdialog::spacer());
         let cancel = windowdialog::button(&self.theme, &tr("Cancel"));
         cancel.connect_clicked({
