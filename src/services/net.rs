@@ -21,6 +21,7 @@ pub struct Net {
     pub wifi_enabled: Rc<Cell<bool>>,
     pub wireguard: Rc<Cell<bool>>,
     system: Option<gio::DBusConnection>,
+    generation: Rc<Cell<u64>>,
     listeners: Rc<Listeners>,
 }
 
@@ -34,6 +35,7 @@ impl Net {
             wifi_enabled: Rc::new(Cell::new(false)),
             wireguard: Rc::new(Cell::new(false)),
             system,
+            generation: Rc::new(Cell::new(0)),
             listeners: Rc::default(),
         };
         net.refresh();
@@ -65,10 +67,15 @@ impl Net {
         let Some(system) = self.system.clone() else {
             return;
         };
+        let generation = self.generation.get() + 1;
+        self.generation.set(generation);
         let net = self.clone();
         process::read(
             &["sh", "-c", "nmcli -t -f NAME c show --active | head -1"],
             move |output| {
+                if net.generation.get() != generation {
+                    return;
+                }
                 net.connection.replace(output.trim_end().to_owned());
                 net.announce();
             },
@@ -76,6 +83,9 @@ impl Net {
         let net = self.clone();
         let command = "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g";
         process::read(&["sh", "-c", command], move |output| {
+            if net.generation.get() != generation {
+                return;
+            }
             let mut lines: Vec<&str> = output.trim().lines().collect();
             let connectivity = lines.pop().unwrap_or_default();
             let mut status = "disconnected";
@@ -113,33 +123,27 @@ impl Net {
             let enabled = dbus::bool_property(&system, BUS, ROOT, BUS, "WirelessEnabled")
                 .await
                 .unwrap_or(false);
-            net.wifi_enabled.set(enabled);
-            net.wireguard.set(
-                active_names(&system)
-                    .await
-                    .iter()
-                    .any(|name| name == WIREGUARD),
-            );
-
-            if kind == "802-3-ethernet" {
-                net.symbol.replace("lan".to_owned());
-                net.name.replace("Ethernet".to_owned());
+            let wireguard = active_names(&system)
+                .await
+                .iter()
+                .any(|name| name == WIREGUARD);
+            let (symbol, name) = if kind == "802-3-ethernet" {
+                ("lan".to_owned(), "Ethernet".to_owned())
             } else if !enabled {
-                net.symbol.replace("signal_wifi_off".to_owned());
-                net.name.replace("Off".to_owned());
+                ("signal_wifi_off".to_owned(), "Off".to_owned())
             } else {
-                let point = access_point(&system).await;
-                match point {
-                    Some((strength, name)) => {
-                        net.symbol.replace(bars(strength).to_owned());
-                        net.name.replace(name);
-                    }
-                    None => {
-                        net.symbol.replace("wifi_find".to_owned());
-                        net.name.replace("Disconnected".to_owned());
-                    }
+                match access_point(&system).await {
+                    Some((strength, name)) => (bars(strength).to_owned(), name),
+                    None => ("wifi_find".to_owned(), "Disconnected".to_owned()),
                 }
+            };
+            if net.generation.get() != generation {
+                return;
             }
+            net.wifi_enabled.set(enabled);
+            net.wireguard.set(wireguard);
+            net.symbol.replace(symbol);
+            net.name.replace(name);
             net.announce();
         });
     }
