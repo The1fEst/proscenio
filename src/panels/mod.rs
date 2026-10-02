@@ -6,6 +6,7 @@ pub mod cheatsheet;
 pub mod conflicts;
 pub mod corners;
 pub mod dock;
+pub mod keyringprompt;
 pub mod lock;
 pub mod mediacontrols;
 pub mod notifications;

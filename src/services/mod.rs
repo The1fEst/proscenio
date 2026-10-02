@@ -20,6 +20,7 @@ pub mod notifications;
 pub mod polkit;
 pub mod power;
 pub mod privacy;
+pub mod prompter;
 pub mod recording;
 pub mod session;
 pub mod shellusage;
@@ -54,6 +55,7 @@ use crate::services::net::Net;
 use crate::services::notifications::Notifications;
 use crate::services::polkit::Polkit;
 use crate::services::power::Power;
+use crate::services::prompter::Prompter;
 use crate::services::recording::Recording;
 use crate::services::session::Session;
 use crate::services::states::States;
@@ -94,6 +96,7 @@ pub struct Services {
     pub states: States,
     pub wallpapers: std::rc::Rc<Wallpapers>,
     pub polkit: std::rc::Rc<Polkit>,
+    pub prompter: std::rc::Rc<Prompter>,
 }
 
 impl Services {
@@ -103,6 +106,7 @@ impl Services {
         let session_for_mpris = session.clone();
         let events = Events::default();
         let hypr = HyprState::new(&events);
+        let states = States::new();
         let services = Services {
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),
@@ -110,7 +114,8 @@ impl Services {
             fullscreen: Fullscreen::new(&hypr),
             hypr,
             recording: Recording::new(),
-            states: States::new(),
+            prompter: Prompter::new(session.clone(), &states),
+            states,
             wallpapers: Wallpapers::new(),
             events,
             notifications: Notifications::new(config, session.clone()),

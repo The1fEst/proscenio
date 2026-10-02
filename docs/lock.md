@@ -107,8 +107,9 @@ proscenio opens a `plain` Secret Service session and calls
 with the typed password. When there is no `login` collection, it creates one
 with `CreateWithMasterPassword` (label `login`, so the path is
 `/org/freedesktop/secrets/collection/login`), renames it to "Login" and makes
-it the `default` alias if none is set. A keyring prompt an app opened while
-the screen was locked stays open after the unlock.
+it the `default` alias if none is set. Keyring prompts that apps opened while
+the screen was locked are answered with the same password (see
+[keyring-prompt.md](keyring-prompt.md) §4).
 
 The password field takes its keys through GTK's own input method, never an
 input method server.

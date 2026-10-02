@@ -708,6 +708,7 @@ impl Lock {
         }
         if config::value_bool("/lock/security/unlockKeyring", true) {
             let password = self.context.text.borrow().clone();
+            self.services.prompter.unlocked_with(&password);
             gio::spawn_blocking(move || unlock_keyring(password));
         }
         let instance = self.instance.borrow().clone();

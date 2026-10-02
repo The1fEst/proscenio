@@ -69,6 +69,7 @@ repository. Numbers are given as the QML constants they come from.
 | [wallpaper-selector.md](wallpaper-selector.md) | `modules/ii/wallpaperSelector` — the folder browser that picks a wallpaper |
 | [settings.md](settings.md) | `modules/ii/settings` — the settings window, its navigation rail and page switching |
 | [polkit.md](polkit.md) | `modules/ii/polkit` — the authentication agent and its password dialog |
+| [keyring-prompt.md](keyring-prompt.md) | no qs counterpart — the gcr prompter for gnome-keyring and its dialog |
 | [lock.md](lock.md) | `modules/ii/lock` — the session lock, its password field and the desktop behind it |
 | [shortcuts.md](shortcuts.md) | the global shortcut names every panel is reached by |
 | [compat.md](compat.md) | the layer that lets `proscenio` stand in for the QML shell, and how to build without it |

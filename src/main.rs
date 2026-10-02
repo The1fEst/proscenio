@@ -22,8 +22,8 @@ use crate::core::paths;
 use crate::core::scope::Scope;
 use crate::panels::overview::{self, launcher};
 use crate::panels::{
-    bar, calendar, conflicts, lock, mediacontrols, osd, osk, polkit, regionselector, renderercheck,
-    settings, sidebar, wallpaperselector, welcome,
+    bar, calendar, conflicts, keyringprompt, lock, mediacontrols, osd, osk, polkit, regionselector,
+    renderercheck, settings, sidebar, wallpaperselector, welcome,
 };
 use crate::platform::{hypr, ipc, locale, shortcuts};
 use crate::screens::{Screens, Surfaces};
@@ -112,6 +112,11 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     let wallpaper_selector =
         wallpaperselector::WallpaperSelector::new(app, &theme, &services.wallpapers);
     std::mem::forget(polkit::PolkitWindows::new(app, &theme, &services.polkit));
+    std::mem::forget(keyringprompt::KeyringPromptWindows::new(
+        app,
+        &theme,
+        &services.prompter,
+    ));
     conflicts::check(app, &theme);
     std::mem::forget(panels::bellflash::watch(app, &services));
     platform::proxy::apply_at_start();

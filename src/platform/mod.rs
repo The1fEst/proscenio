@@ -30,6 +30,7 @@ pub mod powersettings;
 pub mod privileged;
 pub mod proxy;
 pub mod readable;
+pub mod secretexchange;
 pub mod sessionlock;
 pub mod shortcuts;
 pub mod vulkan;
