@@ -1418,5 +1418,10 @@
   "from %1": "с %1",
   "from anywhere": "откуда угодно",
   "no key is made": "ключ не создаётся",
-  "the firewall cannot be set up": "межсетевой экран нельзя настроить"
+  "the firewall cannot be set up": "межсетевой экран нельзя настроить",
+  "Clear": "Очистить",
+  "Press the new shortcut": "Нажмите новое сочетание клавиш",
+  "Reset to default": "Сбросить по умолчанию",
+  "Used by “%1”, which loses it": "Занято действием «%1», оно его потеряет",
+  "Waiting for keys…": "Ожидание нажатия…"
 }

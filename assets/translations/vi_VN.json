@@ -1418,5 +1418,10 @@
   "from %1": "từ %1",
   "from anywhere": "từ mọi nơi",
   "no key is made": "không tạo được khóa",
-  "the firewall cannot be set up": "không thiết lập được tường lửa"
+  "the firewall cannot be set up": "không thiết lập được tường lửa",
+  "Clear": "Xóa",
+  "Press the new shortcut": "Hãy nhấn phím tắt mới",
+  "Reset to default": "Đặt lại về mặc định",
+  "Used by “%1”, which loses it": "Đang được «%1» dùng, sẽ bị gỡ khỏi đó",
+  "Waiting for keys…": "Đang chờ phím…"
 }

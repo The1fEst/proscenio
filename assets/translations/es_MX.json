@@ -1418,5 +1418,10 @@
   "from %1": "desde %1",
   "from anywhere": "desde cualquier lugar",
   "no key is made": "no se genera ninguna clave",
-  "the firewall cannot be set up": "no se puede configurar el cortafuegos"
+  "the firewall cannot be set up": "no se puede configurar el cortafuegos",
+  "Clear": "Borrar",
+  "Press the new shortcut": "Presiona el nuevo atajo",
+  "Reset to default": "Restablecer el predeterminado",
+  "Used by “%1”, which loses it": "Lo usa “%1”, que se queda sin él",
+  "Waiting for keys…": "Esperando teclas…"
 }

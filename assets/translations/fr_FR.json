@@ -1418,5 +1418,10 @@
   "from %1": "depuis %1",
   "from anywhere": "depuis n'importe où",
   "no key is made": "aucune clé n'est générée",
-  "the firewall cannot be set up": "le pare-feu ne peut pas être configuré"
+  "the firewall cannot be set up": "le pare-feu ne peut pas être configuré",
+  "Clear": "Effacer",
+  "Press the new shortcut": "Appuyez sur le nouveau raccourci",
+  "Reset to default": "Rétablir la valeur par défaut",
+  "Used by “%1”, which loses it": "Utilisé par « %1 », qui le perd",
+  "Waiting for keys…": "En attente des touches…"
 }

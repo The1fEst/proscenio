@@ -1418,5 +1418,10 @@
   "from %1": "de %1",
   "from anywhere": "de qualquer lugar",
   "no key is made": "nenhuma chave é gerada",
-  "the firewall cannot be set up": "o firewall não pode ser configurado"
+  "the firewall cannot be set up": "o firewall não pode ser configurado",
+  "Clear": "Limpar",
+  "Press the new shortcut": "Pressione o novo atalho",
+  "Reset to default": "Restaurar o padrão",
+  "Used by “%1”, which loses it": "Usado por “%1”, que fica sem ele",
+  "Waiting for keys…": "Aguardando teclas…"
 }

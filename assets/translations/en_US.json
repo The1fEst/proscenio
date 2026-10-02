@@ -1418,5 +1418,10 @@
   "from %1": "from %1",
   "from anywhere": "from anywhere",
   "no key is made": "no key is made",
-  "the firewall cannot be set up": "the firewall cannot be set up"
+  "the firewall cannot be set up": "the firewall cannot be set up",
+  "Clear": "Clear",
+  "Press the new shortcut": "Press the new shortcut",
+  "Reset to default": "Reset to default",
+  "Used by “%1”, which loses it": "Used by “%1”, which loses it",
+  "Waiting for keys…": "Waiting for keys…"
 }

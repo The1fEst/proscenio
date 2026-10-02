@@ -1418,5 +1418,10 @@
   "from %1": "%1 から",
   "from anywhere": "任意の送信元から",
   "no key is made": "鍵は生成されません",
-  "the firewall cannot be set up": "ファイアウォールを設定できません"
+  "the firewall cannot be set up": "ファイアウォールを設定できません",
+  "Clear": "クリア",
+  "Press the new shortcut": "新しいショートカットを押してください",
+  "Reset to default": "既定に戻す",
+  "Used by “%1”, which loses it": "「%1」で使用中です。そちらからは外れます",
+  "Waiting for keys…": "キー入力を待っています…"
 }

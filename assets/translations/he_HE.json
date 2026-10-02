@@ -1418,5 +1418,10 @@
   "from %1": "מ־%1",
   "from anywhere": "מכל מקום",
   "no key is made": "לא נוצר מפתח",
-  "the firewall cannot be set up": "אי אפשר להגדיר את חומת האש"
+  "the firewall cannot be set up": "אי אפשר להגדיר את חומת האש",
+  "Clear": "ניקוי",
+  "Press the new shortcut": "הקישו את קיצור המקשים החדש",
+  "Reset to default": "איפוס לברירת המחדל",
+  "Used by “%1”, which loses it": "בשימוש של «%1», שיאבד אותו",
+  "Waiting for keys…": "ממתין למקשים…"
 }

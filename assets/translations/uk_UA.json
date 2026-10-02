@@ -1418,5 +1418,10 @@
   "from %1": "з %1",
   "from anywhere": "звідусіль",
   "no key is made": "ключ не створюється",
-  "the firewall cannot be set up": "брандмауер неможливо налаштувати"
+  "the firewall cannot be set up": "брандмауер неможливо налаштувати",
+  "Clear": "Очистити",
+  "Press the new shortcut": "Натисніть нове сполучення клавіш",
+  "Reset to default": "Скинути до типового",
+  "Used by “%1”, which loses it": "Зайняте дією «%1», вона його втратить",
+  "Waiting for keys…": "Очікування натискання…"
 }

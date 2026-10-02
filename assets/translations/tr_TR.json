@@ -1418,5 +1418,10 @@
   "from %1": "%1 kaynağından",
   "from anywhere": "her yerden",
   "no key is made": "anahtar oluşturulmaz",
-  "the firewall cannot be set up": "güvenlik duvarı ayarlanamaz"
+  "the firewall cannot be set up": "güvenlik duvarı ayarlanamaz",
+  "Clear": "Temizle",
+  "Press the new shortcut": "Yeni kısayola basın",
+  "Reset to default": "Varsayılana sıfırla",
+  "Used by “%1”, which loses it": "«%1» kullanıyor, oradan kaldırılır",
+  "Waiting for keys…": "Tuşlar bekleniyor…"
 }

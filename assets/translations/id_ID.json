@@ -1418,5 +1418,10 @@
   "from %1": "dari %1",
   "from anywhere": "dari mana saja",
   "no key is made": "tidak ada kunci yang dibuat",
-  "the firewall cannot be set up": "firewall tidak dapat diatur"
+  "the firewall cannot be set up": "firewall tidak dapat diatur",
+  "Clear": "Kosongkan",
+  "Press the new shortcut": "Tekan pintasan baru",
+  "Reset to default": "Kembalikan ke bawaan",
+  "Used by “%1”, which loses it": "Dipakai oleh “%1”, yang akan kehilangannya",
+  "Waiting for keys…": "Menunggu tombol…"
 }

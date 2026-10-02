@@ -1418,5 +1418,10 @@
   "from %1": "来自 %1",
   "from anywhere": "来自任意地址",
   "no key is made": "不会生成密钥",
-  "the firewall cannot be set up": "无法设置防火墙"
+  "the firewall cannot be set up": "无法设置防火墙",
+  "Clear": "清除",
+  "Press the new shortcut": "请按下新的快捷键",
+  "Reset to default": "恢复默认",
+  "Used by “%1”, which loses it": "已被“%1”使用，它将失去此快捷键",
+  "Waiting for keys…": "正在等待按键…"
 }
