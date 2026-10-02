@@ -51,8 +51,7 @@ selections and wallpaper button (`shortcut_button`), the Power page's
 
 Differences from qs:
 
-- **The marker** is `~/.local/state/proscenio/first_run.txt`. The compat build
-  copies qs's `<state>/user/first_run.txt` there.
+- **The marker** is `~/.local/state/proscenio/first_run.txt`.
 - **Defaults are applied once.** When `first_run.txt` is missing and
   `~/.local/state/proscenio/defaults_applied.txt` is missing too,
   `src/panels/welcome/defaults.rs` writes that second marker and sets:
@@ -70,9 +69,7 @@ Differences from qs:
     binary and written to `~/.local/share/proscenio/default_wallpaper.png`, set
     through `switchwall`.
 
-  The "Show next time" switch only brings the window back. The compat build
-  copies `first_run.txt` to `defaults_applied.txt`, so an installation greeted
-  earlier keeps its settings.
+  The "Show next time" switch only brings the window back.
 - **Choosing a language restarts the shell.** The new language applies only
   on a restart, so the choice writes `language.ui`, sets the system language
   as the Region & Language page does, and restarts the shell with

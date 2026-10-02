@@ -45,14 +45,11 @@ action) run the action directly instead of going through Hyprland.
 
 `src/platform/shortcuts.rs` publishes every action with the same protocol
 under the app id **`proscenio`**, so a bind reads
-`hl.dsp.global("proscenio:cheatsheetToggle")`. The compat layer
-([compat.md](compat.md)) publishes them a second time under `quickshell`,
-which is what the binds in the dots use.
+`hl.dsp.global("proscenio:cheatsheetToggle")`.
 
 Registering an id that is already taken is a **fatal protocol error**: the
-compositor disconnects the client. The compat layer therefore leaves
-`quickshell` alone while a `qs` or `quickshell` process is running.
-`proscenio`'s own names never collide with the QML shell.
+compositor disconnects the client. `proscenio`'s own names never collide with
+the QML shell's `quickshell`.
 
 Every name in the table is wired except `searchToggleRelease`,
 `searchToggleReleaseInterrupt`, `brightnessIncrease` and

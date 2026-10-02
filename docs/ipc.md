@@ -47,8 +47,7 @@ is the way out from a terminal when a renderer leaves the screen unusable.
 `settings openPage` takes a page's own name: `quick`, `wifi`, `network`,
 `bluetooth`, `displays`, `sound`, `power`, `multitasking`, `appearance`, `apps`,
 `notifications`, `search`, `mouse`, `keyboard`, `accessibility`, `privacy`,
-`system`. With the compat layer ([compat.md](compat.md)) it also takes the QML
-shell's component path, `modules/settings/WifiConfig.qml` and the like.
+`system`.
 
 `mpris next` skips to the end of the track when the player cannot go to the
 next one but can seek.

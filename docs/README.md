@@ -34,12 +34,10 @@ curtain.
 ## Building
 
 ```
-cargo build --release          # proscenio on its own
-cargo release-compat           # with the layer that stands in for the QML shell
+cargo build --release
 ```
 
-Both write `target/release/proscenio`. [compat.md](compat.md) describes the
-compat layer.
+It writes `target/release/proscenio`.
 
 ## Documentation
 
@@ -73,7 +71,6 @@ repository. Numbers are given as the QML constants they come from.
 | [keyring-prompt.md](keyring-prompt.md) | no qs counterpart — the gcr prompter for gnome-keyring and its dialog |
 | [lock.md](lock.md) | `modules/ii/lock` — the session lock, its password field and the desktop behind it |
 | [shortcuts.md](shortcuts.md) | the global shortcut names every panel is reached by |
-| [compat.md](compat.md) | the layer that lets `proscenio` stand in for the QML shell, and how to build without it |
 | [colors.md](colors.md) | `scripts/colors` — `switchwall.sh`, the palette generator and what follows a wallpaper change |
 | [files.md](files.md) | where `proscenio` keeps its config, state and cache, and its other commands |
 | [ipc.md](ipc.md) | the `ipc call` targets scripts and binds reach the shell through |

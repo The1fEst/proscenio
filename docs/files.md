@@ -15,14 +15,6 @@
 | `$XDG_RUNTIME_DIR/proscenio/` | screenshots in progress, decoded clipboard images, the cava config |
 | `~/.config/proscenio/translations/<code>.json` | extra translation keys, read with the built-in catalog ([foundations.md](foundations.md) §10) |
 
-A build with the compat layer ([compat.md](compat.md)) copies on start
-whatever of these is missing from the QML shell's places:
-`illogical-impulse/config.json` becomes `config.toml`, with keys set to `null`
-left out since TOML has no null, and the to-do list, the states, the
-notification history, the actions and the generated colors are copied across.
-Nothing of the QML shell's is changed or removed, and from then on the two keep
-separate state.
-
 When the shell stores a setting in `config.toml`, it changes only that key
 and keeps the rest of the file, comments included.
 

@@ -1,5 +1,3 @@
-#[cfg(feature = "compat")]
-mod compat;
 mod core;
 mod panels;
 mod platform;
@@ -56,8 +54,6 @@ fn main() -> glib::ExitCode {
     if command == Some("ipc") {
         return ipc::client(APP_ID, &arguments[2..]);
     }
-    #[cfg(feature = "compat")]
-    compat::prepare();
     paths::prepare();
     match command {
         Some("colors") => return colors::run(&arguments[2..]),
@@ -321,8 +317,6 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     if let Some(shortcuts) = shortcuts::Shortcuts::publish(shortcuts::APP_ID) {
         std::mem::forget(shortcuts);
     }
-    #[cfg(feature = "compat")]
-    compat::install(ipc, &settings_window);
     let follow = {
         let later = Rc::downgrade(&sync);
         move |monitor: &gdk::Monitor| {
