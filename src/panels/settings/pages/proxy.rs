@@ -33,6 +33,7 @@ pub fn mode_name(mode: Mode) -> String {
 
 struct Writer {
     proxy: RefCell<Proxy>,
+    written: RefCell<Proxy>,
     queued: Cell<Option<glib::SourceId>>,
 }
 
@@ -47,9 +48,15 @@ impl Writer {
             .set(Some(glib::timeout_add_local_once(SETTLE, move || {
                 if let Some(writer) = writer.upgrade() {
                     writer.queued.set(None);
-                    proxy::write(&writer.proxy.borrow());
+                    writer.flush();
                 }
             })));
+    }
+
+    fn flush(&self) {
+        let proxy = self.proxy.borrow().clone();
+        proxy::write(&proxy, &self.written.borrow());
+        self.written.replace(proxy);
     }
 }
 
@@ -57,7 +64,7 @@ impl Drop for Writer {
     fn drop(&mut self) {
         if let Some(queued) = self.queued.take() {
             queued.remove();
-            proxy::write(&self.proxy.borrow());
+            self.flush();
         }
     }
 }
@@ -81,12 +88,24 @@ pub fn build(context: &Context) -> Rc<Page> {
     explanation.set_wrap(true);
     explanation.set_margin_start(LABEL_START);
     section.append(&explanation);
+    glib::spawn_future_local({
+        let page = Rc::downgrade(&page);
+        async move {
+            let current = proxy::with_credentials(proxy::read()).await;
+            if let Some(page) = page.upgrade() {
+                fill(&page, &section, current);
+            }
+        }
+    });
+    page
+}
 
+fn fill(page: &Rc<Page>, section: &gtk4::Box, current: Proxy) {
     let writer = Rc::new(Writer {
-        proxy: RefCell::new(proxy::read()),
+        proxy: RefCell::new(current.clone()),
+        written: RefCell::new(current.clone()),
         queued: Cell::new(None),
     });
-    let current = writer.proxy.borrow().clone();
 
     let automatic = page.section("", "");
     let script = page.subsection(
@@ -95,11 +114,12 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr("Leave empty to find the proxy on the network (WPAD)"),
     );
     text_field(
-        &page,
+        page,
         &writer,
         &script,
         &tr("Script address"),
         current.script.clone(),
+        false,
         |proxy, text| {
             proxy.script = text.trim().to_owned();
         },
@@ -107,7 +127,7 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let manual = page.section("", "");
     endpoint_row(
-        &page,
+        page,
         &writer,
         &manual,
         &tr("HTTP proxy"),
@@ -136,7 +156,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     });
     let https_row = endpoint_row(
-        &page,
+        page,
         &writer,
         &manual,
         &tr("HTTPS proxy"),
@@ -146,7 +166,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     https_row.set_visible(!current.same);
     https.replace(Some(https_row));
     endpoint_row(
-        &page,
+        page,
         &writer,
         &manual,
         &tr("SOCKS proxy"),
@@ -159,11 +179,12 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr("Separated by commas: host names, domains such as .example.org, and networks such as 10.0.0.0/8"),
     );
     text_field(
-        &page,
+        page,
         &writer,
         &ignore,
         &tr("Hosts"),
         current.ignore.join(", "),
+        false,
         |proxy, text| {
             proxy.ignore = nmprofile::items(text);
         },
@@ -182,7 +203,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     };
     show(current.mode);
-    let mode_group = page.subsection(&section, &tr("Proxy"), "");
+    let mode_group = page.subsection(section, &tr("Proxy"), "");
     let choices = MODES
         .iter()
         .enumerate()
@@ -218,18 +239,23 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.keep(created);
     page.keep(selection);
     page.keep(writer);
-    page
 }
 
+#[allow(clippy::too_many_arguments)]
 fn text_field(
     page: &Page,
     writer: &Rc<Writer>,
     parent: &impl Parent,
     label: &str,
     value: String,
+    secret: bool,
     apply: impl Fn(&mut Proxy, &str) + 'static,
 ) {
-    let field = TextField::new(&page.theme, Style::Outlined, label);
+    let field = if secret {
+        TextField::secret(&page.theme, Style::Outlined, label)
+    } else {
+        TextField::new(&page.theme, Style::Outlined, label)
+    };
     field.root.set_hexpand(true);
     field.set_text(&value);
     field.connect_finished({
@@ -260,6 +286,7 @@ fn endpoint_row(
         &row,
         &tr("Host"),
         current.host.clone(),
+        false,
         move |proxy, text| {
             pick(proxy).host = text.trim().to_owned();
         },
@@ -276,5 +303,28 @@ fn endpoint_row(
     });
     row.append(&port.root);
     page.keep(port);
+    let login = page.uniform_row(&group);
+    text_field(
+        page,
+        writer,
+        &login,
+        &tr("Username"),
+        current.user.clone(),
+        false,
+        move |proxy, text| {
+            pick(proxy).user = text.trim().to_owned();
+        },
+    );
+    text_field(
+        page,
+        writer,
+        &login,
+        &tr("Password"),
+        current.password.clone(),
+        true,
+        move |proxy, text| {
+            pick(proxy).password = text.to_owned();
+        },
+    );
     Page::subsection_root(&group)
 }

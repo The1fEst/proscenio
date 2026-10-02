@@ -306,7 +306,7 @@ fn edit_hypr_settings(edit: impl FnOnce(&str) -> String) {
     let _ = std::fs::write(path, edit(&text));
 }
 
-pub fn set_lua_env(name: &str, value: &str) {
+fn set_lua_env(name: &str, value: &str) {
     edit_hypr_settings(|text| with_lua_env(text, name, value));
 }
 

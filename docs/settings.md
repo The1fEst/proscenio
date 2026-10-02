@@ -532,24 +532,39 @@ NetworkManager is stopped. The subpage has an explanation in `colSubtext` and
 "Proxy": Off, Automatic or Manual. Automatic adds "Configuration script" (with
 a tooltip: empty finds the proxy with WPAD) and its address; Manual adds the
 HTTP, HTTPS and SOCKS proxies, each a host field and a port spin box (0 to
-65535), "Use the HTTP proxy for HTTPS too", which hides the HTTPS row, and
-"Not for these hosts" (with a tooltip), a list split at commas and spaces.
+65535) over a uniform row of "Username" and a masked "Password", "Use the
+HTTP proxy for HTTPS too", which hides the HTTPS rows, and "Not for these
+hosts" (with a tooltip), a list split at commas and spaces. The page fills in
+once the usernames and passwords are read.
 
-The source of truth is `org.gnome.system.proxy`. A change waits 800 ms for the
-next one (or until the page closes), then `src/platform/proxy.rs` writes it
-everywhere apps look:
+The source of truth is `org.gnome.system.proxy` for the proxies and the
+Secret Service for their usernames and passwords, one item each, with the
+attributes `application proscenio`, `proxy` (`http`, `https` or `socks`) and
+`field` (`user` or `password`), stored and read with `secret-tool`. A change
+waits 800 ms for the next one (or until the page closes), then
+`src/platform/proxy.rs` writes it everywhere apps look:
 
 - `org.gnome.system.proxy` and its `http`, `https` and `socks` children; with
-  "for HTTPS too" the HTTPS keys take the HTTP values;
+  "for HTTPS too" the HTTPS keys take the HTTP values. The HTTP username and
+  password also go into `use-authentication`, `authentication-user` and
+  `authentication-password`, where GTK apps read them;
 - `[Proxy Settings]` in `~/.config/kioslaverc`: `ProxyType` (0 off, 1 manual,
   2 a script, 3 WPAD), `Proxy Config Script`, `httpProxy`, `httpsProxy` and
-  `socksProxy` as `scheme://host port`, and `NoProxyFor`;
+  `socksProxy` as `scheme://host port`, and `NoProxyFor`; KDE apps ask for
+  the password themselves;
+- the Secret Service items whose value changed, only those, since a store into
+  a missing or locked keyring brings up its prompt;
 - `http_proxy`, `https_proxy`, `all_proxy` (`socks5://`) and `no_proxy`, in
-  lower and upper case, as `hl.env` lines in `settings.lua` (Hyprland reloads),
-  in the systemd and D-Bus activation environment through
-  `dbus-update-activation-environment --systemd`, and in the shell's own
-  environment, so what it starts next gets them. Outside Manual they are
-  written empty. A schema that is not installed leaves only a notice.
+  lower and upper case, as URLs with the username and password
+  percent-encoded before the host. They are never written to a file: Hyprland
+  gets them through `hyprctl eval` of `hl.env` calls, the systemd and D-Bus
+  activation environment through `dbus-update-activation-environment
+  --systemd`, and the shell its own environment, so what any of them starts
+  next has them. Outside Manual they are set empty. On start, while the mode is
+  Manual, the shell reads the passwords and sets the variables again, since
+  nothing kept them across the session.
+
+A schema that is not installed leaves only a notice.
 
 ## 20. Bluetooth
 

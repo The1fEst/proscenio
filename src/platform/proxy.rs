@@ -1,14 +1,17 @@
 use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
 use crate::core::{gsettings, process};
-use crate::platform::appearance::{set_lua_env, with_ini_value};
+use crate::platform::appearance::with_ini_value;
 use crate::platform::hypr;
 
 const SCHEMA: &str = "org.gnome.system.proxy";
 const KIO_SECTION: &str = "[Proxy Settings]";
 const PROTOCOLS: [&str; 3] = ["http", "https", "socks"];
+const APPLICATION: &str = "proscenio";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Mode {
@@ -22,6 +25,19 @@ pub enum Mode {
 pub struct Endpoint {
     pub host: String,
     pub port: u16,
+    pub user: String,
+    pub password: String,
+}
+
+fn encode(text: &str) -> String {
+    text.bytes()
+        .map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                (byte as char).to_string()
+            }
+            _ => format!("%{byte:02X}"),
+        })
+        .collect()
 }
 
 impl Endpoint {
@@ -31,11 +47,13 @@ impl Endpoint {
 
     fn url(&self, scheme: &str) -> String {
         let host = self.host.trim();
-        if host.contains("://") {
-            format!("{host}:{}", self.port)
-        } else {
-            format!("{scheme}://{host}:{}", self.port)
-        }
+        let (scheme, host) = host.split_once("://").unwrap_or((scheme, host));
+        let login = match (self.user.is_empty(), self.password.is_empty()) {
+            (true, _) => String::new(),
+            (false, true) => format!("{}@", encode(&self.user)),
+            (false, false) => format!("{}:{}@", encode(&self.user), encode(&self.password)),
+        };
+        format!("{scheme}://{login}{host}:{}", self.port)
     }
 
     fn kio(&self, scheme: &str) -> String {
@@ -66,6 +84,18 @@ pub struct Proxy {
 impl Proxy {
     fn https_endpoint(&self) -> &Endpoint {
         if self.same { &self.http } else { &self.https }
+    }
+
+    fn endpoints(&self) -> [&Endpoint; 3] {
+        [&self.http, &self.https, &self.socks]
+    }
+
+    pub fn endpoint_mut(&mut self, protocol: &str) -> &mut Endpoint {
+        match protocol {
+            "https" => &mut self.https,
+            "socks" => &mut self.socks,
+            _ => &mut self.http,
+        }
     }
 
     pub fn environment(&self) -> Vec<(&'static str, String)> {
@@ -125,6 +155,10 @@ impl Proxy {
     }
 }
 
+fn lua_string(text: &str) -> String {
+    format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
 fn endpoint(schema: &str) -> Endpoint {
     let Some(settings) = gsettings::open(&format!("{SCHEMA}.{schema}")) else {
         return Endpoint::default();
@@ -132,6 +166,7 @@ fn endpoint(schema: &str) -> Endpoint {
     Endpoint {
         host: settings.string("host").to_string(),
         port: u16::try_from(settings.int("port")).unwrap_or(0),
+        ..Endpoint::default()
     }
 }
 
@@ -162,6 +197,60 @@ pub fn read() -> Proxy {
     }
 }
 
+fn secret_attributes(protocol: &str, field: &str) -> Vec<String> {
+    [
+        "application",
+        APPLICATION,
+        "proxy",
+        protocol,
+        "field",
+        field,
+    ]
+    .iter()
+    .map(|part| (*part).to_owned())
+    .collect()
+}
+
+async fn lookup(protocol: &str, field: &str) -> String {
+    let mut command = process::command(&["secret-tool", "lookup"]);
+    command.args(secret_attributes(protocol, field));
+    process::capture_text(command).await.unwrap_or_default()
+}
+
+pub async fn with_credentials(mut proxy: Proxy) -> Proxy {
+    for protocol in PROTOCOLS {
+        let user = lookup(protocol, "user").await;
+        let password = lookup(protocol, "password").await;
+        let endpoint = proxy.endpoint_mut(protocol);
+        endpoint.user = user;
+        endpoint.password = password;
+    }
+    proxy
+}
+
+fn store(protocol: &str, field: &str, value: &str) {
+    let mut command = Command::new("secret-tool");
+    if value.is_empty() {
+        command.arg("clear");
+    } else {
+        command
+            .arg("store")
+            .arg(format!("--label=Proxy {field} ({protocol})"));
+    }
+    command
+        .args(secret_attributes(protocol, field))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let Ok(mut child) = command.spawn() else {
+        return;
+    };
+    if let Some(mut input) = child.stdin.take() {
+        let _ = input.write_all(value.as_bytes());
+    }
+    let _ = child.wait();
+}
+
 fn write_gsettings(proxy: &Proxy) {
     let Some(settings) = gsettings::open(SCHEMA) else {
         return;
@@ -186,21 +275,26 @@ fn write_gsettings(proxy: &Proxy) {
             let _ = settings.set_int("port", i32::from(endpoint.port));
         }
     }
+    if let Some(http) = gsettings::open(&format!("{SCHEMA}.http")) {
+        let _ = http.set_boolean("use-authentication", !proxy.http.user.is_empty());
+        let _ = http.set_string("authentication-user", &proxy.http.user);
+        let _ = http.set_string("authentication-password", &proxy.http.password);
+    }
     gio::Settings::sync();
 }
 
-pub fn write(proxy: &Proxy) {
-    write_gsettings(proxy);
-    let kio = glib::user_config_dir().join("kioslaverc");
-    let text = std::fs::read_to_string(&kio).unwrap_or_default();
-    let _ = std::fs::write(&kio, proxy.with_kio(&text));
-    let environment = proxy.environment();
+pub fn apply_environment(proxy: &Proxy) {
     let mut update = vec![
         "dbus-update-activation-environment".to_owned(),
         "--systemd".to_owned(),
     ];
-    for (name, value) in &environment {
-        set_lua_env(name, value);
+    let mut lua = String::new();
+    for (name, value) in proxy.environment() {
+        lua.push_str(&format!(
+            "hl.env({}, {})\n",
+            lua_string(name),
+            lua_string(&value)
+        ));
         update.push(format!("{name}={value}"));
         unsafe {
             if value.is_empty() {
@@ -210,45 +304,79 @@ pub fn write(proxy: &Proxy) {
             }
         }
     }
+    hypr::request(&format!("eval {lua}"));
     process::start(process::quiet(&update));
-    hypr::request("reload");
+}
+
+pub fn write(proxy: &Proxy, previous: &Proxy) {
+    write_gsettings(proxy);
+    apply_environment(proxy);
+    let changed: Vec<(&'static str, &'static str, String)> = PROTOCOLS
+        .iter()
+        .zip(proxy.endpoints().into_iter().zip(previous.endpoints()))
+        .flat_map(|(protocol, (now, before))| {
+            let user = (now.user != before.user).then(|| (*protocol, "user", now.user.clone()));
+            let password = (now.password != before.password)
+                .then(|| (*protocol, "password", now.password.clone()));
+            user.into_iter().chain(password)
+        })
+        .collect();
+    let proxy = proxy.clone();
+    gio::spawn_blocking(move || {
+        let kio = glib::user_config_dir().join("kioslaverc");
+        let text = std::fs::read_to_string(&kio).unwrap_or_default();
+        let _ = std::fs::write(&kio, proxy.with_kio(&text));
+        for (protocol, field, value) in changed {
+            store(protocol, field, &value);
+        }
+    });
+}
+
+pub fn apply_at_start() {
+    let proxy = read();
+    if proxy.mode != Mode::Manual {
+        return;
+    }
+    glib::spawn_future_local(async move {
+        apply_environment(&with_credentials(proxy).await);
+    });
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn endpoint(host: &str, port: u16) -> Endpoint {
+        Endpoint {
+            host: host.to_owned(),
+            port,
+            ..Endpoint::default()
+        }
+    }
+
     fn manual() -> Proxy {
         Proxy {
             mode: Mode::Manual,
-            http: Endpoint {
-                host: "proxy.lan".to_owned(),
-                port: 3128,
-            },
-            https: Endpoint {
-                host: "secure.lan".to_owned(),
-                port: 443,
-            },
-            socks: Endpoint {
-                host: "socks.lan".to_owned(),
-                port: 1080,
-            },
+            http: endpoint("proxy.lan", 3128),
+            https: endpoint("secure.lan", 443),
+            socks: endpoint("socks.lan", 1080),
             ignore: vec!["localhost".to_owned(), "10.0.0.0/8".to_owned()],
             ..Proxy::default()
         }
+    }
+
+    fn value(environment: &[(&str, String)], name: &str) -> String {
+        environment
+            .iter()
+            .find(|(key, _)| *key == name)
+            .map(|(_, value)| value.clone())
+            .unwrap_or_default()
     }
 
     #[test]
     fn manual_proxies_become_the_usual_variables_and_others_clear_them() {
         let mut proxy = manual();
         let environment = proxy.environment();
-        let value = |environment: &[(&str, String)], name: &str| {
-            environment
-                .iter()
-                .find(|(key, _)| *key == name)
-                .map(|(_, value)| value.clone())
-                .unwrap_or_default()
-        };
         assert_eq!(value(&environment, "http_proxy"), "http://proxy.lan:3128");
         assert_eq!(value(&environment, "HTTPS_PROXY"), "http://secure.lan:443");
         assert_eq!(value(&environment, "all_proxy"), "socks5://socks.lan:1080");
@@ -265,6 +393,24 @@ mod tests {
                 .iter()
                 .all(|(_, value)| value.is_empty())
         );
+    }
+
+    #[test]
+    fn credentials_go_into_the_url_escaped() {
+        let mut proxy = manual();
+        proxy.http.user = "fest".to_owned();
+        proxy.http.password = "p@ss:w/rd".to_owned();
+        proxy.socks.user = "only".to_owned();
+        let environment = proxy.environment();
+        assert_eq!(
+            value(&environment, "http_proxy"),
+            "http://fest:p%40ss%3Aw%2Frd@proxy.lan:3128"
+        );
+        assert_eq!(
+            value(&environment, "all_proxy"),
+            "socks5://only@socks.lan:1080"
+        );
+        assert_eq!(lua_string("a\"b\\c"), "\"a\\\"b\\\\c\"");
     }
 
     #[test]
