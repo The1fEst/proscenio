@@ -438,6 +438,15 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.keep(roles);
     page.keep(Disconnect(monitor, Some(watched), rescan));
 
+    let types = page.section("description", &tr("File types"));
+    page.link_row(
+        &types,
+        "",
+        &tr("Every file type"),
+        &tr("Which app opens each kind of file and link"),
+        context.subpage_opener("filetypes"),
+    );
+
     let windows = page.section("select_window", &tr("Window rules"));
     let listed = page.subsection(&windows, &tr("What each application's windows do"), "");
     let empty = text::styled(&tr("No rules yet"));

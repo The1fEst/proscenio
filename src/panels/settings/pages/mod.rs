@@ -12,6 +12,7 @@ pub mod connection;
 pub mod datetime;
 pub mod devices;
 pub mod displays;
+pub mod filetypes;
 pub mod firewall;
 pub mod hiddennetwork;
 pub mod hotspot;
@@ -348,7 +349,12 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 18] = [
+pub const SUBPAGES: [Subpage; 19] = [
+    Subpage {
+        id: "filetypes",
+        title: "File types",
+        parent: "apps",
+    },
     Subpage {
         id: "savednetworks",
         title: "Saved Networks",
@@ -480,6 +486,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "datetime" => datetime::build(context),
         "users" => users::build(context),
         "autostart" => autostart::build(context),
+        "filetypes" => filetypes::build(context),
         "about" => about::build(context),
         "services" => services::build(context),
         "advanced" => advanced::build(context),

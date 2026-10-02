@@ -1003,6 +1003,8 @@ blur is off.
   lines and the removed associations stay as they were. It reads off the main
   thread, again after a choice, and a second after the installed applications
   change.
+- "File types" (`description`): a link row, "Every file type", to the File
+  types subpage (§30.1).
 - "Window rules": the rules the settings app owns, one `hl.window_rule` line
   each in `settings.lua` (`src/platform/windowrules.rs`, the port of
   `hypr-rules.py`, byte for byte), as 48 px `colLayer2` cards of the class,
@@ -1016,6 +1018,26 @@ blur is off.
   system update command.
 - The popup of a box with few items is as tall as they are; it scrolls only
   past 300 px.
+
+### 30.1 File types (subpage)
+
+An outlined "Find a file type" field, focused when the page opens, over the
+types GIO has registered (`content_types_get_registered`, those with a `/`),
+each with its description; every typed word has to appear in the type or the
+description. Until something is typed, a `colSubtext` line counts the known
+types; then up to 40 matches show as 56 px `colLayer2` rows with radius 12:
+the type's icon, the description over the type at 12 px, the application GIO
+opens it with (or "Nothing opens it") and a chevron, and a line counts the
+matches left out or says that none match.
+
+A row opens "Open DESCRIPTION with": "Recommended" (GIO's recommended
+applications for the type) and "Also opens it" (its fallback ones), the one in
+use in `colPrimary` with a check; a pick makes it the default for that type
+alone (`set_as_default_for_type`, in `~/.config/mimeapps.list`). "Reset"
+drops the user's associations for the type (`reset_type_associations`),
+"Other application…" opens the Apps page's application dialog for any
+installed application, and Cancel closes. The list then shows the new
+default.
 
 ## 31. Mouse & Touchpad
 
