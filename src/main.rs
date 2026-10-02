@@ -85,6 +85,7 @@ fn main() -> glib::ExitCode {
 }
 
 fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
+    std::mem::forget(app.hold());
     let config = Rc::new(Config::load());
     widgets::text::init(&config);
     let theme = Rc::new(RefCell::new(Theme::load(&config)));
