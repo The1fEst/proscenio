@@ -15,7 +15,13 @@ pub const SECURITY: &str = "802-11-wireless-security";
 pub const WIREGUARD: &str = "wireguard";
 pub const VPN: &str = "vpn";
 pub const EAP: &str = "802-1x";
+pub const VLAN: &str = "vlan";
+pub const BRIDGE: &str = "bridge";
+pub const BOND: &str = "bond";
 pub const OPENVPN: &str = "org.freedesktop.NetworkManager.openvpn";
+const VLAN_ID_MAX: u32 = 4094;
+const BOND_MODE: &str = "active-backup";
+const BOND_MONITOR: (&str, &str) = ("miimon", "100");
 const STORED: &str = "0";
 pub const SECRET_SETTINGS: [&str; 4] = [SECURITY, EAP, WIREGUARD, VPN];
 const FILE_SCHEME: &str = "file://";
@@ -336,9 +342,9 @@ pub fn free_name(base: &str, taken: &[String]) -> String {
         .unwrap_or_default()
 }
 
-pub fn free_interface(taken: &[String]) -> String {
+pub fn free_interface(prefix: &str, taken: &[String]) -> String {
     (0..)
-        .map(|number| format!("wg{number}"))
+        .map(|number| format!("{prefix}{number}"))
         .find(|name| !taken.contains(name))
         .unwrap_or_default()
 }
@@ -587,6 +593,63 @@ impl Profile {
 
     pub fn set_wep_key(&mut self, key: &str) {
         self.set_string(SECURITY, "wep-key0", key);
+    }
+
+    pub fn vlan_parent(&self) -> String {
+        self.string(VLAN, "parent")
+    }
+
+    pub fn set_vlan_parent(&mut self, parent: &str) {
+        self.set_string(VLAN, "parent", parent);
+    }
+
+    pub fn vlan_id(&self) -> u32 {
+        self.get(VLAN, "id")
+            .and_then(Variant::get::<u32>)
+            .unwrap_or(0)
+    }
+
+    pub fn set_vlan_id(&mut self, id: u32) {
+        self.put(VLAN, "id", id.to_variant());
+    }
+
+    pub fn stp(&self) -> bool {
+        self.flag(BRIDGE, "stp", true)
+    }
+
+    pub fn set_stp(&mut self, on: bool) {
+        self.put(BRIDGE, "stp", on.to_variant());
+    }
+
+    fn bond_options(&self) -> BTreeMap<String, String> {
+        self.get(BOND, "options")
+            .and_then(Variant::get::<BTreeMap<String, String>>)
+            .unwrap_or_default()
+    }
+
+    pub fn bond_mode(&self) -> String {
+        self.bond_options()
+            .remove("mode")
+            .unwrap_or_else(|| BOND_MODE.to_owned())
+    }
+
+    pub fn set_bond_mode(&mut self, mode: &str) {
+        let mut options = self.bond_options();
+        options.insert("mode".to_owned(), mode.to_owned());
+        options
+            .entry(BOND_MONITOR.0.to_owned())
+            .or_insert_with(|| BOND_MONITOR.1.to_owned());
+        self.put(BOND, "options", options.to_variant());
+    }
+
+    pub fn new_port(controller: &str, kind: &str, device: &str) -> Profile {
+        let mut profile = Profile::new(WIRED, &format!("{controller} port {device}"));
+        profile.settings.remove("ipv4");
+        profile.settings.remove("ipv6");
+        profile.set_interface(device);
+        profile.put(CONNECTION, "master", controller.to_variant());
+        profile.put(CONNECTION, "slave-type", kind.to_variant());
+        profile
     }
 
     pub fn has_eap(&self) -> bool {
@@ -1070,6 +1133,17 @@ impl Profile {
         if kind == WIREGUARD && interface.is_empty() {
             return Some(tr("A WireGuard connection needs an interface name"));
         }
+        if matches!(kind.as_str(), BRIDGE | BOND) && interface.is_empty() {
+            return Some(tr("A bridge or bond needs an interface name"));
+        }
+        if kind == VLAN {
+            if self.vlan_parent().is_empty() {
+                return Some(tr("A VLAN needs a parent device"));
+            }
+            if !(1..=VLAN_ID_MAX).contains(&self.vlan_id()) {
+                return Some(tr("A VLAN ID is a number from 1 to 4094"));
+            }
+        }
         if interface.len() > INTERFACE_LENGTH
             || interface.contains(|character: char| character.is_whitespace() || character == '/')
         {
@@ -1227,7 +1301,8 @@ mod tests {
             free_name("WireGuard", &taken(&["WireGuard", "WireGuard 2"])),
             "WireGuard 3"
         );
-        assert_eq!(free_interface(&taken(&["wg0", "eth0", "wg2"])), "wg1");
+        assert_eq!(free_interface("wg", &taken(&["wg0", "eth0", "wg2"])), "wg1");
+        assert_eq!(free_interface("br", &taken(&["wg0"])), "br0");
     }
 
     #[test]
@@ -1503,5 +1578,44 @@ mod tests {
                 "A static key OpenVPN needs the key file and both tunnel addresses"
             ))
         );
+    }
+
+    #[test]
+    fn vlans_bonds_and_ports_carry_what_networkmanager_needs() {
+        let mut vlan = Profile::new(VLAN, "Office VLAN");
+        assert_eq!(vlan.problem(), Some(tr("A VLAN needs a parent device")));
+        vlan.set_vlan_parent("eth0");
+        assert_eq!(
+            vlan.problem(),
+            Some(tr("A VLAN ID is a number from 1 to 4094"))
+        );
+        vlan.set_vlan_id(10);
+        assert_eq!(vlan.problem(), None);
+        assert_eq!(
+            (vlan.vlan_parent(), vlan.vlan_id()),
+            ("eth0".to_owned(), 10)
+        );
+
+        let mut bond = Profile::new(BOND, "Bond");
+        assert_eq!(
+            bond.problem(),
+            Some(tr("A bridge or bond needs an interface name"))
+        );
+        bond.set_interface("bond0");
+        bond.set_bond_mode("802.3ad");
+        assert_eq!(bond.bond_mode(), "802.3ad");
+        assert_eq!(
+            bond.bond_options().get("miimon").map(String::as_str),
+            Some("100")
+        );
+        assert_eq!(bond.problem(), None);
+
+        let port = Profile::new_port("bond0", BOND, "eth1");
+        assert_eq!(port.kind(), WIRED);
+        assert_eq!(port.interface(), "eth1");
+        assert_eq!(port.string(CONNECTION, "master"), "bond0");
+        assert_eq!(port.string(CONNECTION, "slave-type"), BOND);
+        assert!(!port.settings.contains_key("ipv4"));
+        assert_eq!(port.problem(), None);
     }
 }

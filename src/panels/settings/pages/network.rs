@@ -8,11 +8,13 @@ use std::rc::Rc;
 use crate::core::i18n::{tr, trf};
 use crate::core::{process, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
-use crate::panels::settings::pages::connection::{NEW_OPENVPN, NEW_WIRED, NEW_WIREGUARD};
+use crate::panels::settings::pages::connection::{
+    NEW_BOND, NEW_BRIDGE, NEW_OPENVPN, NEW_VLAN, NEW_WIRED, NEW_WIREGUARD,
+};
 use crate::panels::settings::pages::proxy;
 use crate::platform::firewall;
 use crate::platform::proxy as platform_proxy;
-use crate::services::net::{Connection, Connections, VPN_KINDS, WIRED};
+use crate::services::net::{Connection, Connections, VIRTUAL_KINDS, VPN_KINDS, WIRED};
 use crate::services::nmsettings;
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::centred::Centred;
@@ -128,6 +130,23 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
     vpn_section.append(&adding);
     vpn_section.append(&problem);
+
+    let virtual_section = page.section("device_hub", &tr("Virtual interfaces"));
+    let virtuals = group(&virtual_section, &tr("No VLAN, bridge or bond is set up"));
+    let creating = gtk4::Box::new(gtk4::Orientation::Horizontal, BUTTON_SPACING);
+    creating.set_margin_top(BUTTON_TOP);
+    for (label, kind) in [
+        ("Add VLAN", NEW_VLAN),
+        ("Add bridge", NEW_BRIDGE),
+        ("Add bond", NEW_BOND),
+    ] {
+        let (add, _) = page.icon_button("add", true, &tr(label), {
+            let open = open.clone();
+            move || open(kind)
+        });
+        creating.append(&add);
+    }
+    virtual_section.append(&creating);
     protection_links(&page, context);
 
     let follow = {
@@ -141,7 +160,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             let list = connections.list.borrow().clone();
             let wired_list: Vec<Connection> = list
                 .iter()
-                .filter(|connection| connection.kind == WIRED)
+                .filter(|connection| connection.kind == WIRED && !connection.port)
                 .cloned()
                 .collect();
             let vpn_list: Vec<Connection> = list
@@ -149,8 +168,14 @@ pub fn build(context: &Context) -> Rc<Page> {
                 .filter(|connection| VPN_KINDS.contains(&connection.kind.as_str()))
                 .cloned()
                 .collect();
+            let virtual_list: Vec<Connection> = list
+                .iter()
+                .filter(|connection| VIRTUAL_KINDS.contains(&connection.kind.as_str()))
+                .cloned()
+                .collect();
             fill(&theme, &page, &connections, &open, &wired, wired_list);
             fill(&theme, &page, &connections, &open, &vpn, vpn_list);
+            fill(&theme, &page, &connections, &open, &virtuals, virtual_list);
         }
     };
     follow();

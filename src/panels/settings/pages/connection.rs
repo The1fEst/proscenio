@@ -11,7 +11,7 @@ use crate::core::{process, tools};
 use crate::panels::settings::content::{Choice, Context, Page, Style};
 use crate::panels::settings::pages::network::manager_running;
 use crate::platform::nmprofile::{
-    self, Family, Peer, Profile, Security, VPN, WIRED, WIREGUARD, WIRELESS,
+    self, BOND, BRIDGE, Family, Peer, Profile, Security, VLAN, VPN, WIRED, WIREGUARD, WIRELESS,
 };
 use crate::services::net::nmcli;
 use crate::services::nmsettings;
@@ -28,6 +28,19 @@ pub const NEW_WIRED: &str = "new:802-3-ethernet";
 pub const NEW_WIREGUARD: &str = "new:wireguard";
 pub const NEW_ENTERPRISE: &str = "new:enterprise:";
 pub const NEW_OPENVPN: &str = "new:openvpn";
+pub const NEW_VLAN: &str = "new:vlan";
+pub const NEW_BRIDGE: &str = "new:bridge";
+pub const NEW_BOND: &str = "new:bond";
+const VLAN_ID_MAX: i64 = 4094;
+const BOND_MODES: [(&str, &str); 7] = [
+    ("Active backup", "active-backup"),
+    ("Round robin", "balance-rr"),
+    ("XOR", "balance-xor"),
+    ("Broadcast", "broadcast"),
+    ("802.3ad (LACP)", "802.3ad"),
+    ("Adaptive transmit", "balance-tlb"),
+    ("Adaptive load balancing", "balance-alb"),
+];
 const NEW: &str = "new:";
 const NOTE_START: i32 = 8;
 const BUTTON_SPACING: i32 = 5;
@@ -92,6 +105,7 @@ struct Start {
     fresh: bool,
     secrets: bool,
     devices: Vec<String>,
+    ports: Vec<(String, String)>,
 }
 
 struct Actions {
@@ -113,6 +127,8 @@ struct Editor {
     secrets: Cell<bool>,
     secrets_edited: Cell<bool>,
     devices: RefCell<Vec<String>>,
+    ports: RefCell<Vec<String>>,
+    saved_ports: RefCell<Vec<(String, String)>>,
     errors: RefCell<BTreeMap<String, String>>,
     busy: Cell<bool>,
     outcome: RefCell<Option<Result<String, String>>>,
@@ -147,6 +163,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         secrets: Cell::new(false),
         secrets_edited: Cell::new(false),
         devices: RefCell::default(),
+        ports: RefCell::default(),
+        saved_ports: RefCell::default(),
         errors: RefCell::default(),
         busy: Cell::new(false),
         outcome: RefCell::new(None),
@@ -207,6 +225,7 @@ async fn start(argument: Option<String>) -> Result<Start, String> {
             profile,
             fresh: true,
             secrets: true,
+            ports: Vec::new(),
         });
     }
     if wanted == NEW_OPENVPN {
@@ -216,35 +235,57 @@ async fn start(argument: Option<String>) -> Result<Start, String> {
             profile: Profile::new_openvpn(&nmprofile::free_name(&tr("OpenVPN"), &names)),
             fresh: true,
             secrets: true,
+            ports: Vec::new(),
         });
     }
     if let Some(kind) = wanted.strip_prefix(NEW) {
-        let base = if kind == WIREGUARD {
-            tr("WireGuard")
-        } else {
-            tr("Wired connection")
+        let base = match kind {
+            WIREGUARD => tr("WireGuard"),
+            VLAN => tr("VLAN"),
+            BRIDGE => tr("Bridge"),
+            BOND => tr("Bond"),
+            _ => tr("Wired connection"),
         };
         let (names, interfaces) = nmsettings::names_and_interfaces().await;
         let mut profile = Profile::new(kind, &nmprofile::free_name(&base, &names));
-        if kind == WIREGUARD {
-            profile.set_interface(&nmprofile::free_interface(&interfaces));
-            if let Some(key) = nmsettings::generate_key().await {
-                profile.set_private_key(&key);
+        match kind {
+            WIREGUARD => {
+                profile.set_interface(&nmprofile::free_interface("wg", &interfaces));
+                if let Some(key) = nmsettings::generate_key().await {
+                    profile.set_private_key(&key);
+                }
             }
+            BRIDGE => {
+                profile.set_interface(&nmprofile::free_interface("br", &interfaces));
+                profile.set_stp(true);
+            }
+            BOND => {
+                profile.set_interface(&nmprofile::free_interface("bond", &interfaces));
+                profile.set_bond_mode(BOND_MODES[0].1);
+            }
+            _ => {}
         }
         return Ok(Start {
             devices: nmsettings::devices("ethernet").await,
             profile,
             fresh: true,
             secrets: true,
+            ports: Vec::new(),
         });
     }
     let loaded = nmsettings::load(&wanted).await?;
+    let profile = loaded.profile.normalized();
+    let ports = if matches!(profile.kind().as_str(), BRIDGE | BOND) {
+        nmsettings::ports(&[profile.interface(), profile.uuid()]).await
+    } else {
+        Vec::new()
+    };
     Ok(Start {
         devices: nmsettings::devices("ethernet").await,
-        profile: loaded.profile.normalized(),
+        profile,
         fresh: false,
         secrets: loaded.secrets,
+        ports,
     })
 }
 
@@ -261,6 +302,33 @@ fn show_note(label: &gtk4::Label, message: Option<&str>, color: &str) {
     label.set_visible(message.is_some());
     label.set_text(message.unwrap_or_default());
     text::set_color(label, color);
+}
+
+async fn sync_ports(
+    controller: &Profile,
+    previous: &str,
+    wanted: &[String],
+    had: &[(String, String)],
+) -> Result<(), String> {
+    let interface = controller.interface();
+    let renamed = !previous.is_empty() && previous != interface;
+    let automatic = controller.autoconnect();
+    for (uuid, device) in had {
+        if renamed || !wanted.contains(device) {
+            nmsettings::delete(uuid).await?;
+        } else {
+            nmsettings::set_autoconnect(uuid, automatic).await?;
+        }
+    }
+    for device in wanted {
+        let kept = !renamed && had.iter().any(|(_, known)| known == device);
+        if !kept {
+            let mut port = Profile::new_port(&interface, &controller.kind(), device);
+            port.set_autoconnect(automatic);
+            nmsettings::add(&port).await?;
+        }
+    }
+    Ok(())
 }
 
 fn edit_eap(profile: &mut Profile, change: impl FnOnce(&mut nmprofile::Eap)) {
@@ -293,6 +361,14 @@ fn choices<T: Copy + Into<Value>>(options: &[(&str, T)]) -> Vec<(String, Value)>
 impl Editor {
     fn open(self: &Rc<Self>, started: Start) {
         self.devices.replace(started.devices);
+        self.ports.replace(
+            started
+                .ports
+                .iter()
+                .map(|(_, device)| device.clone())
+                .collect(),
+        );
+        self.saved_ports.replace(started.ports);
         self.fresh.set(started.fresh);
         self.secrets.set(started.secrets);
         self.saved.replace(started.profile.clone());
@@ -341,6 +417,8 @@ impl Editor {
                 self.peers(&page);
             }
             VPN => self.vpn(&page),
+            VLAN => self.vlan(&page),
+            BRIDGE | BOND => self.controller(&page, &kind),
             _ => {}
         }
         for family in [Family::V4, Family::V6] {
@@ -370,7 +448,7 @@ impl Editor {
         };
         let draft = self.draft.borrow();
         let fresh = self.fresh.get();
-        let dirty = fresh || *draft != *self.saved.borrow();
+        let dirty = fresh || *draft != *self.saved.borrow() || self.ports_changed();
         let problem = self
             .errors
             .borrow()
@@ -669,23 +747,24 @@ impl Editor {
         );
     }
 
-    fn wired(self: &Rc<Self>, page: &Page) {
-        let section = self.section("lan", &tr("Wired"));
-        let profile = self.draft.borrow().clone();
-        let mut items = vec![tr("Any device")];
+    fn device_combo(
+        self: &Rc<Self>,
+        parent: &gtk4::Box,
+        current: &str,
+        any: Option<String>,
+        write: impl Fn(&mut Profile, &str) + 'static,
+    ) {
+        let mut items: Vec<String> = any.iter().cloned().collect();
         items.extend(self.devices.borrow().iter().cloned());
-        let interface = profile.interface();
-        if !interface.is_empty() && !items.contains(&interface) {
-            items.push(interface.clone());
+        if !current.is_empty() && !items.iter().any(|item| item == current) {
+            items.push(current.to_owned());
         }
-        let current = items
-            .iter()
-            .position(|item| *item == interface)
-            .unwrap_or(0);
+        let index = items.iter().position(|item| item == current).unwrap_or(0);
         let combo = ComboBox::new(&self.theme);
         combo.set_icon("settings_ethernet");
         combo.button.set_hexpand(true);
-        combo.set_items(&items, current as i32);
+        combo.set_items(&items, index as i32);
+        let first_is_any = any.is_some();
         combo.connect_activated({
             let editor = Rc::downgrade(self);
             let combo = Rc::downgrade(&combo);
@@ -693,21 +772,172 @@ impl Editor {
                 let (Some(editor), Some(combo)) = (editor.upgrade(), combo.upgrade()) else {
                     return;
                 };
-                let name = if index == 0 {
+                let name = if first_is_any && index == 0 {
                     String::new()
                 } else {
-                    items[index].clone()
+                    items.get(index).cloned().unwrap_or_default()
                 };
                 let _ = editor.edit(|profile| {
-                    profile.set_interface(&name);
+                    write(profile, &name);
                     Ok(())
                 });
                 combo.set_items(&items, index as i32);
                 editor.refresh();
             }
         });
-        section.append(&combo.button);
+        parent.append(&combo.button);
         self.hold(combo);
+    }
+
+    fn ports_changed(&self) -> bool {
+        let mut saved: Vec<String> = self
+            .saved_ports
+            .borrow()
+            .iter()
+            .map(|(_, device)| device.clone())
+            .collect();
+        let mut wanted = self.ports.borrow().clone();
+        saved.sort();
+        wanted.sort();
+        saved != wanted
+    }
+
+    fn vlan(self: &Rc<Self>, page: &Page) {
+        let section = self.section("lan", &tr("VLAN"));
+        let profile = self.draft.borrow().clone();
+        let parent = self.subsection(page, &section, &tr("Parent device"), "");
+        self.device_combo(
+            &parent,
+            &profile.vlan_parent(),
+            None,
+            Profile::set_vlan_parent,
+        );
+        if profile.vlan_parent().is_empty()
+            && let Some(first) = self.devices.borrow().first()
+        {
+            let first = first.clone();
+            let _ = self.edit(|profile| {
+                profile.set_vlan_parent(&first);
+                Ok(())
+            });
+        }
+        self.spin(
+            &section,
+            "tag",
+            &tr("VLAN ID"),
+            (1, VLAN_ID_MAX),
+            profile.vlan_id().max(1) as i64,
+            |profile, id| profile.set_vlan_id(id as u32),
+        );
+        if profile.vlan_id() == 0 {
+            let _ = self.edit(|profile| {
+                profile.set_vlan_id(1);
+                Ok(())
+            });
+        }
+        self.field(
+            &section,
+            &tr("Interface name (empty picks one)"),
+            &profile.interface(),
+            |text, profile| {
+                profile.set_interface(text.trim());
+                Ok(())
+            },
+        );
+    }
+
+    fn controller(self: &Rc<Self>, page: &Page, kind: &str) {
+        let bridge = kind == BRIDGE;
+        let section = if bridge {
+            self.section("device_hub", &tr("Bridge"))
+        } else {
+            self.section("join", &tr("Bond"))
+        };
+        let profile = self.draft.borrow().clone();
+        self.field(
+            &section,
+            &tr("Interface name"),
+            &profile.interface(),
+            |text, profile| {
+                profile.set_interface(text.trim());
+                Ok(())
+            },
+        );
+        if bridge {
+            let stp = self.switch(
+                &section,
+                "account_tree",
+                &tr("Spanning tree (STP)"),
+                Profile::stp,
+                Profile::set_stp,
+            );
+            self.hold(page.unkept_tip(
+                &stp.button,
+                &tr("Keeps loops out when the bridge connects to other switches"),
+            ));
+        } else {
+            let mode = self.subsection(page, &section, &tr("Mode"), "");
+            self.choose(
+                &mode,
+                choices(&BOND_MODES),
+                Value::from(profile.bond_mode()),
+                |profile, value| profile.set_bond_mode(value.as_str().unwrap_or("active-backup")),
+            );
+        }
+        let ports = self.subsection(
+            page,
+            &section,
+            &tr("Ports"),
+            &tr("The devices that join it. A device that joins leaves its own connection"),
+        );
+        if self.devices.borrow().is_empty() {
+            let empty = note();
+            show_note(&empty, Some(&tr("No wired devices")), "colSubtext");
+            ports.append(&empty);
+        }
+        let devices = self.devices.borrow().clone();
+        for device in devices {
+            let switch = ConfigSwitch::new(&self.theme, "settings_ethernet", &device, {
+                let editor = Rc::downgrade(self);
+                let device = device.clone();
+                move |wanted| {
+                    let Some(editor) = editor.upgrade() else {
+                        return;
+                    };
+                    {
+                        let mut ports = editor.ports.borrow_mut();
+                        ports.retain(|known| *known != device);
+                        if wanted {
+                            ports.push(device.clone());
+                        }
+                    }
+                    editor.outcome.replace(None);
+                    editor.refresh();
+                }
+            });
+            switch.button.set_hexpand(true);
+            switch.bind({
+                let editor = Rc::downgrade(self);
+                move || {
+                    editor
+                        .upgrade()
+                        .is_some_and(|editor| editor.ports.borrow().contains(&device))
+                }
+            });
+            ports.append(&switch.button);
+            self.hold(switch);
+        }
+    }
+
+    fn wired(self: &Rc<Self>, page: &Page) {
+        let section = self.section("lan", &tr("Wired"));
+        let profile = self.draft.borrow().clone();
+        self.device_combo(
+            &section,
+            &profile.interface(),
+            Some(tr("Any device")),
+            Profile::set_interface,
+        );
         self.mac_and_mtu(&section, &profile);
         let security = self.switch(
             &section,
@@ -1503,6 +1733,13 @@ impl Editor {
                 if let Some(editor) = editor.upgrade() {
                     let saved = editor.saved.borrow().clone();
                     editor.draft.replace(saved);
+                    let devices = editor
+                        .saved_ports
+                        .borrow()
+                        .iter()
+                        .map(|(_, device)| device.clone())
+                        .collect();
+                    editor.ports.replace(devices);
                     editor.errors.borrow_mut().clear();
                     editor.secrets_edited.set(false);
                     editor.outcome.replace(None);
@@ -1568,14 +1805,23 @@ impl Editor {
         let profile = self.draft.borrow().clone();
         let fresh = self.fresh.get();
         let fill = !self.secrets.get() && self.secrets_edited.get();
+        let wanted = self.ports.borrow().clone();
+        let had = self.saved_ports.borrow().clone();
+        let previous = self.saved.borrow().interface();
         let editor = Rc::downgrade(self);
         glib::spawn_future_local(async move {
             let uuid = profile.uuid();
-            let written = if fresh {
+            let mut written = if fresh {
                 nmsettings::add(&profile).await
             } else {
                 nmsettings::save(&profile, fill).await
             };
+            let mut ports = had.clone();
+            if written.is_ok() && matches!(profile.kind().as_str(), BRIDGE | BOND) {
+                let synced = sync_ports(&profile, &previous, &wanted, &had).await;
+                ports = nmsettings::ports(&[profile.interface(), uuid.clone()]).await;
+                written = synced;
+            }
             let stored = written.is_ok();
             let outcome = match written {
                 Ok(()) if !fresh && nmsettings::active(&uuid).await => {
@@ -1590,6 +1836,10 @@ impl Editor {
                 return;
             };
             editor.busy.set(false);
+            editor
+                .ports
+                .replace(ports.iter().map(|(_, device)| device.clone()).collect());
+            editor.saved_ports.replace(ports);
             if stored {
                 editor.saved.replace(profile);
                 editor.fresh.set(false);
@@ -1643,8 +1893,12 @@ impl Editor {
                     return;
                 };
                 let uuid = editor.saved.borrow().uuid();
+                let ports = editor.saved_ports.borrow().clone();
                 let editor = Rc::downgrade(&editor);
                 glib::spawn_future_local(async move {
+                    for (port, _) in &ports {
+                        let _ = nmsettings::delete(port).await;
+                    }
                     let deleted = nmsettings::delete(&uuid).await;
                     let Some(editor) = editor.upgrade() else {
                         return;

@@ -192,6 +192,26 @@ pub async fn reactivate(uuid: &str) -> Result<(), String> {
         .unwrap_or_else(|| tr("Could not connect")))
 }
 
+pub async fn set_autoconnect(uuid: &str, on: bool) -> Result<(), String> {
+    let finished = nmcli(&[
+        "connection",
+        "modify",
+        "uuid",
+        uuid,
+        "connection.autoconnect",
+        if on { "yes" } else { "no" },
+    ])
+    .await;
+    if finished.success {
+        return Ok(());
+    }
+    Err(finished
+        .errors
+        .trim()
+        .trim_start_matches("Error: ")
+        .to_owned())
+}
+
 pub async fn devices(kind: &str) -> Vec<String> {
     nmcli(&["-t", "-f", "DEVICE,TYPE", "device"])
         .await
@@ -202,6 +222,36 @@ pub async fn devices(kind: &str) -> Vec<String> {
             (fields.get(1).map(String::as_str) == Some(kind)).then(|| fields[0].clone())
         })
         .collect()
+}
+
+pub async fn ports(controller: &[String]) -> Vec<(String, String)> {
+    let listed = nmcli(&["-t", "-f", "UUID,PORT", "connection", "show"]).await;
+    let mut found = Vec::new();
+    for fields in listed.output.lines().map(split_escaped) {
+        let [uuid, port, ..] = fields.as_slice() else {
+            continue;
+        };
+        if port.is_empty() || port == "--" {
+            continue;
+        }
+        let shown = nmcli(&[
+            "-g",
+            "connection.master,connection.interface-name",
+            "connection",
+            "show",
+            "uuid",
+            uuid,
+        ])
+        .await
+        .output;
+        let mut lines = shown.lines();
+        if let (Some(master), Some(device)) = (lines.next(), lines.next())
+            && controller.iter().any(|name| name == master)
+        {
+            found.push((uuid.clone(), device.to_owned()));
+        }
+    }
+    found
 }
 
 pub async fn names_and_interfaces() -> (Vec<String>, Vec<String>) {

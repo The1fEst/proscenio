@@ -304,9 +304,11 @@ pub struct Connection {
     pub kind: String,
     pub active: bool,
     pub device: String,
+    pub port: bool,
 }
 
 pub const VPN_KINDS: [&str; 4] = ["vpn", "wireguard", "tun", "ip-tunnel"];
+pub const VIRTUAL_KINDS: [&str; 3] = ["vlan", "bridge", "bond"];
 pub const WIRED: &str = "802-3-ethernet";
 
 pub fn parse_connections(text: &str) -> Vec<Connection> {
@@ -324,6 +326,9 @@ pub fn parse_connections(text: &str) -> Vec<Connection> {
                 kind: fields[2].clone(),
                 active: fields[3] == "yes",
                 device: fields.get(4).cloned().unwrap_or_default(),
+                port: fields
+                    .get(5)
+                    .is_some_and(|port| !port.is_empty() && port != "--"),
             })
         })
         .collect();
@@ -399,7 +404,7 @@ impl Connections {
             let output = nmcli(&[
                 "-t",
                 "-f",
-                "NAME,UUID,TYPE,ACTIVE,DEVICE",
+                "NAME,UUID,TYPE,ACTIVE,DEVICE,PORT",
                 "connection",
                 "show",
             ])
@@ -430,16 +435,25 @@ mod tests {
 
     #[test]
     fn connections_leave_out_loopback_and_come_sorted_by_name() {
-        let text = "lo:u0:loopback:yes:lo\nWired connection 1:u1:802-3-ethernet:yes:eth0\nOffice\\: VPN:u2:vpn:no:\n";
+        let text = "lo:u0:loopback:yes:lo:\nWired connection 1:u1:802-3-ethernet:yes:eth0:\nOffice\\: VPN:u2:vpn:no::\nbr0 port eth1:u3:802-3-ethernet:no::bridge\n";
         assert_eq!(
             parse_connections(text),
             [
+                Connection {
+                    name: "br0 port eth1".to_owned(),
+                    uuid: "u3".to_owned(),
+                    kind: WIRED.to_owned(),
+                    active: false,
+                    device: String::new(),
+                    port: true,
+                },
                 Connection {
                     name: "Office: VPN".to_owned(),
                     uuid: "u2".to_owned(),
                     kind: "vpn".to_owned(),
                     active: false,
                     device: String::new(),
+                    port: false,
                 },
                 Connection {
                     name: "Wired connection 1".to_owned(),
@@ -447,6 +461,7 @@ mod tests {
                     kind: WIRED.to_owned(),
                     active: true,
                     device: "eth0".to_owned(),
+                    port: false,
                 },
             ]
         );
