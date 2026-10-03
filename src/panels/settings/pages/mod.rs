@@ -9,10 +9,12 @@ pub mod bar;
 pub mod barworkspaces;
 pub mod bluetooth;
 pub mod capture;
+pub mod cheatsheet;
 pub mod connection;
 pub mod datetime;
 pub mod devices;
 pub mod displays;
+pub mod dock;
 pub mod eap;
 pub mod filetypes;
 pub mod firewall;
@@ -38,6 +40,7 @@ pub mod savednetworks;
 pub mod search;
 pub mod services;
 pub mod shortcuts;
+pub mod sidebars;
 pub mod sound;
 pub mod system;
 pub mod touchpad;
@@ -361,7 +364,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 30] = [
+pub const SUBPAGES: [Subpage; 33] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -512,6 +515,21 @@ pub const SUBPAGES: [Subpage; 30] = [
         title: "Panels",
         parent: "appearance",
     },
+    Subpage {
+        id: "dock",
+        title: "Dock",
+        parent: "panels",
+    },
+    Subpage {
+        id: "sidebars",
+        title: "Sidebars",
+        parent: "panels",
+    },
+    Subpage {
+        id: "cheatsheet",
+        title: "Cheat sheet",
+        parent: "panels",
+    },
 ];
 
 pub fn split_legacy_settings() -> std::io::Result<()> {
@@ -574,6 +592,9 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "utilitybuttons" => utilitybuttons::build(context),
         "barworkspaces" => barworkspaces::build(context),
         "panels" => panels::build(context),
+        "dock" => dock::build(context),
+        "sidebars" => sidebars::build(context),
+        "cheatsheet" => cheatsheet::build(context),
         "apps" => apps::build(context),
         "mouse" => mouse::build(context),
         "mousedevice" => mousedevice::build(context),

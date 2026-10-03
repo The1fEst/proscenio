@@ -1081,11 +1081,15 @@ labels itself.
 
 ## 29. Panels (subpage)
 
-- "Dock": enable; "Reveal": hover to reveal and pinned on startup side by
+- Link rows to the Dock, Sidebars and Cheat sheet subpages.
+- "Wallpaper selector": the system file picker;
+  "On-screen keyboard": pinned on startup and the layout (English (US),
+  German, Russian — the names of the keyboard's layouts).
+- Dock: enable; "Reveal": hover to reveal and pinned on startup side by
   side, and the hover region height, dead unless hovering reveals; "Looks":
   tinted icons and the height; the pinned apps and ignored app patterns (both
   with tooltips) as outlined fields split at commas.
-- "Sidebars": "Quick toggles" (with a tooltip): Classic or Android and the Android columns, dead
+- Sidebars: "Quick toggles" (with a tooltip): Classic or Android and the Android columns, dead
   for Classic; "Sliders": enable and the brightness, volume and microphone
   sliders, dead while sliders are off; "Corner open" (with a tooltip): enable,
   hover to trigger (with a tooltip), then a plain row, not a layout, of the
@@ -1093,10 +1097,7 @@ labels itself.
   widths and dead unless the corners open by clicking; bottom placement and
   value scroll side by side, visualizing the region, and the region's width
   and height, all dead while corner open is off.
-- "Wallpaper selector": the system file picker;
-  "On-screen keyboard": pinned on startup and the layout (English (US),
-  German, Russian — the names of the keyboard's layouts).
-- "Cheat sheet": the Super key symbol as a selection of Nerd Font glyphs;
+- Cheat sheet: the Super key symbol as a selection of Nerd Font glyphs;
   three symbol switches whose symbols are Nerd Font glyphs, with tooltips;
   split keycaps (with a tooltip) and the key and description font sizes side
   by side.
