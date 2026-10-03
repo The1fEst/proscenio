@@ -817,21 +817,25 @@ with them, never through a shell. The page rereads the files afterwards, and
   "Resolution" (the native mode scaled by
   1, 1.25, 4⁄3, 1.5, 1.6 and 2 wherever that gives whole pixels, plus the panel
   modes at the running size, or every panel mode with "Show all
-  resolutions"), "Refresh rate", "Rotation" and "Variable refresh rate".
-- "Color": the color profile (with `hdr` ones forcing 10-bit), bit depth,
+  resolutions"), "Refresh rate", "Rotation" and "Variable refresh rate", then
+  a link row to the Color subpage for the chosen display.
+- Color (subpage `displaycolor`, the display's name as its argument, titled
+  "Color · model (name)"; opened by search it shows the first display):
+  "Color": the color profile (with `hdr` ones forcing 10-bit), bit depth,
   forced wide color and HDR (with a warning tooltip), the SDR transfer
-  function and an ICC profile from the usual color directories.
-- "Luminance": SDR brightness, saturation and minimum luminance in hundredths,
-  SDR maximum luminance, and under "Display" the display's own minimum,
-  maximum and maximum average luminance.
+  function and an ICC profile from the usual color directories; "Luminance":
+  SDR brightness, saturation and minimum luminance in hundredths, SDR maximum
+  luminance, and under "Display" the display's own minimum, maximum and
+  maximum average luminance.
 - "Reserved area": top, right, bottom and left, 0–2000.
 - "All displays": Auto HDR (with a tooltip; `render:cm_auto_hdr`), the
   global variable refresh rate that a display set to follow it uses (with a
   tooltip; `misc:vrr`: off, on, fullscreen only, fullscreen games and video)
   and keeping X11 apps sharp on scaled displays (with a tooltip;
   `xwayland:force_zero_scaling`).
-- "Night light": the automatic schedule switch, a uniform row of the From and
-  To times (dead while the schedule is off), and the color temperature.
+- A link row to the Night light subpage: the automatic schedule switch, a
+  uniform row of the From and To times (dead while the schedule is off), and
+  the color temperature.
 - Every change is written to the display's `hl.monitor` block in
   `~/.config/hypr/settings/displays.lua`, starting from what is running, and Hyprland
   reloads. The block writer (`src/platform/monitorrules.rs`) and the option

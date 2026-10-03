@@ -13,6 +13,7 @@ pub mod cheatsheet;
 pub mod connection;
 pub mod datetime;
 pub mod devices;
+pub mod displaycolor;
 pub mod displays;
 pub mod dock;
 pub mod eap;
@@ -30,6 +31,7 @@ pub mod mouse;
 pub mod mousedevice;
 pub mod multitasking;
 pub mod network;
+pub mod nightlight;
 pub mod notifications;
 pub mod overview;
 pub mod panels;
@@ -367,7 +369,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 36] = [
+pub const SUBPAGES: [Subpage; 38] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -387,6 +389,16 @@ pub const SUBPAGES: [Subpage; 36] = [
         id: "keyoptions",
         title: "Keyboard options",
         parent: "keyboard",
+    },
+    Subpage {
+        id: "displaycolor",
+        title: "Color",
+        parent: "displays",
+    },
+    Subpage {
+        id: "nightlight",
+        title: "Night light",
+        parent: "displays",
     },
     Subpage {
         id: "overview",
@@ -598,6 +610,8 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "firewall" => firewall::build(context),
         "bluetooth" => bluetooth::build(context),
         "displays" => displays::build(context),
+        "displaycolor" => displaycolor::build(context),
+        "nightlight" => nightlight::build(context),
         "sound" => sound::build(context),
         "power" => power::build(context),
         "lock" => lock::build(context),

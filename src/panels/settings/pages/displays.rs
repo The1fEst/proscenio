@@ -4,9 +4,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::i18n::{tr, trf};
-use crate::core::{config, tools};
 use crate::panels::settings::arrangement::Arrangement;
-use crate::panels::settings::content::{Choice, Context, Page, Style};
+use crate::panels::settings::content::{Choice, Context, Page};
 use crate::panels::settings::hyprrows;
 use crate::platform::hypr;
 use crate::platform::hyprconfig::Area;
@@ -27,16 +26,15 @@ const GLOBAL_VRR_MODES: [(&str, &str); 4] = [
     ("Fullscreen only", "2"),
     ("Fullscreen games and video", "3"),
 ];
-const NIGHT_AUTOMATIC: &str = "/light/night/automatic";
 
 type Commit = Box<dyn Fn(&Rc<Displays>, &Monitor, i64)>;
 
-struct Spin {
+pub(super) struct Spin {
     spin: Rc<SpinBox>,
     current: Box<dyn Fn(&Displays, &str) -> i64>,
 }
 
-struct Widgets {
+pub(super) struct MainWidgets {
     arrangement_section: Option<gtk4::Widget>,
     arrangement: Rc<Arrangement>,
     choices: gtk4::Box,
@@ -47,23 +45,31 @@ struct Widgets {
     rate: Rc<ComboBox>,
     rotation: Rc<ComboBox>,
     vrr: Rc<ComboBox>,
-    profile: Rc<ComboBox>,
-    depth: Rc<ComboBox>,
-    wide: Rc<ComboBox>,
-    hdr: Rc<ComboBox>,
     auto_hdr: Rc<ComboBox>,
-    eotf: Rc<ComboBox>,
-    icc: Rc<ComboBox>,
-    spins: Vec<Spin>,
 }
 
-struct State {
+pub(super) struct ColorWidgets {
+    pub(super) profile: Rc<ComboBox>,
+    pub(super) depth: Rc<ComboBox>,
+    pub(super) wide: Rc<ComboBox>,
+    pub(super) hdr: Rc<ComboBox>,
+    pub(super) eotf: Rc<ComboBox>,
+    pub(super) icc: Rc<ComboBox>,
+}
+
+pub(super) struct Widgets {
+    pub(super) main: Option<MainWidgets>,
+    pub(super) color: Option<ColorWidgets>,
+    pub(super) spins: Vec<Spin>,
+}
+
+pub(super) struct State {
     theme: SharedTheme,
-    displays: Rc<Displays>,
+    pub(super) displays: Rc<Displays>,
     options: Rc<HyprOptions>,
     selected: RefCell<String>,
     all_resolutions: Cell<bool>,
-    widgets: RefCell<Option<Widgets>>,
+    pub(super) widgets: RefCell<Option<Widgets>>,
 }
 
 const ROTATIONS: [(&str, i64); 8] = [
@@ -83,10 +89,10 @@ const VRR: [(&str, i64); 5] = [
     ("Fullscreen only", 2),
     ("Fullscreen games and video", 3),
 ];
-const FORCED: [(&str, i64); 3] = [("Automatic", 0), ("On", 1), ("Off", -1)];
-const DEPTHS: [(&str, i64); 2] = [("8-bit", 8), ("10-bit", 10)];
+pub(super) const FORCED: [(&str, i64); 3] = [("Automatic", 0), ("On", 1), ("Off", -1)];
+pub(super) const DEPTHS: [(&str, i64); 2] = [("8-bit", 8), ("10-bit", 10)];
 const AUTO_HDR_MODES: [(&str, i64); 3] = [("Off", 0), ("HDR", 1), ("HDR (display profile)", 2)];
-const EOTFS: [(&str, &str); 5] = [
+pub(super) const EOTFS: [(&str, &str); 5] = [
     ("Default", "default"),
     ("Automatic", "auto"),
     ("sRGB", "srgb"),
@@ -94,8 +100,8 @@ const EOTFS: [(&str, &str); 5] = [
     ("Gamma 2.2, forced", "gamma22force"),
 ];
 
-struct RuleSpin {
-    key: &'static str,
+pub(super) struct RuleSpin {
+    pub(super) key: &'static str,
     icon: &'static str,
     label: &'static str,
     factor: f64,
@@ -104,7 +110,7 @@ struct RuleSpin {
     step: i64,
 }
 
-const SDR_RULES: [RuleSpin; 4] = [
+pub(super) const SDR_RULES: [RuleSpin; 4] = [
     RuleSpin {
         key: "sdrbrightness",
         icon: "brightness_medium",
@@ -143,7 +149,7 @@ const SDR_RULES: [RuleSpin; 4] = [
     },
 ];
 
-const DISPLAY_RULES: [RuleSpin; 3] = [
+pub(super) const DISPLAY_RULES: [RuleSpin; 3] = [
     RuleSpin {
         key: "min_luminance",
         icon: "nightlight",
@@ -184,7 +190,7 @@ fn labels<T>(list: &[(&str, T)]) -> Vec<String> {
     list.iter().map(|(label, _)| tr(label)).collect()
 }
 
-fn color_profiles(monitor: &Monitor) -> Vec<(String, &'static str)> {
+pub(super) fn color_profiles(monitor: &Monitor) -> Vec<(String, &'static str)> {
     let model = |fallback: String| {
         if monitor.model.is_empty() {
             fallback
@@ -206,11 +212,39 @@ fn color_profiles(monitor: &Monitor) -> Vec<(String, &'static str)> {
 }
 
 impl State {
+    pub(super) fn new(theme: &SharedTheme, selected: String) -> Rc<State> {
+        Rc::new(State {
+            theme: theme.clone(),
+            displays: Displays::new(),
+            options: HyprOptions::new(Area::Displays, &OPTIONS),
+            selected: RefCell::new(selected),
+            all_resolutions: Cell::new(false),
+            widgets: RefCell::new(None),
+        })
+    }
+
+    pub(super) fn follow_changes(self: &Rc<Self>) {
+        let refresh: Rc<dyn Fn()> = Rc::new({
+            let state = Rc::downgrade(self);
+            move || {
+                if let Some(state) = state.upgrade() {
+                    state.refresh();
+                }
+            }
+        });
+        self.displays.connect_changed({
+            let refresh = refresh.clone();
+            move || refresh()
+        });
+        self.options.connect_changed(move || refresh());
+        self.refresh();
+    }
+
     fn monitors(&self) -> Vec<Monitor> {
         self.displays.monitors.borrow().clone()
     }
 
-    fn monitor(&self) -> Option<Monitor> {
+    pub(super) fn monitor(&self) -> Option<Monitor> {
         let monitors = self.monitors();
         let selected = self.selected.borrow().clone();
         monitors
@@ -253,10 +287,23 @@ impl State {
         let Some(widgets) = widgets.as_ref() else {
             return;
         };
-        let monitors = self.monitors();
         let Some(monitor) = self.monitor() else {
             return;
         };
+        if let Some(main) = &widgets.main {
+            self.refresh_main(main, &monitor);
+        }
+        if let Some(color) = &widgets.color {
+            self.refresh_color(color, &monitor);
+        }
+        for spin in &widgets.spins {
+            spin.spin
+                .set_value((spin.current)(&self.displays, &monitor.name));
+        }
+    }
+
+    fn refresh_main(self: &Rc<Self>, widgets: &MainWidgets, monitor: &Monitor) {
+        let monitors = self.monitors();
         let name = monitor.name.clone();
 
         if let Some(section) = &widgets.arrangement_section {
@@ -401,11 +448,22 @@ impl State {
             &labels(&VRR),
             position(&VRR.map(|(_, value)| value), &rule_number("vrr")),
         );
+        widgets.auto_hdr.set_items(
+            &labels(&AUTO_HDR_MODES),
+            position(
+                &AUTO_HDR_MODES.map(|(_, value)| value),
+                &(self.options.number_or(AUTO_HDR, 1.0) as i64),
+            ),
+        );
+    }
 
-        let profiles = color_profiles(&monitor);
+    fn refresh_color(&self, widgets: &ColorWidgets, monitor: &Monitor) {
+        let name = monitor.name.clone();
+        let rule_number = |key: &str| self.displays.number_of(&name, key) as i64;
+        let profiles = color_profiles(monitor);
         let profile_labels: Vec<String> = profiles.iter().map(|(label, _)| label.clone()).collect();
         let profile_values: Vec<&str> = profiles.iter().map(|(_, value)| *value).collect();
-        let current_profile = self.displays.color_profile_of(&monitor);
+        let current_profile = self.displays.color_profile_of(monitor);
         widgets.profile.set_items(
             &profile_labels,
             position(&profile_values, &current_profile.as_str()),
@@ -428,13 +486,6 @@ impl State {
                 &rule_number("supports_hdr"),
             ),
         );
-        widgets.auto_hdr.set_items(
-            &labels(&AUTO_HDR_MODES),
-            position(
-                &AUTO_HDR_MODES.map(|(_, value)| value),
-                &(self.options.number_or(AUTO_HDR, 1.0) as i64),
-            ),
-        );
         let eotf = self.displays.value_of(&name, "sdr_eotf");
         widgets.eotf.set_items(
             &labels(&EOTFS),
@@ -450,23 +501,12 @@ impl State {
         widgets
             .icc
             .set_items(&icc_labels, position(&icc_values, &icc));
-
-        for spin in &widgets.spins {
-            spin.spin.set_value((spin.current)(&self.displays, &name));
-        }
     }
 }
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
-    let state = Rc::new(State {
-        theme: page.theme.clone(),
-        displays: Displays::new(),
-        options: HyprOptions::new(Area::Displays, &OPTIONS),
-        selected: RefCell::new(String::new()),
-        all_resolutions: Cell::new(false),
-        widgets: RefCell::new(None),
-    });
+    let state = State::new(&page.theme, String::new());
 
     let arranged = page.section("", "");
     let arrangement = Arrangement::new(&page.theme);
@@ -679,97 +719,23 @@ pub fn build(context: &Context) -> Rc<Page> {
         "sync",
         move |index| ("vrr", VRR[index].1.to_string()),
     );
-
-    let color = page.section("palette", &tr("Color"));
-    let profile_group = page.subsection(&color, &tr("Color profile"), "");
-    let profile = page.combo(&profile_group, "colors");
-    profile.connect_activated({
-        let state = Rc::downgrade(&state);
-        move |index| {
-            let Some(state) = state.upgrade() else {
-                return;
-            };
-            let Some(monitor) = state.monitor() else {
-                return;
-            };
-            if let Some((_, value)) = color_profiles(&monitor).get(index) {
-                state.displays.set_color_profile(&monitor, value);
-            }
-        }
-    });
-    let depth = keyed_combo(&page, &state, &color, &tr("Bit depth"), "", "gradient", {
-        move |index| ("bitdepth", DEPTHS[index].1.to_string())
-    });
-    let wide = keyed_combo(
-        &page,
-        &state,
-        &color,
-        &tr("Force wide color"),
-        "",
-        "invert_colors",
-        move |index| ("supports_wide_color", FORCED[index].1.to_string()),
-    );
-    let hdr = keyed_combo(
-        &page,
-        &state,
-        &color,
-        &tr("Force HDR"),
-        &tr("Forcing this on a display that does not report HDR can leave the screen black."),
-        "hdr_on",
-        move |index| ("supports_hdr", FORCED[index].1.to_string()),
-    );
-    let eotf = keyed_combo(
-        &page,
-        &state,
-        &color,
-        &tr("SDR transfer function"),
-        "",
-        "functions",
-        move |index| ("sdr_eotf", EOTFS[index].1.to_owned()),
-    );
-    let icc = keyed_combo(
-        &page,
-        &state,
-        &color,
-        &tr("ICC profile"),
-        "",
-        "description",
+    let open_color = context.subpage_opener_with("displaycolor");
+    page.link_row(
+        &main,
+        "palette",
+        &tr("Color"),
+        &tr("Color profile, HDR and luminance of this display"),
         {
             let state = Rc::downgrade(&state);
-            move |index| {
-                let path = match index {
-                    0 => String::new(),
-                    other => state
-                        .upgrade()
-                        .and_then(|state| state.displays.icc_profiles.get(other - 1).cloned())
-                        .unwrap_or_default(),
-                };
-                ("icc", path)
+            move || {
+                if let Some(monitor) = state.upgrade().and_then(|state| state.monitor()) {
+                    open_color(&monitor.name);
+                }
             }
         },
     );
 
     let mut spins = Vec::new();
-    let luminance = page.section("brightness_6", &tr("Luminance"));
-    for rule in &SDR_RULES {
-        let (row, spin) = rule_spin(&page, &state, &luminance, rule);
-        if rule.key == "sdrbrightness" {
-            page.tip(
-                &row,
-                &tr("How bright content that is not HDR is drawn while the display is in HDR"),
-            );
-        }
-        spins.push(spin);
-    }
-    let display_group = page.subsection(
-        &luminance,
-        &tr("Display"),
-        &tr("A luminance of −1 leaves the figure to what the display reports."),
-    );
-    for rule in &DISPLAY_RULES {
-        spins.push(rule_spin(&page, &state, &display_group, rule).1);
-    }
-
     let reserved = page.section("border_outer", &tr("Reserved area"));
     for (side, icon, label) in [
         ("top", "vertical_align_top", "Top"),
@@ -838,87 +804,33 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr("X11 apps are drawn unscaled instead of stretched. They look sharp, and small unless they scale themselves (GDK_SCALE, QT_SCALE_FACTOR)."),
     );
 
-    let night = page.section("nightlight", &tr("Night light"));
-    page.tools_notice(
+    let night = page.section("", "");
+    page.link_row(
         &night,
-        &[&tools::HYPRSUNSET],
-        &tr("night light does nothing"),
-    );
-    page.config_switch(
-        &night,
-        "schedule",
-        &tr("Automatic schedule"),
-        NIGHT_AUTOMATIC,
-        true,
-    );
-    let times = page.uniform_row(&night);
-    let from = page.text_field(
-        &times,
-        Style::Outlined,
-        &tr("From (HH:mm)"),
-        || config::value_str("/light/night/from").unwrap_or_else(|| "19:00".to_owned()),
-        |text| config::store_value("/light/night/from", Value::from(text.trim())),
-    );
-    page.refresh_text_on("/light/night/from", &from);
-    let to = page.text_field(
-        &times,
-        Style::Outlined,
-        &tr("To (HH:mm)"),
-        || config::value_str("/light/night/to").unwrap_or_else(|| "06:30".to_owned()),
-        |text| config::store_value("/light/night/to", Value::from(text.trim())),
-    );
-    page.refresh_text_on("/light/night/to", &to);
-    let schedule_enabled = move || {
-        let automatic = config::value_bool(NIGHT_AUTOMATIC, true);
-        from.set_enabled(automatic);
-        to.set_enabled(automatic);
-    };
-    schedule_enabled();
-    page.watch(NIGHT_AUTOMATIC, schedule_enabled);
-    page.config_spin(
-        &night,
-        "thermostat",
-        &tr("Color temperature (K)"),
-        "/light/night/colorTemperature",
-        5000,
-        (1000, 6500),
-        100,
+        "nightlight",
+        &tr("Night light"),
+        &tr("Schedule and color temperature"),
+        context.subpage_opener("nightlight"),
     );
 
     state.widgets.replace(Some(Widgets {
-        arrangement_section: arranged.parent(),
-        arrangement,
-        choices,
-        selection: RefCell::new(None),
-        use_as_section: use_as_group.parent(),
-        use_as,
-        resolution,
-        rate,
-        rotation,
-        vrr,
-        profile,
-        depth,
-        wide,
-        hdr,
-        auto_hdr,
-        eotf,
-        icc,
+        main: Some(MainWidgets {
+            arrangement_section: arranged.parent(),
+            arrangement,
+            choices,
+            selection: RefCell::new(None),
+            use_as_section: use_as_group.parent(),
+            use_as,
+            resolution,
+            rate,
+            rotation,
+            vrr,
+            auto_hdr,
+        }),
+        color: None,
         spins,
     }));
-    let refresh: Rc<dyn Fn()> = Rc::new({
-        let state = Rc::downgrade(&state);
-        move || {
-            if let Some(state) = state.upgrade() {
-                state.refresh();
-            }
-        }
-    });
-    state.displays.connect_changed({
-        let refresh = refresh.clone();
-        move || refresh()
-    });
-    state.options.connect_changed(move || refresh());
-    state.refresh();
+    state.follow_changes();
     page.keep(state);
     page
 }
@@ -927,7 +839,7 @@ fn can_turn_off(monitor: &Monitor, others: &[Monitor]) -> bool {
     monitor.disabled || others.iter().any(|other| !other.disabled)
 }
 
-fn keyed_combo(
+pub(super) fn keyed_combo(
     page: &Page,
     state: &Rc<State>,
     parent: &gtk4::Box,
@@ -979,7 +891,7 @@ fn option_spin(
     (row, Spin { spin, current })
 }
 
-fn rule_spin(
+pub(super) fn rule_spin(
     page: &Page,
     state: &Rc<State>,
     parent: &gtk4::Box,
