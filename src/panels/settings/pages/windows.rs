@@ -3,8 +3,9 @@ use std::rc::Rc;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
-use crate::platform::hyprconfig;
+use crate::platform::{hypr, hyprconfig};
 use crate::services::hyproptions::HyprOptions;
+use crate::ui::widgets::spinbox::SpinBox;
 
 pub const OPTIONS: [&str; 16] = [
     "decoration:rounding",
@@ -154,6 +155,31 @@ pub fn build(context: &Context) -> Rc<Page> {
         &opaque.button,
         &tr("Maximized windows too, whether focused or not"),
     );
+
+    let borders = page.subsection(
+        &windows,
+        &tr("Border opacity"),
+        &tr("The border keeps the color generated from the wallpaper"),
+    );
+    let border_row = page.row(&borders);
+    for (label, border) in [
+        ("Focused window (%)", &hyprconfig::ACTIVE_BORDER),
+        ("Other windows (%)", &hyprconfig::INACTIVE_BORDER),
+    ] {
+        let spin = SpinBox::new(&page.theme, 0, 100, 5, 0);
+        spin.set_value(
+            (f64::from(hyprconfig::border_alpha(border)) * 100.0 / 255.0).round() as i64,
+        );
+        spin.connect_changed(move |percent| {
+            let alpha = (percent as f64 * 255.0 / 100.0).round() as u8;
+            if hyprconfig::border_alpha(border) == alpha {
+                return;
+            }
+            let _ = hyprconfig::set_border_alpha(border, alpha);
+            hypr::request("reload");
+        });
+        page.spin_row(&border_row, "border_outer", &tr(label), &spin);
+    }
 
     let shadows = page.subsection(&windows, &tr("Shadows"), "");
     hyprrows::switch(

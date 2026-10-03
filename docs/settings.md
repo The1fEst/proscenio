@@ -1016,7 +1016,9 @@ far, dead while the lock is off), making a new workspace and swiping on.
 - Corner rounding and shape (the shape tenfold with one decimal,
   with a tooltip); blur with its radius and passes, dead while blur is off,
   and X-ray (with a tooltip); the focused and other windows' opacity in
-  percent and "Keep fullscreen windows opaque" (with a tooltip); "Shadows":
+  percent and "Keep fullscreen windows opaque" (with a tooltip); "Border
+  opacity" (with a tooltip): the focused and other windows' border opacity in
+  percent, in steps of 5; "Shadows":
   drop shadows (`decoration:shadow:enabled`) with their size in px, falloff
   (`render_power`, 1–4) and a sharp edge, dead while shadows are off;
   "Dimming": dimming windows out of focus, "Keep fullscreen windows undimmed"
@@ -1031,6 +1033,14 @@ far, dead while the lock is off), making a new workspace and swiping on.
   not, so the opacity rule is what keeps maximized ones opaque. Each switch is
   on while its line is present, adds or removes it and reloads Hyprland
   (`hyprrows::lines_switch`, the same mechanism as Smart gaps).
+- The border colors come from the dots' matugen template
+  `hyprland/colors.lua`, which sets them as the Lua table `border_colors`
+  (`active`, `inactive`, hex without alpha) and uses them with alphas 77 and
+  33. Each opacity owns one line in `appearance.lua`,
+  `if border_colors then hl.config({ general = { col = { active_border = "rgba(" .. border_colors.active .. "CC)" } } }) end`,
+  so the border keeps following the wallpaper with the alpha chosen here, and
+  a `colors.lua` without the table leaves the line inert. Without a line the
+  template's alpha shows. A change rewrites the line and reloads Hyprland.
 
 ## 27. Background (subpage)
 

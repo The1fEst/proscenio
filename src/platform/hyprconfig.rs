@@ -157,6 +157,74 @@ pub const OPAQUE_FULLSCREEN: Lines = Lines {
     ],
 };
 
+pub struct Border {
+    pub field: &'static str,
+    pub color: &'static str,
+    pub default: u8,
+}
+
+pub const ACTIVE_BORDER: Border = Border {
+    field: "active_border",
+    color: "active",
+    default: 0x77,
+};
+
+pub const INACTIVE_BORDER: Border = Border {
+    field: "inactive_border",
+    color: "inactive",
+    default: 0x33,
+};
+
+fn border_prefix(border: &Border) -> String {
+    format!(
+        "if border_colors then hl.config({{ general = {{ col = {{ {} = \"rgba(\" .. border_colors.{} .. \"",
+        border.field, border.color
+    )
+}
+
+fn border_alpha_in(text: &str, border: &Border) -> u8 {
+    let prefix = border_prefix(border);
+    text.lines()
+        .find_map(|line| line.strip_prefix(&prefix))
+        .and_then(|rest| rest.get(..2))
+        .and_then(|hex| u8::from_str_radix(hex, 16).ok())
+        .unwrap_or(border.default)
+}
+
+fn with_border_alpha(text: &str, border: &Border, alpha: u8) -> String {
+    let prefix = border_prefix(border);
+    let line = format!("{prefix}{alpha:02X})\" }} }} }}) end");
+    let mut found = false;
+    let mut lines: Vec<String> = text
+        .lines()
+        .map(|existing| {
+            if existing.starts_with(&prefix) {
+                found = true;
+                line.clone()
+            } else {
+                existing.to_owned()
+            }
+        })
+        .collect();
+    if !found {
+        lines.push(line);
+    }
+    let mut joined = lines.join("\n");
+    joined.push('\n');
+    joined
+}
+
+pub fn border_alpha(border: &Border) -> u8 {
+    border_alpha_in(&read(Area::Appearance), border)
+}
+
+pub fn set_border_alpha(border: &Border, alpha: u8) -> std::io::Result<()> {
+    write(
+        Area::Appearance,
+        &with_border_alpha(&read(Area::Appearance), border, alpha),
+    )
+}
+
 fn has_lines(text: &str, lines: &[&str]) -> bool {
     lines
         .iter()
@@ -299,6 +367,22 @@ mod tests {
         assert_eq!(with_lines(&on, lines, true), on);
         assert_eq!(with_lines(&on, lines, false), text);
         assert!(!has_lines(&format!("{text}{}\n", lines[0]), lines));
+    }
+
+    #[test]
+    fn a_border_alpha_is_one_guarded_line_over_the_generated_color() {
+        let text = "hl.config({ general = { gaps_in = 4 } })\n";
+        assert_eq!(border_alpha_in(text, &ACTIVE_BORDER), 0x77);
+        let set = with_border_alpha(text, &ACTIVE_BORDER, 0xCC);
+        assert_eq!(
+            set,
+            "hl.config({ general = { gaps_in = 4 } })\nif border_colors then hl.config({ general = { col = { active_border = \"rgba(\" .. border_colors.active .. \"CC)\" } } }) end\n"
+        );
+        assert_eq!(border_alpha_in(&set, &ACTIVE_BORDER), 0xCC);
+        assert_eq!(border_alpha_in(&set, &INACTIVE_BORDER), 0x33);
+        let again = with_border_alpha(&set, &ACTIVE_BORDER, 0xFF);
+        assert_eq!(again.lines().count(), 2);
+        assert_eq!(border_alpha_in(&again, &ACTIVE_BORDER), 0xFF);
     }
 
     #[test]
