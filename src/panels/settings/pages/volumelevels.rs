@@ -197,11 +197,17 @@ fn add_row(
     }
 }
 
+fn title_of(stream: &Stream) -> String {
+    match &stream.media {
+        Some(media) if !media.is_empty() && *media != stream.name => {
+            format!("{} • {media}", stream.name)
+        }
+        _ => stream.name.clone(),
+    }
+}
+
 fn show(row: &StreamRow, stream: &Stream) {
-    row.title.set_text(&match &stream.media {
-        Some(media) => format!("{} • {media}", stream.name),
-        None => stream.name.clone(),
-    });
+    row.title.set_text(&title_of(stream));
     let percent = (stream.volume * 100.0).round();
     row.slider.set(percent);
     row.slider.set_tooltip(&format!("{percent}%"));
@@ -219,4 +225,30 @@ fn show(row: &StreamRow, stream: &Stream) {
     } else {
         "Click to mute"
     }));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_media_title_follows_the_app_name_unless_it_repeats_it() {
+        let stream = |name: &str, media: Option<&str>| Stream {
+            index: 0,
+            name: name.to_owned(),
+            media: media.map(str::to_owned),
+            icon: String::new(),
+            node: String::new(),
+            volume: 1.0,
+            muted: false,
+        };
+        for (name, media, title) in [
+            ("Player", Some("Song - Artist"), "Player • Song - Artist"),
+            ("Recorder", Some("Recorder"), "Recorder"),
+            ("Recorder", Some(""), "Recorder"),
+            ("Firefox", None, "Firefox"),
+        ] {
+            assert_eq!(title_of(&stream(name, media)), title);
+        }
+    }
 }

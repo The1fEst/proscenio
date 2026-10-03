@@ -867,8 +867,8 @@ with them, never through a shell. The page rereads the files afterwards, and
   a click (tooltip "Click to mute" or "Click to unmute"); while muted it is at
   40 % opacity, desaturated, under a 22 px `volume_off` or `mic_off`. The first
   line is the app's name, then " • " and the media title when the stream has
-  one, cut with an ellipsis; the second is a settings slider from 0 to 100 with
-  a percentage tooltip.
+  one that is not the name again, cut with an ellipsis; the second is a
+  settings slider from 0 to 100 with a percentage tooltip.
 - The entries are rebuilt only when the set of streams changes; otherwise each
   shows the stream's current title, volume and mute. Sound server events are
   coalesced to one refresh per main loop pass.
