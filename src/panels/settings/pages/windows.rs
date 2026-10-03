@@ -7,7 +7,7 @@ use crate::platform::{hypr, hyprconfig};
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::spinbox::SpinBox;
 
-pub const OPTIONS: [&str; 17] = [
+pub const OPTIONS: [&str; 16] = [
     "general:border_size",
     "decoration:rounding",
     "decoration:rounding_power",
@@ -24,7 +24,6 @@ pub const OPTIONS: [&str; 17] = [
     "decoration:dim_inactive",
     "decoration:dim_strength",
     "decoration:dim_special",
-    "general:allow_tearing",
 ];
 
 fn spin(
@@ -282,20 +281,6 @@ pub fn build(context: &Context) -> Rc<Page> {
             (0, 100),
             0,
         ),
-    );
-
-    let rendering = page.subsection(&windows, &tr("Rendering"), "");
-    let tearing = hyprrows::switch(
-        &page,
-        &rendering,
-        &options,
-        "screenshot_monitor",
-        &tr("Allow tearing"),
-        "general:allow_tearing",
-    );
-    page.tip(
-        &tearing.button,
-        &tr("Lets a game draw a frame before the display is ready for it, trading a torn line for latency"),
     );
 
     let blur_follows = {

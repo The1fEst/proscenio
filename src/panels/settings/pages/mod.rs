@@ -704,5 +704,6 @@ mod tests {
     fn options_are_stored_with_the_page_that_shows_them() {
         assert_eq!(option_area("general:border_size"), Some(Area::Appearance));
         assert_eq!(option_area("general:gaps_in"), Some(Area::Multitasking));
+        assert_eq!(option_area("general:allow_tearing"), Some(Area::Displays));
     }
 }

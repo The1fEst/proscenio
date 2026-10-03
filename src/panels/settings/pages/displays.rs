@@ -19,7 +19,8 @@ use crate::ui::widgets::spinbox::SpinBox;
 const AUTO_HDR: &str = "render:cm_auto_hdr";
 const GLOBAL_VRR: &str = "misc:vrr";
 const ZERO_SCALING: &str = "xwayland:force_zero_scaling";
-pub const OPTIONS: [&str; 3] = [AUTO_HDR, GLOBAL_VRR, ZERO_SCALING];
+const TEARING: &str = "general:allow_tearing";
+pub const OPTIONS: [&str; 4] = [AUTO_HDR, GLOBAL_VRR, TEARING, ZERO_SCALING];
 const GLOBAL_VRR_MODES: [(&str, &str); 4] = [
     ("Off", "0"),
     ("On", "1"),
@@ -789,6 +790,18 @@ pub fn build(context: &Context) -> Rc<Page> {
         "sync",
         (GLOBAL_VRR, "0"),
         &GLOBAL_VRR_MODES,
+    );
+    let tearing = hyprrows::switch(
+        &page,
+        &every,
+        &state.options,
+        "screenshot_monitor",
+        &tr("Allow tearing"),
+        TEARING,
+    );
+    page.tip(
+        &tearing.button,
+        &tr("Lets a game draw a frame before the display is ready for it, trading a torn line for latency"),
     );
     let xwayland = page.subsection(&every, &tr("X11 apps"), "");
     let sharp = hyprrows::switch(

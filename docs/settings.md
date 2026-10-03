@@ -830,8 +830,9 @@ with them, never through a shell. The page rereads the files afterwards, and
 - "Reserved area": top, right, bottom and left, 0–2000.
 - "All displays": Auto HDR (with a tooltip; `render:cm_auto_hdr`), the
   global variable refresh rate that a display set to follow it uses (with a
-  tooltip; `misc:vrr`: off, on, fullscreen only, fullscreen games and video)
-  and keeping X11 apps sharp on scaled displays (with a tooltip;
+  tooltip; `misc:vrr`: off, on, fullscreen only, fullscreen games and video),
+  allowing tearing (with a tooltip; `general:allow_tearing`) and keeping X11
+  apps sharp on scaled displays (with a tooltip;
   `xwayland:force_zero_scaling`).
 - A link row to the Night light subpage: the automatic schedule switch, a
   uniform row of the From and To times (dead while the schedule is off), and
@@ -1031,8 +1032,7 @@ far, dead while the lock is off), making a new workspace and swiping on.
   (`render_power`, 1–4) and a sharp edge, dead while shadows are off;
   "Dimming": dimming windows out of focus, "Keep fullscreen windows undimmed"
   (with a tooltip) and the strength in percent, both dead while dimming is
-  off, and the dimming around the special workspace in percent; allow tearing
-  (with a tooltip).
+  off, and the dimming around the special workspace in percent.
 - The two fullscreen switches each own one `hl.window_rule` line in
   `appearance.lua` matching `fullscreen = true`, which Hyprland also sets for
   maximized windows: `no-dim-fullscreen` with `no_dim = true`, and
