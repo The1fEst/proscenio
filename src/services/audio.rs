@@ -31,6 +31,7 @@ pub struct Stream {
     pub media: Option<String>,
     pub icon: String,
     pub node: String,
+    pub pid: Option<u32>,
     pub volume: f64,
     pub muted: bool,
 }
@@ -271,6 +272,9 @@ impl Audio {
                 .get_str("application.icon-name")
                 .unwrap_or_default(),
             node: proplist.get_str("node.name").or(name).unwrap_or_default(),
+            pid: proplist
+                .get_str("application.process.id")
+                .and_then(|pid| pid.parse().ok()),
             volume: volume.avg().0 as f64 / Volume::NORMAL.0 as f64,
             muted,
         };

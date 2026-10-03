@@ -16,6 +16,7 @@ const DUPLICATE_WINDOW: i64 = 2_000_000;
 #[derive(Clone, Default)]
 pub struct Track {
     pub bus: String,
+    pub pid: Option<u32>,
     pub identity: String,
     pub desktop_entry: String,
     pub track_id: String,
@@ -259,10 +260,12 @@ impl Mpris {
             let mut found: Vec<Track> = Vec::new();
             let mut owners = HashMap::new();
             for bus in &names {
+                let mut track = read(&session, bus).await;
                 if let Some(owner) = owner(&session, bus).await {
+                    track.pid = process_id(&session, &owner).await;
                     owners.insert(owner, bus.clone());
                 }
-                found.push(read(&session, bus).await);
+                found.push(track);
             }
 
             let previous: Vec<String> = mpris
@@ -368,6 +371,32 @@ async fn owner(session: &gio::DBusConnection, bus: &str) -> Option<String> {
     reply.child_value(0).str().map(str::to_owned)
 }
 
+async fn process_id(session: &gio::DBusConnection, owner: &str) -> Option<u32> {
+    let reply = session
+        .call_future(
+            Some("org.freedesktop.DBus"),
+            "/org/freedesktop/DBus",
+            "org.freedesktop.DBus",
+            "GetConnectionUnixProcessID",
+            Some(&(owner,).to_variant()),
+            None,
+            gio::DBusCallFlags::NONE,
+            2000,
+        )
+        .await
+        .ok()?;
+    reply.child_value(0).get::<u32>()
+}
+
+fn length_of(value: &Variant) -> Option<i64> {
+    let length = value.get::<i64>().or_else(|| {
+        value
+            .get::<u64>()
+            .and_then(|length| i64::try_from(length).ok())
+    })?;
+    (length != i64::MAX).then_some(length)
+}
+
 async fn read(session: &gio::DBusConnection, bus: &str) -> Track {
     let metadata = dbus::property(session, bus, OBJECT, INTERFACE, "Metadata").await;
     let entry = |key: &str| metadata.as_ref().and_then(|map| lookup(map, key));
@@ -377,13 +406,10 @@ async fn read(session: &gio::DBusConnection, bus: &str) -> Track {
             .and_then(|value| value.get::<bool>())
             .unwrap_or(false)
     };
-    let length = entry("mpris:length").and_then(|value| {
-        value
-            .get::<i64>()
-            .or_else(|| value.get::<u64>().map(|length| length as i64))
-    });
+    let length = entry("mpris:length").and_then(|value| length_of(&value));
     Track {
         bus: bus.to_owned(),
+        pid: None,
         identity: dbus::string_property(session, bus, OBJECT, MPRIS, "Identity")
             .await
             .unwrap_or_default(),
@@ -432,4 +458,17 @@ fn lookup(map: &Variant, key: &str) -> Option<Variant> {
         .find(|entry| entry.child_value(0).str() == Some(key))?
         .child_value(1)
         .as_variant()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_endless_stream_has_no_length() {
+        assert_eq!(length_of(&90_000_000i64.to_variant()), Some(90_000_000));
+        assert_eq!(length_of(&90_000_000u64.to_variant()), Some(90_000_000));
+        assert_eq!(length_of(&i64::MAX.to_variant()), None);
+        assert_eq!(length_of(&u64::MAX.to_variant()), None);
+    }
 }

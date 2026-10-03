@@ -3,10 +3,12 @@ use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
 use crate::core::i18n::tr;
+use crate::core::process;
 use crate::panels::settings::content::{Context, Page, new_slider};
 use crate::panels::settings::pages::sound::NO_SERVER;
 use crate::platform::appicon;
 use crate::services::audio::{Audio, Stream};
+use crate::services::mpris::{Mpris, Track};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::coalesce;
 use crate::ui::widgets::column::Column;
@@ -26,6 +28,7 @@ const MUTED_OPACITY: f64 = 0.4;
 
 struct StreamRow {
     index: u32,
+    ancestors: Vec<u32>,
     is_muted: Rc<Cell<bool>>,
     icon: gtk4::Image,
     mute: gtk4::Label,
@@ -48,10 +51,11 @@ pub fn build(context: &Context) -> Rc<Page> {
         page.notice(&section, "info", &tr(NO_SERVER));
         return page;
     };
+    let mpris = context.services.mpris.clone();
 
     let lists = [add_list(&page, true), add_list(&page, false)];
     let refresh = {
-        let audio = audio.clone();
+        let (audio, mpris) = (audio.clone(), mpris.clone());
         let page = Rc::downgrade(&page);
         let lists = lists.each_ref().map(Rc::downgrade);
         move || {
@@ -59,13 +63,17 @@ pub fn build(context: &Context) -> Rc<Page> {
                 return;
             };
             for list in lists.iter().filter_map(Weak::upgrade) {
-                refresh_list(&page, &audio, &list);
+                refresh_list(&page, &audio, &mpris, &list);
             }
         }
     };
     refresh();
     let queued = coalesce(Rc::new(refresh));
-    page.keep(audio.watch(move || queued()));
+    page.keep(audio.watch({
+        let queued = queued.clone();
+        move || queued()
+    }));
+    page.keep(mpris.subscribe(move || queued()));
     page.keep(lists);
     page
 }
@@ -92,9 +100,9 @@ fn add_list(page: &Page, sink: bool) -> Rc<StreamList> {
     })
 }
 
-fn refresh_list(page: &Rc<Page>, audio: &Audio, list: &Rc<StreamList>) {
+fn refresh_list(page: &Rc<Page>, audio: &Audio, mpris: &Mpris, list: &Rc<StreamList>) {
     let (page, weak, sink) = (Rc::downgrade(page), Rc::downgrade(list), list.sink);
-    let owner = audio.clone();
+    let (owner, mpris) = (audio.clone(), mpris.clone());
     audio.streams(sink, move |streams| {
         let (Some(page), Some(list)) = (page.upgrade(), weak.upgrade()) else {
             return;
@@ -117,8 +125,9 @@ fn refresh_list(page: &Rc<Page>, audio: &Audio, list: &Rc<StreamList>) {
                 .collect();
             list.shown.replace(rows);
         }
+        let players = mpris.players.borrow();
         for (row, stream) in list.shown.borrow().iter().zip(&streams) {
-            show(row, stream);
+            show(row, stream, &players);
         }
     });
 }
@@ -188,6 +197,7 @@ fn add_row(
 
     StreamRow {
         index: stream.index,
+        ancestors: stream.pid.map(process::ancestors).unwrap_or_default(),
         is_muted,
         icon,
         mute,
@@ -197,17 +207,24 @@ fn add_row(
     }
 }
 
-fn title_of(stream: &Stream) -> String {
-    match &stream.media {
-        Some(media) if !media.is_empty() && *media != stream.name => {
-            format!("{} • {media}", stream.name)
+fn title_of(stream: &Stream, ancestors: &[u32], players: &[Track]) -> String {
+    let player_title = players
+        .iter()
+        .filter(|track| !track.title.is_empty())
+        .filter(|track| track.pid.is_some_and(|pid| ancestors.contains(&pid)))
+        .max_by_key(|track| track.playing)
+        .map(|track| track.title.as_str());
+    match player_title.or(stream.media.as_deref()) {
+        Some(title) if !title.is_empty() && title != stream.name => {
+            format!("{} • {title}", stream.name)
         }
         _ => stream.name.clone(),
     }
 }
 
-fn show(row: &StreamRow, stream: &Stream) {
-    row.title.set_text(&title_of(stream));
+fn show(row: &StreamRow, stream: &Stream, players: &[Track]) {
+    row.title
+        .set_text(&title_of(stream, &row.ancestors, players));
     let percent = (stream.volume * 100.0).round();
     row.slider.set(percent);
     row.slider.set_tooltip(&format!("{percent}%"));
@@ -231,24 +248,53 @@ fn show(row: &StreamRow, stream: &Stream) {
 mod tests {
     use super::*;
 
-    #[test]
-    fn the_media_title_follows_the_app_name_unless_it_repeats_it() {
-        let stream = |name: &str, media: Option<&str>| Stream {
+    fn stream(name: &str, media: Option<&str>) -> Stream {
+        Stream {
             index: 0,
             name: name.to_owned(),
             media: media.map(str::to_owned),
             icon: String::new(),
             node: String::new(),
+            pid: None,
             volume: 1.0,
             muted: false,
-        };
+        }
+    }
+
+    #[test]
+    fn the_media_title_follows_the_app_name_unless_it_repeats_it() {
         for (name, media, title) in [
             ("Player", Some("Song - Artist"), "Player • Song - Artist"),
             ("Recorder", Some("Recorder"), "Recorder"),
             ("Recorder", Some(""), "Recorder"),
             ("Firefox", None, "Firefox"),
         ] {
-            assert_eq!(title_of(&stream(name, media)), title);
+            assert_eq!(title_of(&stream(name, media), &[], &[]), title);
         }
+    }
+
+    #[test]
+    fn a_player_in_the_stream_process_or_its_parents_names_the_stream() {
+        let player = |pid: u32, title: &str, playing: bool| Track {
+            pid: Some(pid),
+            title: title.to_owned(),
+            playing,
+            ..Track::default()
+        };
+        let brave = stream("Brave", Some("Playback"));
+        let players = [
+            player(900, "Elsewhere", true),
+            player(100, "Paused video", false),
+            player(100, "Live final", true),
+        ];
+        assert_eq!(
+            title_of(&brave, &[300, 200, 100], &players),
+            "Brave • Live final"
+        );
+        assert_eq!(title_of(&brave, &[300], &players), "Brave • Playback");
+        assert_eq!(
+            title_of(&brave, &[100], &[player(100, "", true)]),
+            "Brave • Playback"
+        );
     }
 }

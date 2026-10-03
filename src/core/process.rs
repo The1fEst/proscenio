@@ -169,6 +169,28 @@ pub fn running(name: &str) -> bool {
     })
 }
 
+pub fn ancestors(pid: u32) -> Vec<u32> {
+    let mut chain = vec![pid];
+    while let Some(parent) = chain
+        .last()
+        .and_then(|pid| std::fs::read_to_string(format!("/proc/{pid}/stat")).ok())
+        .and_then(|stat| parent_in(&stat))
+        .filter(|parent| *parent > 1)
+    {
+        chain.push(parent);
+    }
+    chain
+}
+
+fn parent_in(stat: &str) -> Option<u32> {
+    stat.rsplit_once(')')?
+        .1
+        .split_whitespace()
+        .nth(1)?
+        .parse()
+        .ok()
+}
+
 pub fn run<S: AsRef<OsStr>>(command: &[S]) -> bool {
     let Some((program, arguments)) = command.split_first() else {
         return false;
@@ -200,4 +222,28 @@ pub fn output<S: AsRef<OsStr>>(command: &[S]) -> Option<String> {
         .filter(|output| output.status.success())?;
     let text = String::from_utf8_lossy(&output.stdout);
     Some(text.trim_end_matches('\n').to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_parent_follows_a_command_name_with_spaces_and_parentheses() {
+        assert_eq!(
+            parent_in("4242 (Web Content (x)) S 4100 4242 4100 0 -1 4194560"),
+            Some(4100)
+        );
+        assert_eq!(parent_in("garbage"), None);
+    }
+
+    #[test]
+    fn this_process_leads_up_to_its_parent() {
+        let chain = ancestors(std::process::id());
+        assert_eq!(chain[0], std::process::id());
+        assert_eq!(
+            chain.get(1).copied(),
+            Some(std::os::unix::process::parent_id())
+        );
+    }
 }
