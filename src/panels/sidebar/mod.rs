@@ -34,6 +34,7 @@ pub struct Sidebar {
     grab: Option<Rc<grab::Grab>>,
     overlay: gtk4::Overlay,
     dialog: Rc<RefCell<Option<Rc<WindowDialog>>>>,
+    stop_editing: Option<Rc<dyn Fn()>>,
     watchers: Listeners<bool>,
 }
 
@@ -79,6 +80,9 @@ impl Sidebar {
         }
         if let Some(dialog) = self.dialog.borrow_mut().take() {
             self.overlay.remove_overlay(&dialog.root);
+        }
+        if let Some(stop_editing) = &self.stop_editing {
+            stop_editing();
         }
         self.window.set_visible(false);
         self.announce();
@@ -126,7 +130,7 @@ pub fn build(
             }
         })
     };
-    column.append(&systemrow::build(
+    let (system_row, stop_editing) = systemrow::build(
         theme,
         &services.background,
         systemrow::Actions {
@@ -136,7 +140,8 @@ pub fn build(
         },
         session,
         scope,
-    ));
+    );
+    column.append(&system_row);
 
     if config.quick_sliders
         && (config.slider_brightness || config.slider_volume || config.slider_mic)
@@ -256,6 +261,7 @@ pub fn build(
         grab: grab::Grab::new(&monitor.display()),
         overlay,
         dialog: open_dialog,
+        stop_editing,
         watchers: Listeners::default(),
     });
     owner.replace(Rc::downgrade(&sidebar));

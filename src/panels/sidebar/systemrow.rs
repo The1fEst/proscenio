@@ -31,7 +31,7 @@ pub fn build(
     actions: Actions,
     session: &Rc<SessionScreen>,
     scope: &Scope,
-) -> gtk4::Widget {
+) -> (gtk4::Widget, Option<Rc<dyn Fn()>>) {
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     row.set_margin_top(5);
     row.append(&uptime_pill(background, scope));
@@ -44,21 +44,35 @@ pub fn build(
     group.set_colour(|theme| theme.colors.col_layer1);
     group.set_padding(4.0);
 
+    let mut stop_editing: Option<Rc<dyn Fn()>> = None;
     if let Some(edit) = actions.edit {
         let (button, tip, set_toggled) = quick_toggle(theme, "edit", &tr("Edit quick toggles"));
         let editing = Rc::new(Cell::new(false));
-        button.connect_clicked(move || {
-            let now = !editing.get();
-            editing.set(now);
-            set_toggled(now);
-            let mut text = tr("Edit quick toggles");
-            if now {
-                text.push('\n');
-                text.push_str(&tr("Drag to move, add and remove\nRMB to toggle size"));
+        let set_editing = {
+            let editing = editing.clone();
+            move |now: bool| {
+                editing.set(now);
+                set_toggled(now);
+                let mut text = tr("Edit quick toggles");
+                if now {
+                    text.push('\n');
+                    text.push_str(&tr("Drag to move, add and remove\nRMB to toggle size"));
+                }
+                tip.set_text(&text);
+                edit(now);
             }
-            tip.set_text(&text);
-            edit(now);
+        };
+        let set_editing = Rc::new(set_editing);
+        button.connect_clicked({
+            let editing = editing.clone();
+            let set_editing = set_editing.clone();
+            move || set_editing(!editing.get())
         });
+        stop_editing = Some(Rc::new(move || {
+            if editing.get() {
+                set_editing(false);
+            }
+        }));
         group.append(&button);
     }
 
@@ -90,7 +104,7 @@ pub fn build(
     group.append(&power);
 
     row.append(&group);
-    row.upcast()
+    (row.upcast(), stop_editing)
 }
 
 fn quick_toggle(

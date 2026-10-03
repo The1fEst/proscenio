@@ -499,6 +499,8 @@ between one and two cells, and a drag past 6 px carries the tile with the
 `insertionIndex` rule above, previewing the row it would land in and dropping
 into either section. Every change is written to
 `sidebar.quickToggles.android.toggles` in `~/.config/proscenio/config.toml`.
+Closing the sidebar turns edit mode off, where the QML keeps it on for the next
+opening.
 
 An empty unused section stays one cell tall, so a toggle can always be dropped
 there. In the QML it is only as tall as its rows: with every toggle placed it
