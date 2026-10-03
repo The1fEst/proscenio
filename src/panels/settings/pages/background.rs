@@ -2,12 +2,14 @@ use gtk4::prelude::*;
 use serde_json::Value;
 use std::rc::Rc;
 
-use crate::core::config;
 use crate::core::i18n::tr;
+use crate::core::{config, tools};
 use crate::panels::settings::content::{Choice, Context, Page, Parent, Style};
 use crate::panels::settings::pages::fonts::family_options;
+use crate::panels::settings::pages::quick;
 use crate::services::appearance::DesktopAppearance;
 use crate::ui::widgets::centred::Centred;
+use crate::ui::widgets::row::Row;
 use crate::ui::widgets::selection::Selection;
 use crate::ui::widgets::text;
 
@@ -19,6 +21,7 @@ const DIAL: &str = "/background/widgets/clock/cookie/dialNumberStyle";
 const FONT_FAMILY: &str = "/background/widgets/clock/digital/font/family";
 const DEFAULT_FAMILY: &str = "Google Sans Flex";
 const LABEL_START: i32 = 2;
+const WALLPAPER_SPACING: i32 = 5;
 
 fn choice(label: &str, icon: &'static str, value: &str) -> Choice {
     Choice {
@@ -82,8 +85,25 @@ pub fn build(context: &Context) -> Rc<Page> {
     let appearance = DesktopAppearance::new();
 
     let wallpaper = page.section("wallpaper", &tr("Wallpaper"));
-    let fullscreen = page.config_switch(
+    page.tools_notice(
         &wallpaper,
+        &[&tools::KDIALOG],
+        &tr("the system file picker does not open"),
+    );
+    let top = Row::new(WALLPAPER_SPACING);
+    top.append(&quick::preview(&page));
+    let controls = gtk4::Box::new(gtk4::Orientation::Vertical, WALLPAPER_SPACING);
+    controls.set_hexpand(true);
+    controls.append(&quick::choose_wallpaper(&page));
+    page.config_switch(
+        &controls,
+        "ad",
+        &tr("Use system file picker"),
+        "/wallpaperSelector/useSystemFileDialog",
+        false,
+    );
+    let fullscreen = page.config_switch(
+        &controls,
         "fullscreen",
         &tr("Hide when a window is fullscreen"),
         "/background/hideWhenFullscreen",
@@ -93,6 +113,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         &fullscreen.button,
         &tr("Saves a bit of resources while gaming or watching videos"),
     );
+    top.append(&controls);
+    wallpaper.append(&top);
 
     let parallax = page.section("sync_alt", &tr("Parallax"));
     let vertical = page.uniform_row(&parallax);

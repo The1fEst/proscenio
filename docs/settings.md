@@ -154,9 +154,10 @@ the top, with 30 px between sections and 80 px of room below the last.
   | Connection, certificate fields | `kdialog` | the pick button is disabled |
   | Bluetooth | `org.bluez`; `bluetoothctl` | the page is only a notice; notice |
   | Colors, Color generation | `matugen` | notice |
-  | Quick, "Choose file" | `kdialog` | button disabled, tooltip names it |
+  | Quick and Background, "Choose file" | `kdialog` | button disabled, tooltip names it |
+  | Background, Wallpaper | `kdialog` (the selector's system file picker) | notice |
   | Bar, Utility buttons | `grim`, `magick`, `wl-copy`, `hyprpicker`, `ydotool`, `wpctl`, `wf-recorder`, `slurp`; `net.hadess.PowerProfiles` | notices |
-  | Panels | `kdialog` (wallpaper selector), `ydotool` (on-screen keyboard) | notices |
+  | Panels | `ydotool` (on-screen keyboard) | notice |
   | Search, Prefixes | `qalc`, `cliphist` | notices |
   | Apps, Commands | the program of each command | one notice, updated as the commands change |
   | Users | `org.freedesktop.Accounts` | notice |
@@ -1063,7 +1064,10 @@ far, dead while the lock is off), making a new workspace and swiping on.
 
 ## 27. Background (subpage)
 
-- "Wallpaper": hiding it under a fullscreen window (with a tooltip).
+- "Wallpaper": a row 5 px apart of Quick's wallpaper preview and a column
+  of Quick's "Choose file" button, the wallpaper selector's system file
+  picker (`wallpaperSelector.useSystemFileDialog`) and hiding the wallpaper
+  under a fullscreen window (with a tooltip).
 - "Parallax": two uniform rows of switches (vertical, vertical for tall
   wallpapers with a tooltip; following the workspace and the sidebars), the
   preferred zoom and the widget movement (with a tooltip), both in percent.
@@ -1119,8 +1123,7 @@ labels itself.
 ## 29. Panels (subpage)
 
 - Link rows to the Dock, Sidebars and Cheat sheet subpages.
-- "Wallpaper selector": the system file picker;
-  "On-screen keyboard": pinned on startup and the layout (English (US),
+- "On-screen keyboard": pinned on startup and the layout (English (US),
   German, Russian — the names of the keyboard's layouts).
 - Dock: enable; "Reveal": hover to reveal and pinned on startup side by
   side, and the hover region height, dead unless hovering reveals; "Looks":

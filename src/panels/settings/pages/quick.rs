@@ -119,7 +119,7 @@ fn icon_choice(label: &str, icon: &'static str, value: i64) -> Choice {
     }
 }
 
-fn preview(page: &Page) -> Paint {
+pub(super) fn preview(page: &Page) -> Paint {
     let texture: Rc<RefCell<Option<gdk::Texture>>> = Rc::new(RefCell::new(None));
     let paint = Paint::new({
         let texture = texture.clone();

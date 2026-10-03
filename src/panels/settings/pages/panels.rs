@@ -49,20 +49,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         );
     }
 
-    let selector = page.section("wallpaper_slideshow", &tr("Wallpaper selector"));
-    page.tools_notice(
-        &selector,
-        &[&tools::KDIALOG],
-        &tr("the system file picker does not open"),
-    );
-    page.config_switch(
-        &selector,
-        "ad",
-        &tr("Use system file picker"),
-        "/wallpaperSelector/useSystemFileDialog",
-        false,
-    );
-
     let osk = page.section("keyboard", &tr("On-screen keyboard"));
     page.tools_notice(
         &osk,
