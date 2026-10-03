@@ -255,6 +255,9 @@ window.settings-window { background-color: var(--m3background); }
     background-color: var(--colLayer2);
     border-radius: 12px;
 }
+.settings-link > link {
+    color: var(--colPrimary);
+}
 window.lock-surface {
     background: none;
 }

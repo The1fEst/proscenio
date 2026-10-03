@@ -26,7 +26,6 @@ const BANNER_MARGIN: i32 = 10;
 const BANNER_ICON: i32 = 80;
 const BANNER_LINES: i32 = 5;
 const LINKS_SPACING: i32 = 5;
-const DEFAULT_LINK_COLOUR: &str = "#2980b9";
 const DOTFILES: &str = "https://github.com/The1fEst/dots-hyprland";
 const UPSTREAM: &str = "https://github.com/end-4/dots-hyprland";
 const REPOSITORY: &str = "https://github.com/The1fEst/proscenio";
@@ -393,14 +392,12 @@ fn banner(image: &gtk4::Widget, title: &str, lines: &[Line]) -> gtk4::Box {
     let name = text::styled_sized(title, pixel_size::TITLE);
     name.set_xalign(0.0);
     column.append(&Centred::filling_width(&name));
-    let colour = text::kdeglobals("Colors:View", "ForegroundLink")
-        .unwrap_or_else(|| DEFAULT_LINK_COLOUR.to_owned());
     for line in lines {
         let (label, size) = match line {
-            Line::Link(url, size) => (link_label(&link_markup(url, &colour)), *size),
+            Line::Link(url, size) => (link_label(&link_markup(url)), *size),
             Line::Credit(template, url) => {
-                let markup = glib::markup_escape_text(&tr(template))
-                    .replace("%1", &link_markup(url, &colour));
+                let markup =
+                    glib::markup_escape_text(&tr(template)).replace("%1", &link_markup(url));
                 let label = link_label(&markup);
                 text::set_color(&label, "colSubtext");
                 (label, pixel_size::SMALLER)
@@ -424,9 +421,9 @@ fn banner(image: &gtk4::Widget, title: &str, lines: &[Line]) -> gtk4::Box {
     row
 }
 
-fn link_markup(url: &str, colour: &str) -> String {
+fn link_markup(url: &str) -> String {
     let url = glib::markup_escape_text(url);
-    format!("<a href=\"{url}\"><span foreground=\"{colour}\" underline=\"none\">{url}</span></a>")
+    format!("<a href=\"{url}\"><span underline=\"none\">{url}</span></a>")
 }
 
 fn open(url: &str) {
@@ -435,6 +432,7 @@ fn open(url: &str) {
 
 fn link_label(markup: &str) -> gtk4::Label {
     let label = text::styled("");
+    label.add_css_class("settings-link");
     label.set_markup(markup);
     label.set_xalign(0.0);
     label.connect_activate_link(|_, url| {

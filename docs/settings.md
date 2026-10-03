@@ -411,8 +411,9 @@ buttons.
   on its fractional width like the Qt layout, of an 80 px theme icon (the
   `os-release` `LOGO`, else the distro family's symbolic icon; the dots'
   `illogical-impulse`) and 20 px to its right the name at 22 px over its
-  links at 16 px, the fork line at 12 px. Links take KDE's `ForegroundLink`
-  color, without underline, and open in the default handler through GIO
+  links at 16 px, the fork line at 12 px. Links take `colPrimary` through
+  the `settings-link` CSS class, so they follow the palette, without
+  underline, and open in the default handler through GIO
   (links and buttons alike). Under each banner a
   wrapping row of `RippleButtonWithIcon`s 5 px apart for the distro's
   documentation, support, bug and privacy pages, and for the dots'
