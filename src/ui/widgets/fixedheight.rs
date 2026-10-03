@@ -52,7 +52,7 @@ mod imp {
             let Some(child) = self.obj().first_child() else {
                 return (0, 0, -1, -1);
             };
-            let (minimum, natural, _, _) = child.measure(orientation, for_size);
+            let (minimum, natural, _, _) = child.measure(orientation, -1);
             (minimum, natural, -1, -1)
         }
 
