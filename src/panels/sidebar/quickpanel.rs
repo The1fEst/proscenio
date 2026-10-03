@@ -369,6 +369,15 @@ impl QuickPanel {
                 container.append(&group);
             }
         }
+        if self.editing.get() {
+            let columns = self.columns as f64;
+            let free_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+            free_row.set_size_request(
+                (self.cell * columns + SPACING * (columns - 1.0)) as i32,
+                CELL_HEIGHT as i32,
+            );
+            self.used.append(&free_row);
+        }
         self.shown.replace(shown);
         self.resize();
     }

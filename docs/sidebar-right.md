@@ -504,6 +504,12 @@ An empty unused section stays one cell tall, so a toggle can always be dropped
 there. In the QML it is only as tall as its rows: with every toggle placed it
 has no height, and no toggle can be taken out.
 
+The placed toggles end in an empty row as wide as the grid while edit mode is
+on, and the whole grid width of every row takes a drop. A toggle dropped there
+goes to the end of the list, so it starts a new row when the last one is full.
+In the QML the drop area is only as wide and tall as the placed rows, so a new
+row can only be started by first moving a toggle out of a full one.
+
 The notifications tile reads and writes the silent flag of proscenio's
 notification daemon ([notifications.md](notifications.md)).
 
