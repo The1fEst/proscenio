@@ -1155,6 +1155,14 @@ As in the QML, the menu ignores a DBusMenu entry's `enabled` flag: disabled
 entries look and act like the rest. Left-click on a tray item does nothing;
 proscenio does not call `activate()`.
 
+The shell is the session's `org.kde.StatusNotifierWatcher` itself
+(`src/services/statusnotifierwatcher.rs`, Plasma 6.7's kded module): it owns
+the name with `REPLACE`, takes `RegisterStatusNotifierItem` with a bus name
+(path `/StatusNotifierItem`) or with an object path on the caller's unique
+name, registers the item only when its bus name has an owner, drops every
+item of a name once that name leaves the bus, and answers
+`IsStatusNotifierHostRegistered` with true and `ProtocolVersion` with 0.
+
 ---
 
 ## 10. Popups

@@ -25,6 +25,7 @@ use crate::panels::{
 };
 use crate::platform::{hypr, ipc, locale, shortcuts};
 use crate::screens::{Screens, Surfaces};
+use crate::services::statusnotifierwatcher::StatusNotifierWatcher;
 use crate::services::{Services, mpris, recording, states};
 use crate::theming::{colors, switchwall};
 use crate::ui::theme::{self, Theme};
@@ -104,6 +105,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
 
     let _ = settings::pages::split_legacy_settings();
     let services = Rc::new(Services::new(&config));
+    std::mem::forget(StatusNotifierWatcher::start(services.session_bus.as_ref()));
     let launcher = launcher::Launcher::new(&services.cliphist, &services.todo, &services.net);
     let osd = osd::Osd::new(app, &services, &theme);
     let region = regionselector::RegionSelector::new(app, &theme, &services.recording);

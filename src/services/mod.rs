@@ -25,6 +25,7 @@ pub mod recording;
 pub mod session;
 pub mod shellusage;
 pub mod states;
+pub mod statusnotifierwatcher;
 pub mod sysinfo;
 pub mod thumbnails;
 pub mod timedate;
