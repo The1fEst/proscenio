@@ -97,19 +97,19 @@ pub fn themed(
     size: i32,
     scale: i32,
 ) -> gdk::Paintable {
-    let found = if theme.has_icon(name) || name.starts_with('/') {
-        name
+    let icon = if name.starts_with('/') && std::path::Path::new(name).is_file() {
+        gtk4::IconPaintable::for_file(&gio::File::for_path(name), size, scale)
     } else {
-        fallback
+        let found = if theme.has_icon(name) { name } else { fallback };
+        theme.lookup_icon(
+            found,
+            &[],
+            size,
+            scale,
+            gtk4::TextDirection::None,
+            gtk4::IconLookupFlags::PRELOAD,
+        )
     };
-    let icon = theme.lookup_icon(
-        found,
-        &[],
-        size,
-        scale,
-        gtk4::TextDirection::None,
-        gtk4::IconLookupFlags::PRELOAD,
-    );
     recoloured(&icon, size * scale).unwrap_or_else(|| icon.upcast())
 }
 
