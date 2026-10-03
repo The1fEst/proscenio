@@ -1065,18 +1065,8 @@ blur is off.
   change.
 - "File types" (`description`): a link row, "Every file type", to the File
   types subpage (§30.1).
-- "Window rules": the rules the settings app owns, one `hl.window_rule` line
-  each in `apps.lua` (`src/platform/windowrules.rs`, the port of
-  `hypr-rules.py`, byte for byte), as 48 px `colLayer2` cards of the class,
-  what the rule does in `colSubtext` at 12 px and a 32 px round remove button
-  with a tooltip, or "No rules yet". "Add a rule" (with a tooltip): the window
-  class, a box of the classes of the windows open now that fills it in, the
-  kind of rule (among them `focus_on_activate` true or false, "Takes focus
-  when it asks" and "Never takes focus when it asks", which Hyprland uses
-  instead of `misc:focus_on_activate` for that class), its value for opacity
-  (percent, 1 to 100, 100 when it is not
-  a number) or a workspace, and "Add rule", dead until there is a class.
-  Adding or removing reloads Hyprland.
+- "Window rules" (`select_window`): a link row, "Every window rule", to the
+  Window rules subpage (§30.2).
 - "Commands": outlined fields for the terminal, the task manager and the
   system update command.
 - The popup of a box with few items is as tall as they are; it scrolls only
@@ -1101,6 +1091,21 @@ drops the user's associations for the type (`reset_type_associations`),
 "Other application…" opens the Apps page's application dialog for any
 installed application, and Cancel closes. The list then shows the new
 default.
+
+### 30.2 Window rules (subpage)
+
+`src/panels/settings/pages/windowrules.rs`. "What each application's
+windows do": the rules the settings app owns, one `hl.window_rule` line each
+in `apps.lua` (`src/platform/windowrules.rs`, the port of `hypr-rules.py`,
+byte for byte), as 48 px `colLayer2` cards of the class, what the rule does
+in `colSubtext` at 12 px and a 32 px round remove button with a tooltip, or
+"No rules yet". "Add a rule" (with a tooltip): the window class, a box of the
+classes of the windows open now that fills it in, the kind of rule (among
+them `focus_on_activate` true or false, "Takes focus when it asks" and "Never
+takes focus when it asks", which Hyprland uses instead of
+`misc:focus_on_activate` for that class), its value for opacity (percent, 1
+to 100, 100 when it is not a number) or a workspace, and "Add rule", dead
+until there is a class. Adding or removing reloads Hyprland.
 
 ## 31. Mouse & Touchpad
 

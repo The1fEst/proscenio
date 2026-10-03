@@ -1436,5 +1436,6 @@
   "Version": "版本",
   "Takes focus when it asks": "请求时获得焦点",
   "Never takes focus when it asks": "请求时也从不获得焦点",
-  "Exceptions for single apps: Apps › Window rules": "单个应用的例外：应用 › 窗口规则"
+  "Exceptions for single apps: Apps › Window rules": "单个应用的例外：应用 › 窗口规则",
+  "Every window rule": "所有窗口规则"
 }

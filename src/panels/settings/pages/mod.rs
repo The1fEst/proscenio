@@ -36,6 +36,7 @@ pub mod sound;
 pub mod system;
 pub mod users;
 pub mod wifi;
+pub mod windowrules;
 
 use gtk4::prelude::*;
 use std::rc::Rc;
@@ -351,10 +352,15 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 20] = [
+pub const SUBPAGES: [Subpage; 21] = [
     Subpage {
         id: "filetypes",
         title: "File types",
+        parent: "apps",
+    },
+    Subpage {
+        id: "windowrules",
+        title: "Window rules",
         parent: "apps",
     },
     Subpage {
@@ -511,6 +517,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "users" => users::build(context),
         "autostart" => autostart::build(context),
         "filetypes" => filetypes::build(context),
+        "windowrules" => windowrules::build(context),
         "shortcuts" => shortcuts::build(context),
         "about" => about::build(context),
         "services" => services::build(context),
