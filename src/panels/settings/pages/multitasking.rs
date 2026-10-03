@@ -2,7 +2,6 @@ use gtk4::prelude::*;
 use serde_json::Value;
 use std::rc::Rc;
 
-use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
@@ -102,7 +101,7 @@ fn layout(options: &HyprOptions) -> String {
     }
 }
 
-fn choice(label: &str, icon: &'static str, value: Value) -> Choice {
+pub(super) fn choice(label: &str, icon: &'static str, value: Value) -> Choice {
     Choice {
         label: label.to_owned(),
         icon,
@@ -110,7 +109,7 @@ fn choice(label: &str, icon: &'static str, value: Value) -> Choice {
     }
 }
 
-fn spin(
+pub(super) fn spin(
     icon: &'static str,
     label: &'static str,
     option: &'static str,
@@ -415,70 +414,14 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr("Exceptions for single apps: Apps › Window rules"),
     );
 
-    let overview = page.section("overview_key", &tr("Overview"));
-    page.config_switch(&overview, "check", &tr("Enable"), "/overview/enable", true);
-    let looks = page.subsection(&overview, &tr("Looks"), "");
-    page.config_switch(
-        &looks,
-        "center_focus_strong",
-        &tr("Center icons"),
-        "/overview/centerIcons",
-        true,
+    let overview = page.section("", "");
+    page.link_row(
+        &overview,
+        "overview_key",
+        &tr("Overview"),
+        &tr("The workspace grid, its size, order and looks"),
+        context.subpage_opener("overview"),
     );
-    page.config_spin_scaled(
-        &looks,
-        "loupe",
-        &tr("Scale (%)"),
-        "/overview/scale",
-        0.18,
-        100.0,
-        (1, 100),
-        1,
-    );
-    let grid = page.subsection(&overview, &tr("Workspace grid"), "");
-    let size = page.uniform_row(&grid);
-    page.config_spin(
-        &size,
-        "splitscreen_bottom",
-        &tr("Rows"),
-        "/overview/rows",
-        2,
-        (1, 20),
-        1,
-    );
-    page.config_spin(
-        &size,
-        "splitscreen_right",
-        &tr("Columns"),
-        "/overview/columns",
-        5,
-        (1, 20),
-        1,
-    );
-    let order = page.uniform_row(&grid);
-    for (pointer, first, second) in [
-        (
-            "/overview/orderRightLeft",
-            ("Left to right", "arrow_forward"),
-            ("Right to left", "arrow_back"),
-        ),
-        (
-            "/overview/orderBottomUp",
-            ("Top-down", "arrow_downward"),
-            ("Bottom-up", "arrow_upward"),
-        ),
-    ] {
-        page.selection_of(
-            &order,
-            vec![
-                choice(&tr(first.0), first.1, Value::from(0)),
-                choice(&tr(second.0), second.1, Value::from(1)),
-            ],
-            &[pointer],
-            move || Value::from(i64::from(config::value_bool(pointer, false))),
-            move |value| config::store_value(pointer, Value::Bool(value.as_i64() == Some(1))),
-        );
-    }
 
     let workspaces = page.section("select_window_2", &tr("Workspaces"));
     for (icon, label, option) in [
@@ -511,87 +454,12 @@ pub fn build(context: &Context) -> Rc<Page> {
         hyprrows::switch(&page, &workspaces, &options, icon, &tr(label), option);
     }
 
-    let swiping = page.subsection(
+    page.link_row(
         &workspaces,
+        "swipe",
         &tr("Swiping between workspaces"),
-        &tr("Which fingers do the swiping is set in the Hyprland configuration; these are the numbers behind it"),
-    );
-    let swipe_row = page.uniform_row(&swiping);
-    hyprrows::spin(
-        &page,
-        &swipe_row,
-        &options,
-        &spin(
-            "swipe",
-            "Full swipe (px)",
-            "gestures:workspace_swipe_distance",
-            1.0,
-            (100, 2000),
-            50,
-        ),
-    );
-    hyprrows::spin(
-        &page,
-        &swipe_row,
-        &options,
-        &spin(
-            "undo",
-            "Give up under (%)",
-            "gestures:workspace_swipe_cancel_ratio",
-            100.0,
-            (0, 100),
-            5,
-        ),
-    );
-    hyprrows::spin(
-        &page,
-        &swiping,
-        &options,
-        &spin(
-            "speed",
-            "Flick speed that switches anyway",
-            "gestures:workspace_swipe_min_speed_to_force",
-            1.0,
-            (0, 100),
-            1,
-        ),
-    );
-    hyprrows::switch(
-        &page,
-        &swiping,
-        &options,
-        "swap_horiz",
-        &tr("A swipe keeps the direction it started in"),
-        "gestures:workspace_swipe_direction_lock",
-    );
-    let lock_after = hyprrows::spin(
-        &page,
-        &swiping,
-        &options,
-        &spin(
-            "straighten",
-            "Locks after (px)",
-            "gestures:workspace_swipe_direction_lock_threshold",
-            1.0,
-            (0, 200),
-            5,
-        ),
-    );
-    hyprrows::switch(
-        &page,
-        &swiping,
-        &options,
-        "add_box",
-        &tr("Swiping past the last workspace makes a new one"),
-        "gestures:workspace_swipe_create_new",
-    );
-    hyprrows::switch(
-        &page,
-        &swiping,
-        &options,
-        "all_inclusive",
-        &tr("Keep swiping without lifting the fingers"),
-        "gestures:workspace_swipe_forever",
+        &tr("How far a swipe goes, when it gives up and when it locks"),
+        context.subpage_opener("swiping"),
     );
     let distance = page.subsection(
         &workspaces,
@@ -635,8 +503,6 @@ pub fn build(context: &Context) -> Rc<Page> {
             let snap = options.flag("general:snap:enabled");
             Page::set_spin_row_enabled(&window_gap.0, &window_gap.1, snap);
             Page::set_spin_row_enabled(&monitor_gap.0, &monitor_gap.1, snap);
-            let locked = options.flag("gestures:workspace_swipe_direction_lock");
-            Page::set_spin_row_enabled(&lock_after.0, &lock_after.1, locked);
         }
     };
     follow();

@@ -30,6 +30,7 @@ pub mod mousedevice;
 pub mod multitasking;
 pub mod network;
 pub mod notifications;
+pub mod overview;
 pub mod panels;
 pub mod power;
 pub mod privacy;
@@ -42,6 +43,7 @@ pub mod services;
 pub mod shortcuts;
 pub mod sidebars;
 pub mod sound;
+pub mod swiping;
 pub mod system;
 pub mod touchpad;
 pub mod users;
@@ -364,7 +366,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 33] = [
+pub const SUBPAGES: [Subpage; 35] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -379,6 +381,16 @@ pub const SUBPAGES: [Subpage; 33] = [
         id: "shortcuts",
         title: "Keyboard Shortcuts",
         parent: "keyboard",
+    },
+    Subpage {
+        id: "overview",
+        title: "Overview",
+        parent: "multitasking",
+    },
+    Subpage {
+        id: "swiping",
+        title: "Swiping between workspaces",
+        parent: "multitasking",
     },
     Subpage {
         id: "mousedevice",
@@ -584,6 +596,8 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "power" => power::build(context),
         "lock" => lock::build(context),
         "multitasking" => multitasking::build(context),
+        "overview" => overview::build(context),
+        "swiping" => swiping::build(context),
         "appearance" => appearance::build(context),
         "fonts" => fonts::build(context),
         "windows" => windows::build(context),

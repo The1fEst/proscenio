@@ -960,16 +960,24 @@ blur is off.
   the pointer, window used last), and letting apps take focus when they ask
   (`misc:focus_on_activate`, whose tooltip points at the window rules that
   make exceptions for single apps).
-- "Overview": the enable switch; "Looks": centered icons and the scale in
-  percent; "Workspace grid": rows and columns, and the horizontal and vertical
-  order as two selection arrays side by side. The orders are booleans in the
-  config; the QML compares them loosely with 0 and 1, proscenio reads and
-  stores them as booleans.
+- A link row to the Overview subpage.
 - "Workspaces": five switches for going back and forth, wrapping around, its
-  animation and the special workspace; "Swiping between workspaces" (with a
-  tooltip): the full swipe, the give-up ratio, the flick speed, the direction
-  lock (and after how far, dead while the lock is off), making a new workspace
-  and swiping on; "Distance between workspaces" (with a tooltip): the gap.
+  animation and the special workspace; a link row to the Swiping between
+  workspaces subpage; "Distance between workspaces" (with a tooltip): the gap.
+
+### 25.1 Overview (subpage)
+
+The enable switch; "Looks": centered icons and the scale in percent;
+"Workspace grid": rows and columns, and the horizontal and vertical order as
+two selection arrays side by side. The orders are booleans in the config; the
+QML compares them loosely with 0 and 1, proscenio reads and stores them as
+booleans.
+
+### 25.2 Swiping between workspaces (subpage)
+
+A notice that the fingers are set in the Hyprland configuration, then the full
+swipe, the give-up ratio, the flick speed, the direction lock (and after how
+far, dead while the lock is off), making a new workspace and swiping on.
 
 ## 26. Appearance
 
