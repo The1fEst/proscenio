@@ -6,6 +6,7 @@ pub mod apps;
 pub mod autostart;
 pub mod background;
 pub mod bar;
+pub mod barworkspaces;
 pub mod bluetooth;
 pub mod capture;
 pub mod connection;
@@ -41,6 +42,7 @@ pub mod sound;
 pub mod system;
 pub mod touchpad;
 pub mod users;
+pub mod utilitybuttons;
 pub mod wifi;
 pub mod windowrules;
 pub mod windows;
@@ -359,7 +361,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 28] = [
+pub const SUBPAGES: [Subpage; 30] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -496,6 +498,16 @@ pub const SUBPAGES: [Subpage; 28] = [
         parent: "appearance",
     },
     Subpage {
+        id: "utilitybuttons",
+        title: "Utility buttons",
+        parent: "bar",
+    },
+    Subpage {
+        id: "barworkspaces",
+        title: "Workspaces",
+        parent: "bar",
+    },
+    Subpage {
         id: "panels",
         title: "Panels",
         parent: "appearance",
@@ -559,6 +571,8 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "windows" => windows::build(context),
         "background" => background::build(context),
         "bar" => bar::build(context),
+        "utilitybuttons" => utilitybuttons::build(context),
+        "barworkspaces" => barworkspaces::build(context),
         "panels" => panels::build(context),
         "apps" => apps::build(context),
         "mouse" => mouse::build(context),

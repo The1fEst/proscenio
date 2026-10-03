@@ -1064,11 +1064,20 @@ blur is off.
 - "Tray": four switches (two with tooltips) and the pinned or unpinned item
   IDs, whichever the first switch makes the list mean, as an outlined field
   split at commas.
-- "Utility buttons": four uniform rows of two switches (System updates with a
-  tooltip). "Weather": the enable switch.
-- "Workspaces": four switches (the Nerd Font one with a tooltip), how many
-  are shown, and the number style (Normal, Han characters, Roman numerals),
-  which stores the list of labels itself.
+- "Weather": the enable switch.
+- Link rows to the Utility buttons and Workspaces subpages.
+
+### 28.1 Utility buttons (subpage)
+
+Four uniform rows of two switches (System updates with a tooltip), under the
+missing-tools notice and, without power-profiles-daemon, a notice about the
+Performance Profile button.
+
+### 28.2 Workspaces (subpage)
+
+Four switches (the Nerd Font one with a tooltip), how many are shown, and the
+number style (Normal, Han characters, Roman numerals), which stores the list of
+labels itself.
 
 ## 29. Panels (subpage)
 
