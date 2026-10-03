@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::rc::{Rc, Weak};
 
 use crate::core::i18n::{tr, trf};
-use crate::core::tools;
+use crate::core::{process, tools};
 use crate::panels::settings::content::{Choice, Context, Page, Style};
 use crate::panels::settings::pages::network::manager_running;
 use crate::platform::nmprofile::{
@@ -26,6 +26,7 @@ use crate::ui::widgets::windowdialog::{self, Place, WindowDialog};
 
 pub const NEW_WIRED: &str = "new:802-3-ethernet";
 pub const NEW_WIREGUARD: &str = "new:wireguard";
+pub const NEW_ENTERPRISE: &str = "new:enterprise:";
 const NEW: &str = "new:";
 const NOTE_START: i32 = 8;
 const BUTTON_SPACING: i32 = 5;
@@ -35,10 +36,24 @@ const KEEPALIVE_MAX: i64 = 3600;
 const DIALOG_WIDTH: f64 = 400.0;
 
 const METERED: [(&str, i32); 3] = [("Automatic", 0), ("Yes", 1), ("No", 2)];
-const SECURITY: [(&str, Security); 3] = [
+const SECURITY: [(&str, Security); 5] = [
     ("None", Security::Open),
     ("WPA & WPA2 Personal", Security::Personal),
     ("WPA3 Personal", Security::Wpa3),
+    ("WPA & WPA2 Enterprise", Security::Enterprise),
+    ("WEP", Security::Wep),
+];
+const EAP_METHODS: [(&str, &str); 3] = [
+    ("Protected EAP (PEAP)", "peap"),
+    ("Tunneled TLS (TTLS)", "ttls"),
+    ("TLS", "tls"),
+];
+const PEAP_INNER: [(&str, &str); 3] = [("MSCHAPv2", "mschapv2"), ("GTC", "gtc"), ("MD5", "md5")];
+const TTLS_INNER: [(&str, &str); 4] = [
+    ("PAP", "pap"),
+    ("MSCHAPv2", "mschapv2"),
+    ("MSCHAP", "mschap"),
+    ("CHAP", "chap"),
 ];
 const IPV4_METHODS: [(&str, &str); 5] = [
     ("Automatic", "auto"),
@@ -174,6 +189,18 @@ async fn start(argument: Option<String>) -> Result<Start, String> {
             .await
             .ok_or_else(|| tr("No connection is active, so there is nothing to edit"))?,
     };
+    if let Some(ssid) = wanted.strip_prefix(NEW_ENTERPRISE) {
+        let (names, _) = nmsettings::names_and_interfaces().await;
+        let mut profile = Profile::new(WIRELESS, &nmprofile::free_name(ssid, &names));
+        profile.set_ssid(ssid);
+        profile.set_security(Security::Enterprise);
+        return Ok(Start {
+            devices: Vec::new(),
+            profile,
+            fresh: true,
+            secrets: true,
+        });
+    }
     if let Some(kind) = wanted.strip_prefix(NEW) {
         let base = if kind == WIREGUARD {
             tr("WireGuard")
@@ -217,6 +244,20 @@ fn show_note(label: &gtk4::Label, message: Option<&str>, color: &str) {
     label.set_visible(message.is_some());
     label.set_text(message.unwrap_or_default());
     text::set_color(label, color);
+}
+
+fn edit_eap(profile: &mut Profile, change: impl FnOnce(&mut nmprofile::Eap)) {
+    let mut eap = profile.eap();
+    change(&mut eap);
+    profile.set_eap(&eap);
+}
+
+fn inner_methods(method: &str) -> &'static [(&'static str, &'static str)] {
+    match method {
+        "ttls" => &TTLS_INNER,
+        "peap" => &PEAP_INNER,
+        _ => &[],
+    }
 }
 
 fn choices<T: Copy + Into<Value>>(options: &[(&str, T)]) -> Vec<(String, Value)> {
@@ -270,7 +311,7 @@ impl Editor {
         let kind = self.draft.borrow().kind();
         self.general(&page);
         match kind.as_str() {
-            WIRED => self.wired(),
+            WIRED => self.wired(&page),
             WIRELESS => self.wireless(&page),
             WIREGUARD => {
                 self.wireguard(&page);
@@ -605,7 +646,7 @@ impl Editor {
         );
     }
 
-    fn wired(self: &Rc<Self>) {
+    fn wired(self: &Rc<Self>, page: &Page) {
         let section = self.section("lan", &tr("Wired"));
         let profile = self.draft.borrow().clone();
         let mut items = vec![tr("Any device")];
@@ -645,6 +686,20 @@ impl Editor {
         section.append(&combo.button);
         self.hold(combo);
         self.mac_and_mtu(&section, &profile);
+        let security = self.switch(
+            &section,
+            "shield_lock",
+            &tr("802.1X security"),
+            Profile::has_eap,
+            Profile::set_wired_eap,
+        );
+        self.hold(page.unkept_tip(
+            &security.button,
+            &tr("Signs in to the network port, as office and campus networks ask"),
+        ));
+        if profile.has_eap() {
+            self.eap(page, &section);
+        }
     }
 
     fn wireless(self: &Rc<Self>, page: &Page) {
@@ -672,7 +727,7 @@ impl Editor {
                 page.notice(
                     &security,
                     "info",
-                    &tr("This network uses enterprise or WEP security, which stays as it is"),
+                    &tr("This network uses a kind of security the editor does not offer, which stays as it is"),
                 );
             }
             current => {
@@ -689,20 +744,180 @@ impl Editor {
                     let index = value.as_u64().unwrap_or(0) as usize;
                     profile.set_security(SECURITY[index].1);
                 });
-                if current != Security::Open {
-                    self.secret_field(
-                        &security,
-                        &tr("Password"),
-                        &profile.psk(),
-                        |text, profile| {
-                            profile.set_psk(text);
-                            Ok(())
-                        },
-                    );
+                match current {
+                    Security::Personal | Security::Wpa3 => {
+                        self.secret_field(
+                            &security,
+                            &tr("Password"),
+                            &profile.psk(),
+                            |text, profile| {
+                                profile.set_psk(text);
+                                Ok(())
+                            },
+                        );
+                    }
+                    Security::Wep => {
+                        self.secret_field(
+                            &security,
+                            &tr("Key"),
+                            &profile.wep_key(),
+                            |text, profile| {
+                                profile.set_wep_key(text);
+                                Ok(())
+                            },
+                        );
+                    }
+                    Security::Enterprise => self.eap(page, &section),
+                    Security::Open | Security::Other => {}
                 }
             }
         }
         self.mac_and_mtu(&section, &profile);
+    }
+
+    fn eap(self: &Rc<Self>, page: &Page, parent: &gtk4::Box) {
+        let eap = self.draft.borrow().eap();
+        let method = self.subsection(page, parent, &tr("Authentication"), "");
+        self.choose(
+            &method,
+            choices(&EAP_METHODS),
+            Value::from(eap.method.as_str()),
+            |profile, value| {
+                let method = value.as_str().unwrap_or("peap").to_owned();
+                edit_eap(profile, |eap| {
+                    let inner = inner_methods(&method);
+                    if !inner.iter().any(|(_, known)| *known == eap.inner) {
+                        eap.inner = inner
+                            .first()
+                            .map(|(_, first)| *first)
+                            .unwrap_or_default()
+                            .to_owned();
+                    }
+                    eap.method = method;
+                });
+            },
+        );
+        self.field(parent, &tr("User name"), &eap.identity, |text, profile| {
+            edit_eap(profile, |eap| eap.identity = text.to_owned());
+            Ok(())
+        });
+        if eap.tunneled() {
+            self.field(
+                parent,
+                &tr("Anonymous identity"),
+                &eap.anonymous_identity,
+                |text, profile| {
+                    edit_eap(profile, |eap| eap.anonymous_identity = text.to_owned());
+                    Ok(())
+                },
+            );
+            let inner = self.subsection(page, parent, &tr("Inner authentication"), "");
+            self.choose(
+                &inner,
+                choices(inner_methods(&eap.method)),
+                Value::from(eap.inner.as_str()),
+                |profile, value| {
+                    let chosen = value.as_str().unwrap_or_default().to_owned();
+                    edit_eap(profile, |eap| eap.inner = chosen);
+                },
+            );
+            self.secret_field(parent, &tr("Password"), &eap.password, |text, profile| {
+                edit_eap(profile, |eap| eap.password = text.to_owned());
+                Ok(())
+            });
+        } else {
+            self.certificate_field(
+                parent,
+                &tr("User certificate"),
+                &eap.client_cert,
+                |eap, path| eap.client_cert = path,
+            );
+            self.certificate_field(parent, &tr("Private key"), &eap.private_key, |eap, path| {
+                eap.private_key = path
+            });
+            self.secret_field(
+                parent,
+                &tr("Private key password"),
+                &eap.key_password,
+                |text, profile| {
+                    edit_eap(profile, |eap| eap.key_password = text.to_owned());
+                    Ok(())
+                },
+            );
+        }
+        self.certificate_field(
+            parent,
+            &tr("CA certificate (empty trusts any server)"),
+            &eap.ca_cert,
+            |eap, path| eap.ca_cert = path,
+        );
+        self.field(
+            parent,
+            &tr("Server domain"),
+            &eap.domain,
+            |text, profile| {
+                edit_eap(profile, |eap| eap.domain = text.to_owned());
+                Ok(())
+            },
+        );
+    }
+
+    fn certificate_field(
+        self: &Rc<Self>,
+        parent: &gtk4::Box,
+        label: &str,
+        value: &str,
+        apply: fn(&mut nmprofile::Eap, String),
+    ) {
+        let row = gtk4::Box::new(gtk4::Orientation::Horizontal, BUTTON_SPACING);
+        let holder = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        holder.set_hexpand(true);
+        row.append(&holder);
+        let (pick, _) = icon_button(&self.theme, "folder_open", false, "");
+        row.append(&pick);
+        parent.append(&row);
+        let field = TextField::new(&self.theme, Style::Outlined, label);
+        self.watch(
+            &holder,
+            field.clone(),
+            value,
+            false,
+            move |text, profile| {
+                edit_eap(profile, |eap| apply(eap, text.trim().to_owned()));
+                Ok(())
+            },
+        );
+        if !tools::missing(&[&tools::KDIALOG]).is_empty() {
+            pick.set_sensitive(false);
+            return;
+        }
+        let title = label.to_owned();
+        let field = Rc::downgrade(&field);
+        pick.connect_clicked(move |_| {
+            let field = field.clone();
+            let title = title.clone();
+            glib::spawn_future_local(async move {
+                let home = glib::home_dir().to_string_lossy().into_owned();
+                let picker = process::command(&[
+                    "kdialog",
+                    "--getopenfilename",
+                    &home,
+                    &format!(
+                        "*.pem *.crt *.cer *.der *.key *.p12 *.pfx|{}",
+                        tr("Certificates and keys")
+                    ),
+                    "--title",
+                    &title,
+                ]);
+                let chosen = process::capture_text(picker)
+                    .await
+                    .map(|path| path.trim().to_owned())
+                    .filter(|path| !path.is_empty());
+                if let (Some(path), Some(field)) = (chosen, field.upgrade()) {
+                    field.set_text(&path);
+                }
+            });
+        });
     }
 
     fn wireguard(self: &Rc<Self>, page: &Page) {

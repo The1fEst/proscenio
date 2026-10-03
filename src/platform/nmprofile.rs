@@ -14,7 +14,11 @@ pub const WIRELESS: &str = "802-11-wireless";
 pub const SECURITY: &str = "802-11-wireless-security";
 pub const WIREGUARD: &str = "wireguard";
 pub const VPN: &str = "vpn";
-pub const SECRET_SETTINGS: [&str; 4] = [SECURITY, "802-1x", WIREGUARD, VPN];
+pub const EAP: &str = "802-1x";
+pub const SECRET_SETTINGS: [&str; 4] = [SECURITY, EAP, WIREGUARD, VPN];
+const FILE_SCHEME: &str = "file://";
+const WEP_ASCII_LENGTHS: [usize; 2] = [5, 13];
+const WEP_HEX_LENGTHS: [usize; 2] = [10, 26];
 const KEY_LENGTH: usize = 32;
 const INTERFACE_LENGTH: usize = 15;
 const SSID_LENGTH: usize = 32;
@@ -108,7 +112,47 @@ pub enum Security {
     Open,
     Personal,
     Wpa3,
+    Enterprise,
+    Wep,
     Other,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Eap {
+    pub method: String,
+    pub identity: String,
+    pub anonymous_identity: String,
+    pub inner: String,
+    pub password: String,
+    pub ca_cert: String,
+    pub domain: String,
+    pub client_cert: String,
+    pub private_key: String,
+    pub key_password: String,
+}
+
+impl Eap {
+    pub fn tunneled(&self) -> bool {
+        matches!(self.method.as_str(), "peap" | "ttls")
+    }
+}
+
+fn certificate_path(bytes: &[u8]) -> Option<String> {
+    let text = std::str::from_utf8(bytes).ok()?;
+    let path = text.strip_prefix(FILE_SCHEME)?.trim_end_matches('\0');
+    Some(path.to_owned())
+}
+
+fn certificate_bytes(path: &str) -> Vec<u8> {
+    let mut bytes = format!("{FILE_SCHEME}{path}").into_bytes();
+    bytes.push(0);
+    bytes
+}
+
+fn wep_key_fits(key: &str) -> bool {
+    WEP_ASCII_LENGTHS.contains(&key.len())
+        || (WEP_HEX_LENGTHS.contains(&key.len())
+            && key.chars().all(|character| character.is_ascii_hexdigit()))
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -456,6 +500,8 @@ impl Profile {
         match self.string(SECURITY, "key-mgmt").as_str() {
             "wpa-psk" => Security::Personal,
             "sae" => Security::Wpa3,
+            "wpa-eap" => Security::Enterprise,
+            "none" => Security::Wep,
             _ => Security::Other,
         }
     }
@@ -464,14 +510,134 @@ impl Profile {
         let key_management = match security {
             Security::Open => {
                 self.settings.remove(SECURITY);
+                self.settings.remove(EAP);
                 self.remove(WIRELESS, "security");
                 return;
             }
             Security::Personal => "wpa-psk",
             Security::Wpa3 => "sae",
+            Security::Enterprise => "wpa-eap",
+            Security::Wep => "none",
             Security::Other => return,
         };
         self.put(SECURITY, "key-mgmt", key_management.to_variant());
+        if security == Security::Wep {
+            self.remove(SECURITY, "psk");
+            self.put(SECURITY, "auth-alg", "open".to_variant());
+            self.put(SECURITY, "wep-key-type", 1u32.to_variant());
+            self.put(SECURITY, "wep-tx-keyidx", 0u32.to_variant());
+        } else {
+            for key in ["auth-alg", "wep-key-type", "wep-tx-keyidx", "wep-key0"] {
+                self.remove(SECURITY, key);
+            }
+        }
+        if security == Security::Enterprise {
+            self.remove(SECURITY, "psk");
+            if !self.settings.contains_key(EAP) {
+                self.set_eap(&Eap {
+                    method: "peap".to_owned(),
+                    inner: "mschapv2".to_owned(),
+                    ..Eap::default()
+                });
+            }
+        } else {
+            self.settings.remove(EAP);
+        }
+    }
+
+    pub fn wep_key(&self) -> String {
+        self.string(SECURITY, "wep-key0")
+    }
+
+    pub fn set_wep_key(&mut self, key: &str) {
+        self.set_string(SECURITY, "wep-key0", key);
+    }
+
+    pub fn has_eap(&self) -> bool {
+        self.settings.contains_key(EAP)
+    }
+
+    pub fn set_wired_eap(&mut self, on: bool) {
+        if !on {
+            self.settings.remove(EAP);
+            return;
+        }
+        if !self.has_eap() {
+            self.set_eap(&Eap {
+                method: "peap".to_owned(),
+                inner: "mschapv2".to_owned(),
+                ..Eap::default()
+            });
+        }
+    }
+
+    fn certificate(&self, key: &str) -> String {
+        self.get(EAP, key)
+            .and_then(Variant::get::<Vec<u8>>)
+            .and_then(|bytes| certificate_path(&bytes))
+            .unwrap_or_default()
+    }
+
+    fn set_certificate(&mut self, key: &str, path: &str) {
+        if self.certificate(key) == path {
+            return;
+        }
+        if path.is_empty() {
+            self.remove(EAP, key);
+        } else {
+            self.put(EAP, key, certificate_bytes(path).to_variant());
+        }
+    }
+
+    pub fn eap(&self) -> Eap {
+        Eap {
+            method: self
+                .strings(EAP, "eap")
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| "peap".to_owned()),
+            identity: self.string(EAP, "identity"),
+            anonymous_identity: self.string(EAP, "anonymous-identity"),
+            inner: self.string(EAP, "phase2-auth"),
+            password: self.string(EAP, "password"),
+            ca_cert: self.certificate("ca-cert"),
+            domain: self.string(EAP, "domain-suffix-match"),
+            client_cert: self.certificate("client-cert"),
+            private_key: self.certificate("private-key"),
+            key_password: self.string(EAP, "private-key-password"),
+        }
+    }
+
+    pub fn set_eap(&mut self, eap: &Eap) {
+        self.put(EAP, "eap", vec![eap.method.clone()].to_variant());
+        self.set_string(EAP, "identity", eap.identity.trim());
+        self.set_certificate("ca-cert", eap.ca_cert.trim());
+        self.set_string(EAP, "domain-suffix-match", eap.domain.trim());
+        let tunneled = eap.tunneled();
+        let (anonymous, inner, password) = if tunneled {
+            (
+                eap.anonymous_identity.trim(),
+                eap.inner.as_str(),
+                eap.password.as_str(),
+            )
+        } else {
+            ("", "", "")
+        };
+        self.set_string(EAP, "anonymous-identity", anonymous);
+        self.set_string(EAP, "phase2-auth", inner);
+        self.set_string(EAP, "password", password);
+        let (client, key, key_password) = if tunneled {
+            ("", "", "")
+        } else {
+            (
+                eap.client_cert.trim(),
+                eap.private_key.trim(),
+                eap.key_password.as_str(),
+            )
+        };
+        self.set_certificate("client-cert", client);
+        self.set_certificate("private-key", key);
+        self.set_string(EAP, "private-key-password", key_password);
     }
 
     pub fn psk(&self) -> String {
@@ -781,7 +947,22 @@ impl Profile {
                 Security::Wpa3 if psk.is_empty() => {
                     return Some(tr("A WPA3 network needs a password"));
                 }
+                Security::Wep if !self.wep_key().is_empty() && !wep_key_fits(&self.wep_key()) => {
+                    return Some(tr(
+                        "A WEP key has 5 or 13 characters, or 10 or 26 hexadecimal digits",
+                    ));
+                }
                 _ => {}
+            }
+        }
+        if self.has_eap() {
+            let eap = self.eap();
+            if eap.identity.trim().is_empty() {
+                return Some(tr("802.1X needs a user name"));
+            }
+            let has = |key| self.get(EAP, key).is_some();
+            if !eap.tunneled() && !(has("client-cert") && has("private-key")) {
+                return Some(tr("TLS needs a user certificate and a private key"));
             }
         }
         if kind == WIREGUARD {
@@ -1035,5 +1216,70 @@ mod tests {
         profile.set_security(Security::Open);
         assert_eq!(profile.security(), Security::Open);
         assert_eq!(profile.ssid(), "Home");
+    }
+
+    #[test]
+    fn enterprise_and_wep_security_keep_only_their_own_keys() {
+        let mut profile = Profile::new(WIRELESS, "Campus");
+        profile.set_ssid("eduroam");
+        profile.set_security(Security::Enterprise);
+        assert_eq!(profile.security(), Security::Enterprise);
+        assert_eq!(profile.eap().method, "peap");
+        assert_eq!(profile.problem(), Some(tr("802.1X needs a user name")));
+        let peap = Eap {
+            method: "peap".to_owned(),
+            identity: "student@uni.example".to_owned(),
+            anonymous_identity: "anonymous@uni.example".to_owned(),
+            inner: "mschapv2".to_owned(),
+            password: "secret".to_owned(),
+            ca_cert: "/etc/ssl/certs/uni.pem".to_owned(),
+            domain: "radius.uni.example".to_owned(),
+            ..Eap::default()
+        };
+        profile.set_eap(&peap);
+        assert_eq!(profile.eap(), peap);
+        assert_eq!(profile.problem(), None);
+        assert_eq!(
+            profile
+                .get(EAP, "ca-cert")
+                .and_then(Variant::get::<Vec<u8>>),
+            Some(b"file:///etc/ssl/certs/uni.pem\0".to_vec())
+        );
+
+        let tls = Eap {
+            method: "tls".to_owned(),
+            identity: "laptop".to_owned(),
+            ..peap.clone()
+        };
+        profile.set_eap(&tls);
+        let read = profile.eap();
+        assert!(read.password.is_empty() && read.inner.is_empty());
+        assert_eq!(
+            profile.problem(),
+            Some(tr("TLS needs a user certificate and a private key"))
+        );
+        profile.set_eap(&Eap {
+            client_cert: "/home/me/laptop.pem".to_owned(),
+            private_key: "/home/me/laptop.key".to_owned(),
+            key_password: "unlock".to_owned(),
+            ..tls
+        });
+        assert_eq!(profile.problem(), None);
+
+        profile.set_security(Security::Wep);
+        assert_eq!(profile.security(), Security::Wep);
+        assert!(!profile.has_eap());
+        profile.set_wep_key("abc");
+        assert!(profile.problem().is_some());
+        profile.set_wep_key("0123456789");
+        assert_eq!(profile.problem(), None);
+        profile.set_security(Security::Personal);
+        assert!(profile.wep_key().is_empty());
+
+        let mut wired = Profile::new(WIRED, "Office");
+        wired.set_wired_eap(true);
+        assert!(wired.has_eap());
+        wired.set_wired_eap(false);
+        assert!(!wired.has_eap());
     }
 }
