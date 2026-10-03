@@ -1094,8 +1094,11 @@ far, dead while the lock is off), making a new workspace and swiping on.
   "Automatically hide" (No or Yes) at its own width; "Holding Super" (with a
   tooltip): revealing the bar and the numbers (with a tooltip) and the hold
   delay, dead while that is off; pushing windows away (with a tooltip), dead
-  unless the bar hides; the hover region (with a tooltip); a row of the corner
-  style (shared with Quick) and the group style at its own width.
+  unless the bar hides; the hover region (with a tooltip); a row of "Bar
+  style" (Hug, Float, Rect, `bar.cornerStyle`) and the group style at its own
+  width; and "Screen round corner" (No, Yes, When not fullscreen,
+  `appearance.fakeScreenRounding`). The position, the bar style and the
+  screen corners are built by the same functions as on Quick.
 - "Appearance": the background, the floating shadow (with a tooltip, dead
   unless the background shows and the corners float) and verbose (with a
   tooltip); "Monitors" (with a tooltip): a switch per monitor, `model (name)`,

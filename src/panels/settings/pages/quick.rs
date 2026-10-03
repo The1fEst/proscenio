@@ -58,8 +58,13 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let corners = page.row(&screen);
     let rounding = page.subsection(&corners, &tr("Screen round corner"), "");
+    screen_rounding(&page, &rounding);
+    page
+}
+
+pub fn screen_rounding(page: &Page, parent: &gtk4::Box) {
     page.selection(
-        &rounding,
+        parent,
         vec![
             icon_choice(&tr("No"), "close", 0),
             icon_choice(&tr("Yes"), "check", 1),
@@ -69,7 +74,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         Value::from(2),
         |value| config::store_value("/appearance/fakeScreenRounding", value),
     );
-    page
 }
 
 pub fn bar_position(page: &Page, parent: &gtk4::Box) {
