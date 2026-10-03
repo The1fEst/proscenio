@@ -984,17 +984,27 @@ blur is off.
 - "Color generation": the three theming switches (two with tooltips) and
   "Terminal colors" (with a tooltip): forced dark mode, harmony and foreground
   boost in percent, and the harmonize threshold.
-- "Fonts": "Apps & panels" (with a tooltip) is one row per role, a 110 px
-  label, the family and the size (5 to 72); General, Fixed width and Titles
-  also set the shell's own main, reading, monospace and title families. A
-  family that fontconfig does not list is shown first. "Adjust all" (with a
-  tooltip) has switches for the family and the size, a family and a size
-  that start from General's, each dead while its switch is off, and "Apply to
-  all fonts", which leaves Fixed width out. "Panels only" (with a tooltip):
-  the Nerd icons and Expressive families, stored in the config alone.
+- Link rows to the Fonts and Windows subpages.
 - "Pointer": the cursor theme (with a tooltip), which also runs
   `hyprctl setcursor` and is kept for the next start.
-- "Windows": corner rounding and shape (the shape tenfold with one decimal,
+- "Shell windows": the title bar switch (with a tooltip) and centering the
+  title, dead while the title bar is off.
+
+### 26.1 Fonts (subpage)
+
+- "Apps & panels" (with a tooltip) is one row per role, a 110 px
+  label, the family and the size (5 to 72); General, Fixed width and Titles
+  also set the shell's own main, reading, monospace and title families. A
+  family that fontconfig does not list is shown first.
+- "Adjust all" (with a tooltip) has switches for the family and the size, a
+  family and a size that start from General's, each dead while its switch is
+  off, and "Apply to all fonts", which leaves Fixed width out.
+- "Panels only" (with a tooltip): the Nerd icons and Expressive families,
+  stored in the config alone.
+
+### 26.2 Windows (subpage)
+
+- Corner rounding and shape (the shape tenfold with one decimal,
   with a tooltip); blur with its radius and passes, dead while blur is off,
   and X-ray (with a tooltip); the focused and other windows' opacity in
   percent and "Keep fullscreen windows opaque" (with a tooltip); "Shadows":
@@ -1012,8 +1022,6 @@ blur is off.
   not, so the opacity rule is what keeps maximized ones opaque. Each switch is
   on while its line is present, adds or removes it and reloads Hyprland
   (`hyprrows::lines_switch`, the same mechanism as Smart gaps).
-- "Shell windows": the title bar switch (with a tooltip) and centering the
-  title, dead while the title bar is off.
 
 ## 27. Background (subpage)
 

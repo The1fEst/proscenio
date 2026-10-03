@@ -15,6 +15,7 @@ pub mod displays;
 pub mod eap;
 pub mod filetypes;
 pub mod firewall;
+pub mod fonts;
 pub mod hiddennetwork;
 pub mod hotspot;
 pub mod ipv4;
@@ -40,6 +41,7 @@ pub mod system;
 pub mod users;
 pub mod wifi;
 pub mod windowrules;
+pub mod windows;
 
 use gtk4::prelude::*;
 use std::rc::Rc;
@@ -355,7 +357,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 24] = [
+pub const SUBPAGES: [Subpage; 26] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -467,6 +469,16 @@ pub const SUBPAGES: [Subpage; 24] = [
         parent: "appearance",
     },
     Subpage {
+        id: "fonts",
+        title: "Fonts",
+        parent: "appearance",
+    },
+    Subpage {
+        id: "windows",
+        title: "Windows",
+        parent: "appearance",
+    },
+    Subpage {
         id: "bar",
         title: "Bar",
         parent: "appearance",
@@ -480,7 +492,7 @@ pub const SUBPAGES: [Subpage; 24] = [
 
 pub fn split_legacy_settings() -> std::io::Result<()> {
     let owners: [(Area, &[&str]); 6] = [
-        (Area::Appearance, &appearance::OPTIONS),
+        (Area::Appearance, &windows::OPTIONS),
         (Area::Displays, &displays::OPTIONS),
         (Area::Multitasking, &multitasking::OPTIONS),
         (Area::Keyboard, &keyboard::OPTIONS),
@@ -531,6 +543,8 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "lock" => lock::build(context),
         "multitasking" => multitasking::build(context),
         "appearance" => appearance::build(context),
+        "fonts" => fonts::build(context),
+        "windows" => windows::build(context),
         "background" => background::build(context),
         "bar" => bar::build(context),
         "panels" => panels::build(context),

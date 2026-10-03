@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page, Parent, Style};
-use crate::panels::settings::pages::appearance::family_options;
+use crate::panels::settings::pages::fonts::family_options;
 use crate::services::appearance::DesktopAppearance;
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::selection::Selection;
