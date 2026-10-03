@@ -1080,10 +1080,10 @@ far, dead while the lock is off), making a new workspace and swiping on.
 
 ## 27. Background (subpage)
 
-- "Wallpaper": a row 5 px apart of Quick's wallpaper preview and a column
-  of Quick's "Choose file" button, the wallpaper selector's system file
-  picker (`wallpaperSelector.useSystemFileDialog`) and hiding the wallpaper
-  under a fullscreen window (with a tooltip).
+- "Wallpaper": Quick's wallpaper preview at the start of the row, then, at
+  full width, Quick's "Choose file" button, the wallpaper selector's system
+  file picker (`wallpaperSelector.useSystemFileDialog`) and hiding the
+  wallpaper under a fullscreen window (with a tooltip).
 - "Parallax": two uniform rows of switches (vertical, vertical for tall
   wallpapers with a tooltip; following the workspace and the sidebars), the
   preferred zoom and the widget movement (with a tooltip), both in percent.

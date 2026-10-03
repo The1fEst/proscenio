@@ -9,7 +9,6 @@ use crate::panels::settings::pages::fonts::family_options;
 use crate::panels::settings::pages::quick;
 use crate::services::appearance::DesktopAppearance;
 use crate::ui::widgets::centred::Centred;
-use crate::ui::widgets::row::Row;
 use crate::ui::widgets::selection::Selection;
 use crate::ui::widgets::text;
 
@@ -21,7 +20,6 @@ const DIAL: &str = "/background/widgets/clock/cookie/dialNumberStyle";
 const FONT_FAMILY: &str = "/background/widgets/clock/digital/font/family";
 const DEFAULT_FAMILY: &str = "Google Sans Flex";
 const LABEL_START: i32 = 2;
-const WALLPAPER_SPACING: i32 = 5;
 
 fn choice(label: &str, icon: &'static str, value: &str) -> Choice {
     Choice {
@@ -90,20 +88,19 @@ pub fn build(context: &Context) -> Rc<Page> {
         &[&tools::KDIALOG],
         &tr("the system file picker does not open"),
     );
-    let top = Row::new(WALLPAPER_SPACING);
-    top.append(&quick::preview(&page));
-    let controls = gtk4::Box::new(gtk4::Orientation::Vertical, WALLPAPER_SPACING);
-    controls.set_hexpand(true);
-    controls.append(&quick::choose_wallpaper(&page));
+    let preview = quick::preview(&page);
+    preview.set_halign(gtk4::Align::Start);
+    wallpaper.append(&preview);
+    wallpaper.append(&quick::choose_wallpaper(&page));
     page.config_switch(
-        &controls,
+        &wallpaper,
         "ad",
         &tr("Use system file picker"),
         "/wallpaperSelector/useSystemFileDialog",
         false,
     );
     let fullscreen = page.config_switch(
-        &controls,
+        &wallpaper,
         "fullscreen",
         &tr("Hide when a window is fullscreen"),
         "/background/hideWhenFullscreen",
@@ -113,8 +110,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         &fullscreen.button,
         &tr("Saves a bit of resources while gaming or watching videos"),
     );
-    top.append(&controls);
-    wallpaper.append(&top);
 
     let parallax = page.section("sync_alt", &tr("Parallax"));
     let vertical = page.uniform_row(&parallax);
