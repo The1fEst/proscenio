@@ -210,6 +210,7 @@ pub struct Config {
     pub pomodoro_cycles: i64,
     pub sounds_pomodoro: bool,
     pub sounds_battery: bool,
+    pub sounds_devices: bool,
     pub sounds_theme: String,
     pub protection: crate::services::audio::Protection,
 }
@@ -591,6 +592,7 @@ impl Config {
             pomodoro_cycles: number(&pomodoro, "cyclesBeforeLongBreak", 4.0) as i64,
             sounds_pomodoro: flag(&sounds, "pomodoro", false),
             sounds_battery: flag(&sounds, "battery", false),
+            sounds_devices: flag(&sounds, "devices", true),
             sounds_theme: text(&sounds, "theme", "freedesktop"),
             protection: crate::services::audio::Protection {
                 enable: flag(&protection, "enable", false),

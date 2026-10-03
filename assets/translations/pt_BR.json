@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Pressione o novo atalho",
   "Reset to default": "Restaurar o padrão",
   "Used by “%1”, which loses it": "Usado por “%1”, que fica sem ele",
-  "Waiting for keys…": "Aguardando teclas…"
+  "Waiting for keys…": "Aguardando teclas…",
+  "USB devices": "Dispositivos USB",
+  "Played when a USB device is connected or disconnected": "Toca quando um dispositivo USB é conectado ou desconectado",
+  "USB Device Detected": "Dispositivo USB detectado",
+  "USB Device Removed": "Dispositivo USB removido",
+  "%1 has been connected.": "%1 foi conectado.",
+  "%1 has been disconnected.": "%1 foi desconectado.",
+  "A USB device has been connected.": "Um dispositivo USB foi conectado.",
+  "A USB device has been disconnected.": "Um dispositivo USB foi desconectado."
 }

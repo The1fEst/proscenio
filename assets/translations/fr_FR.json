@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Appuyez sur le nouveau raccourci",
   "Reset to default": "Rétablir la valeur par défaut",
   "Used by “%1”, which loses it": "Utilisé par « %1 », qui le perd",
-  "Waiting for keys…": "En attente des touches…"
+  "Waiting for keys…": "En attente des touches…",
+  "USB devices": "Périphériques USB",
+  "Played when a USB device is connected or disconnected": "Joué quand un périphérique USB est branché ou débranché",
+  "USB Device Detected": "Un périphérique USB a été détecté.",
+  "USB Device Removed": "Un périphérique USB a été déconnecté.",
+  "%1 has been connected.": "%1 a été branché.",
+  "%1 has been disconnected.": "%1 a été débranché.",
+  "A USB device has been connected.": "Un périphérique USB a été branché.",
+  "A USB device has been disconnected.": "Un périphérique USB a été débranché."
 }

@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "הקישו את קיצור המקשים החדש",
   "Reset to default": "איפוס לברירת המחדל",
   "Used by “%1”, which loses it": "בשימוש של «%1», שיאבד אותו",
-  "Waiting for keys…": "ממתין למקשים…"
+  "Waiting for keys…": "ממתין למקשים…",
+  "USB devices": "התקני USB",
+  "Played when a USB device is connected or disconnected": "מושמע כאשר התקן USB מחובר או מנותק",
+  "USB Device Detected": "זוהה התקן USB",
+  "USB Device Removed": "התקן USB הוסר",
+  "%1 has been connected.": "%1 חובר.",
+  "%1 has been disconnected.": "%1 נותק.",
+  "A USB device has been connected.": "התקן USB חובר.",
+  "A USB device has been disconnected.": "התקן USB נותק."
 }

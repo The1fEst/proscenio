@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Drück das neue Tastenkürzel",
   "Reset to default": "Auf Standard zurücksetzen",
   "Used by “%1”, which loses it": "Belegt von „%1“, das es verliert",
-  "Waiting for keys…": "Warte auf Tasten…"
+  "Waiting for keys…": "Warte auf Tasten…",
+  "USB devices": "USB-Geräte",
+  "Played when a USB device is connected or disconnected": "Ertönt, wenn ein USB-Gerät verbunden oder getrennt wird",
+  "USB Device Detected": "USB-Gerät erkannt",
+  "USB Device Removed": "USB-Gerät entfernt",
+  "%1 has been connected.": "%1 wurde verbunden.",
+  "%1 has been disconnected.": "%1 wurde getrennt.",
+  "A USB device has been connected.": "Ein USB-Gerät wurde verbunden.",
+  "A USB device has been disconnected.": "Ein USB-Gerät wurde getrennt."
 }

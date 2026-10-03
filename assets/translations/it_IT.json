@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Premi la nuova scorciatoia",
   "Reset to default": "Ripristina il predefinito",
   "Used by “%1”, which loses it": "Usata da “%1”, che la perde",
-  "Waiting for keys…": "In attesa dei tasti…"
+  "Waiting for keys…": "In attesa dei tasti…",
+  "USB devices": "Dispositivi USB",
+  "Played when a USB device is connected or disconnected": "Riprodotto quando un dispositivo USB viene collegato o scollegato",
+  "USB Device Detected": "Dispositivo USB rilevato",
+  "USB Device Removed": "Dispositivo USB rimosso",
+  "%1 has been connected.": "%1 è stato collegato.",
+  "%1 has been disconnected.": "%1 è stato scollegato.",
+  "A USB device has been connected.": "Un dispositivo USB è stato collegato.",
+  "A USB device has been disconnected.": "Un dispositivo USB è stato scollegato."
 }

@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Press the new shortcut",
   "Reset to default": "Reset to default",
   "Used by “%1”, which loses it": "Used by “%1”, which loses it",
-  "Waiting for keys…": "Waiting for keys…"
+  "Waiting for keys…": "Waiting for keys…",
+  "USB devices": "USB devices",
+  "Played when a USB device is connected or disconnected": "Played when a USB device is connected or disconnected",
+  "USB Device Detected": "USB Device Detected",
+  "USB Device Removed": "USB Device Removed",
+  "%1 has been connected.": "%1 has been connected.",
+  "%1 has been disconnected.": "%1 has been disconnected.",
+  "A USB device has been connected.": "A USB device has been connected.",
+  "A USB device has been disconnected.": "A USB device has been disconnected."
 }

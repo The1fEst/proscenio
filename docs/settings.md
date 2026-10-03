@@ -779,8 +779,9 @@ with them, never through a shell. The page rereads the files afterwards, and
   percentage tooltip and a stop at 1.
 - "Volume Levels": one slider per playing application, `volume_off` while it
   is muted, or "Nothing is playing".
-- "Alert Sound": a uniform row of the battery, Pomodoro and microphone
-  switches (the last with a tooltip), and the sound theme, one of the themes
+- "Alert Sound": two uniform rows of switches, battery and Pomodoro, then
+  microphone and USB devices (both with a tooltip; `sounds.devices`, on by
+  default), and the sound theme, one of the themes
   under `/usr/share/sounds` with a `stereo` folder. Alerts play the theme's
   `.oga` (else `.ogg`) file with `paplay`, which comes with `libpulse`, the
   library the shell links against.

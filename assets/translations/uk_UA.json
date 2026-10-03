@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Натисніть нове сполучення клавіш",
   "Reset to default": "Скинути до типового",
   "Used by “%1”, which loses it": "Зайняте дією «%1», вона його втратить",
-  "Waiting for keys…": "Очікування натискання…"
+  "Waiting for keys…": "Очікування натискання…",
+  "USB devices": "USB-пристрої",
+  "Played when a USB device is connected or disconnected": "Грає, коли USB-пристрій під'єднують або від'єднують",
+  "USB Device Detected": "Виявлено пристрій USB",
+  "USB Device Removed": "Вилучено пристрій USB",
+  "%1 has been connected.": "%1 було з'єднано.",
+  "%1 has been disconnected.": "%1 було від'єднано.",
+  "A USB device has been connected.": "Пристрій USB з'єднано.",
+  "A USB device has been disconnected.": "Пристрій USB від'єднано."
 }

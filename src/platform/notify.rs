@@ -10,6 +10,7 @@ const PATH: &str = "/org/freedesktop/Notifications";
 
 #[derive(Clone, Copy, Default)]
 pub enum Urgency {
+    Low = 0,
     #[default]
     Normal = 1,
     Critical = 2,
@@ -55,7 +56,34 @@ fn arguments(notification: &Notification) -> Variant {
 }
 
 pub fn send(notification: &Notification) {
+    send_then(notification, |_| {});
+}
+
+pub fn send_then(notification: &Notification, sent: impl FnOnce(u32) + 'static) {
     let parameters = arguments(notification);
+    glib::spawn_future_local(async move {
+        let Ok(bus) = gio::bus_get_future(gio::BusType::Session).await else {
+            return;
+        };
+        let reply = bus
+            .call_future(
+                Some(NAME),
+                PATH,
+                NAME,
+                "Notify",
+                Some(&parameters),
+                Some(VariantTy::new("(u)").unwrap()),
+                gio::DBusCallFlags::NONE,
+                -1,
+            )
+            .await;
+        if let Some((id,)) = reply.ok().and_then(|reply| reply.get::<(u32,)>()) {
+            sent(id);
+        }
+    });
+}
+
+pub fn close(id: u32) {
     glib::spawn_future_local(async move {
         let Ok(bus) = gio::bus_get_future(gio::BusType::Session).await else {
             return;
@@ -65,8 +93,8 @@ pub fn send(notification: &Notification) {
                 Some(NAME),
                 PATH,
                 NAME,
-                "Notify",
-                Some(&parameters),
+                "CloseNotification",
+                Some(&(id,).to_variant()),
                 None,
                 gio::DBusCallFlags::NONE,
                 -1,

@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Нажмите новое сочетание клавиш",
   "Reset to default": "Сбросить по умолчанию",
   "Used by “%1”, which loses it": "Занято действием «%1», оно его потеряет",
-  "Waiting for keys…": "Ожидание нажатия…"
+  "Waiting for keys…": "Ожидание нажатия…",
+  "USB devices": "USB-устройства",
+  "Played when a USB device is connected or disconnected": "Играет, когда USB-устройство подключают или отключают",
+  "USB Device Detected": "Обнаружено устройство USB",
+  "USB Device Removed": "Устройство USB удалено",
+  "%1 has been connected.": "Устройство %1 подключено.",
+  "%1 has been disconnected.": "Устройство %1 отключено.",
+  "A USB device has been connected.": "Подключено устройство USB.",
+  "A USB device has been disconnected.": "Отключено устройство USB."
 }

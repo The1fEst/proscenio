@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Tekan pintasan baru",
   "Reset to default": "Kembalikan ke bawaan",
   "Used by “%1”, which loses it": "Dipakai oleh “%1”, yang akan kehilangannya",
-  "Waiting for keys…": "Menunggu tombol…"
+  "Waiting for keys…": "Menunggu tombol…",
+  "USB devices": "Peranti USB",
+  "Played when a USB device is connected or disconnected": "Diputar saat peranti USB dihubungkan atau dilepas",
+  "USB Device Detected": "Peranti USB Terdeteksi",
+  "USB Device Removed": "Peranti USB Terlepas",
+  "%1 has been connected.": "%1 telah terhubung.",
+  "%1 has been disconnected.": "%1 telah terlepas.",
+  "A USB device has been connected.": "Sebuah peranti USB telah terhubung.",
+  "A USB device has been disconnected.": "Sebuah peranti USB telah terlepas."
 }

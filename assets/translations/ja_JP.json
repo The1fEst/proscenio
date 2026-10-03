@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "新しいショートカットを押してください",
   "Reset to default": "既定に戻す",
   "Used by “%1”, which loses it": "「%1」で使用中です。そちらからは外れます",
-  "Waiting for keys…": "キー入力を待っています…"
+  "Waiting for keys…": "キー入力を待っています…",
+  "USB devices": "USB デバイス",
+  "Played when a USB device is connected or disconnected": "USB デバイスの接続時と取り外し時に再生します",
+  "USB Device Detected": "USB デバイス検出",
+  "USB Device Removed": "USB デバイス除去",
+  "%1 has been connected.": "%1 が接続されました。",
+  "%1 has been disconnected.": "%1 の接続が切断されました。",
+  "A USB device has been connected.": "USB デバイスが接続されました。",
+  "A USB device has been disconnected.": "USB デバイスが取り外されました。"
 }

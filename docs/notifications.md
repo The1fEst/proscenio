@@ -264,7 +264,24 @@ recording, switchwall and the rest) are `Notify` calls on the session bus from
 main loop, and `send_blocking`, for subcommands that exit right after, calls
 synchronously and, when the notification has actions, waits on a private main
 context for `ActionInvoked` or `NotificationClosed` and returns the chosen
-action. They reach whichever daemon owns the name.
+action. They reach whichever daemon owns the name. `send_then` passes the
+new notification's id on, and `close` sends `CloseNotification`.
+
+USB devices: `src/services/devicenotifications.rs` follows Plasma 6.7's
+`devicenotifications` kded module. It listens to udev's `usb` subsystem
+through `libudev` (`src/platform/udev.rs`) and, for a `usb_device` whose
+sysfs `removable` is `removable`, sends "USB Device Detected" with
+"*vendor model* has been connected." (or "A USB device has been connected."
+when neither is known), and on removal "USB Device Removed" with
+"… has been disconnected.", the name remembered from the plug. The vendor is
+sysfs `manufacturer`, else `ID_VENDOR_FROM_DATABASE`, `ID_VENDOR_ENC`
+decoded, `ID_VENDOR`; the model the same with `product` and `ID_MODEL_*`;
+"Generic" is left out. Each is a low-urgency notification of app "Shell"
+with the `drive-removable-media-usb` icon that closes the previous one of
+either kind, at most one of each kind per 500 ms, and plays the sound
+theme's `device-added` or `device-removed` while `sounds.devices` is on.
+Plasma's display connected and removed notifications come from KWin's
+output device protocol and are not part of it.
 
 Grouping by app is in `Notifications::groups`: a group's time is the latest
 of its members, and the groups are ordered by that time, newest first.

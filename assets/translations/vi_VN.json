@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Hãy nhấn phím tắt mới",
   "Reset to default": "Đặt lại về mặc định",
   "Used by “%1”, which loses it": "Đang được «%1» dùng, sẽ bị gỡ khỏi đó",
-  "Waiting for keys…": "Đang chờ phím…"
+  "Waiting for keys…": "Đang chờ phím…",
+  "USB devices": "Thiết bị USB",
+  "Played when a USB device is connected or disconnected": "Phát khi thiết bị USB được cắm vào hoặc rút ra",
+  "USB Device Detected": "Đã phát hiện thiết bị USB",
+  "USB Device Removed": "Đã gỡ thiết bị USB",
+  "%1 has been connected.": "%1 đã được kết nối.",
+  "%1 has been disconnected.": "%1 đã bị ngắt kết nối.",
+  "A USB device has been connected.": "Một thiết bị USB đã được kết nối.",
+  "A USB device has been disconnected.": "Một thiết bị USB đã bị ngắt kết nối."
 }

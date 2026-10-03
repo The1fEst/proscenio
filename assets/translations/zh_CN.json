@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "请按下新的快捷键",
   "Reset to default": "恢复默认",
   "Used by “%1”, which loses it": "已被“%1”使用，它将失去此快捷键",
-  "Waiting for keys…": "正在等待按键…"
+  "Waiting for keys…": "正在等待按键…",
+  "USB devices": "USB 设备",
+  "Played when a USB device is connected or disconnected": "在连接或断开 USB 设备时播放",
+  "USB Device Detected": "检测到 USB 设备",
+  "USB Device Removed": "USB 设备已移除",
+  "%1 has been connected.": "%1 已连接。",
+  "%1 has been disconnected.": "%1 已断开连接。",
+  "A USB device has been connected.": "一个 USB 设备已连接。",
+  "A USB device has been disconnected.": "一个 USB 设备已断开连接。"
 }

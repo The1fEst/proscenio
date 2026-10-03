@@ -97,11 +97,28 @@ pub fn build(context: &Context) -> Rc<Page> {
         "/sounds/pomodoro",
         false,
     );
-    let microphone =
-        page.config_switch(&kinds, "mic", &tr("Microphone"), "/sounds/microphone", true);
+    let switches = page.uniform_row(&alerts);
+    let microphone = page.config_switch(
+        &switches,
+        "mic",
+        &tr("Microphone"),
+        "/sounds/microphone",
+        true,
+    );
     page.tip(
         &microphone.button,
         &tr("Played when the microphone is muted or unmuted"),
+    );
+    let devices = page.config_switch(
+        &switches,
+        "usb",
+        &tr("USB devices"),
+        "/sounds/devices",
+        true,
+    );
+    page.tip(
+        &devices.button,
+        &tr("Played when a USB device is connected or disconnected"),
     );
     let theme_group = page.subsection(&alerts, &tr("Sound theme"), "");
     let themes = page.combo(&theme_group, "notification_sound");

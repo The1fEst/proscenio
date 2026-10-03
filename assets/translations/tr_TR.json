@@ -1423,5 +1423,13 @@
   "Press the new shortcut": "Yeni kısayola basın",
   "Reset to default": "Varsayılana sıfırla",
   "Used by “%1”, which loses it": "«%1» kullanıyor, oradan kaldırılır",
-  "Waiting for keys…": "Tuşlar bekleniyor…"
+  "Waiting for keys…": "Tuşlar bekleniyor…",
+  "USB devices": "USB aygıtları",
+  "Played when a USB device is connected or disconnected": "Bir USB aygıtı takıldığında veya çıkarıldığında çalar",
+  "USB Device Detected": "USB Aygıtı Algılandı",
+  "USB Device Removed": "USB Aygıtı Kaldırıldı",
+  "%1 has been connected.": "%1 bağlandı.",
+  "%1 has been disconnected.": "%1 bağlantısı kesildi.",
+  "A USB device has been connected.": "Bir USB aygıtı bağlandı.",
+  "A USB device has been disconnected.": "Bir USB aygıtının bağlantısı kesildi."
 }

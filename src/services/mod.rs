@@ -6,6 +6,7 @@ pub mod battery;
 pub mod bluez;
 pub mod brightness;
 pub mod cliphist;
+pub mod devicenotifications;
 pub mod deviceoptions;
 pub mod displays;
 pub mod easyeffects;
