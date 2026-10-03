@@ -1,7 +1,7 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
-use crate::core::i18n::tr;
+use crate::core::i18n::{tr, trf};
 use crate::core::scope::Scope;
 use crate::panels::settings::Settings;
 use crate::panels::sidebar::toggles::{self, Menu};
@@ -166,6 +166,7 @@ fn show(toggle: &Toggle, services: &Rc<Services>) {
             "nightLight" => "bedtime".to_owned(),
             "idleInhibitor" => "coffee".to_owned(),
             "easyEffects" => "instant_mix".to_owned(),
+            "network" => services.net.symbol.borrow().clone(),
             _ => look.icon.clone(),
         };
         label.set_text(&icon);
@@ -176,6 +177,10 @@ fn show(toggle: &Toggle, services: &Rc<Services>) {
         "nightLight" => tr("Night Light | Right-click to toggle Auto mode"),
         "idleInhibitor" => tr("Keep system awake"),
         "wireGuard" => tr("WireGuard | Right-click to manage connections"),
+        "network" => trf(
+            "%1 | Right-click to configure",
+            &[&services.net.connection.borrow()],
+        ),
         _ => look.tooltip.clone(),
     };
     toggle.tooltip.set_text(&tooltip);

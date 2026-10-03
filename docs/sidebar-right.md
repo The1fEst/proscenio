@@ -451,9 +451,20 @@ WireGuard and Cloudflare WARP both poll at `resources.updateInterval`
   by `floor(y / (56 + 6))`, and steps past a cell when the pointer is past its
   horizontal midpoint — or its *vertical* midpoint if that cell fills the row.
 
-**Status (proscenio).** `src/panels/sidebar/toggles.rs` holds the fifteen models — name, status
+**Status (proscenio).** `src/panels/sidebar/toggles.rs` holds the sixteen models — name, status
 text, tooltip, icon, `available`, main action and menu — with the `On`/`Off`
 fallback `QuickToggleModel` applies when a toggle sets no status text.
+
+Wi-Fi and the wired connection are separate tiles:
+
+| Type | Name | Icon | Toggled when | Status text | Main action | Menu |
+| --- | --- | --- | --- | --- | --- | --- |
+| `network` | Wi-Fi | signal bars of the wireless device's active access point, `wifi_find` when not connected, `signal_wifi_off` when the radio is off | `wifiStatus !== "disabled"` | the SSID, "Disconnected" or "Off" | `nmcli radio wifi on\|off` | Wi-Fi dialog |
+| `ethernet` | Ethernet | `lan` | the wired device is connected | the connection's name or "Disconnected" | `nmcli device connect\|disconnect` on the wired device | right-click opens the settings window at the `network` page and closes the sidebar |
+
+The wired device is the first `ethernet` device in `nmcli device status` that
+is connected, else the first that is disconnected, else the first that is
+unavailable (no cable). Without one the tile is unavailable.
 `onScreenKeyboard` runs proscenio's `oskToggle` action, which toggles its own
 on-screen keyboard ([osk.md](osk.md)). `idleInhibitor` holds
 `systemd-inhibit --what=idle:sleep --who=proscenio cat` with `cat` reading a
@@ -508,7 +519,9 @@ a `ButtonGroup` in `colLayer1` with 5 px spacing and padding, holding 40 px
 round `GroupButton`s that grow to 60 px when pressed, with a 22 px symbol that
 fills when toggled. The order is network, Bluetooth, Night Light, keep awake,
 EasyEffects, Cloudflare WARP and WireGuard; Bluetooth, EasyEffects and WARP
-show only when available. A toggle with a right-click action rounds to 17 px
+show only when available. The network button shows `lan` while the primary
+connection is wired and the Wi-Fi symbol otherwise, with the active
+connection's name in its tooltip. A toggle with a right-click action rounds to 17 px
 while on. Right-click opens the settings window at the `network` (wired) or
 `wifi` page and at the `bluetooth` page, flips Night Light's automatic mode,
 starts EasyEffects, and opens the WireGuard dialog. Each toggle reads and acts

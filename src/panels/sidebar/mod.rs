@@ -210,6 +210,7 @@ pub fn build(
                     columns: config.toggle_columns,
                     close: close.clone(),
                     open_menu,
+                    settings: settings.clone(),
                 },
                 scope,
             );

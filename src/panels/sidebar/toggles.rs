@@ -12,8 +12,9 @@ use crate::services::Services;
 
 const DELAYED: Duration = Duration::from_millis(300);
 
-pub const AVAILABLE: [&str; 15] = [
+pub const AVAILABLE: [&str; 16] = [
     "network",
+    "ethernet",
     "bluetooth",
     "idleInhibitor",
     "easyEffects",
@@ -59,15 +60,38 @@ pub fn menu(kind: &str) -> Option<Menu> {
 pub fn look(kind: &str, services: &Rc<Services>) -> Look {
     match kind {
         "network" => {
-            let name = services.net.connection.borrow().clone();
+            let enabled = *services.net.wifi_status.borrow() != "disabled";
+            let ssid = services.net.ssid.borrow().clone();
+            let status = match (enabled, ssid.is_empty()) {
+                (false, _) => tr("Off"),
+                (true, true) => tr("Disconnected"),
+                (true, false) => ssid,
+            };
             Look {
-                name: "Internet",
-                status: name.clone(),
+                name: "Wi-Fi",
+                status: status.clone(),
                 has_status: true,
-                icon: services.net.symbol.borrow().clone(),
-                tooltip: trf("%1 | Right-click to configure", &[&name]),
-                toggled: *services.net.wifi_status.borrow() != "disabled",
+                icon: services.net.wifi_symbol.borrow().clone(),
+                tooltip: trf("%1 | Right-click to configure", &[&status]),
+                toggled: enabled,
                 available: true,
+            }
+        }
+        "ethernet" => {
+            let wired = services.net.wired.borrow().clone();
+            let status = if wired.connected {
+                wired.connection
+            } else {
+                tr("Disconnected")
+            };
+            Look {
+                name: "Ethernet",
+                status: status.clone(),
+                has_status: true,
+                icon: "lan".to_owned(),
+                tooltip: trf("%1 | Right-click to configure", &[&status]),
+                toggled: wired.connected,
+                available: !wired.device.is_empty(),
             }
         }
         "bluetooth" => {
@@ -257,6 +281,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
 pub fn act(kind: &str, services: &Rc<Services>, close: &Rc<dyn Fn()>) {
     match kind {
         "network" => services.net.toggle_wifi(),
+        "ethernet" => services.net.toggle_wired(),
         "bluetooth" => services.bluez.toggle(),
         "wireGuard" => services.net.toggle_wireguard(),
         "audio" => {

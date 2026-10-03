@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use crate::core::config::Config;
 use crate::core::scope::Scope;
+use crate::panels::settings::Settings;
 use crate::panels::sidebar::quicktoggle::{CELL_HEIGHT, Glyph, QuickToggle, Start};
 use crate::panels::sidebar::toggles::{self, Menu};
 use crate::services::Services;
@@ -136,6 +137,7 @@ pub struct QuickPanel {
     columns: i32,
     close: Rc<dyn Fn()>,
     open_menu: Rc<dyn Fn(Menu)>,
+    settings: Rc<Settings>,
     editing: Cell<bool>,
     drag: RefCell<Option<Drag>>,
     press: RefCell<Option<Press>>,
@@ -150,6 +152,7 @@ pub struct Setup {
     pub columns: i32,
     pub close: Rc<dyn Fn()>,
     pub open_menu: Rc<dyn Fn(Menu)>,
+    pub settings: Rc<Settings>,
 }
 
 impl QuickPanel {
@@ -202,6 +205,7 @@ impl QuickPanel {
             columns,
             close: setup.close,
             open_menu: setup.open_menu,
+            settings: setup.settings,
             editing: Cell::new(false),
             drag: RefCell::new(None),
             press: RefCell::new(None),
@@ -387,6 +391,14 @@ impl QuickPanel {
                 Some(Rc::new(move || {
                     services.easyeffects.configure();
                     close();
+                }))
+            }
+            (None, "ethernet") => {
+                let settings = self.settings.clone();
+                let close = self.close.clone();
+                Some(Rc::new(move || {
+                    close();
+                    settings.open(Some("network"));
                 }))
             }
             (None, _) => None,

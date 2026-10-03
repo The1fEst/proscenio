@@ -421,7 +421,7 @@ fn key_management(security: &str) -> &'static str {
     }
 }
 
-async fn wireless_device(system: &gio::DBusConnection) -> Option<String> {
+pub async fn wireless_device(system: &gio::DBusConnection) -> Option<String> {
     let reply = system
         .call_future(
             Some(BUS),
