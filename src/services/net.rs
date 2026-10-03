@@ -242,7 +242,11 @@ async fn access_point(system: &gio::DBusConnection) -> Option<(u32, String)> {
         return None;
     }
     let interface = "org.freedesktop.NetworkManager.AccessPoint";
-    let strength = dbus::u32_property(system, BUS, &point, interface, "Strength").await?;
+    let strength = u32::from(
+        dbus::property(system, BUS, &point, interface, "Strength")
+            .await?
+            .get::<u8>()?,
+    );
     let name = dbus::property(system, BUS, &point, interface, "Ssid")
         .await
         .map(|raw| {
