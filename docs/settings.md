@@ -1182,8 +1182,16 @@ until there is a class. Adding or removing reloads Hyprland.
 - "General": the primary button (with a tooltip), left or right.
 - "Mouse": the pointer speed slider (−100 to 100, the value in its tooltip),
   acceleration (with a tooltip), natural scrolling (with a tooltip), the
-  scroll method and the scroll amount in percent.
-- "This mouse only": "No pointing device is connected", or "Device" (with a
+  scroll method, the scroll amount in percent, and a link row to the This mouse
+  only subpage.
+- "Pointer": hiding it when still (with a tooltip) and while typing; who
+  draws it (with a tooltip; `cursor:no_hardware_cursors`: the screen except
+  while tearing 2, always the screen 0, never 1) and hyprcursor themes.
+- A link row to the Touchpad subpage.
+
+### 31.1 This mouse only (subpage)
+
+- "No pointing device is connected", or "Device" (with a
   tooltip): the mouse, its own speed, whether it is enabled (with a tooltip;
   `enabled = false` in its `hl.device` line), acceleration and natural
   scrolling, each showing the general value until the mouse has its own, and
@@ -1192,10 +1200,10 @@ until there is a class. Adding or removing reloads Hyprland.
   the port of `hypr-device.py`, byte for byte, through
   `src/services/deviceoptions.rs`), batched for 50 ms into one write, then
   Hyprland reloads.
-- "Pointer": hiding it when still (with a tooltip) and while typing; who
-  draws it (with a tooltip; `cursor:no_hardware_cursors`: the screen except
-  while tearing 2, always the screen 0, never 1) and hyprcursor themes.
-- "Touchpad": disable while typing; "Clicking": tap to click (with a
+
+### 31.2 Touchpad (subpage)
+
+- Disable while typing; "Clicking": tap to click (with a
   tooltip), tap and drag, three-finger middle click, and nested "Secondary
   click" and "Tap with two or three fingers" selections; "Scrolling": natural
   scrolling and the scroll amount.

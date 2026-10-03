@@ -23,6 +23,7 @@ pub mod ipv6;
 pub mod keyboard;
 pub mod lock;
 pub mod mouse;
+pub mod mousedevice;
 pub mod multitasking;
 pub mod network;
 pub mod notifications;
@@ -38,6 +39,7 @@ pub mod services;
 pub mod shortcuts;
 pub mod sound;
 pub mod system;
+pub mod touchpad;
 pub mod users;
 pub mod wifi;
 pub mod windowrules;
@@ -357,7 +359,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 26] = [
+pub const SUBPAGES: [Subpage; 28] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -372,6 +374,16 @@ pub const SUBPAGES: [Subpage; 26] = [
         id: "shortcuts",
         title: "Keyboard Shortcuts",
         parent: "keyboard",
+    },
+    Subpage {
+        id: "mousedevice",
+        title: "This mouse only",
+        parent: "mouse",
+    },
+    Subpage {
+        id: "touchpad",
+        title: "Touchpad",
+        parent: "mouse",
     },
     Subpage {
         id: "savednetworks",
@@ -550,6 +562,8 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "panels" => panels::build(context),
         "apps" => apps::build(context),
         "mouse" => mouse::build(context),
+        "mousedevice" => mousedevice::build(context),
+        "touchpad" => touchpad::build(context),
         "keyboard" => keyboard::build(context),
         "devices" => devices::build(context),
         "accessibility" => accessibility::build(context),
