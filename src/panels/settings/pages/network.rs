@@ -8,7 +8,7 @@ use std::rc::Rc;
 use crate::core::i18n::{tr, trf};
 use crate::core::{process, tools};
 use crate::panels::settings::content::{Context, Page, Parent};
-use crate::panels::settings::pages::connection::{NEW_WIRED, NEW_WIREGUARD};
+use crate::panels::settings::pages::connection::{NEW_OPENVPN, NEW_WIRED, NEW_WIREGUARD};
 use crate::panels::settings::pages::proxy;
 use crate::platform::firewall;
 use crate::platform::proxy as platform_proxy;
@@ -89,6 +89,18 @@ pub fn build(context: &Context) -> Rc<Page> {
         move || open(NEW_WIREGUARD)
     });
     adding.append(&add_wireguard);
+    let (add_openvpn, _) = page.icon_button("add", true, &tr("Add OpenVPN"), {
+        let open = open.clone();
+        move || open(NEW_OPENVPN)
+    });
+    if !Path::new(OPENVPN_PLUGIN).exists() {
+        add_openvpn.set_sensitive(false);
+        page.tip(
+            &add_openvpn,
+            &tr("OpenVPN needs the networkmanager-openvpn package installed"),
+        );
+    }
+    adding.append(&add_openvpn);
     let problem = text::styled("");
     text::set_color(&problem, "colError");
     problem.set_xalign(0.0);

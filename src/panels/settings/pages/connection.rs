@@ -27,6 +27,7 @@ use crate::ui::widgets::windowdialog::{self, Place, WindowDialog};
 pub const NEW_WIRED: &str = "new:802-3-ethernet";
 pub const NEW_WIREGUARD: &str = "new:wireguard";
 pub const NEW_ENTERPRISE: &str = "new:enterprise:";
+pub const NEW_OPENVPN: &str = "new:openvpn";
 const NEW: &str = "new:";
 const NOTE_START: i32 = 8;
 const BUTTON_SPACING: i32 = 5;
@@ -49,6 +50,13 @@ const EAP_METHODS: [(&str, &str); 3] = [
     ("TLS", "tls"),
 ];
 const PEAP_INNER: [(&str, &str); 3] = [("MSCHAPv2", "mschapv2"), ("GTC", "gtc"), ("MD5", "md5")];
+const OPENVPN_KINDS: [(&str, &str); 4] = [
+    ("Certificates", "tls"),
+    ("Password", "password"),
+    ("Password and certificates", "password-tls"),
+    ("Static key", "static-key"),
+];
+const KEY_DIRECTIONS: [(&str, &str); 3] = [("No direction", ""), ("0", "0"), ("1", "1")];
 const TTLS_INNER: [(&str, &str); 4] = [
     ("PAP", "pap"),
     ("MSCHAPv2", "mschapv2"),
@@ -201,6 +209,15 @@ async fn start(argument: Option<String>) -> Result<Start, String> {
             secrets: true,
         });
     }
+    if wanted == NEW_OPENVPN {
+        let (names, _) = nmsettings::names_and_interfaces().await;
+        return Ok(Start {
+            devices: Vec::new(),
+            profile: Profile::new_openvpn(&nmprofile::free_name(&tr("OpenVPN"), &names)),
+            fresh: true,
+            secrets: true,
+        });
+    }
     if let Some(kind) = wanted.strip_prefix(NEW) {
         let base = if kind == WIREGUARD {
             tr("WireGuard")
@@ -250,6 +267,12 @@ fn edit_eap(profile: &mut Profile, change: impl FnOnce(&mut nmprofile::Eap)) {
     let mut eap = profile.eap();
     change(&mut eap);
     profile.set_eap(&eap);
+}
+
+fn edit_openvpn(profile: &mut Profile, change: impl FnOnce(&mut nmprofile::OpenVpn)) {
+    let mut vpn = profile.openvpn();
+    change(&mut vpn);
+    profile.set_openvpn(&vpn);
 }
 
 fn inner_methods(method: &str) -> &'static [(&'static str, &'static str)] {
@@ -317,7 +340,7 @@ impl Editor {
                 self.wireguard(&page);
                 self.peers(&page);
             }
-            VPN => self.vpn(),
+            VPN => self.vpn(&page),
             _ => {}
         }
         for family in [Family::V4, Family::V6] {
@@ -830,11 +853,14 @@ impl Editor {
                 parent,
                 &tr("User certificate"),
                 &eap.client_cert,
-                |eap, path| eap.client_cert = path,
+                |profile, path| edit_eap(profile, |eap| eap.client_cert = path),
             );
-            self.certificate_field(parent, &tr("Private key"), &eap.private_key, |eap, path| {
-                eap.private_key = path
-            });
+            self.certificate_field(
+                parent,
+                &tr("Private key"),
+                &eap.private_key,
+                |profile, path| edit_eap(profile, |eap| eap.private_key = path),
+            );
             self.secret_field(
                 parent,
                 &tr("Private key password"),
@@ -849,7 +875,7 @@ impl Editor {
             parent,
             &tr("CA certificate (empty trusts any server)"),
             &eap.ca_cert,
-            |eap, path| eap.ca_cert = path,
+            |profile, path| edit_eap(profile, |eap| eap.ca_cert = path),
         );
         self.field(
             parent,
@@ -867,7 +893,7 @@ impl Editor {
         parent: &gtk4::Box,
         label: &str,
         value: &str,
-        apply: fn(&mut nmprofile::Eap, String),
+        apply: impl Fn(&mut Profile, String) + 'static,
     ) {
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, BUTTON_SPACING);
         let holder = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
@@ -883,7 +909,7 @@ impl Editor {
             value,
             false,
             move |text, profile| {
-                edit_eap(profile, |eap| apply(eap, text.trim().to_owned()));
+                apply(profile, text.trim().to_owned());
                 Ok(())
             },
         );
@@ -1148,7 +1174,145 @@ impl Editor {
         section.append(&add);
     }
 
-    fn vpn(self: &Rc<Self>) {
+    fn openvpn(self: &Rc<Self>, page: &Page) {
+        let section = self.section("vpn_key", &tr("OpenVPN"));
+        let vpn = self.draft.borrow().openvpn();
+        self.field(&section, &tr("Gateway"), &vpn.gateway, |text, profile| {
+            edit_openvpn(profile, |vpn| vpn.gateway = text.to_owned());
+            Ok(())
+        });
+        self.spin(
+            &section,
+            "numbers",
+            &tr("Port (0 is the default, 1194)"),
+            (0, PORT_MAX),
+            vpn.port as i64,
+            |profile, port| edit_openvpn(profile, |vpn| vpn.port = port as u32),
+        );
+        self.switch(
+            &section,
+            "swap_horiz",
+            &tr("Use TCP"),
+            |profile| profile.openvpn().tcp,
+            |profile, on| edit_openvpn(profile, |vpn| vpn.tcp = on),
+        );
+        let kind = self.subsection(page, &section, &tr("Authentication"), "");
+        self.choose(
+            &kind,
+            choices(&OPENVPN_KINDS),
+            Value::from(vpn.kind.as_str()),
+            |profile, value| {
+                let kind = value.as_str().unwrap_or("tls").to_owned();
+                edit_openvpn(profile, |vpn| vpn.kind = kind);
+            },
+        );
+        if !vpn.static_key() {
+            self.certificate_field(&section, &tr("CA certificate"), &vpn.ca, |profile, path| {
+                edit_openvpn(profile, |vpn| vpn.ca = path)
+            });
+        }
+        if vpn.certificates() {
+            self.certificate_field(
+                &section,
+                &tr("User certificate"),
+                &vpn.cert,
+                |profile, path| edit_openvpn(profile, |vpn| vpn.cert = path),
+            );
+            self.certificate_field(&section, &tr("Private key"), &vpn.key, |profile, path| {
+                edit_openvpn(profile, |vpn| vpn.key = path)
+            });
+            self.secret_field(
+                &section,
+                &tr("Private key password"),
+                &vpn.key_password,
+                |text, profile| {
+                    edit_openvpn(profile, |vpn| vpn.key_password = text.to_owned());
+                    Ok(())
+                },
+            );
+        }
+        if vpn.password() {
+            self.field(
+                &section,
+                &tr("User name"),
+                &vpn.username,
+                |text, profile| {
+                    edit_openvpn(profile, |vpn| vpn.username = text.to_owned());
+                    Ok(())
+                },
+            );
+            self.secret_field(&section, &tr("Password"), &vpn.password, |text, profile| {
+                edit_openvpn(profile, |vpn| vpn.password = text.to_owned());
+                Ok(())
+            });
+        }
+        if vpn.static_key() {
+            self.certificate_field(
+                &section,
+                &tr("Static key"),
+                &vpn.static_key,
+                |profile, path| edit_openvpn(profile, |vpn| vpn.static_key = path),
+            );
+            let direction = self.subsection(page, &section, &tr("Key direction"), "");
+            self.choose(
+                &direction,
+                choices(&KEY_DIRECTIONS),
+                Value::from(vpn.static_key_direction.as_str()),
+                |profile, value| {
+                    let direction = value.as_str().unwrap_or_default().to_owned();
+                    edit_openvpn(profile, |vpn| vpn.static_key_direction = direction);
+                },
+            );
+            self.field(
+                &section,
+                &tr("Remote tunnel address"),
+                &vpn.remote_ip,
+                |text, profile| {
+                    edit_openvpn(profile, |vpn| vpn.remote_ip = text.to_owned());
+                    Ok(())
+                },
+            );
+            self.field(
+                &section,
+                &tr("Local tunnel address"),
+                &vpn.local_ip,
+                |text, profile| {
+                    edit_openvpn(profile, |vpn| vpn.local_ip = text.to_owned());
+                    Ok(())
+                },
+            );
+            return;
+        }
+        let shared = self.subsection(
+            page,
+            &section,
+            &tr("TLS authentication"),
+            &tr("A key shared by the server and every client that signs the TLS handshake, the tls-auth line of an OpenVPN config"),
+        );
+        self.certificate_field(
+            &shared,
+            &tr("TLS authentication key (optional)"),
+            &vpn.tls_auth,
+            |profile, path| edit_openvpn(profile, |vpn| vpn.tls_auth = path),
+        );
+        if !vpn.tls_auth.is_empty() {
+            self.choose(
+                &shared,
+                choices(&KEY_DIRECTIONS),
+                Value::from(vpn.tls_auth_direction.as_str()),
+                |profile, value| {
+                    let direction = value.as_str().unwrap_or_default().to_owned();
+                    edit_openvpn(profile, |vpn| vpn.tls_auth_direction = direction);
+                },
+            );
+        }
+    }
+
+    fn vpn(self: &Rc<Self>, page: &Page) {
+        if self.draft.borrow().is_openvpn() {
+            self.openvpn(page);
+            return;
+        }
         let section = self.section("vpn_key", &tr("VPN"));
         let profile = self.draft.borrow().clone();
         let service = note();

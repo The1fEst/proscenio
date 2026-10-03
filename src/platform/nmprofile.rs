@@ -15,6 +15,8 @@ pub const SECURITY: &str = "802-11-wireless-security";
 pub const WIREGUARD: &str = "wireguard";
 pub const VPN: &str = "vpn";
 pub const EAP: &str = "802-1x";
+pub const OPENVPN: &str = "org.freedesktop.NetworkManager.openvpn";
+const STORED: &str = "0";
 pub const SECRET_SETTINGS: [&str; 4] = [SECURITY, EAP, WIREGUARD, VPN];
 const FILE_SCHEME: &str = "file://";
 const WEP_ASCII_LENGTHS: [usize; 2] = [5, 13];
@@ -134,6 +136,40 @@ pub struct Eap {
 impl Eap {
     pub fn tunneled(&self) -> bool {
         matches!(self.method.as_str(), "peap" | "ttls")
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct OpenVpn {
+    pub gateway: String,
+    pub port: u32,
+    pub tcp: bool,
+    pub kind: String,
+    pub ca: String,
+    pub cert: String,
+    pub key: String,
+    pub key_password: String,
+    pub username: String,
+    pub password: String,
+    pub static_key: String,
+    pub static_key_direction: String,
+    pub remote_ip: String,
+    pub local_ip: String,
+    pub tls_auth: String,
+    pub tls_auth_direction: String,
+}
+
+impl OpenVpn {
+    pub fn certificates(&self) -> bool {
+        matches!(self.kind.as_str(), "tls" | "password-tls")
+    }
+
+    pub fn password(&self) -> bool {
+        matches!(self.kind.as_str(), "password" | "password-tls")
+    }
+
+    pub fn static_key(&self) -> bool {
+        self.kind == "static-key"
     }
 }
 
@@ -727,6 +763,114 @@ impl Profile {
         self.put(VPN, "data", data.to_variant());
     }
 
+    fn vpn_secrets(&self) -> BTreeMap<String, String> {
+        self.get(VPN, "secrets")
+            .and_then(Variant::get::<BTreeMap<String, String>>)
+            .unwrap_or_default()
+    }
+
+    pub fn new_openvpn(id: &str) -> Profile {
+        let mut profile = Profile::new(VPN, id);
+        profile.put(VPN, "service-type", OPENVPN.to_variant());
+        profile.set_openvpn(&OpenVpn {
+            kind: "tls".to_owned(),
+            ..OpenVpn::default()
+        });
+        profile
+    }
+
+    pub fn is_openvpn(&self) -> bool {
+        self.vpn_service() == OPENVPN
+    }
+
+    pub fn openvpn(&self) -> OpenVpn {
+        let data: BTreeMap<String, String> = self.vpn_data().into_iter().collect();
+        let secrets = self.vpn_secrets();
+        let value = |key: &str| data.get(key).cloned().unwrap_or_default();
+        OpenVpn {
+            gateway: value("remote"),
+            port: value("port").parse().unwrap_or(0),
+            tcp: value("proto-tcp") == "yes",
+            kind: match value("connection-type") {
+                kind if kind.is_empty() => "tls".to_owned(),
+                kind => kind,
+            },
+            ca: value("ca"),
+            cert: value("cert"),
+            key: value("key"),
+            key_password: secrets.get("cert-pass").cloned().unwrap_or_default(),
+            username: value("username"),
+            password: secrets.get("password").cloned().unwrap_or_default(),
+            static_key: value("static-key"),
+            static_key_direction: value("static-key-direction"),
+            remote_ip: value("remote-ip"),
+            local_ip: value("local-ip"),
+            tls_auth: value("ta"),
+            tls_auth_direction: value("ta-dir"),
+        }
+    }
+
+    pub fn set_openvpn(&mut self, vpn: &OpenVpn) {
+        let mut data: BTreeMap<String, String> = self.vpn_data().into_iter().collect();
+        let mut secrets = self.vpn_secrets();
+        let mut set = |key: &str, value: &str, wanted: bool| {
+            let value = value.trim();
+            if wanted && !value.is_empty() {
+                data.insert(key.to_owned(), value.to_owned());
+            } else {
+                data.remove(key);
+            }
+        };
+        let port = if vpn.port > 0 {
+            vpn.port.to_string()
+        } else {
+            String::new()
+        };
+        set("remote", &vpn.gateway, true);
+        set("port", &port, true);
+        set("proto-tcp", "yes", vpn.tcp);
+        set("connection-type", &vpn.kind, true);
+        let certificates = vpn.certificates();
+        let password = vpn.password();
+        let static_key = vpn.static_key();
+        set("ca", &vpn.ca, !static_key);
+        set("cert", &vpn.cert, certificates);
+        set("key", &vpn.key, certificates);
+        set("username", &vpn.username, password);
+        set("static-key", &vpn.static_key, static_key);
+        set(
+            "static-key-direction",
+            &vpn.static_key_direction,
+            static_key,
+        );
+        set("remote-ip", &vpn.remote_ip, static_key);
+        set("local-ip", &vpn.local_ip, static_key);
+        set("ta", &vpn.tls_auth, !static_key);
+        set(
+            "ta-dir",
+            &vpn.tls_auth_direction,
+            !static_key && !vpn.tls_auth.trim().is_empty(),
+        );
+        let cert_pass = certificates && !vpn.key_password.is_empty();
+        set("cert-pass-flags", STORED, cert_pass);
+        set("password-flags", STORED, password);
+        let mut secret = |key: &str, value: &str, wanted: bool| {
+            if wanted && !value.is_empty() {
+                secrets.insert(key.to_owned(), value.to_owned());
+            } else {
+                secrets.remove(key);
+            }
+        };
+        secret("cert-pass", &vpn.key_password, cert_pass);
+        secret("password", &vpn.password, password);
+        self.put(VPN, "data", data.to_variant());
+        if secrets.is_empty() {
+            self.remove(VPN, "secrets");
+        } else {
+            self.put(VPN, "secrets", secrets.to_variant());
+        }
+    }
+
     pub fn ip(&self, family: Family) -> Ip {
         let setting = family.setting();
         let dns_data = self.strings(setting, "dns-data");
@@ -953,6 +1097,31 @@ impl Profile {
                     ));
                 }
                 _ => {}
+            }
+        }
+        if kind == VPN && self.is_openvpn() {
+            let vpn = self.openvpn();
+            let empty = |value: &str| value.trim().is_empty();
+            if empty(&vpn.gateway) {
+                return Some(tr("An OpenVPN connection needs a gateway"));
+            }
+            if !vpn.static_key() && empty(&vpn.ca) {
+                return Some(tr("OpenVPN needs the CA certificate of its server"));
+            }
+            if vpn.certificates() && (empty(&vpn.cert) || empty(&vpn.key)) {
+                return Some(tr(
+                    "OpenVPN with certificates needs a user certificate and a private key",
+                ));
+            }
+            if vpn.password() && empty(&vpn.username) {
+                return Some(tr("OpenVPN with a password needs a user name"));
+            }
+            if vpn.static_key()
+                && (empty(&vpn.static_key) || empty(&vpn.remote_ip) || empty(&vpn.local_ip))
+            {
+                return Some(tr(
+                    "A static key OpenVPN needs the key file and both tunnel addresses",
+                ));
             }
         }
         if self.has_eap() {
@@ -1281,5 +1450,58 @@ mod tests {
         assert!(wired.has_eap());
         wired.set_wired_eap(false);
         assert!(!wired.has_eap());
+    }
+
+    #[test]
+    fn openvpn_fields_land_in_the_plugin_data_and_secrets() {
+        let mut profile = Profile::new_openvpn("Work");
+        assert!(profile.is_openvpn());
+        assert_eq!(profile.openvpn().kind, "tls");
+        assert_eq!(
+            profile.problem(),
+            Some(tr("An OpenVPN connection needs a gateway"))
+        );
+        profile.set_vpn_data("cipher", "AES-256-GCM");
+        let vpn = OpenVpn {
+            gateway: "vpn.example.org".to_owned(),
+            port: 1194,
+            tcp: true,
+            kind: "password-tls".to_owned(),
+            ca: "/home/me/ca.crt".to_owned(),
+            cert: "/home/me/me.crt".to_owned(),
+            key: "/home/me/me.key".to_owned(),
+            key_password: "unlock".to_owned(),
+            username: "me".to_owned(),
+            password: "secret".to_owned(),
+            tls_auth: "/home/me/ta.key".to_owned(),
+            tls_auth_direction: "1".to_owned(),
+            ..OpenVpn::default()
+        };
+        profile.set_openvpn(&vpn);
+        assert_eq!(profile.openvpn(), vpn);
+        assert_eq!(profile.problem(), None);
+        let data: BTreeMap<String, String> = profile.vpn_data().into_iter().collect();
+        assert_eq!(data.get("cipher").map(String::as_str), Some("AES-256-GCM"));
+        assert_eq!(data.get("password-flags").map(String::as_str), Some("0"));
+        assert!(!data.contains_key("password"));
+        assert_eq!(
+            profile.vpn_secrets().get("password").map(String::as_str),
+            Some("secret")
+        );
+
+        profile.set_openvpn(&OpenVpn {
+            kind: "static-key".to_owned(),
+            static_key: "/home/me/static.key".to_owned(),
+            ..vpn
+        });
+        let read = profile.openvpn();
+        assert!(read.cert.is_empty() && read.username.is_empty() && read.ca.is_empty());
+        assert!(profile.vpn_secrets().is_empty());
+        assert_eq!(
+            profile.problem(),
+            Some(tr(
+                "A static key OpenVPN needs the key file and both tunnel addresses"
+            ))
+        );
     }
 }
