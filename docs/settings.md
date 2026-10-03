@@ -1268,11 +1268,13 @@ until there is a class. Adding or removing reloads Hyprland.
   The list is a GTK `ListView`, so only the rows on screen exist; each is a
   34 px ripple row with Qt's 8 px button padding.
 - "Input Source Switching": the layout switching key (the xkb `grp` options,
-  or only the shell shortcut) and Num Lock at start; "Special Character
-  Entry": the third-level key and the Compose key; "Modifier Keys": the xkb
-  `caps`, `ctrl` and `altwin` options (Caps Lock, Ctrl, Alt and Super), each
-  with "Default" for none. Every one of these boxes replaces its own entry in
-  `input:kb_options` and keeps the rest.
+  or only the shell shortcut), Num Lock at start, and a link row to the
+  Keyboard options subpage.
+- Keyboard options (subpage `keyoptions`): "Special Character Entry": the
+  third-level key and the Compose key; "Modifier Keys": the xkb `caps`,
+  `ctrl` and `altwin` options (Caps Lock, Ctrl, Alt and Super), each with
+  "Default" for none. Every one of these boxes, and the switching key, replaces
+  its own entry in `input:kb_options` and keeps the rest.
 - "Keyboard Shortcuts": shortcuts following the symbol (with a tooltip), a
   search field, and one link row per category of Hyprland's described binds
   (the text before the colon), Shell, App, Window, Workspace, Media,

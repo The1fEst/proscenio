@@ -40,7 +40,6 @@ const CANDIDATE_HEIGHT: i32 = 34;
 const CANDIDATE_GAP: i32 = 2;
 const CANDIDATE_SIDE: i32 = 8;
 const CANDIDATE_PADDING: i32 = 8;
-const LABEL_START: i32 = 2;
 const FOUND_SPACING: i32 = 4;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -127,7 +126,7 @@ pub fn round_button(page: &Page, icon: &str, enabled: bool) -> RippleButton {
 struct Keyboard {
     page: Weak<Page>,
     options: Rc<HyprOptions>,
-    catalogue: RefCell<Catalogue>,
+    catalogue: Rc<RefCell<Catalogue>>,
     rows: gtk4::Box,
     kept: RefCell<Vec<Box<dyn Any>>>,
     candidates: RefCell<Vec<Candidate>>,
@@ -295,26 +294,26 @@ impl Keyboard {
         self.apply(&sources);
         true
     }
+}
 
-    fn option_of(&self, prefix: &str) -> String {
-        let prefix = format!("{prefix}:");
-        split(&self.options.text("input:kb_options"))
-            .into_iter()
-            .find(|option| option.starts_with(&prefix))
-            .unwrap_or_default()
-    }
+fn option_of(options: &HyprOptions, prefix: &str) -> String {
+    let prefix = format!("{prefix}:");
+    split(&options.text("input:kb_options"))
+        .into_iter()
+        .find(|option| option.starts_with(&prefix))
+        .unwrap_or_default()
+}
 
-    fn set_option(&self, prefix: &str, option: &str) {
-        let start = format!("{prefix}:");
-        let mut kept: Vec<String> = split(&self.options.text("input:kb_options"))
-            .into_iter()
-            .filter(|kept| !kept.starts_with(&start))
-            .collect();
-        if !option.is_empty() {
-            kept.push(option.to_owned());
-        }
-        self.options.set("input:kb_options", &kept.join(","));
+fn set_option(options: &Rc<HyprOptions>, prefix: &str, option: &str) {
+    let start = format!("{prefix}:");
+    let mut kept: Vec<String> = split(&options.text("input:kb_options"))
+        .into_iter()
+        .filter(|kept| !kept.starts_with(&start))
+        .collect();
+    if !option.is_empty() {
+        kept.push(option.to_owned());
     }
+    options.set("input:kb_options", &kept.join(","));
 }
 
 fn option_prefix(group: Option<&OptionGroup>) -> String {
@@ -324,10 +323,10 @@ fn option_prefix(group: Option<&OptionGroup>) -> String {
         .unwrap_or_default()
 }
 
-fn option_combo(
+pub(super) fn option_combo(
     page: &Page,
     parent: &gtk4::Box,
-    keyboard: &Rc<Keyboard>,
+    (options, catalogue): (&Rc<HyprOptions>, &Rc<RefCell<Catalogue>>),
     (title, icon): (&str, &str),
     group_code: &'static str,
     none: &'static str,
@@ -337,13 +336,16 @@ fn option_combo(
     let values: Rc<RefCell<Vec<String>>> = Rc::default();
     let show: Rc<dyn Fn()> = Rc::new({
         let combo = Rc::downgrade(&combo);
-        let keyboard = Rc::downgrade(keyboard);
+        let options = Rc::downgrade(options);
+        let catalogue = Rc::downgrade(catalogue);
         let values = values.clone();
         move || {
-            let (Some(combo), Some(keyboard)) = (combo.upgrade(), keyboard.upgrade()) else {
+            let (Some(combo), Some(options), Some(catalogue)) =
+                (combo.upgrade(), options.upgrade(), catalogue.upgrade())
+            else {
                 return;
             };
-            let catalogue = keyboard.catalogue.borrow();
+            let catalogue = catalogue.borrow();
             let group = catalogue
                 .option_groups
                 .iter()
@@ -354,29 +356,28 @@ fn option_combo(
                 labels.push(option.name.clone());
                 codes.push(option.code.clone());
             }
-            let chosen = keyboard.option_of(&option_prefix(group));
+            let chosen = option_of(&options, &option_prefix(group));
             let index = codes.iter().position(|code| *code == chosen).unwrap_or(0);
             combo.set_items(&labels, index as i32);
             values.replace(codes);
         }
     });
     combo.connect_activated({
-        let keyboard = Rc::downgrade(keyboard);
+        let options = Rc::downgrade(options);
+        let catalogue = Rc::downgrade(catalogue);
         move |index| {
-            let Some(keyboard) = keyboard.upgrade() else {
+            let (Some(options), Some(catalogue)) = (options.upgrade(), catalogue.upgrade()) else {
                 return;
             };
-            let prefix = {
-                let catalogue = keyboard.catalogue.borrow();
-                option_prefix(
-                    catalogue
-                        .option_groups
-                        .iter()
-                        .find(|group| group.code == group_code),
-                )
-            };
+            let prefix = option_prefix(
+                catalogue
+                    .borrow()
+                    .option_groups
+                    .iter()
+                    .find(|group| group.code == group_code),
+            );
             if let Some(value) = values.borrow().get(index) {
-                keyboard.set_option(&prefix, value);
+                set_option(&options, &prefix, value);
             }
         }
     });
@@ -521,7 +522,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let keyboard = Rc::new(Keyboard {
         page: Rc::downgrade(&page),
         options: options.clone(),
-        catalogue: RefCell::new(Catalogue::default()),
+        catalogue: Rc::default(),
         rows,
         kept: RefCell::new(Vec::new()),
         candidates: RefCell::new(Vec::new()),
@@ -593,7 +594,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let show_switching = option_combo(
         &page,
         &switching,
-        &keyboard,
+        (&options, &keyboard.catalogue),
         ("Switch between layouts with", "swap_horiz"),
         "grp",
         "Only the shell shortcut",
@@ -607,54 +608,12 @@ pub fn build(context: &Context) -> Rc<Page> {
         "input:numlock_by_default",
     );
 
-    let special = page.section("emoji_symbols", &tr("Special Character Entry"));
-    let ways = text::styled(&tr("Ways of typing symbols and letter variants"));
-    text::set_color(&ways, "colSubtext");
-    let ways = Centred::new(&ways);
-    ways.set_halign(gtk4::Align::Start);
-    ways.set_margin_start(LABEL_START);
-    special.append(&ways);
-    let show_third = option_combo(
-        &page,
-        &special,
-        &keyboard,
-        ("Alternate characters key", "keyboard_option_key"),
-        "lv3",
-        "None",
-    );
-    let show_compose = option_combo(
-        &page,
-        &special,
-        &keyboard,
-        ("Compose key", "text_select_start"),
-        "Compose key",
-        "None",
-    );
-
-    let modifiers = page.section("keyboard_command_key", &tr("Modifier Keys"));
-    let show_caps = option_combo(
-        &page,
-        &modifiers,
-        &keyboard,
-        ("Caps Lock", "keyboard_capslock"),
-        "caps",
-        "Default",
-    );
-    let show_ctrl = option_combo(
-        &page,
-        &modifiers,
-        &keyboard,
-        ("Ctrl", "keyboard_control_key"),
-        "ctrl",
-        "Default",
-    );
-    let show_altwin = option_combo(
-        &page,
-        &modifiers,
-        &keyboard,
-        ("Alt and Super", "keyboard_option_key"),
-        "altwin",
-        "Default",
+    page.link_row(
+        &switching,
+        "keyboard_command_key",
+        &tr("Keyboard options"),
+        &tr("Compose, alternate characters, Caps Lock, Ctrl, Alt and Super"),
+        context.subpage_opener("keyoptions"),
     );
 
     let shortcuts = page.section("shortcut", &tr("Keyboard Shortcuts"));
@@ -762,11 +721,6 @@ pub fn build(context: &Context) -> Rc<Page> {
                 keyboard.show_sources();
             }
             show_switching();
-            show_third();
-            show_compose();
-            show_caps();
-            show_ctrl();
-            show_altwin();
         }
     };
     let follow = Rc::new(follow);

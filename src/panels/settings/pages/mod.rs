@@ -24,6 +24,7 @@ pub mod hotspot;
 pub mod ipv4;
 pub mod ipv6;
 pub mod keyboard;
+pub mod keyoptions;
 pub mod lock;
 pub mod mouse;
 pub mod mousedevice;
@@ -366,7 +367,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 35] = [
+pub const SUBPAGES: [Subpage; 36] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -380,6 +381,11 @@ pub const SUBPAGES: [Subpage; 35] = [
     Subpage {
         id: "shortcuts",
         title: "Keyboard Shortcuts",
+        parent: "keyboard",
+    },
+    Subpage {
+        id: "keyoptions",
+        title: "Keyboard options",
         parent: "keyboard",
     },
     Subpage {
@@ -614,6 +620,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "mousedevice" => mousedevice::build(context),
         "touchpad" => touchpad::build(context),
         "keyboard" => keyboard::build(context),
+        "keyoptions" => keyoptions::build(context),
         "devices" => devices::build(context),
         "accessibility" => accessibility::build(context),
         "savednetworks" => savednetworks::build(context),
