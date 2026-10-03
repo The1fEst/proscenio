@@ -707,5 +707,11 @@ mod tests {
         assert_eq!(option_area("general:gaps_in"), Some(Area::Multitasking));
         assert_eq!(option_area("general:allow_tearing"), Some(Area::Displays));
         assert_eq!(option_area("cursor:enable_hyprcursor"), Some(Area::Appearance));
+        for option in [
+            "misc:animate_manual_resizes",
+            "misc:animate_mouse_windowdragging",
+        ] {
+            assert_eq!(option_area(option), Some(Area::Multitasking), "{option}");
+        }
     }
 }

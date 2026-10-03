@@ -9,10 +9,8 @@ use crate::platform::colorfilter;
 use crate::platform::hyprconfig::Area;
 use crate::services::hyproptions::HyprOptions;
 
-pub const OPTIONS: [&str; 9] = [
+pub const OPTIONS: [&str; 7] = [
     "animations:enabled",
-    "misc:animate_manual_resizes",
-    "misc:animate_mouse_windowdragging",
     "input:repeat_delay",
     "input:repeat_rate",
     "cursor:zoom_factor",
@@ -66,22 +64,6 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.tip(
         &reduced.button,
         &tr("Windows and workspaces appear at once instead of moving."),
-    );
-    hyprrows::switch(
-        &page,
-        &seeing,
-        &options,
-        "open_with",
-        &tr("Animate manual resizes"),
-        "misc:animate_manual_resizes",
-    );
-    hyprrows::switch(
-        &page,
-        &seeing,
-        &options,
-        "drag_pan",
-        &tr("Animate windows being dragged"),
-        "misc:animate_mouse_windowdragging",
     );
 
     let filters = page.subsection(

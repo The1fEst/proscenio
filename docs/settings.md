@@ -958,9 +958,11 @@ blur is off.
   windows open in, how a focused column is brought into view (center or fit),
   scrolling to the focused window and a single column filling the screen;
   "Snapping" (with a tooltip): the switch and a uniform row of the window and
-  screen gaps, dead while snapping is off; "Resizing": dragging borders to
-  resize (`general:resize_on_border`) and the grab area around them in px,
-  dead while dragging is off.
+  screen gaps, dead while snapping is off; "Moving & resizing": dragging
+  borders to resize (`general:resize_on_border`) and the grab area around them
+  in px, dead while dragging is off, and animating manual resizes
+  (`misc:animate_manual_resizes`) and dragged windows
+  (`misc:animate_mouse_windowdragging`).
 - "Focus": what the pointer does to focus (`input:follow_mouse`: follows the
   pointer 1, click to focus 0, click to focus with hover and scroll still going
   to the window under the pointer 2, never, not even on a click 3), where focus
@@ -1348,8 +1350,8 @@ proscenio's own page; the QML shell has none.
 ## 34. Accessibility
 
 - "Seeing": reduced motion (with a tooltip), which
-  is Hyprland's animations turned off; animating manual resizes and dragged
-  windows; and "Color filter" (with a tooltip): None, Grayscale, Inverted
+  is Hyprland's animations turned off; and "Color filter" (with a tooltip):
+  None, Grayscale, Inverted
   colors, Red–green (deuteranopia), Red–green (protanopia) and Blue–yellow
   (tritanopia), plus "Custom shader" while `decoration:screen_shader` names a
   file of someone else's. A filter writes its fragment shader to

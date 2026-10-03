@@ -9,7 +9,7 @@ use crate::platform::hyprconfig;
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::selection::Selection;
 
-pub const OPTIONS: [&str; 37] = [
+pub const OPTIONS: [&str; 39] = [
     "general:layout",
     "general:gaps_in",
     "general:gaps_out",
@@ -19,6 +19,8 @@ pub const OPTIONS: [&str; 37] = [
     "general:snap:monitor_gap",
     "general:resize_on_border",
     "general:extend_border_grab_area",
+    "misc:animate_manual_resizes",
+    "misc:animate_mouse_windowdragging",
     "scrolling:column_width",
     "scrolling:direction",
     "scrolling:fullscreen_on_one_column",
@@ -352,7 +354,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let resizing = page.subsection(&tiling, &tr("Resizing"), "");
+    let resizing = page.subsection(&tiling, &tr("Moving & resizing"), "");
     hyprrows::switch(
         &page,
         &resizing,
@@ -373,6 +375,22 @@ pub fn build(context: &Context) -> Rc<Page> {
             (0, 100),
             1,
         ),
+    );
+    hyprrows::switch(
+        &page,
+        &resizing,
+        &options,
+        "open_with",
+        &tr("Animate manual resizes"),
+        "misc:animate_manual_resizes",
+    );
+    hyprrows::switch(
+        &page,
+        &resizing,
+        &options,
+        "drag_pan",
+        &tr("Animate windows being dragged"),
+        "misc:animate_mouse_windowdragging",
     );
 
     let focus = page.section("arrow_selector_tool", &tr("Focus"));
