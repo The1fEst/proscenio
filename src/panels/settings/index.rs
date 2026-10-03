@@ -149,10 +149,10 @@ impl Index {
             return Vec::new();
         }
         let holds_every_term = |text: &str| terms.iter().all(|term| text.contains(term));
-        let mut found: Vec<(u8, Hit)> = self
+        let mut found: Vec<((u8, bool, bool), Hit)> = self
             .entries()
             .filter_map(|entry| {
-                let rank = if entry.titles.iter().any(|title| title.starts_with(&query)) {
+                let tier = if entry.titles.iter().any(|title| title.starts_with(&query)) {
                     0
                 } else if entry.titles.iter().any(|title| holds_every_term(title)) {
                     1
@@ -161,7 +161,8 @@ impl Index {
                 } else {
                     return None;
                 };
-                Some((rank, entry.hit))
+                let exact = entry.titles.contains(&query);
+                Some(((tier, entry.hit.setting, !exact), entry.hit))
             })
             .collect();
         found.sort_by_key(|(rank, _)| *rank);
