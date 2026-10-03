@@ -8,7 +8,7 @@ use crate::platform::hyprconfig::Area;
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::slider::Slider;
 
-pub const OPTIONS: [&str; 18] = [
+pub const OPTIONS: [&str; 17] = [
     "input:left_handed",
     "input:sensitivity",
     "input:accel_profile",
@@ -18,7 +18,6 @@ pub const OPTIONS: [&str; 18] = [
     "cursor:inactive_timeout",
     "cursor:hide_on_key_press",
     "cursor:no_hardware_cursors",
-    "cursor:enable_hyprcursor",
     "input:touchpad:disable_while_typing",
     "input:touchpad:tap_to_click",
     "input:touchpad:tap_and_drag",
@@ -223,14 +222,6 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.tip(
         &hardware.button,
         &tr("A pointer the screen draws itself stays smooth whatever the rest of the screen is doing.\nPick the last choice if the pointer disappears or is drawn in the wrong place."),
-    );
-    hyprrows::switch(
-        &page,
-        &drawing,
-        &options,
-        "animated_images",
-        &tr("Use hyprcursor themes"),
-        "cursor:enable_hyprcursor",
     );
 
     let touchpad = page.section("", "");

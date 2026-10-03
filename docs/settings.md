@@ -1002,8 +1002,10 @@ far, dead while the lock is off), making a new workspace and swiping on.
   "Terminal colors" (with a tooltip): forced dark mode, harmony and foreground
   boost in percent, and the harmonize threshold.
 - Link rows to the Fonts and Windows subpages.
-- "Pointer": the cursor theme (with a tooltip), which also runs
-  `hyprctl setcursor` and is kept for the next start.
+- "Pointer": the cursor theme (with a tooltip) and the cursor size (8 to 128
+  in steps of 4), set together through the appearance port, which also runs
+  `hyprctl setcursor` and keeps them for the next start; and hyprcursor
+  themes (`cursor:enable_hyprcursor`).
 - "Shell windows": the title bar switch (with a tooltip) and centering the
   title, dead while the title bar is off.
 
@@ -1222,7 +1224,7 @@ until there is a class. Adding or removing reloads Hyprland.
   only subpage.
 - "Pointer": hiding it when still (with a tooltip) and while typing; who
   draws it (with a tooltip; `cursor:no_hardware_cursors`: the screen except
-  while tearing 2, always the screen 0, never 1) and hyprcursor themes.
+  while tearing 2, always the screen 0, never 1).
 - A link row to the Touchpad subpage.
 
 ### 31.1 This mouse only (subpage)
@@ -1345,8 +1347,7 @@ proscenio's own page; the QML shell has none.
 
 ## 34. Accessibility
 
-- "Seeing": the cursor size (8 to 128 in steps of 4), set with the cursor
-  theme through the appearance port; reduced motion (with a tooltip), which
+- "Seeing": reduced motion (with a tooltip), which
   is Hyprland's animations turned off; animating manual resizes and dragged
   windows; and "Color filter" (with a tooltip): None, Grayscale, Inverted
   colors, Red–green (deuteranopia), Red–green (protanopia) and Blue–yellow

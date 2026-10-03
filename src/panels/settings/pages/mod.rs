@@ -563,7 +563,8 @@ pub const SUBPAGES: [Subpage; 38] = [
 ];
 
 fn option_area(option: &str) -> Option<Area> {
-    let owners: [(Area, &[&str]); 6] = [
+    let owners: [(Area, &[&str]); 7] = [
+        (Area::Appearance, &appearance::OPTIONS),
         (Area::Appearance, &windows::OPTIONS),
         (Area::Displays, &displays::OPTIONS),
         (Area::Multitasking, &multitasking::OPTIONS),
@@ -705,5 +706,6 @@ mod tests {
         assert_eq!(option_area("general:border_size"), Some(Area::Appearance));
         assert_eq!(option_area("general:gaps_in"), Some(Area::Multitasking));
         assert_eq!(option_area("general:allow_tearing"), Some(Area::Displays));
+        assert_eq!(option_area("cursor:enable_hyprcursor"), Some(Area::Appearance));
     }
 }

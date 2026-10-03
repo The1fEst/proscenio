@@ -7,9 +7,7 @@ use crate::panels::settings::content::{Choice, Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
 use crate::platform::colorfilter;
 use crate::platform::hyprconfig::Area;
-use crate::services::appearance::DesktopAppearance;
 use crate::services::hyproptions::HyprOptions;
-use crate::ui::widgets::spinbox::SpinBox;
 
 pub const OPTIONS: [&str; 9] = [
     "animations:enabled",
@@ -55,31 +53,8 @@ fn spin(
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let options = HyprOptions::new(Area::Accessibility, &OPTIONS);
-    let appearance = DesktopAppearance::new();
 
     let seeing = page.section("visibility", &tr("Seeing"));
-    let cursor = SpinBox::new(&page.theme, 8, 128, 4, 0);
-    page.spin_row(&seeing, "height", &tr("Cursor size"), &cursor);
-    let show_cursor = {
-        let cursor = Rc::downgrade(&cursor);
-        let appearance = Rc::downgrade(&appearance);
-        move || {
-            if let (Some(cursor), Some(appearance)) = (cursor.upgrade(), appearance.upgrade()) {
-                cursor.set_value(appearance.state().cursor_size);
-            }
-        }
-    };
-    show_cursor();
-    page.keep(appearance.watch(show_cursor));
-    cursor.connect_changed({
-        let appearance = Rc::downgrade(&appearance);
-        move |size| {
-            if let Some(appearance) = appearance.upgrade() {
-                let theme = appearance.state().cursor_theme.clone();
-                appearance.set_cursor(&theme, size);
-            }
-        }
-    });
     let reduced = hyprrows::option_switch(
         &page,
         &seeing,
@@ -231,7 +206,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         "cursor:zoom_disable_aa",
     );
 
-    page.keep(appearance);
     page.keep(options);
     page
 }

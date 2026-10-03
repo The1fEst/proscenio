@@ -3,7 +3,13 @@ use std::rc::Rc;
 use crate::core::i18n::tr;
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page};
+use crate::panels::settings::hyprrows;
+use crate::platform::hyprconfig::Area;
 use crate::services::appearance::DesktopAppearance;
+use crate::services::hyproptions::HyprOptions;
+use crate::ui::widgets::spinbox::SpinBox;
+
+pub const OPTIONS: [&str; 1] = ["cursor:enable_hyprcursor"];
 
 pub(super) fn follow(
     page: &Page,
@@ -56,6 +62,7 @@ fn theme_combo(
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let appearance = DesktopAppearance::new();
+    let options = HyprOptions::new(Area::Appearance, &OPTIONS);
 
     let desktop = page.section("wallpaper", &tr("Desktop"));
     for (icon, title, subtitle, id) in [
@@ -253,6 +260,33 @@ pub fn build(context: &Context) -> Rc<Page> {
             appearance.set_cursor(value, size);
         },
     );
+    let size = SpinBox::new(&page.theme, 8, 128, 4, 0);
+    page.spin_row(&pointer, "height", &tr("Cursor size"), &size);
+    follow(&page, &appearance, {
+        let size = Rc::downgrade(&size);
+        move |appearance| {
+            if let Some(size) = size.upgrade() {
+                size.set_value(appearance.state().cursor_size);
+            }
+        }
+    });
+    size.connect_changed({
+        let appearance = Rc::downgrade(&appearance);
+        move |size| {
+            if let Some(appearance) = appearance.upgrade() {
+                let theme = appearance.state().cursor_theme.clone();
+                appearance.set_cursor(&theme, size);
+            }
+        }
+    });
+    hyprrows::switch(
+        &page,
+        &pointer,
+        &options,
+        "animated_images",
+        &tr("Use hyprcursor themes"),
+        "cursor:enable_hyprcursor",
+    );
 
     let shell = page.section("select_window_2", &tr("Shell windows"));
     let titlebar = page.config_switch(
@@ -279,5 +313,6 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.watch("/windows/showTitlebar", center_follows);
 
     page.keep(appearance);
+    page.keep(options);
     page
 }
