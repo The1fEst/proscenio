@@ -37,6 +37,10 @@ impl AccessPoint {
     pub fn secure(&self) -> bool {
         !self.security.is_empty()
     }
+
+    pub fn enterprise(&self) -> bool {
+        self.security.contains("802.1X")
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

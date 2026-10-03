@@ -103,6 +103,10 @@ impl Settings {
     }
 
     pub fn open(self: &Rc<Self>, page: Option<&str>) {
+        self.open_with(page, None);
+    }
+
+    pub fn open_with(self: &Rc<Self>, page: Option<&str>, argument: Option<&str>) {
         let index = page.and_then(pages::index_of);
         let existing = self.view.borrow().clone();
         let view = match existing {
@@ -125,6 +129,7 @@ impl Settings {
             if let Some(parent) = pages::index_of(subpage.parent) {
                 view.select(parent);
             }
+            self.context.argument.replace(argument.map(str::to_owned));
             view.show(Shown {
                 id: subpage.id,
                 subpage: Some(subpage.title),

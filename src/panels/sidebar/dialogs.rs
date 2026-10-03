@@ -6,6 +6,7 @@ use std::rc::Rc;
 use crate::core::i18n::tr;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::Settings;
+use crate::panels::settings::pages::connection::NEW_ENTERPRISE;
 use crate::panels::sidebar::toggles::Menu;
 use crate::panels::wifinetwork::{self, NetworkList};
 use crate::services::Services;
@@ -124,12 +125,18 @@ fn wifi(context: &Context) -> Rc<WindowDialog> {
     dialog.column.add(&bar, Place::bleed(-8.0, -8.0));
 
     let wifi = Wifi::new();
+    let close = context.close_sidebar.clone();
+    let settings = context.settings.clone();
     let list = NetworkList::new(
         theme,
         &wifi,
         wifinetwork::Options {
             show_actions: false,
             height: None,
+        },
+        move |ssid| {
+            close();
+            settings.open_with(Some("connection"), Some(&format!("{NEW_ENTERPRISE}{ssid}")));
         },
     );
     dialog.column.add(&scroller(&list.root), list_place());

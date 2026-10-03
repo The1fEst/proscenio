@@ -29,16 +29,23 @@ pub struct NetworkList {
     wifi: Rc<Wifi>,
     theme: SharedTheme,
     options: Options,
+    enterprise: Rc<dyn Fn(&str)>,
     items: RefCell<Vec<Rc<Item>>>,
 }
 
 impl NetworkList {
-    pub fn new(theme: &SharedTheme, wifi: &Rc<Wifi>, options: Options) -> Rc<Self> {
+    pub fn new(
+        theme: &SharedTheme,
+        wifi: &Rc<Wifi>,
+        options: Options,
+        enterprise: impl Fn(&str) + 'static,
+    ) -> Rc<Self> {
         let list = Rc::new(NetworkList {
             root: gtk4::Box::new(gtk4::Orientation::Vertical, 0),
             wifi: wifi.clone(),
             theme: theme.clone(),
             options,
+            enterprise: Rc::new(enterprise),
             items: RefCell::new(Vec::new()),
         });
         let weak = Rc::downgrade(&list);
@@ -60,7 +67,15 @@ impl NetworkList {
                 .iter()
                 .find(|item| item.point.borrow().ssid == point.ssid)
                 .cloned()
-                .unwrap_or_else(|| Item::new(&self.theme, &self.wifi, point, self.options));
+                .unwrap_or_else(|| {
+                    Item::new(
+                        &self.theme,
+                        &self.wifi,
+                        point,
+                        self.options,
+                        self.enterprise.clone(),
+                    )
+                });
             item.update(point, &state);
             items.push(item);
         }
@@ -108,6 +123,7 @@ impl Item {
         wifi: &Rc<Wifi>,
         point: &AccessPoint,
         options: Options,
+        enterprise: Rc<dyn Fn(&str)>,
     ) -> Rc<Self> {
         let root = list_item(theme, point.active);
         root.set_click_phase(gtk4::PropagationPhase::Bubble);
@@ -200,7 +216,12 @@ impl Item {
             move |_| {
                 if let Some(item) = weak.upgrade() {
                     let point = item.point.borrow().clone();
-                    wifi.connect(&point);
+                    let saved = wifi.state.borrow().is_saved(&point.ssid);
+                    if point.enterprise() && !saved {
+                        enterprise(&point.ssid);
+                    } else {
+                        wifi.connect(&point);
+                    }
                 }
             }
         });

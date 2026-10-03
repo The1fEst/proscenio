@@ -7,6 +7,7 @@ use std::time::Duration;
 use crate::core::i18n::tr;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::content::{Context, Page};
+use crate::panels::settings::pages::connection::NEW_ENTERPRISE;
 use crate::panels::wifinetwork::{NetworkList, Options};
 use crate::services::wifi::Wifi;
 use crate::ui::shapes::Shape;
@@ -83,6 +84,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     searching.set_xalign(0.0);
     searching.set_margin_start(SEARCHING_MARGIN);
     visible.append(&searching);
+    let open = context.subpage_opener_with("connection");
     let list = NetworkList::new(
         &page.theme,
         &wifi,
@@ -90,6 +92,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             show_actions: true,
             height: Some((ITEM_HEIGHT, PROMPT_HEIGHT)),
         },
+        move |ssid| open(&format!("{NEW_ENTERPRISE}{ssid}")),
     );
     visible.append(&list.root);
 
