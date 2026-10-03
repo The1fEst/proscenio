@@ -20,46 +20,6 @@ const RENDERER_TIPS: [&str; 3] = [
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
-    let scrolling = page.section("swipe", &tr("Scrolling"));
-    page.config_switch(
-        &scrolling,
-        "touch_app",
-        &tr("Faster touchpad scrolling"),
-        "/interactions/scrolling/fasterTouchpadScroll",
-        false,
-    );
-    page.config_spin(
-        &scrolling,
-        "mouse",
-        &tr("Mouse scroll distance"),
-        "/interactions/scrolling/mouseScrollFactor",
-        120,
-        (10, 1000),
-        10,
-    );
-    page.config_spin(
-        &scrolling,
-        "touchpad_mouse",
-        &tr("Touchpad scroll distance"),
-        "/interactions/scrolling/touchpadScrollFactor",
-        450,
-        (10, 1000),
-        10,
-    );
-    let (threshold, _) = page.config_spin(
-        &scrolling,
-        "conversion_path",
-        &tr("Mouse detection threshold"),
-        "/interactions/scrolling/mouseScrollDeltaThreshold",
-        120,
-        (1, 500),
-        10,
-    );
-    page.tip(
-        &threshold,
-        &tr("Scroll events at least this large are treated as coming from a mouse instead of a touchpad"),
-    );
-
     let workarounds = page.section("bug_report", &tr("Workarounds"));
     let dead_pixel = page.config_switch(
         &workarounds,

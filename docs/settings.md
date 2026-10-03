@@ -456,9 +456,6 @@ buttons.
 
 ## 14. Advanced (subpage)
 
-- **Scrolling**: the faster-touchpad switch, then the mouse and touchpad
-  scroll distances (10–1000, by 10) and the mouse detection threshold (1–500,
-  by 10) with a tooltip, all under `interactions.scrolling`.
 - **Workarounds**: the dead-pixel switch
   (`interactions.deadPixelWorkaround.enable`) and the race condition delay
   (`hacks.arbitraryRaceConditionDelay`, 0–500 ms, by 5), each with a tooltip.
@@ -1241,6 +1238,10 @@ until there is a class. Adding or removing reloads Hyprland.
   draws it (with a tooltip; `cursor:no_hardware_cursors`: the screen except
   while tearing 2, always the screen 0, never 1).
 - A link row to the Touchpad subpage.
+- "Scrolling in the shell": the faster-touchpad switch, then the mouse and
+  touchpad scroll distances (10–1000, by 10) and the mouse detection
+  threshold (1–500, by 10) with a tooltip, all under `interactions.scrolling`
+  and read by the shell's own panels, not by apps.
 
 ### 31.1 This mouse only (subpage)
 
