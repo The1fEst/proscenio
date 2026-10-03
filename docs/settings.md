@@ -898,7 +898,8 @@ blur is off.
   to the window under the pointer 2, never, not even on a click 3), where focus
   goes after a window closes (`input:focus_on_close`: next window, window under
   the pointer, window used last), and letting apps take focus when they ask
-  (`misc:focus_on_activate`).
+  (`misc:focus_on_activate`, whose tooltip points at the window rules that
+  make exceptions for single apps).
 - "Overview": the enable switch; "Looks": centered icons and the scale in
   percent; "Workspace grid": rows and columns, and the horizontal and vertical
   order as two selection arrays side by side. The orders are booleans in the
@@ -1069,7 +1070,10 @@ blur is off.
   what the rule does in `colSubtext` at 12 px and a 32 px round remove button
   with a tooltip, or "No rules yet". "Add a rule" (with a tooltip): the window
   class, a box of the classes of the windows open now that fills it in, the
-  kind of rule, its value for opacity (percent, 1 to 100, 100 when it is not
+  kind of rule (among them `focus_on_activate` true or false, "Takes focus
+  when it asks" and "Never takes focus when it asks", which Hyprland uses
+  instead of `misc:focus_on_activate` for that class), its value for opacity
+  (percent, 1 to 100, 100 when it is not
   a number) or a workspace, and "Add rule", dead until there is a class.
   Adding or removing reloads Hyprland.
 - "Commands": outlined fields for the terminal, the task manager and the
