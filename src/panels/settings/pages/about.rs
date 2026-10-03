@@ -1,4 +1,5 @@
 use gtk4::glib;
+use gtk4::graphene;
 use gtk4::prelude::*;
 use std::rc::Rc;
 
@@ -8,6 +9,7 @@ use crate::services::sysinfo::{self, Disk};
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::flow::Flow;
+use crate::ui::widgets::paint::Paint;
 use crate::ui::widgets::progress::{Colours, ProgressBar};
 use crate::ui::widgets::text;
 
@@ -27,6 +29,11 @@ const LINKS_SPACING: i32 = 5;
 const DEFAULT_LINK_COLOUR: &str = "#2980b9";
 const DOTFILES: &str = "https://github.com/The1fEst/dots-hyprland";
 const UPSTREAM: &str = "https://github.com/end-4/dots-hyprland";
+const REPOSITORY: &str = "https://github.com/The1fEst/proscenio";
+const VERSION: &str = env!("PROSCENIO_VERSION");
+const STAGE_SIZE: f64 = 80.0;
+const STAGE_FRAME: f64 = 3.5;
+const STAGE_TIE: f64 = 3.0;
 
 struct Link {
     icon: &'static str,
@@ -86,7 +93,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let release = sysinfo::os_release();
     let distro = page.section("box", &tr("Distro"));
     distro.append(&banner(
-        &release.logo,
+        &logo(&release.logo),
         &release.name,
         &[Line::Link(&release.home_url, pixel_size::NORMAL)],
     ));
@@ -122,7 +129,7 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let dotfiles = page.section("folder_managed", &tr("Dotfiles"));
     dotfiles.append(&banner(
-        "illogical-impulse",
+        &logo("illogical-impulse"),
         &tr("illogical-impulse"),
         &[
             Line::Link(DOTFILES, pixel_size::NORMAL),
@@ -158,7 +165,109 @@ pub fn build(context: &Context) -> Rc<Page> {
             },
         ],
     ));
+
+    let shell = page.section("curtains", &tr("Shell"));
+    shell.append(&banner(
+        &stage(),
+        "proscenio",
+        &[Line::Link(REPOSITORY, pixel_size::NORMAL)],
+    ));
+    fact(&shell, &tr("Version"), VERSION);
+    fact(
+        &shell,
+        "GTK",
+        &format!(
+            "{}.{}.{}",
+            gtk4::major_version(),
+            gtk4::minor_version(),
+            gtk4::micro_version()
+        ),
+    );
+    let renderer = fact(&shell, &tr("Renderer"), "").downgrade();
+    shell.connect_map(move |shell| {
+        let name = shell
+            .native()
+            .and_then(|native| native.renderer())
+            .map(|renderer| renderer_name(renderer.type_().name()));
+        if let (Some(row), Some(name)) = (renderer.upgrade(), name) {
+            show_fact(&row, name);
+        }
+    });
+    shell.append(&links(
+        &page,
+        vec![
+            Link {
+                icon: "auto_stories",
+                filled: true,
+                label: "Documentation",
+                url: format!("{REPOSITORY}/tree/main/docs"),
+            },
+            Link {
+                icon: "adjust",
+                filled: false,
+                label: "Issues",
+                url: format!("{REPOSITORY}/issues"),
+            },
+        ],
+    ));
     page
+}
+
+fn stage() -> gtk4::Widget {
+    let paint = Paint::new(|_, _, _| {});
+    text::set_color(&paint, "colPrimary");
+    let weak = paint.downgrade();
+    paint.set_draw(move |snapshot, width, height| {
+        let Some(paint) = weak.upgrade() else {
+            return;
+        };
+        let bounds = graphene::Rect::new(0.0, 0.0, width, height);
+        let cr = snapshot.append_cairo(&bounds);
+        let scale = f64::from(width.min(height)) / STAGE_SIZE;
+        cr.scale(scale, scale);
+        cr.set_line_cap(gtk4::cairo::LineCap::Round);
+        cr.set_source_color(&paint.color());
+        let matrix = cr.matrix();
+        for mirrored in [false, true] {
+            if mirrored {
+                cr.translate(STAGE_SIZE, 0.0);
+                cr.scale(-1.0, 1.0);
+            }
+            cr.move_to(13.0, 11.0);
+            cr.line_to(38.0, 11.0);
+            cr.curve_to(38.0, 29.0, 32.0, 37.0, 22.0, 42.0);
+            cr.curve_to(23.0, 53.0, 22.0, 62.0, 19.0, 71.0);
+            cr.line_to(13.0, 71.0);
+            cr.close_path();
+            let _ = cr.fill();
+            cr.set_operator(gtk4::cairo::Operator::Clear);
+            cr.set_line_width(STAGE_TIE);
+            cr.move_to(10.0, 45.0);
+            cr.line_to(28.0, 42.5);
+            let _ = cr.stroke();
+            cr.set_operator(gtk4::cairo::Operator::Over);
+            cr.set_line_width(STAGE_FRAME);
+            cr.move_to(12.0, 11.0);
+            cr.line_to(12.0, 71.0);
+            let _ = cr.stroke();
+            cr.set_matrix(matrix);
+        }
+        cr.move_to(7.0, 11.0);
+        cr.line_to(STAGE_SIZE - 7.0, 11.0);
+        cr.move_to(4.0, 72.0);
+        cr.line_to(STAGE_SIZE - 4.0, 72.0);
+        let _ = cr.stroke();
+    });
+    paint.upcast()
+}
+
+fn renderer_name(type_name: &str) -> &str {
+    match type_name {
+        "GskCairoRenderer" => "Cairo",
+        "GskGLRenderer" | "GskNglRenderer" => "OpenGL",
+        "GskVulkanRenderer" => "Vulkan",
+        other => other,
+    }
 }
 
 fn fact(parent: &gtk4::Box, label: &str, value: &str) -> gtk4::Box {
@@ -266,14 +375,19 @@ enum Line<'a> {
     Credit(&'a str, &'a str),
 }
 
-fn banner(icon: &str, title: &str, lines: &[Line]) -> gtk4::Box {
+fn logo(icon: &str) -> gtk4::Widget {
+    let image = gtk4::Image::from_icon_name(icon);
+    image.set_pixel_size(BANNER_ICON);
+    image.upcast()
+}
+
+fn banner(image: &gtk4::Widget, title: &str, lines: &[Line]) -> gtk4::Box {
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, BANNER_SPACING);
     row.set_halign(gtk4::Align::Start);
     row.set_margin_top(BANNER_MARGIN);
     row.set_margin_bottom(BANNER_MARGIN);
-    let image = gtk4::Image::from_icon_name(icon);
-    image.set_pixel_size(BANNER_ICON);
-    row.append(&image);
+    image.set_size_request(BANNER_ICON, BANNER_ICON);
+    row.append(image);
     let column = gtk4::Box::new(gtk4::Orientation::Vertical, BANNER_LINES);
     column.set_valign(gtk4::Align::Center);
     let name = text::styled_sized(title, pixel_size::TITLE);

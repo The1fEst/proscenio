@@ -1431,5 +1431,7 @@
   "%1 has been connected.": "%1 已连接。",
   "%1 has been disconnected.": "%1 已断开连接。",
   "A USB device has been connected.": "一个 USB 设备已连接。",
-  "A USB device has been disconnected.": "一个 USB 设备已断开连接。"
+  "A USB device has been disconnected.": "一个 USB 设备已断开连接。",
+  "Shell": "外壳",
+  "Version": "版本"
 }

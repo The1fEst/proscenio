@@ -1431,5 +1431,7 @@
   "%1 has been connected.": "Устройство %1 подключено.",
   "%1 has been disconnected.": "Устройство %1 отключено.",
   "A USB device has been connected.": "Подключено устройство USB.",
-  "A USB device has been disconnected.": "Отключено устройство USB."
+  "A USB device has been disconnected.": "Отключено устройство USB.",
+  "Shell": "Оболочка",
+  "Version": "Версия"
 }

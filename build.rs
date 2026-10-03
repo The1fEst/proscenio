@@ -2,6 +2,7 @@
 mod scan;
 
 use std::fmt::Write;
+use std::process::Command;
 
 const PAGES: &str = "src/panels/settings/pages";
 
@@ -12,6 +13,29 @@ fn main() {
     println!("cargo:rerun-if-changed=protocols/hyprland-toplevel-export-v1.xml");
     println!("cargo:rerun-if-changed=protocols/linux-dmabuf-v1.xml");
     settings_index();
+    version();
+}
+
+fn git(arguments: &[&str]) -> Option<String> {
+    let output = Command::new("git").args(arguments).output().ok()?;
+    output
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+}
+
+fn version() {
+    if let Some(log) = git(&["rev-parse", "--git-path", "logs/HEAD"]) {
+        println!("cargo:rerun-if-changed={log}");
+    }
+    let version = match (
+        git(&["rev-list", "--count", "HEAD"]),
+        git(&["rev-parse", "--short", "HEAD"]),
+    ) {
+        (Some(count), Some(hash)) => format!("r{count}.{hash}"),
+        _ => std::env::var("CARGO_PKG_VERSION").unwrap_or_default(),
+    };
+    println!("cargo:rustc-env=PROSCENIO_VERSION={version}");
 }
 
 fn settings_index() {

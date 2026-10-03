@@ -1431,5 +1431,7 @@
   "%1 has been connected.": "Se ha conectado %1.",
   "%1 has been disconnected.": "Se ha desconectado %1.",
   "A USB device has been connected.": "Se ha conectado un dispositivo USB.",
-  "A USB device has been disconnected.": "Se ha desconectado un dispositivo USB."
+  "A USB device has been disconnected.": "Se ha desconectado un dispositivo USB.",
+  "Shell": "Shell",
+  "Version": "Versión"
 }

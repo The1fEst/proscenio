@@ -1431,5 +1431,7 @@
   "%1 has been connected.": "%1 が接続されました。",
   "%1 has been disconnected.": "%1 の接続が切断されました。",
   "A USB device has been connected.": "USB デバイスが接続されました。",
-  "A USB device has been disconnected.": "USB デバイスが取り外されました。"
+  "A USB device has been disconnected.": "USB デバイスが取り外されました。",
+  "Shell": "シェル",
+  "Version": "バージョン"
 }

@@ -1431,5 +1431,7 @@
   "%1 has been connected.": "%1 telah terhubung.",
   "%1 has been disconnected.": "%1 telah terlepas.",
   "A USB device has been connected.": "Sebuah peranti USB telah terhubung.",
-  "A USB device has been disconnected.": "Sebuah peranti USB telah terlepas."
+  "A USB device has been disconnected.": "Sebuah peranti USB telah terlepas.",
+  "Shell": "Shell",
+  "Version": "Versi"
 }

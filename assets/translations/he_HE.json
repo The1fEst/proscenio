@@ -1431,5 +1431,7 @@
   "%1 has been connected.": "%1 חובר.",
   "%1 has been disconnected.": "%1 נותק.",
   "A USB device has been connected.": "התקן USB חובר.",
-  "A USB device has been disconnected.": "התקן USB נותק."
+  "A USB device has been disconnected.": "התקן USB נותק.",
+  "Shell": "מעטפת",
+  "Version": "גרסה"
 }

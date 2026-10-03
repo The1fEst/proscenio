@@ -417,6 +417,17 @@ buttons.
   wrapping row of `RippleButtonWithIcon`s 5 px apart for the distro's
   documentation, support, bug and privacy pages, and for the dots'
   documentation, issues, discussions and sponsorship.
+- **Shell**: the same banner for proscenio with the repository link, its
+  80 px icon drawn with cairo on an 80-unit grid in the widget's CSS color,
+  `colPrimary`, so it follows the generated palette: a top rail (7–73), a
+  floor (4–76) and posts at 12 and 68, all 3.5 wide with round caps, and two
+  filled curtains that meet 4 apart under the rail, each cut through by a
+  3-wide tieback gap at height 43–45; Device-style rows for the version,
+  `r<commits>.<short hash>` of the build's git checkout as `build.rs` reads
+  it (the package's `pkgver`; the crate version outside a checkout), the GTK
+  version it runs on, and the renderer of the settings window once it maps
+  (Cairo, OpenGL or Vulkan); and buttons for the repository's `docs` folder
+  and its issues.
 
 ## 13. Services (subpage)
 

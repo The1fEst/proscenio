@@ -1431,5 +1431,7 @@
   "%1 has been connected.": "%1 a été branché.",
   "%1 has been disconnected.": "%1 a été débranché.",
   "A USB device has been connected.": "Un périphérique USB a été branché.",
-  "A USB device has been disconnected.": "Un périphérique USB a été débranché."
+  "A USB device has been disconnected.": "Un périphérique USB a été débranché.",
+  "Shell": "Shell",
+  "Version": "Version"
 }

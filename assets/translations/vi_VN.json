@@ -1431,5 +1431,7 @@
   "%1 has been connected.": "%1 đã được kết nối.",
   "%1 has been disconnected.": "%1 đã bị ngắt kết nối.",
   "A USB device has been connected.": "Một thiết bị USB đã được kết nối.",
-  "A USB device has been disconnected.": "Một thiết bị USB đã bị ngắt kết nối."
+  "A USB device has been disconnected.": "Một thiết bị USB đã bị ngắt kết nối.",
+  "Shell": "Shell",
+  "Version": "Phiên bản"
 }
