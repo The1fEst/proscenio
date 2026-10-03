@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::core::i18n::tr;
-use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::Settings;
 use crate::panels::settings::pages::connection::NEW_ENTERPRISE;
 use crate::panels::sidebar::toggles::Menu;
@@ -12,19 +11,17 @@ use crate::panels::wifinetwork::{self, NetworkList};
 use crate::services::Services;
 use crate::services::net;
 use crate::services::wifi::Wifi;
-use crate::ui::shapes::Shape;
 use crate::ui::theme::{SharedTheme, pixel_size, transparentize};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::column::Column;
-use crate::ui::widgets::controls::{ComboBox, ConfigSwitch};
+use crate::ui::widgets::controls::ConfigSwitch;
 use crate::ui::widgets::customicon;
 use crate::ui::widgets::ripple::{Look, RippleButton};
 use crate::ui::widgets::slider::{Options, SMALL, Slider};
 use crate::ui::widgets::text;
-use crate::ui::widgets::tooltip::{self, Tooltip};
 use crate::ui::widgets::windowdialog::{
-    DialogColumn, PADDING, Place, WindowDialog, button, button_row, list_item, progress,
-    section_header, separator, separator_place, spacer, title,
+    PADDING, Place, WindowDialog, button, button_row, list_item, progress, section_header,
+    separator, separator_place, spacer, title,
 };
 
 const LIST_TOP: f64 = -15.0;
@@ -44,8 +41,6 @@ pub fn open(menu: Menu, context: &Context) -> Rc<WindowDialog> {
     match menu {
         Menu::Wifi => wifi(context),
         Menu::Bluetooth => bluetooth(context),
-        Menu::AudioOut => volume(context, true),
-        Menu::AudioIn => volume(context, false),
         Menu::NightLight => night(context),
         Menu::WireGuard => wireguard(context),
     }
@@ -382,220 +377,6 @@ fn bluetooth_item(
     });
     item.connect_alt(move |_| flip());
     item.upcast()
-}
-
-fn volume(context: &Context, sink: bool) -> Rc<WindowDialog> {
-    let theme = &context.theme;
-    let dialog = WindowDialog::new(theme, Some(600.0));
-    dialog.column.add(
-        &title(&tr(if sink { "Audio output" } else { "Audio input" })),
-        Place::default(),
-    );
-    dialog.column.add(
-        &separator(),
-        Place {
-            top: -22.0,
-            bottom: -8.0,
-            fill_width: true,
-            ..Place::default()
-        },
-    );
-
-    let content = DialogColumn::new(16.0);
-    let apps = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
-    apps.set_margin_top(14);
-    apps.set_margin_bottom(12);
-    apps.set_margin_start(20);
-    apps.set_margin_end(20);
-    apps.set_valign(gtk4::Align::Start);
-    let empty = Placeholder::titled(
-        theme,
-        "widgets",
-        &tr("No applications"),
-        Shape::Cookie7Sided,
-    );
-    let stack = gtk4::Overlay::new();
-    stack.set_child(Some(&scroller(&apps)));
-    stack.add_overlay(&empty.widget);
-    content.add(
-        &stack,
-        Place {
-            top: -22.0,
-            bottom: -16.0,
-            left: -PADDING,
-            right: -PADDING,
-            fill_width: true,
-            fill_height: true,
-        },
-    );
-    let selector = ComboBox::new(theme);
-    content.add(
-        &selector.button,
-        Place {
-            bottom: 6.0,
-            fill_width: true,
-            ..Place::default()
-        },
-    );
-    dialog.column.add(
-        &content,
-        Place {
-            fill_width: true,
-            fill_height: true,
-            ..Place::default()
-        },
-    );
-    footer(context, &dialog, "Details", || "sound");
-
-    let Some(audio) = context.services.audio.clone() else {
-        return dialog;
-    };
-    let devices: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
-    selector.connect_activated({
-        let audio = audio.clone();
-        let devices = devices.clone();
-        move |index| {
-            if let Some(name) = devices.borrow().get(index) {
-                audio.set_default(sink, name);
-            }
-        }
-    });
-    let shown: Rc<RefCell<Vec<(u32, Rc<Slider>)>>> = Rc::new(RefCell::new(Vec::new()));
-    let refresh: Rc<dyn Fn()> = Rc::new({
-        let audio = audio.clone();
-        let theme = theme.clone();
-        let apps = apps.downgrade();
-        let selector = selector.clone();
-        let devices = devices.clone();
-        move || {
-            let Some(apps) = apps.upgrade() else {
-                return;
-            };
-            let theme = theme.clone();
-            let listed = audio.clone();
-            let empty = empty.clone();
-            let shown = shown.clone();
-            audio.streams(sink, move |streams| {
-                let same = shown.borrow().len() == streams.len()
-                    && shown
-                        .borrow()
-                        .iter()
-                        .zip(&streams)
-                        .all(|((index, _), stream)| *index == stream.index);
-                empty.show(streams.is_empty());
-                if same {
-                    for ((_, slider), stream) in shown.borrow().iter().zip(&streams) {
-                        slider.set(stream.volume);
-                    }
-                    return;
-                }
-                while let Some(child) = apps.first_child() {
-                    apps.remove(&child);
-                }
-                let mut made = Vec::new();
-                for stream in &streams {
-                    let (row, slider) = mixer_entry(&theme, &listed, sink, stream);
-                    apps.append(&row);
-                    made.push((stream.index, slider));
-                }
-                shown.replace(made);
-            });
-            let selector = selector.clone();
-            let devices = devices.clone();
-            audio.devices(sink, move |found, current| {
-                let labels: Vec<String> = found.iter().map(|device| device.label.clone()).collect();
-                let index = found
-                    .iter()
-                    .position(|device| device.name == current)
-                    .unwrap_or(0) as i32;
-                devices.replace(found.into_iter().map(|device| device.name).collect());
-                selector.set_items(&labels, index);
-            });
-        }
-    });
-    refresh();
-    let weak = Rc::downgrade(&refresh);
-    let queued = crate::ui::widgets::coalesce(Rc::new(move || {
-        if let Some(refresh) = weak.upgrade() {
-            refresh();
-        }
-    }));
-    dialog.keep(Rc::new(audio.watch_nodes(move || queued())));
-    dialog.keep(Rc::new(refresh));
-    dialog
-}
-
-fn mixer_entry(
-    theme: &SharedTheme,
-    audio: &crate::services::audio::Audio,
-    sink: bool,
-    stream: &crate::services::audio::Stream,
-) -> (gtk4::Widget, Rc<Slider>) {
-    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
-    let icon = gtk4::Image::new();
-    icon.set_pixel_size(36);
-    if let Some(display) = gtk4::gdk::Display::default() {
-        let icons = gtk4::IconTheme::for_display(&display);
-        let preferred = crate::platform::appicon::guess(&icons, &stream.icon);
-        let name = if !stream.icon.is_empty() && icons.has_icon(&preferred) {
-            preferred
-        } else {
-            crate::platform::appicon::guess(&icons, &stream.node)
-        };
-        icon.set_icon_name(Some(&name));
-    }
-    if stream.muted {
-        icon.set_opacity(0.4);
-        icon.add_css_class("desaturated");
-    }
-    let mute = tinted(
-        &text::symbol(if sink { "volume_off" } else { "mic_off" }, 22.0),
-        "colOnLayer1",
-    );
-    mute.set_visible(stream.muted);
-    let badge = gtk4::Overlay::new();
-    badge.set_child(Some(&icon));
-    badge.add_overlay(&Centred::new(&mute));
-    badge.set_size_request(36, 36);
-    badge.set_valign(gtk4::Align::Center);
-    badge.set_cursor_from_name(Some("pointer"));
-    let click = gtk4::GestureClick::new();
-    click.connect_released({
-        let audio = audio.clone();
-        let (index, muted) = (stream.index, stream.muted);
-        move |_, _, _, _| audio.set_stream_mute(sink, index, !muted)
-    });
-    badge.add_controller(click);
-    let tip = Tooltip::new(&badge, theme, tooltip::Kind::Styled);
-    tip.place_like_qt();
-    tip.set_text(&tr(if stream.muted {
-        "Click to unmute"
-    } else {
-        "Click to mute"
-    }));
-    tooltip::hover_delay(&badge, &tip, 0);
-    row.append(&badge);
-
-    let column = Column::filling_width(-4);
-    column.set_hexpand(true);
-    column.append(&elided(tinted(
-        &text::styled(&match &stream.media {
-            Some(media) => format!("{} • {media}", stream.name),
-            None => stream.name.clone(),
-        }),
-        "colSubtext",
-    )));
-    let slider = small_slider(theme, 0.0, 1.0);
-    slider.set_stops(vec![1.0]);
-    slider.set(stream.volume);
-    slider.on_moved({
-        let audio = audio.clone();
-        let index = stream.index;
-        move |value| audio.set_stream_volume(sink, index, value)
-    });
-    column.append(&slider.area);
-    row.append(&column);
-    (row.upcast(), slider)
 }
 
 fn small_slider(theme: &SharedTheme, from: f64, to: f64) -> Rc<Slider> {

@@ -37,7 +37,6 @@ pub struct Stream {
 
 pub struct Device {
     pub name: String,
-    pub label: String,
     pub description: String,
     pub nick: String,
 }
@@ -51,7 +50,6 @@ pub struct Audio {
     sink_name: Rc<RefCell<String>>,
     source_name: Rc<RefCell<String>>,
     listeners: Rc<Listeners>,
-    node_listeners: Rc<Listeners>,
     watchers: Rc<Listeners>,
     sink_listeners: Rc<Listeners>,
     protection_listeners: Rc<Listeners<String>>,
@@ -76,7 +74,6 @@ impl Audio {
             sink_name: Rc::new(RefCell::new(String::new())),
             source_name: Rc::new(RefCell::new(String::new())),
             listeners: Rc::default(),
-            node_listeners: Rc::default(),
             watchers: Rc::default(),
             sink_listeners: Rc::default(),
             protection_listeners: Rc::default(),
@@ -100,10 +97,6 @@ impl Audio {
 
     pub fn watch(&self, listener: impl Fn() + 'static) -> Subscription {
         self.watchers.add(listener)
-    }
-
-    pub fn watch_nodes(&self, listener: impl Fn() + 'static) -> Subscription {
-        self.node_listeners.add(listener)
     }
 
     pub fn on_sink_change(&self, listener: impl Fn() + 'static) -> Subscription {
@@ -140,7 +133,6 @@ impl Audio {
         let mut context = self.context.borrow_mut();
         context.set_subscribe_callback(Some(Box::new(move |_, _, _| {
             listener.refresh();
-            listener.node_listeners.notify();
             listener.watchers.notify();
         })));
         context.subscribe(
@@ -345,22 +337,10 @@ impl Audio {
         } else {
             self.source_name.borrow().clone()
         };
-        let label = |proplist: &libpulse_binding::proplist::Proplist,
-                     description: Option<String>| {
-            proplist
-                .get_str("node.nick")
-                .filter(|nick| !nick.is_empty())
-                .or(description)
-                .unwrap_or_else(|| tr("Unknown"))
-        };
         if sink {
             introspect.get_sink_info_list(move |result| match result {
                 ListResult::Item(info) => found.borrow_mut().push(Device {
                     name: info.name.as_deref().unwrap_or_default().to_owned(),
-                    label: label(
-                        &info.proplist,
-                        info.description.as_ref().map(|text| text.to_string()),
-                    ),
                     description: info.description.as_deref().unwrap_or_default().to_owned(),
                     nick: info.proplist.get_str("node.nick").unwrap_or_default(),
                 }),
@@ -375,10 +355,6 @@ impl Audio {
                     }
                     found.borrow_mut().push(Device {
                         name: info.name.as_deref().unwrap_or_default().to_owned(),
-                        label: label(
-                            &info.proplist,
-                            info.description.as_ref().map(|text| text.to_string()),
-                        ),
                         description: info.description.as_deref().unwrap_or_default().to_owned(),
                         nick: info.proplist.get_str("node.nick").unwrap_or_default(),
                     })

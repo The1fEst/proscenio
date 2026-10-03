@@ -402,12 +402,17 @@ impl QuickPanel {
                     close();
                 }))
             }
-            (None, "ethernet") => {
+            (None, "ethernet" | "audio" | "mic") => {
+                let page = if kind == "ethernet" {
+                    "network"
+                } else {
+                    "volumelevels"
+                };
                 let settings = self.settings.clone();
                 let close = self.close.clone();
                 Some(Rc::new(move || {
                     close();
-                    settings.open(Some("network"));
+                    settings.open(Some(page));
                 }))
             }
             (None, _) => None,

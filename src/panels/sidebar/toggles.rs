@@ -35,8 +35,6 @@ pub const AVAILABLE: [&str; 16] = [
 pub enum Menu {
     Wifi,
     Bluetooth,
-    AudioOut,
-    AudioIn,
     NightLight,
     WireGuard,
 }
@@ -49,8 +47,6 @@ pub fn menu(kind: &str) -> Option<Menu> {
     match kind {
         "network" => Some(Menu::Wifi),
         "bluetooth" => Some(Menu::Bluetooth),
-        "audio" => Some(Menu::AudioOut),
-        "mic" => Some(Menu::AudioIn),
         "nightLight" => Some(Menu::NightLight),
         "wireGuard" => Some(Menu::WireGuard),
         _ => None,

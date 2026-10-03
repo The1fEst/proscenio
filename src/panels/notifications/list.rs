@@ -307,10 +307,6 @@ impl Placeholder {
         Self::build(theme, icon, None, Some(description), Shape::Ghostish)
     }
 
-    pub fn titled(theme: &SharedTheme, icon: &str, title: &str, shape: Shape) -> Rc<Self> {
-        Self::build(theme, icon, Some(title), None, shape)
-    }
-
     pub fn build(
         theme: &SharedTheme,
         icon: &str,

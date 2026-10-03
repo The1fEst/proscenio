@@ -462,6 +462,10 @@ Wi-Fi and the wired connection are separate tiles:
 | `network` | Wi-Fi | signal bars of the wireless device's active access point, `wifi_find` when not connected, `signal_wifi_off` when the radio is off | `wifiStatus !== "disabled"` | the SSID, "Disconnected" or "Off" | `nmcli radio wifi on\|off` | Wi-Fi dialog |
 | `ethernet` | Ethernet | `lan` | the wired device is connected | the connection's name or "Disconnected" | `nmcli device connect\|disconnect` on the wired device | right-click opens the settings window at the `network` page and closes the sidebar |
 
+The `audio` and `mic` tiles have no dialog: a right-click opens the settings
+window at the Volume Levels subpage (`volumelevels`), which lists both the apps
+playing and the apps recording, and closes the sidebar.
+
 The wired device is the first `ethernet` device in `nmcli device status` that
 is connected, else the first that is disconnected, else the first that is
 unavailable (no cable). Without one the tile is unavailable.
@@ -631,13 +635,12 @@ header, separator, button row, `DialogButton`, `DialogListItem`, and the
 Material indeterminate progress bar — and `src/ui/widgets/controls.rs` has
 `StyledSwitch`, `ConfigSwitch`, `StyledComboBox` and `RippleButtonWithIcon`.
 
-`src/panels/sidebar/dialogs.rs` builds the six on top of them: Wi-Fi with its
-scan and password prompt, the list being `src/panels/wifinetwork.rs` (shared
-with the settings page) over `src/services/wifi.rs`; Bluetooth with discovery,
-expandable devices, pair, forget and connect; the two volume dialogs with a
-slider per stream, the `Cookie7Sided` placeholder when nothing is playing,
-and the device box; night light with its switches and the intensity,
-brightness and gamma sliders; and WireGuard.
+`src/panels/sidebar/dialogs.rs` builds four of them on those widgets: Wi-Fi with
+its scan and password prompt, the list being `src/panels/wifinetwork.rs`
+(shared with the settings page) over `src/services/wifi.rs`; Bluetooth with
+discovery, expandable devices, pair, forget and connect; night light with its
+switches and the intensity, brightness and gamma sliders; and WireGuard. The
+two volume mixers are the settings window's Volume Levels subpage instead.
 
 Divergences:
 
@@ -661,7 +664,7 @@ Divergences:
 - The list keeps each network's item between refreshes and only moves it, so a
   refresh does not clear a password being typed.
 - "Details" closes the sidebar and opens proscenio's settings window at the
-  `wifi` page (`network` on a wired connection), `bluetooth` or `sound`.
+  `wifi` page (`network` on a wired connection) or `bluetooth`.
   WireGuard's "New Connection" opens the `network` page.
 
 ---
