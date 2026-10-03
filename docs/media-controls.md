@@ -79,6 +79,12 @@ has MPRIS support / or try turning off duplicate player filtering" at
 - lists `org.mpris.MediaPlayer2.*` and reads each player's `Identity`,
   `DesktopEntry`, track id, title, artist, art, position, length, `CanSeek`
   and `PlaybackStatus`;
+- reads the process id of each player's bus name owner
+  (`GetConnectionUnixProcessID`), which Volume Levels matches against a
+  stream's process and its parents;
+- treats an `mpris:length` of `i64::MAX`, which Chromium reports for a live
+  stream, as no length, so the card shows the position and a progress bar
+  without seeking;
 - follows `PropertiesChanged` and `NameOwnerChanged`, and polls only while
   something is playing;
 - carries `meaningful()`, the duplicate filter, with the 2-second window in
