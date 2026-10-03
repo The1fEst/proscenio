@@ -1,12 +1,59 @@
-use std::path::Path;
-use std::process::{Command, Stdio};
+use std::collections::HashMap;
 
+use gtk4::gio;
 use gtk4::glib;
+use gtk4::prelude::*;
 use material_colors::color::Argb;
 use material_colors::hct::Hct;
 
-use crate::platform::appearance::with_ini_value;
 use crate::theming::material::{Role, Scheme, fix_if_disliked};
+
+const COLOR_SETS: [&str; 7] = [
+    "Colors:View",
+    "Colors:Window",
+    "Colors:Button",
+    "Colors:Selection",
+    "Colors:Tooltip",
+    "Colors:Complementary",
+    "Colors:Header",
+];
+const COLOR_KEYS: [&str; 12] = [
+    "BackgroundNormal",
+    "BackgroundAlternate",
+    "ForegroundNormal",
+    "ForegroundInactive",
+    "ForegroundActive",
+    "ForegroundLink",
+    "ForegroundVisited",
+    "ForegroundNegative",
+    "ForegroundNeutral",
+    "ForegroundPositive",
+    "DecorationFocus",
+    "DecorationHover",
+];
+const WM_COLORS: [&str; 6] = [
+    "activeBackground",
+    "activeForeground",
+    "inactiveBackground",
+    "inactiveForeground",
+    "activeBlend",
+    "inactiveBlend",
+];
+const EFFECT_GROUPS: [&str; 2] = ["ColorEffects:Inactive", "ColorEffects:Disabled"];
+const EFFECTS: [&str; 9] = [
+    "Enable",
+    "ChangeSelectionColor",
+    "IntensityEffect",
+    "IntensityAmount",
+    "ColorEffect",
+    "ColorAmount",
+    "Color",
+    "ContrastEffect",
+    "ContrastAmount",
+];
+const DEFAULT_FRAME_CONTRAST: &str = "0.2";
+const DEFAULT_CONTRAST: &str = "7";
+const PALETTE_CHANGED: i32 = 0;
 
 const TEXT_STATES: [u32; 5] = [0x2980b9, 0x9b59b6, 0xda4453, 0xf67400, 0x27ae60];
 const LINK: usize = 0;
@@ -98,44 +145,207 @@ pub fn apply(source: Argb, scheme: &str, dark: bool) -> Result<(), String> {
     std::fs::create_dir_all(&folder).map_err(|error| format!("{}: {error}", folder.display()))?;
     let [light, dark_text] = schemes(source, scheme);
     for (mode, text) in [(&LIGHT, &light), (&DARK, &dark_text)] {
-        for suffix in ["2", ""] {
-            let path = folder.join(format!("{}{suffix}.colors", mode.name));
-            std::fs::write(&path, text).map_err(|error| format!("{}: {error}", path.display()))?;
-        }
+        let path = folder.join(format!("{}.colors", mode.name));
+        std::fs::write(&path, text).map_err(|error| format!("{}: {error}", path.display()))?;
     }
     let (mode, text) = if dark {
         (&DARK, &dark_text)
     } else {
         (&LIGHT, &light)
     };
-    let _ = apply_scheme(&folder.join(format!("{}2.colors", mode.name)));
-    apply_scheme(&folder.join(format!("{}.colors", mode.name)))?;
-    if let Some(hash) = glib::compute_checksum_for_data(glib::ChecksumType::Sha1, text.as_bytes()) {
-        let kdeglobals = glib::user_config_dir().join("kdeglobals");
-        if let Ok(current) = std::fs::read_to_string(&kdeglobals) {
-            let updated = with_ini_value(&current, "ColorSchemeHash", &hash, "[General]");
-            std::fs::write(&kdeglobals, updated)
-                .map_err(|error| format!("{}: {error}", kdeglobals.display()))?;
-        }
-    }
+    let kdeglobals = glib::user_config_dir().join("kdeglobals");
+    let current = std::fs::read_to_string(&kdeglobals).unwrap_or_default();
+    std::fs::write(&kdeglobals, applied(&current, text, mode.name))
+        .map_err(|error| format!("{}: {error}", kdeglobals.display()))?;
+    notify_palette();
     Ok(())
 }
 
-fn apply_scheme(path: &Path) -> Result<(), String> {
-    let status = Command::new("plasma-apply-colorscheme")
-        .arg(path)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map_err(|error| format!("plasma-apply-colorscheme: {error}"))?;
-    if status.success() {
-        Ok(())
+fn applied(kdeglobals: &str, scheme_text: &str, name: &str) -> String {
+    let scheme = Ini::parse(scheme_text);
+    let mut output = Ini::parse(kdeglobals);
+    if let Some(hash) =
+        glib::compute_checksum_for_data(glib::ChecksumType::Sha1, scheme_text.as_bytes())
+    {
+        output.set("General", "ColorSchemeHash", &hash);
+    }
+    for set in COLOR_SETS {
+        output.delete(set);
+        if set == "Colors:Header" && !scheme.has(set) {
+            continue;
+        }
+        for key in COLOR_KEYS {
+            if let Some(value) = scheme.entry(set, key) {
+                output.set(set, key, value);
+            }
+        }
+        let inactive = format!("{set}][Inactive");
+        if scheme.has(&inactive) {
+            let from = if set == "Colors:Header" {
+                "Colors:Window"
+            } else {
+                inactive.as_str()
+            };
+            for key in COLOR_KEYS {
+                if let Some(value) = scheme.entry(from, key) {
+                    output.set(&inactive, key, value);
+                }
+            }
+        }
+    }
+    for key in WM_COLORS {
+        if let Some(value) = scheme.entry("WM", key) {
+            output.set("WM", key, &kconfig_color(value));
+        }
+    }
+    output.set(
+        "KDE",
+        "frameContrast",
+        scheme
+            .entry("KDE", "frameContrast")
+            .unwrap_or(DEFAULT_FRAME_CONTRAST),
+    );
+    output.set(
+        "KDE",
+        "contrast",
+        scheme.entry("KDE", "contrast").unwrap_or(DEFAULT_CONTRAST),
+    );
+    for group in EFFECT_GROUPS {
+        for key in EFFECTS {
+            output.set(group, key, scheme.entry(group, key).unwrap_or_default());
+        }
+    }
+    output.set("General", "ColorScheme", name);
+    output.to_string()
+}
+
+fn kconfig_color(value: &str) -> String {
+    let Some(hex) = value.strip_prefix('#') else {
+        return value.to_owned();
+    };
+    let channel = |at: usize| u8::from_str_radix(hex.get(at..at + 2)?, 16).ok();
+    let (alpha, rgb) = match hex.len() {
+        6 => (Some(255), 0),
+        8 => (channel(0), 2),
+        _ => (None, 0),
+    };
+    let (Some(alpha), Some(red), Some(green), Some(blue)) =
+        (alpha, channel(rgb), channel(rgb + 2), channel(rgb + 4))
+    else {
+        return value.to_owned();
+    };
+    if alpha == 255 {
+        format!("{red},{green},{blue}")
     } else {
-        Err(format!(
-            "plasma-apply-colorscheme {} failed: {status}",
-            path.display()
-        ))
+        format!("{red},{green},{blue},{alpha}")
+    }
+}
+
+fn notify_palette() {
+    let Ok(bus) = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE) else {
+        return;
+    };
+    let changed = HashMap::from([("KDE".to_owned(), vec![b"frameContrast".to_vec()])]);
+    let _ = bus.emit_signal(
+        None,
+        "/kdeglobals",
+        "org.kde.kconfig.notify",
+        "ConfigChanged",
+        Some(&(changed,).to_variant()),
+    );
+    let _ = bus.emit_signal(
+        None,
+        "/KGlobalSettings",
+        "org.kde.KGlobalSettings",
+        "notifyChange",
+        Some(&(PALETTE_CHANGED, 0i32).to_variant()),
+    );
+    let _ = bus.flush_sync(gio::Cancellable::NONE);
+}
+
+struct Ini {
+    groups: Vec<(String, Vec<String>)>,
+}
+
+impl Ini {
+    fn parse(text: &str) -> Ini {
+        let mut groups = vec![(String::new(), Vec::new())];
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            if let Some(name) = trimmed
+                .strip_prefix('[')
+                .and_then(|rest| rest.strip_suffix(']'))
+            {
+                groups.push((name.to_owned(), Vec::new()));
+            } else if let Some((_, lines)) = groups.last_mut() {
+                lines.push(line.to_owned());
+            }
+        }
+        Ini { groups }
+    }
+
+    fn has(&self, group: &str) -> bool {
+        self.groups.iter().any(|(name, _)| name == group)
+    }
+
+    fn entry(&self, group: &str, key: &str) -> Option<&str> {
+        let (_, lines) = self.groups.iter().find(|(name, _)| name == group)?;
+        lines.iter().find_map(|line| {
+            let (found, value) = line.split_once('=')?;
+            (found.trim() == key).then_some(value)
+        })
+    }
+
+    fn delete(&mut self, group: &str) {
+        let nested = format!("{group}][");
+        self.groups
+            .retain(|(name, _)| name != group && !name.starts_with(&nested));
+    }
+
+    fn set(&mut self, group: &str, key: &str, value: &str) {
+        let line = format!("{key}={value}");
+        let at = match self.groups.iter().position(|(name, _)| name == group) {
+            Some(at) => at,
+            None => {
+                self.groups.push((group.to_owned(), Vec::new()));
+                self.groups.len() - 1
+            }
+        };
+        let lines = &mut self.groups[at].1;
+        let existing = lines.iter().position(|existing| {
+            existing
+                .split_once('=')
+                .is_some_and(|(found, _)| found.trim() == key)
+        });
+        match existing {
+            Some(index) => lines[index] = line,
+            None => lines.push(line),
+        }
+    }
+}
+
+impl std::fmt::Display for Ini {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut first = true;
+        for (name, lines) in &self.groups {
+            if name.is_empty() && lines.is_empty() {
+                continue;
+            }
+            if !first {
+                writeln!(formatter)?;
+            }
+            first = false;
+            if !name.is_empty() {
+                writeln!(formatter, "[{name}]")?;
+            }
+            for line in lines {
+                writeln!(formatter, "{line}")?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -340,5 +550,68 @@ mod tests {
         for (text, block) in expected {
             assert!(text.contains(block), "missing\n{block}\nin\n{text}");
         }
+    }
+
+    fn entries(ini: &Ini) -> Vec<(String, Vec<String>)> {
+        let mut groups: Vec<(String, Vec<String>)> = ini
+            .groups
+            .iter()
+            .filter(|(name, lines)| !name.is_empty() || !lines.is_empty())
+            .map(|(name, lines)| {
+                let mut lines = lines.clone();
+                lines.sort();
+                (name.clone(), lines)
+            })
+            .collect();
+        groups.sort();
+        groups
+    }
+
+    #[test]
+    fn a_scheme_lands_in_kdeglobals_as_plasma_apply_colorscheme_writes_it() {
+        let scheme = "[ColorEffects:Disabled]\nColor=#1e1d20\nColorAmount=0.5\nColorEffect=3\n\n\
+            [ColorEffects:Inactive]\nChangeSelectionColor=true\nEnable=true\n\n\
+            [Colors:Button]\nBackgroundNormal=#28272a\nForegroundNormal=#e5e1e5\nExtraKey=#123456\n\n\
+            [Colors:Header]\nBackgroundNormal=#1e1d20\nForegroundActive=#e5e1e5\n\n\
+            [Colors:Header][Inactive]\nBackgroundNormal=#000000\n\n\
+            [Colors:Selection]\nBackgroundNormal=#c2c0eb\nForegroundNormal=#2b2a4c\n\n\
+            [Colors:View]\nBackgroundNormal=#131316\nForegroundLink=#8fc9fc\n\n\
+            [Colors:View][Inactive]\nBackgroundNormal=#101012\n\n\
+            [Colors:Window]\nBackgroundNormal=#201f22\nDecorationFocus=#c2c0eb\n\n\
+            [General]\nColorScheme=MaterialYouDark\nName=Material You dark\n\n\
+            [KDE]\ncontrast=4\n\n\
+            [WM]\nactiveBackground=#ff333235\nactiveBlend=252,252,252\nactiveForeground=#e5e1e5\n\
+            inactiveBackground=#80444353\ninactiveBlend=161,169,177\ninactiveForeground=#b5b3c6\n";
+        let kdeglobals = "[Colors:Complementary]\nBackgroundNormal=#ffffff\n\n\
+            [Colors:Header][Inactive]\nBackgroundNormal=#111111\n\n\
+            [Colors:Tooltip]\nBackgroundNormal=#222222\n\n\
+            [General]\nColorScheme=BreezeDark\nfixed=Hack,10\n\n\
+            [Icons]\nTheme=Papirus-Dark\n\n\
+            [KDE]\nwidgetStyle=Darkly\n\n\
+            [WM]\nactiveFont=Google Sans,10\n";
+        let written = "[ColorEffects:Disabled]\nChangeSelectionColor=\nColor=#1e1d20\nColorAmount=0.5\n\
+            ColorEffect=3\nContrastAmount=\nContrastEffect=\nEnable=\nIntensityAmount=\nIntensityEffect=\n\n\
+            [ColorEffects:Inactive]\nChangeSelectionColor=true\nColor=\nColorAmount=\nColorEffect=\n\
+            ContrastAmount=\nContrastEffect=\nEnable=true\nIntensityAmount=\nIntensityEffect=\n\n\
+            [Colors:Button]\nBackgroundNormal=#28272a\nForegroundNormal=#e5e1e5\n\n\
+            [Colors:Header]\nBackgroundNormal=#1e1d20\nForegroundActive=#e5e1e5\n\n\
+            [Colors:Header][Inactive]\nBackgroundNormal=#201f22\nDecorationFocus=#c2c0eb\n\n\
+            [Colors:Selection]\nBackgroundNormal=#c2c0eb\nForegroundNormal=#2b2a4c\n\n\
+            [Colors:View]\nBackgroundNormal=#131316\nForegroundLink=#8fc9fc\n\n\
+            [Colors:View][Inactive]\nBackgroundNormal=#101012\n\n\
+            [Colors:Window]\nBackgroundNormal=#201f22\nDecorationFocus=#c2c0eb\n\n\
+            [General]\nColorScheme=MaterialYouDark\nColorSchemeHash=44f1e75e0456d33108abe21d4cb26afa8f4c0fb6\n\
+            fixed=Hack,10\n\n\
+            [Icons]\nTheme=Papirus-Dark\n\n\
+            [KDE]\ncontrast=4\nframeContrast=0.2\nwidgetStyle=Darkly\n\n\
+            [WM]\nactiveBackground=51,50,53\nactiveBlend=252,252,252\nactiveFont=Google Sans,10\n\
+            activeForeground=229,225,229\ninactiveBackground=68,67,83,128\ninactiveBlend=161,169,177\n\
+            inactiveForeground=181,179,198\n";
+        let applied = applied(kdeglobals, scheme, "MaterialYouDark");
+        assert_eq!(
+            entries(&Ini::parse(&applied)),
+            entries(&Ini::parse(written)),
+            "\n{applied}"
+        );
     }
 }

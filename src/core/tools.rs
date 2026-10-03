@@ -26,7 +26,6 @@ pub const KDIALOG: Tool = tool("kdialog", "kdialog");
 pub const MAGICK: Tool = tool("magick", "imagemagick");
 pub const MATUGEN: Tool = tool("matugen", "matugen");
 pub const NMCLI: Tool = tool("nmcli", "networkmanager");
-pub const PLASMA_APPLY_COLORSCHEME: Tool = tool("plasma-apply-colorscheme", "plasma-workspace");
 pub const PW_DUMP: Tool = tool("pw-dump", "pipewire");
 pub const QALC: Tool = tool("qalc", "libqalculate");
 pub const SATTY: Tool = tool("satty", "satty");

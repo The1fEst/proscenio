@@ -42,15 +42,22 @@ After that, in the background:
   `sequences.txt` from `scripts/colors/terminal`, reloads kitty with SIGUSR1
   and writes the sequences to every `/dev/pts/N`.
 - When `enableQtApps` is not off, `src/theming/kde.rs` writes the
-  `MaterialYouLight` and `MaterialYouDark` color schemes, each also as a
-  `…2.colors` copy, into `~/.local/share/color-schemes` from the seed in
-  `color.txt` and the scheme type. They are kde-material-you-colors 1.10.1's
-  schemes: its roles of the light and dark Material schemes, background roles
-  with their tone truncated to an integer, and the Breeze link, visited,
-  negative, neutral and positive colors each run through `scheme-vibrant`. It
-  applies the copy and then the scheme of the current mode with
-  `plasma-apply-colorscheme`, which does not reapply a scheme that is already
-  active, and writes the scheme's SHA-1 as `ColorSchemeHash` in `kdeglobals`.
+  `MaterialYouLight` and `MaterialYouDark` color schemes into
+  `~/.local/share/color-schemes` from the seed in `color.txt` and the scheme
+  type. They are kde-material-you-colors 1.10.1's schemes: its roles of the
+  light and dark Material schemes, background roles with their tone truncated
+  to an integer, and the Breeze link, visited, negative, neutral and positive
+  colors each run through `scheme-vibrant`. It applies the scheme of the
+  current mode to `kdeglobals` the way Plasma 6.7's `plasma-apply-colorscheme`
+  does without an accent color: the `Colors:*` groups are replaced by the
+  scheme's twelve color keys (`Colors:Header][Inactive` takes
+  `Colors:Window`'s), `WM` colors are written as `r,g,b`, `KDE` gets
+  `frameContrast` (0.2 when the scheme has none) and `contrast` (7 when it
+  has none), both `ColorEffects` groups get their nine keys, and `General`
+  gets `ColorScheme` and the scheme's SHA-1 as `ColorSchemeHash`. Then it
+  sends `org.kde.kconfig.notify.ConfigChanged` on `/kdeglobals` and
+  `org.kde.KGlobalSettings.notifyChange(0, 0)`, so running Qt apps on the
+  `kde` platform theme reload their palette.
   Then `kde-selection.py` copies the primary container into the KDE selection
   colors.
 - `material-code-set-color.sh` writes the seed color into

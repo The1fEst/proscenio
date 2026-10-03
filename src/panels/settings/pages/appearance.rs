@@ -246,11 +246,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         &[&tools::MATUGEN],
         &tr("apps themed through matugen templates keep their colors"),
     );
-    page.tools_notice(
-        &themed,
-        &[&tools::PLASMA_APPLY_COLORSCHEME],
-        &tr("Qt apps keep their colors"),
-    );
     page.config_switch(
         &themed,
         "hardware",

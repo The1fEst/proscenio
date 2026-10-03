@@ -148,7 +148,7 @@ the top, with 30 px between sections and 80 px of room below the last.
   | Network, "Import from a file…" | `kdialog` | button disabled, tooltip names it |
   | Connection, "Generate a new key" | `wg` | button disabled, tooltip names it |
   | Bluetooth | `org.bluez`; `bluetoothctl` | the page is only a notice; notice |
-  | Appearance, Color generation | `matugen`, `plasma-apply-colorscheme` | notices |
+  | Appearance, Color generation | `matugen` | notice |
   | Quick, "Choose file" | `kdialog` | button disabled, tooltip names it |
   | Bar, Utility buttons | `grim`, `magick`, `wl-copy`, `hyprpicker`, `ydotool`, `wpctl`, `wf-recorder`, `slurp`; `net.hadess.PowerProfiles` | notices |
   | Panels | `kdialog` (wallpaper selector), `ydotool` (on-screen keyboard) | notices |
