@@ -146,7 +146,9 @@ the top, with 30 px between sections and 80 px of room below the last.
   | Screenshots & Recording | `grim`, `magick`, `wl-copy`, `satty`, `wf-recorder`, `slurp` | notices |
   | Network, Saved Networks, Connection, Hotspot | `nmcli`, `org.freedesktop.NetworkManager` | the page is only a notice |
   | Network, "Import from a file…" | `kdialog` | button disabled, tooltip names it |
+  | Network, "Add OpenVPN" | NetworkManager's OpenVPN plugin (`networkmanager-openvpn`) | button disabled, tooltip names it |
   | Connection, "Generate a new key" | `wg` | button disabled, tooltip names it |
+  | Connection, certificate fields | `kdialog` | the pick button is disabled |
   | Bluetooth | `org.bluez`; `bluetoothctl` | the page is only a notice; notice |
   | Appearance, Color generation | `matugen` | notice |
   | Quick, "Choose file" | `kdialog` | button disabled, tooltip names it |
@@ -526,6 +528,10 @@ buttons.
   `WifiNetworkItem` per name: 56 px, or 166 px while it asks for a password,
   with Disconnect on the joined network and Forget on saved ones. The page
   rescans every 15 s while the radio is on, starting as it opens.
+- An unsaved network whose security names 802.1X asks for no password: the
+  click opens the connection editor (§19.1) on a new WPA & WPA2 Enterprise
+  profile with its name, here and in the sidebar's Wi-Fi dialog, which closes
+  the sidebar first.
 - A network item is the sidebar dialog's, over the same service
   (`src/panels/wifinetwork.rs`, `src/services/wifi.rs`); see
   [sidebar-right.md](sidebar-right.md) §6 for the password path and clicks.
@@ -555,10 +561,11 @@ over D-Bus with `hidden` set, like the visible networks' passwords.
 
 ## 19. Network
 
-"Wired" (`lan`) and "VPN" (`vpn_key`), each either a `colSubtext` line saying
-nothing is set up (8 px in) or one card per NetworkManager connection of that
-kind (`802-3-ethernet`; `vpn`, `wireguard`, `tun`, `ip-tunnel`), sorted by
-name: 52 px, `colLayer2` with radius 12, 12 px in on the left and 8 on the
+"Wired" (`lan`), "VPN" (`vpn_key`) and "Virtual interfaces" (`device_hub`),
+each either a `colSubtext` line saying nothing is set up (8 px in) or one card
+per NetworkManager connection of that kind (`802-3-ethernet` that is not a
+bridge or bond port; `vpn`, `wireguard`, `tun`, `ip-tunnel`; `vlan`, `bridge`,
+`bond`), sorted by name: 52 px, `colLayer2` with radius 12, 12 px in on the left and 8 on the
 right, the name over "Connected · device" or "Not connected" at 12 px in
 `colSubtext`, a 32 px round `edit` button (tooltip "Edit") that opens the
 connection editor, and a `StyledSwitch` that brings the connection up or down
@@ -567,12 +574,14 @@ changes, 500 ms after the last one.
 
 4 px under the wired list, "Add wired connection" opens the editor on a new
 wired profile. Under the VPNs, 4 px lower and 5 px apart, "Add WireGuard"
-opens it on a new WireGuard profile, and "Import from a file…" (with a
+opens it on a new WireGuard profile, "Add OpenVPN" on a new OpenVPN one
+(dead, with a tooltip, without NetworkManager's OpenVPN plugin), and "Import from a file…" (with a
 tooltip) asks `kdialog` for a `.conf` or `.ovpn` file and imports it with
 `nmcli connection import`, as WireGuard or, for `.ovpn`, as OpenVPN, which
 needs NetworkManager's OpenVPN plugin; the editor then opens on the imported
 connection. A failure shows NetworkManager's message in `colError` under the
-buttons.
+buttons. Under the virtual interfaces, "Add VLAN", "Add bridge" and "Add
+bond" open the editor on a new profile of that kind.
 
 ### 19.1 Connection (subpage)
 
@@ -580,8 +589,9 @@ The editor for one NetworkManager profile, opened from a Network or Saved
 Networks card, the add buttons or an import. The header shows the profile's
 name. Opened without a profile, as a search result does, it edits the first
 active connection, or says there is nothing to edit. A new profile is named
-"Wired connection" or "WireGuard", with " 2", " 3" and so on when that name
-is taken.
+"Wired connection", "WireGuard", "OpenVPN", "VLAN", "Bridge" or "Bond", or
+after the network for an enterprise Wi-Fi one, with " 2", " 3" and so on
+when that name is taken.
 
 - The profile is read over D-Bus (`GetSettings` on
   `org.freedesktop.NetworkManager.Settings.Connection`), and its secrets with
@@ -595,8 +605,14 @@ is taken.
   new one with `AddConnection2`; when the draft holds a typed secret but the
   stored ones were never read, the stored ones are read first, letting polkit
   ask, so the others are kept. An active connection is then brought up again
-  ("Saved and reconnected"). "Revert" returns to the stored profile, and
-  "Delete" asks first and then removes the profile and goes back. Under the
+  ("Saved and reconnected"). For a bridge or bond, saving also brings its
+  port profiles in line with the chosen devices: a new port is an Ethernet
+  profile named "*interface* port *device*" with `connection.master` and
+  `slave-type` and no IP settings, a dropped one is deleted, all of them take
+  the controller's "Connect automatically" (NetworkManager brings a port's
+  controller up with it), and renaming the interface makes them anew.
+  "Revert" returns to the stored profile and ports, and "Delete" asks first
+  and then removes the profile, with its ports, and goes back. Under the
   buttons a line shows "Saving…", the first problem in `colError`, or the
   outcome.
 - Every text field checks its value as it is typed and shows what is wrong
@@ -610,10 +626,31 @@ is taken.
   "Metered connection" (Automatic, Yes, No, with a tooltip).
 - **Wired**: the device it is tied to ("Any device" or an Ethernet device), the
   cloned MAC address (an address, or preserve, permanent, random or stable),
-  and the MTU, 0 for automatic.
+  the MTU, 0 for automatic, and "802.1X security" (with a tooltip), which adds
+  the 802.1X fields.
 - **Wi-Fi**: the network name, "Hidden network", "Security" (None, WPA & WPA2
-  Personal, WPA3 Personal; enterprise and WEP profiles get a notice and keep
-  theirs) with the password, the cloned MAC address and the MTU.
+  Personal, WPA3 Personal, WPA & WPA2 Enterprise, WEP; other kinds get a notice
+  and keep theirs) with the password, the WEP key (5 or 13 characters, or 10
+  or 26 hexadecimal digits) or the 802.1X fields, the cloned MAC address and
+  the MTU.
+- The 802.1X fields (`802-1x`): "Authentication" (PEAP, TTLS, TLS), the user
+  name; for PEAP and TTLS the anonymous identity, "Inner authentication"
+  (MSCHAPv2, GTC, MD5 for PEAP; PAP, MSCHAPv2, MSCHAP, CHAP for TTLS) and the
+  password; for TLS the user certificate, the private key and its password;
+  then the CA certificate (empty trusts any server) and the server domain
+  (`domain-suffix-match`). Certificate fields take a path, written as a
+  `file://` blob, or one picked with `kdialog`; a certificate stored inline is
+  kept until a path replaces it. A user name is needed, and TLS needs a
+  certificate and a key.
+- **OpenVPN** (`org.freedesktop.NetworkManager.openvpn`): the gateway, the
+  port (0 is 1194), "Use TCP", and "Authentication": Certificates (CA, user
+  certificate, private key and its password), Password (CA, user name,
+  password), Password and certificates (both), or Static key (the key file,
+  its direction and the remote and local tunnel addresses); every kind but
+  the static key adds an optional TLS authentication key (`ta`) and its
+  direction. They are the plugin's `vpn.data` keys, its other keys kept as
+  they are, and the passwords its `vpn.secrets` (`password`, `cert-pass`)
+  with flags 0, stored by NetworkManager.
 - **WireGuard**: the interface name (a new profile takes the first `wgN` no
   profile names), "Keys": the private key (a new profile gets one from `wg genkey`),
   the public key derived from it with `wg pubkey`, selectable, and "Generate
@@ -621,8 +658,16 @@ is taken.
   subsection per peer with its public key, endpoint (host:port), allowed IPs,
   optional preshared key and keepalive in seconds, and "Remove peer"; "Add
   peer" adds an empty one.
-- **VPN** (plugin VPNs): the plugin's name and one field per entry of its
-  `vpn.data`.
+- **VPN** (other plugin VPNs): the plugin's name and one field per entry of
+  its `vpn.data`.
+- **VLAN**: the parent device (a new profile takes the first Ethernet one),
+  the VLAN ID (1 to 4094) and the interface name, which NetworkManager picks
+  when it is empty.
+- **Bridge** and **Bond**: the interface name (a new profile takes the first
+  free `brN` or `bondN`); for a bridge "Spanning tree (STP)" with a tooltip,
+  for a bond "Mode" (Active backup, Round robin, XOR, Broadcast, 802.3ad,
+  Adaptive transmit, Adaptive load balancing, with `miimon` 100 added); and
+  "Ports" (with a tooltip), a switch per Ethernet device.
 - **IPv4** and **IPv6**: the method (Automatic, Automatic DHCP only for IPv6,
   Manual, Link-local only, Shared with other computers, Disabled). Manual
   adds the addresses with their prefix lengths and the gateway; every method
