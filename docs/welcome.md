@@ -56,7 +56,7 @@ Differences from qs:
   `~/.local/state/proscenio/defaults_applied.txt` is missing too,
   `src/panels/welcome/defaults.rs` writes that second marker and sets:
   - the main display chosen by the Displays rule (`Displays::primary`);
-  - the default applications: Web `zen.desktop`, Mail
+  - the default applications: Web `brave-origin.desktop`, Mail
     `org.mozilla.Thunderbird.desktop`, Calendar `org.gnome.Calendar.desktop`,
     Music and Video `vlc.desktop`, Photos `satty.desktop`, Text
     `com.microsoft.VSCode.desktop`, Files `org.kde.dolphin.desktop`, each only

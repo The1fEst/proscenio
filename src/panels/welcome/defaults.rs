@@ -6,7 +6,7 @@ use crate::platform::defaultapps;
 use crate::theming::switchwall;
 
 const APPS: [(&str, &str); 8] = [
-    ("web", "zen.desktop"),
+    ("web", "brave-origin.desktop"),
     ("mail", "org.mozilla.Thunderbird.desktop"),
     ("calendar", "org.gnome.Calendar.desktop"),
     ("music", "vlc.desktop"),
