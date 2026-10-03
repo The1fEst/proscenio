@@ -10,6 +10,7 @@ pub mod barworkspaces;
 pub mod bluetooth;
 pub mod capture;
 pub mod cheatsheet;
+pub mod colors;
 pub mod connection;
 pub mod datetime;
 pub mod devices;
@@ -369,7 +370,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 38] = [
+pub const SUBPAGES: [Subpage; 39] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -516,6 +517,11 @@ pub const SUBPAGES: [Subpage; 38] = [
         parent: "appearance",
     },
     Subpage {
+        id: "colors",
+        title: "Colors",
+        parent: "appearance",
+    },
+    Subpage {
         id: "fonts",
         title: "Fonts",
         parent: "appearance",
@@ -623,6 +629,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "overview" => overview::build(context),
         "swiping" => swiping::build(context),
         "appearance" => appearance::build(context),
+        "colors" => colors::build(context),
         "fonts" => fonts::build(context),
         "windows" => windows::build(context),
         "background" => background::build(context),

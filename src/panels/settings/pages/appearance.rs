@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::core::i18n::tr;
-use crate::core::{config, tools};
+use crate::core::config;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows;
 use crate::platform::hyprconfig::Area;
@@ -142,82 +142,14 @@ pub fn build(context: &Context) -> Rc<Page> {
         |appearance, value| appearance.set_icons(value),
     );
 
-    let colors = page.section("colors", &tr("Color generation"));
-    let themed = page.subsection(&colors, &tr("What gets themed"), "");
-    page.tools_notice(
-        &themed,
-        &[&tools::MATUGEN],
-        &tr("apps themed through matugen templates keep their colors"),
-    );
-    page.config_switch(
-        &themed,
-        "hardware",
-        &tr("Shell & utilities"),
-        "/appearance/wallpaperTheming/enableAppsAndShell",
-        true,
-    );
-    for (icon, label, pointer) in [
-        (
-            "tv_options_input_settings",
-            "Qt apps",
-            "/appearance/wallpaperTheming/enableQtApps",
-        ),
-        (
-            "terminal",
-            "Terminal",
-            "/appearance/wallpaperTheming/enableTerminal",
-        ),
-    ] {
-        let switch = page.config_switch(&themed, icon, &tr(label), pointer, true);
-        page.tip(
-            &switch.button,
-            &tr("Shell & utilities theming must also be enabled"),
-        );
-    }
-    let terminal = page.subsection(
-        &colors,
-        &tr("Terminal colors"),
-        &tr("Ignored if terminal theming is not enabled"),
-    );
-    page.config_switch(
-        &terminal,
-        "dark_mode",
-        &tr("Force dark mode in terminal"),
-        "/appearance/wallpaperTheming/terminalGenerationProps/forceDarkMode",
-        false,
-    );
-    page.config_spin_scaled(
-        &terminal,
-        "invert_colors",
-        &tr("Harmony (%)"),
-        "/appearance/wallpaperTheming/terminalGenerationProps/harmony",
-        0.6,
-        100.0,
-        (0, 100),
-        10,
-    );
-    page.config_spin(
-        &terminal,
-        "gradient",
-        &tr("Harmonize threshold"),
-        "/appearance/wallpaperTheming/terminalGenerationProps/harmonizeThreshold",
-        100,
-        (0, 100),
-        10,
-    );
-    page.config_spin_scaled(
-        &terminal,
-        "format_color_text",
-        &tr("Foreground boost (%)"),
-        "/appearance/wallpaperTheming/terminalGenerationProps/termFgBoost",
-        0.35,
-        100.0,
-        (0, 100),
-        10,
-    );
-
     let looks = page.section("", "");
     for (icon, title, subtitle, id) in [
+        (
+            "format_paint",
+            "Colors",
+            "Scheme, accent, transparency and what gets themed",
+            "colors",
+        ),
         (
             "text_format",
             "Fonts",

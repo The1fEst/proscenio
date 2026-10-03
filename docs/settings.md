@@ -153,7 +153,7 @@ the top, with 30 px between sections and 80 px of room below the last.
   | Connection, "Generate a new key" | `wg` | button disabled, tooltip names it |
   | Connection, certificate fields | `kdialog` | the pick button is disabled |
   | Bluetooth | `org.bluez`; `bluetoothctl` | the page is only a notice; notice |
-  | Appearance, Color generation | `matugen` | notice |
+  | Colors, Color generation | `matugen` | notice |
   | Quick, "Choose file" | `kdialog` | button disabled, tooltip names it |
   | Bar, Utility buttons | `grim`, `magick`, `wl-copy`, `hyprpicker`, `ydotool`, `wpctl`, `wf-recorder`, `slurp`; `net.hadess.PowerProfiles` | notices |
   | Panels | `kdialog` (wallpaper selector), `ydotool` (on-screen keyboard) | notices |
@@ -508,13 +508,8 @@ buttons.
   the bottom around a 4 px-round face in `m3surfaceContainerLow`, the key's
   name at 12 px in the monospace family, 6 px in from the sides and 1 px from
   top and bottom.
-- The palette type as selection buttons (Auto and the eight schemes), which
-  regenerate the colors with `switchwall --noswitch`; an outlined accent
-  color field 8 px in from both sides, trimmed and regenerating the same way
-  when finished; the switches for the extra background tint, transparency and
-  automatic transparency values; and a uniform row of the background and
-  content transparency in percent, the background one live only while
-  transparency is on and neither while the values are automatic.
+- The palette and the shell surfaces of the Colors subpage (§26.1), built by
+  the same functions.
 - **Bar & screen**: a `ConfigRow` of "Bar position" (Top, Left, Bottom, Right,
   stored as `bar.bottom` and `bar.vertical`) and "Bar style" (Hug, Float,
   Rect), and a row of "Screen round corner" (No, Yes, When not fullscreen).
@@ -1000,10 +995,7 @@ far, dead while the lock is off), making a new workspace and swiping on.
   each writer edits one key and leaves the rest of the file alone. The files
   match the script's output byte for byte. Reads and writes run off
   the main thread, one write at a time, and each write rereads everything.
-- "Color generation": the three theming switches (two with tooltips) and
-  "Terminal colors" (with a tooltip): forced dark mode, harmony and foreground
-  boost in percent, and the harmonize threshold.
-- Link rows to the Fonts and Windows subpages.
+- Link rows to the Colors, Fonts and Windows subpages.
 - "Pointer": the cursor theme (with a tooltip) and the cursor size (8 to 128
   in steps of 4), set together through the appearance port, which also runs
   `hyprctl setcursor` and keeps them for the next start; and hyprcursor
@@ -1011,7 +1003,22 @@ far, dead while the lock is off), making a new workspace and swiping on.
 - "Shell windows": the title bar switch (with a tooltip) and centering the
   title, dead while the title bar is off.
 
-### 26.1 Fonts (subpage)
+### 26.1 Colors (subpage)
+
+- "Palette": the palette type as selection buttons (Auto and the eight
+  schemes), which regenerate the colors with `switchwall --noswitch`, and an
+  outlined accent color field 8 px in from both sides, trimmed and
+  regenerating the same way when finished.
+- "Shell surfaces": the switches for the extra background tint (with a
+  tooltip), transparency and automatic transparency values (with a tooltip),
+  and a uniform row of the background and content transparency in percent
+  (the content one with a tooltip), the background one live only while
+  transparency is on and neither while the values are automatic.
+- "Color generation": the three theming switches (two with tooltips) and
+  "Terminal colors" (with a tooltip): forced dark mode, harmony and foreground
+  boost in percent, and the harmonize threshold.
+
+### 26.2 Fonts (subpage)
 
 - "Apps & panels" (with a tooltip) is one row per role, a 110 px
   label, the family and the size (5 to 72); General, Fixed width and Titles
@@ -1023,7 +1030,7 @@ far, dead while the lock is off), making a new workspace and swiping on.
 - "Panels only" (with a tooltip): the Nerd icons and Expressive families,
   stored in the config alone.
 
-### 26.2 Windows (subpage)
+### 26.3 Windows (subpage)
 
 - Corner rounding and shape (the shape tenfold with one decimal,
   with a tooltip); blur with its radius and passes, dead while blur is off,

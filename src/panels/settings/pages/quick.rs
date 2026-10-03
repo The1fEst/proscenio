@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 use crate::core::i18n::tr;
 use crate::core::{config, tools};
-use crate::panels::settings::content::{Choice, Context, Page, Style};
+use crate::panels::settings::content::{Choice, Context, Page};
 use crate::services::session;
 use crate::theming::switchwall;
 use crate::ui::anim::{self, Fader};
@@ -35,12 +35,8 @@ const KEY_TEXT_SIZE: f64 = 12.0;
 const SUPER_FALLBACK: &str = "󰖳";
 const MODE_PADDING: i32 = 5;
 const MODE_ICON_SIZE: f64 = 30.0;
-const FIELD_MARGIN: i32 = 8;
-const PERCENT: f64 = 100.0;
 const BOTTOM_BIT: i64 = 1;
 const VERTICAL_BIT: i64 = 2;
-const ENABLE_TRANSPARENCY: &str = "/appearance/transparency/enable";
-const AUTOMATIC_TRANSPARENCY: &str = "/appearance/transparency/automatic";
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
@@ -50,108 +46,8 @@ pub fn build(context: &Context) -> Rc<Page> {
     top.append(&preview(&page));
     top.append(&wallpaper_controls(&page));
     colors.append(&top);
-
-    page.selection(
-        &colors,
-        vec![
-            choice(&tr("Auto"), "auto"),
-            choice(&tr("Content"), "scheme-content"),
-            choice(&tr("Expressive"), "scheme-expressive"),
-            choice(&tr("Fidelity"), "scheme-fidelity"),
-            choice(&tr("Fruit Salad"), "scheme-fruit-salad"),
-            choice(&tr("Monochrome"), "scheme-monochrome"),
-            choice(&tr("Neutral"), "scheme-neutral"),
-            choice(&tr("Rainbow"), "scheme-rainbow"),
-            choice(&tr("Tonal Spot"), "scheme-tonal-spot"),
-        ],
-        "/appearance/palette/type",
-        Value::from("auto"),
-        |value| {
-            config::store_value("/appearance/palette/type", value);
-            switchwall::detach(&["--noswitch"]);
-        },
-    );
-
-    let accent = page.text_field(
-        &colors,
-        Style::Outlined,
-        &tr("Accent color (e.g. #8caaee, empty to use the wallpaper's)"),
-        || config::value_str("/appearance/palette/accentColor").unwrap_or_default(),
-        |text| {
-            config::store_value("/appearance/palette/accentColor", Value::from(text.trim()));
-            switchwall::detach(&["--noswitch"]);
-        },
-    );
-    accent.root.set_margin_start(FIELD_MARGIN);
-    accent.root.set_margin_end(FIELD_MARGIN);
-    page.refresh_text_on("/appearance/palette/accentColor", &accent);
-
-    let tint = page.config_switch(
-        &colors,
-        "invert_colors",
-        &tr("Extra background tint"),
-        "/appearance/extraBackgroundTint",
-        true,
-    );
-    page.tip(
-        &tint.button,
-        &tr("Tints backgrounds of shell surfaces more strongly with the accent color"),
-    );
-    page.config_switch(
-        &colors,
-        "ev_shadow",
-        &tr("Transparency"),
-        ENABLE_TRANSPARENCY,
-        false,
-    );
-    let automatic = page.config_switch(
-        &colors,
-        "auto_awesome",
-        &tr("Automatic transparency values"),
-        AUTOMATIC_TRANSPARENCY,
-        true,
-    );
-    page.tip(
-        &automatic.button,
-        &tr("Derives the values below from the wallpaper instead of using them as entered"),
-    );
-    let amounts = page.uniform_row(&colors);
-    let (background_row, background) = page.config_spin_scaled(
-        &amounts,
-        "background_replace",
-        &tr("Background (%)"),
-        "/appearance/transparency/backgroundTransparency",
-        0.11,
-        PERCENT,
-        (0, 100),
-        1,
-    );
-    let (content_row, content) = page.config_spin_scaled(
-        &amounts,
-        "select_window",
-        &tr("Content (%)"),
-        "/appearance/transparency/contentTransparency",
-        0.57,
-        PERCENT,
-        (0, 100),
-        1,
-    );
-    page.tip(
-        &content_row,
-        &tr("Affects how surfaces are layered even when transparency is off"),
-    );
-    let follow = move || {
-        let enabled = config::value_bool(ENABLE_TRANSPARENCY, false);
-        let automatic = config::value_bool(AUTOMATIC_TRANSPARENCY, true);
-        Page::set_spin_row_enabled(&background_row, &background, enabled && !automatic);
-        Page::set_spin_row_enabled(&content_row, &content, !automatic);
-    };
-    follow();
-    let follow = Rc::new(follow);
-    for pointer in [ENABLE_TRANSPARENCY, AUTOMATIC_TRANSPARENCY] {
-        let follow = follow.clone();
-        page.watch(pointer, move || follow());
-    }
+    super::colors::scheme(&page, &colors);
+    super::colors::surfaces(&page, &colors);
 
     let screen = page.section("screenshot_monitor", &tr("Bar & screen"));
     let bar = page.row(&screen);
@@ -174,14 +70,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         |value| config::store_value("/appearance/fakeScreenRounding", value),
     );
     page
-}
-
-fn choice(label: &str, value: &str) -> Choice {
-    Choice {
-        label: label.to_owned(),
-        icon: "",
-        value: Value::from(value),
-    }
 }
 
 pub fn bar_position(page: &Page, parent: &gtk4::Box) {
