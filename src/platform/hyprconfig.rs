@@ -366,25 +366,25 @@ pub fn split_legacy(option_area: impl Fn(&str) -> Option<Area>) -> std::io::Resu
     std::fs::rename(&legacy, config_dir().join("settings.lua.bak"))
 }
 
-fn moved(
+fn move_lines(
     mut files: Vec<(Area, String)>,
     option_area: &impl Fn(&str) -> Option<Area>,
 ) -> Vec<(Area, String)> {
-    let mut moving: Vec<(Area, String, String)> = Vec::new();
+    let mut misplaced: Vec<(Area, String, String)> = Vec::new();
     for (area, text) in files.iter_mut() {
-        let mut kept = String::new();
+        let mut remainder = String::new();
         for line in text.split_inclusive('\n') {
             let statement = line.trim_end_matches('\n');
             match option_of(statement).and_then(|option| Some((option_area(&option)?, option))) {
                 Some((owner, option)) if owner != *area => {
-                    moving.push((owner, option, statement.to_owned()));
+                    misplaced.push((owner, option, statement.to_owned()));
                 }
-                _ => kept.push_str(line),
+                _ => remainder.push_str(line),
             }
         }
-        *text = kept;
+        *text = remainder;
     }
-    for (owner, option, statement) in moving {
+    for (owner, option, statement) in misplaced {
         let index = match files.iter().position(|(area, _)| *area == owner) {
             Some(index) => index,
             None => {
@@ -408,7 +408,7 @@ fn moved(
 
 pub fn move_misplaced(option_area: impl Fn(&str) -> Option<Area>) -> std::io::Result<()> {
     let files: Vec<(Area, String)> = AREAS.iter().map(|area| (*area, read(*area))).collect();
-    for (area, text) in moved(files.clone(), &option_area) {
+    for (area, text) in move_lines(files.clone(), &option_area) {
         if !files.contains(&(area, text.clone())) {
             write(area, &text)?;
         }
@@ -566,7 +566,7 @@ mod tests {
             _ => None,
         };
         assert_eq!(
-            moved(files, &option_area),
+            move_lines(files, &option_area),
             vec![
                 (
                     Area::Multitasking,
@@ -587,6 +587,6 @@ mod tests {
             Area::Mouse,
             "hl.config({ decoration = { shadow = { range = 10 } } })\n".to_owned(),
         )];
-        assert_eq!(moved(unchanged.clone(), &option_area), unchanged);
+        assert_eq!(move_lines(unchanged.clone(), &option_area), unchanged);
     }
 }

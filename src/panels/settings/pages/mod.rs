@@ -568,7 +568,7 @@ pub const SUBPAGES: [Subpage; 39] = [
     },
 ];
 
-fn option_area(option: &str) -> Option<Area> {
+fn area_of(option: &str) -> Option<Area> {
     let owners: [(Area, &[&str]); 7] = [
         (Area::Appearance, &appearance::OPTIONS),
         (Area::Appearance, &windows::OPTIONS),
@@ -585,8 +585,8 @@ fn option_area(option: &str) -> Option<Area> {
 }
 
 pub fn migrate_settings_files() -> std::io::Result<()> {
-    hyprconfig::split_legacy(option_area)?;
-    hyprconfig::move_misplaced(option_area)
+    hyprconfig::split_legacy(area_of)?;
+    hyprconfig::move_misplaced(area_of)
 }
 
 pub fn ancestors(id: &str) -> Vec<&'static str> {
@@ -710,15 +710,15 @@ mod tests {
 
     #[test]
     fn options_are_stored_with_the_page_that_shows_them() {
-        assert_eq!(option_area("general:border_size"), Some(Area::Appearance));
-        assert_eq!(option_area("general:gaps_in"), Some(Area::Multitasking));
-        assert_eq!(option_area("general:allow_tearing"), Some(Area::Displays));
-        assert_eq!(option_area("cursor:enable_hyprcursor"), Some(Area::Appearance));
+        assert_eq!(area_of("general:border_size"), Some(Area::Appearance));
+        assert_eq!(area_of("general:gaps_in"), Some(Area::Multitasking));
+        assert_eq!(area_of("general:allow_tearing"), Some(Area::Displays));
+        assert_eq!(area_of("cursor:enable_hyprcursor"), Some(Area::Appearance));
         for option in [
             "misc:animate_manual_resizes",
             "misc:animate_mouse_windowdragging",
         ] {
-            assert_eq!(option_area(option), Some(Area::Multitasking), "{option}");
+            assert_eq!(area_of(option), Some(Area::Multitasking), "{option}");
         }
     }
 }

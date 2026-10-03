@@ -16,9 +16,9 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
     let palette = page.section("palette", &tr("Palette"));
-    scheme(&page, &palette);
+    add_palette(&page, &palette);
     let shell = page.section("layers", &tr("Shell surfaces"));
-    surfaces(&page, &shell);
+    add_shell_surfaces(&page, &shell);
 
     let colors = page.section("colors", &tr("Color generation"));
     let themed = page.subsection(&colors, &tr("What gets themed"), "");
@@ -104,7 +104,7 @@ fn choice(label: &str, value: &str) -> Choice {
     }
 }
 
-pub(super) fn scheme(page: &Page, parent: &gtk4::Box) {
+pub(super) fn add_palette(page: &Page, parent: &gtk4::Box) {
     page.selection(
         parent,
         vec![
@@ -141,7 +141,7 @@ pub(super) fn scheme(page: &Page, parent: &gtk4::Box) {
     page.refresh_text_on("/appearance/palette/accentColor", &accent);
 }
 
-pub(super) fn surfaces(page: &Page, parent: &gtk4::Box) {
+pub(super) fn add_shell_surfaces(page: &Page, parent: &gtk4::Box) {
     let tint = page.config_switch(
         parent,
         "invert_colors",

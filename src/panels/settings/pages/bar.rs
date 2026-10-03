@@ -6,7 +6,7 @@ use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page};
 use crate::panels::settings::pages::notifications::monitors;
-use crate::panels::settings::pages::quick::{bar_position, corner_style, screen_rounding};
+use crate::panels::settings::pages::quick::{add_screen_rounding, bar_position, corner_style};
 
 const AUTO_HIDE: &str = "/bar/autoHide/enable";
 const REVEAL_ON_SUPER: &str = "/bar/autoHide/showWhenPressingSuper/enable";
@@ -140,7 +140,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     Page::subsection_root(&groups).set_hexpand(false);
     let screen = page.row(&positioning);
     let rounding = page.subsection(&screen, &tr("Screen round corner"), "");
-    screen_rounding(&page, &rounding);
+    add_screen_rounding(&page, &rounding);
 
     let looks = page.section("format_paint", &tr("Appearance"));
     page.config_switch(

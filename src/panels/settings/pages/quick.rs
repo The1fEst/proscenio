@@ -46,8 +46,8 @@ pub fn build(context: &Context) -> Rc<Page> {
     top.append(&preview(&page));
     top.append(&wallpaper_controls(&page));
     colors.append(&top);
-    super::colors::scheme(&page, &colors);
-    super::colors::surfaces(&page, &colors);
+    super::colors::add_palette(&page, &colors);
+    super::colors::add_shell_surfaces(&page, &colors);
 
     let screen = page.section("screenshot_monitor", &tr("Bar & screen"));
     let bar = page.row(&screen);
@@ -58,11 +58,11 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let corners = page.row(&screen);
     let rounding = page.subsection(&corners, &tr("Screen round corner"), "");
-    screen_rounding(&page, &rounding);
+    add_screen_rounding(&page, &rounding);
     page
 }
 
-pub fn screen_rounding(page: &Page, parent: &gtk4::Box) {
+pub fn add_screen_rounding(page: &Page, parent: &gtk4::Box) {
     page.selection(
         parent,
         vec![

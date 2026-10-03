@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use crate::core::i18n::tr;
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows;
 use crate::platform::hyprconfig::Area;
