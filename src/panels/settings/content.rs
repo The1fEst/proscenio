@@ -221,6 +221,7 @@ pub struct Context {
     pub argument: Rc<RefCell<Option<String>>>,
     pub heading: glib::WeakRef<gtk4::Label>,
     pub back: RefCell<Option<Rc<dyn Fn()>>>,
+    pub shared: RefCell<Option<(&'static str, Rc<dyn Any>)>>,
 }
 
 impl Context {

@@ -57,7 +57,7 @@ const SECURITY: [(&str, Security); 5] = [
     ("WPA & WPA2 Enterprise", Security::Enterprise),
     ("WEP", Security::Wep),
 ];
-const EAP_METHODS: [(&str, &str); 3] = [
+pub(super) const EAP_METHODS: [(&str, &str); 3] = [
     ("Protected EAP (PEAP)", "peap"),
     ("Tunneled TLS (TTLS)", "ttls"),
     ("TLS", "tls"),
@@ -76,14 +76,14 @@ const TTLS_INNER: [(&str, &str); 4] = [
     ("MSCHAP", "mschap"),
     ("CHAP", "chap"),
 ];
-const IPV4_METHODS: [(&str, &str); 5] = [
+pub(super) const IPV4_METHODS: [(&str, &str); 5] = [
     ("Automatic", "auto"),
     ("Manual", "manual"),
     ("Link-local only", "link-local"),
     ("Shared with other computers", "shared"),
     ("Disabled", "disabled"),
 ];
-const IPV6_METHODS: [(&str, &str); 6] = [
+pub(super) const IPV6_METHODS: [(&str, &str); 6] = [
     ("Automatic", "auto"),
     ("Automatic, DHCP only", "dhcp"),
     ("Manual", "manual"),
@@ -91,7 +91,7 @@ const IPV6_METHODS: [(&str, &str); 6] = [
     ("Shared with other computers", "shared"),
     ("Disabled", "disabled"),
 ];
-const PRIVACY: [(&str, i32); 4] = [
+pub(super) const PRIVACY: [(&str, i32); 4] = [
     ("Default", -1),
     ("Off", 0),
     ("Prefer the fixed address", 1),
@@ -114,14 +114,28 @@ struct Actions {
     status: gtk4::Label,
 }
 
-struct Editor {
-    page: Weak<Page>,
+#[derive(Clone, Copy)]
+pub(super) enum Part {
+    Main,
+    Sub(fn(&Rc<Editor>, &Page)),
+}
+
+pub(super) struct Editor {
+    argument: Option<String>,
+    started: Cell<bool>,
+    part: Cell<Part>,
+    page: RefCell<Weak<Page>>,
+    form: RefCell<gtk4::Box>,
+    status: RefCell<glib::WeakRef<gtk4::Box>>,
+    loading: RefCell<glib::WeakRef<gtk4::Label>>,
     theme: SharedTheme,
-    form: gtk4::Box,
     present: Rc<dyn Fn(Rc<WindowDialog>)>,
     heading: glib::WeakRef<gtk4::Label>,
     back: Rc<dyn Fn()>,
-    draft: RefCell<Profile>,
+    open_ipv4: Rc<dyn Fn()>,
+    open_ipv6: Rc<dyn Fn()>,
+    open_eap: Rc<dyn Fn()>,
+    pub(super) draft: RefCell<Profile>,
     saved: RefCell<Profile>,
     fresh: Cell<bool>,
     secrets: Cell<bool>,
@@ -138,6 +152,10 @@ struct Editor {
 }
 
 pub fn build(context: &Context) -> Rc<Page> {
+    show(context, Part::Main)
+}
+
+pub(super) fn show(context: &Context, part: Part) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let status = page.section("", "");
     if !manager_running(&page, &status) {
@@ -150,52 +168,105 @@ pub fn build(context: &Context) -> Rc<Page> {
     status.append(&loading);
     let form = Page::sections();
     page.append(&form);
-    let editor = Rc::new(Editor {
-        page: Rc::downgrade(&page),
-        theme: context.theme.clone(),
-        form,
-        present: Rc::new(context.dialog_presenter()),
-        heading: context.heading.clone(),
-        back: Rc::new(context.go_back()),
-        draft: RefCell::default(),
-        saved: RefCell::default(),
-        fresh: Cell::new(false),
-        secrets: Cell::new(false),
-        secrets_edited: Cell::new(false),
-        devices: RefCell::default(),
-        ports: RefCell::default(),
-        saved_ports: RefCell::default(),
-        errors: RefCell::default(),
-        busy: Cell::new(false),
-        outcome: RefCell::new(None),
-        rebuild_queued: Cell::new(false),
-        held: RefCell::default(),
-        actions: RefCell::new(None),
-    });
-    let argument = context.argument.borrow().clone();
-    glib::spawn_future_local({
-        let editor = Rc::downgrade(&editor);
-        async move {
-            let started = start(argument).await;
-            let Some(editor) = editor.upgrade() else {
-                return;
-            };
-            match started {
-                Ok(started) => {
-                    if let Some(section) = status.parent() {
-                        section.set_visible(false);
+    let editor = Editor::shared(context);
+    editor.part.set(part);
+    editor.page.replace(Rc::downgrade(&page));
+    editor.form.replace(form);
+    editor.status.replace(status.downgrade());
+    editor.loading.replace(loading.downgrade());
+    if editor.started.get() {
+        editor.hide_status();
+        editor.retitle();
+        editor.rebuild();
+    }
+    page
+}
+
+impl Editor {
+    fn shared(context: &Context) -> Rc<Editor> {
+        let argument = context.argument.borrow().clone();
+        let kept = context
+            .shared
+            .borrow()
+            .as_ref()
+            .and_then(|(_, kept)| kept.clone().downcast::<Editor>().ok())
+            .filter(|editor| argument.is_none() || editor.argument == argument);
+        if let Some(editor) = kept {
+            return editor;
+        }
+        let editor = Editor::new(context, argument.clone());
+        context.shared.replace(Some(("connection", editor.clone())));
+        glib::spawn_future_local({
+            let editor = Rc::downgrade(&editor);
+            async move {
+                let started = start(argument).await;
+                let Some(editor) = editor.upgrade() else {
+                    return;
+                };
+                match started {
+                    Ok(started) => {
+                        editor.hide_status();
+                        editor.open(started);
                     }
-                    editor.open(started);
-                }
-                Err(message) => {
-                    loading.set_text(&message);
-                    text::set_color(&loading, "colError");
+                    Err(message) => {
+                        if let Some(loading) = editor.loading.borrow().upgrade() {
+                            loading.set_text(&message);
+                            text::set_color(&loading, "colError");
+                        }
+                    }
                 }
             }
+        });
+        editor
+    }
+
+    fn new(context: &Context, argument: Option<String>) -> Rc<Editor> {
+        Rc::new(Editor {
+            argument,
+            started: Cell::new(false),
+            part: Cell::new(Part::Main),
+            page: RefCell::new(Weak::new()),
+            form: RefCell::new(Page::sections()),
+            status: RefCell::new(glib::WeakRef::new()),
+            loading: RefCell::new(glib::WeakRef::new()),
+            theme: context.theme.clone(),
+            present: Rc::new(context.dialog_presenter()),
+            heading: context.heading.clone(),
+            back: Rc::new(context.go_back()),
+            open_ipv4: Rc::new(context.subpage_opener("ipv4")),
+            open_ipv6: Rc::new(context.subpage_opener("ipv6")),
+            open_eap: Rc::new(context.subpage_opener("eap")),
+            draft: RefCell::default(),
+            saved: RefCell::default(),
+            fresh: Cell::new(false),
+            secrets: Cell::new(false),
+            secrets_edited: Cell::new(false),
+            devices: RefCell::default(),
+            ports: RefCell::default(),
+            saved_ports: RefCell::default(),
+            errors: RefCell::default(),
+            busy: Cell::new(false),
+            outcome: RefCell::new(None),
+            rebuild_queued: Cell::new(false),
+            held: RefCell::default(),
+            actions: RefCell::new(None),
+        })
+    }
+
+    fn hide_status(&self) {
+        if let Some(card) = self
+            .status
+            .borrow()
+            .upgrade()
+            .and_then(|status| status.parent())
+        {
+            card.set_visible(false);
         }
-    });
-    page.keep(editor);
-    page
+    }
+
+    pub(super) fn leave(&self) {
+        (self.back)();
+    }
 }
 
 async fn primary() -> Option<String> {
@@ -331,7 +402,7 @@ async fn sync_ports(
     Ok(())
 }
 
-fn edit_eap(profile: &mut Profile, change: impl FnOnce(&mut nmprofile::Eap)) {
+pub(super) fn edit_eap(profile: &mut Profile, change: impl FnOnce(&mut nmprofile::Eap)) {
     let mut eap = profile.eap();
     change(&mut eap);
     profile.set_eap(&eap);
@@ -343,7 +414,7 @@ fn edit_openvpn(profile: &mut Profile, change: impl FnOnce(&mut nmprofile::OpenV
     profile.set_openvpn(&vpn);
 }
 
-fn inner_methods(method: &str) -> &'static [(&'static str, &'static str)] {
+pub(super) fn inner_methods(method: &str) -> &'static [(&'static str, &'static str)] {
     match method {
         "ttls" => &TTLS_INNER,
         "peap" => &PEAP_INNER,
@@ -351,7 +422,7 @@ fn inner_methods(method: &str) -> &'static [(&'static str, &'static str)] {
     }
 }
 
-fn choices<T: Copy + Into<Value>>(options: &[(&str, T)]) -> Vec<(String, Value)> {
+pub(super) fn choices<T: Copy + Into<Value>>(options: &[(&str, T)]) -> Vec<(String, Value)> {
     options
         .iter()
         .map(|(name, value)| (tr(name), (*value).into()))
@@ -373,11 +444,15 @@ impl Editor {
         self.secrets.set(started.secrets);
         self.saved.replace(started.profile.clone());
         self.draft.replace(started.profile);
+        self.started.set(true);
         self.retitle();
         self.rebuild();
     }
 
     fn retitle(&self) {
+        if !matches!(self.part.get(), Part::Main) {
+            return;
+        }
         if let Some(heading) = self.heading.upgrade() {
             heading.set_text(&self.saved.borrow().id());
         }
@@ -397,40 +472,80 @@ impl Editor {
     }
 
     fn rebuild(self: &Rc<Self>) {
-        let Some(page) = self.page.upgrade() else {
+        let Some(page) = self.page.borrow().upgrade() else {
             return;
         };
         let adjustment = page.root.vadjustment();
         let offset = adjustment.value();
-        while let Some(child) = self.form.first_child() {
-            self.form.remove(&child);
+        let form = self.form.borrow().clone();
+        while let Some(child) = form.first_child() {
+            form.remove(&child);
         }
         self.held.borrow_mut().clear();
+        self.errors.borrow_mut().clear();
         self.actions.replace(None);
-        let kind = self.draft.borrow().kind();
-        self.general(&page);
-        match kind.as_str() {
-            WIRED => self.wired(&page),
-            WIRELESS => self.wireless(&page),
-            WIREGUARD => {
-                self.wireguard(&page);
-                self.peers(&page);
-            }
-            VPN => self.vpn(&page),
-            VLAN => self.vlan(&page),
-            BRIDGE | BOND => self.controller(&page, &kind),
-            _ => {}
-        }
-        for family in [Family::V4, Family::V6] {
-            if self.draft.borrow().settings.contains_key(family.setting()) {
-                self.ip(&page, family);
-            }
+        match self.part.get() {
+            Part::Main => self.main(&page),
+            Part::Sub(fill) => fill(self, &page),
         }
         self.actions_section();
         self.refresh();
         if offset > 0.0 {
             glib::idle_add_local_once(move || adjustment.set_value(offset));
         }
+    }
+
+    fn main(self: &Rc<Self>, page: &Page) {
+        let kind = self.draft.borrow().kind();
+        self.general(page);
+        match kind.as_str() {
+            WIRED => self.wired(page),
+            WIRELESS => self.wireless(page),
+            WIREGUARD => {
+                self.wireguard(page);
+                self.peers(page);
+            }
+            VPN => self.vpn(page),
+            VLAN => self.vlan(page),
+            BRIDGE | BOND => self.controller(page, &kind),
+            _ => {}
+        }
+        let families: Vec<Family> = [Family::V4, Family::V6]
+            .into_iter()
+            .filter(|family| self.draft.borrow().settings.contains_key(family.setting()))
+            .collect();
+        if families.is_empty() {
+            return;
+        }
+        let section = self.section("", "");
+        for family in families {
+            let (methods, open): (&[(&str, &str)], _) = match family {
+                Family::V4 => (&IPV4_METHODS, self.open_ipv4.clone()),
+                Family::V6 => (&IPV6_METHODS, self.open_ipv6.clone()),
+            };
+            let method = self.draft.borrow().ip(family).method;
+            let shown = methods
+                .iter()
+                .find(|(_, known)| *known == method)
+                .map_or(method.clone(), |(name, _)| tr(name));
+            page.link_row(&section, "router", family.name(), &shown, move || open());
+        }
+    }
+
+    fn eap_link(self: &Rc<Self>, page: &Page, parent: &gtk4::Box) {
+        let method = self.draft.borrow().eap().method;
+        let shown = EAP_METHODS
+            .iter()
+            .find(|(_, known)| *known == method)
+            .map_or(method.clone(), |(name, _)| tr(name));
+        let open = self.open_eap.clone();
+        page.link_row(
+            parent,
+            "shield_lock",
+            &tr("Authentication"),
+            &shown,
+            move || open(),
+        );
     }
 
     fn edit(&self, change: impl FnOnce(&mut Profile) -> Result<(), String>) -> Result<(), String> {
@@ -475,15 +590,21 @@ impl Editor {
         }
     }
 
-    fn hold(&self, held: impl Any) {
+    pub(super) fn hold(&self, held: impl Any) {
         self.held.borrow_mut().push(Box::new(held));
     }
 
-    fn section(&self, icon: &str, title: &str) -> gtk4::Box {
-        Page::section_into(&self.form, icon, title)
+    pub(super) fn section(&self, icon: &str, title: &str) -> gtk4::Box {
+        Page::section_into(&self.form.borrow(), icon, title)
     }
 
-    fn subsection(&self, page: &Page, parent: &gtk4::Box, title: &str, tip: &str) -> gtk4::Box {
+    pub(super) fn subsection(
+        &self,
+        page: &Page,
+        parent: &gtk4::Box,
+        title: &str,
+        tip: &str,
+    ) -> gtk4::Box {
         let (content, tip) = page.unkept_subsection(parent, title, tip);
         if let Some(tip) = tip {
             self.hold(tip);
@@ -491,7 +612,7 @@ impl Editor {
         content
     }
 
-    fn field(
+    pub(super) fn field(
         self: &Rc<Self>,
         parent: &gtk4::Box,
         label: &str,
@@ -503,7 +624,7 @@ impl Editor {
         field
     }
 
-    fn secret_field(
+    pub(super) fn secret_field(
         self: &Rc<Self>,
         parent: &gtk4::Box,
         label: &str,
@@ -590,7 +711,7 @@ impl Editor {
         self.hold(field);
     }
 
-    fn switch(
+    pub(super) fn switch(
         self: &Rc<Self>,
         parent: &gtk4::Box,
         icon: &str,
@@ -624,7 +745,7 @@ impl Editor {
         switch
     }
 
-    fn choose(
+    pub(super) fn choose(
         self: &Rc<Self>,
         parent: &gtk4::Box,
         options: Vec<(String, Value)>,
@@ -951,7 +1072,7 @@ impl Editor {
             &tr("Signs in to the network port, as office and campus networks ask"),
         ));
         if profile.has_eap() {
-            self.eap(page, &section);
+            self.eap_link(page, &section);
         }
     }
 
@@ -1020,7 +1141,7 @@ impl Editor {
                             },
                         );
                     }
-                    Security::Enterprise => self.eap(page, &section),
+                    Security::Enterprise => self.eap_link(page, &security),
                     Security::Open | Security::Other => {}
                 }
             }
@@ -1028,97 +1149,7 @@ impl Editor {
         self.mac_and_mtu(&section, &profile);
     }
 
-    fn eap(self: &Rc<Self>, page: &Page, parent: &gtk4::Box) {
-        let eap = self.draft.borrow().eap();
-        let method = self.subsection(page, parent, &tr("Authentication"), "");
-        self.choose(
-            &method,
-            choices(&EAP_METHODS),
-            Value::from(eap.method.as_str()),
-            |profile, value| {
-                let method = value.as_str().unwrap_or("peap").to_owned();
-                edit_eap(profile, |eap| {
-                    let inner = inner_methods(&method);
-                    if !inner.iter().any(|(_, known)| *known == eap.inner) {
-                        eap.inner = inner
-                            .first()
-                            .map(|(_, first)| *first)
-                            .unwrap_or_default()
-                            .to_owned();
-                    }
-                    eap.method = method;
-                });
-            },
-        );
-        self.field(parent, &tr("User name"), &eap.identity, |text, profile| {
-            edit_eap(profile, |eap| eap.identity = text.to_owned());
-            Ok(())
-        });
-        if eap.tunneled() {
-            self.field(
-                parent,
-                &tr("Anonymous identity"),
-                &eap.anonymous_identity,
-                |text, profile| {
-                    edit_eap(profile, |eap| eap.anonymous_identity = text.to_owned());
-                    Ok(())
-                },
-            );
-            let inner = self.subsection(page, parent, &tr("Inner authentication"), "");
-            self.choose(
-                &inner,
-                choices(inner_methods(&eap.method)),
-                Value::from(eap.inner.as_str()),
-                |profile, value| {
-                    let chosen = value.as_str().unwrap_or_default().to_owned();
-                    edit_eap(profile, |eap| eap.inner = chosen);
-                },
-            );
-            self.secret_field(parent, &tr("Password"), &eap.password, |text, profile| {
-                edit_eap(profile, |eap| eap.password = text.to_owned());
-                Ok(())
-            });
-        } else {
-            self.certificate_field(
-                parent,
-                &tr("User certificate"),
-                &eap.client_cert,
-                |profile, path| edit_eap(profile, |eap| eap.client_cert = path),
-            );
-            self.certificate_field(
-                parent,
-                &tr("Private key"),
-                &eap.private_key,
-                |profile, path| edit_eap(profile, |eap| eap.private_key = path),
-            );
-            self.secret_field(
-                parent,
-                &tr("Private key password"),
-                &eap.key_password,
-                |text, profile| {
-                    edit_eap(profile, |eap| eap.key_password = text.to_owned());
-                    Ok(())
-                },
-            );
-        }
-        self.certificate_field(
-            parent,
-            &tr("CA certificate (empty trusts any server)"),
-            &eap.ca_cert,
-            |profile, path| edit_eap(profile, |eap| eap.ca_cert = path),
-        );
-        self.field(
-            parent,
-            &tr("Server domain"),
-            &eap.domain,
-            |text, profile| {
-                edit_eap(profile, |eap| eap.domain = text.to_owned());
-                Ok(())
-            },
-        );
-    }
-
-    fn certificate_field(
+    pub(super) fn certificate_field(
         self: &Rc<Self>,
         parent: &gtk4::Box,
         label: &str,
@@ -1565,154 +1596,6 @@ impl Editor {
         }
     }
 
-    fn ip(self: &Rc<Self>, page: &Page, family: Family) {
-        let section = self.section("router", family.name());
-        let ip = self.draft.borrow().ip(family);
-        let methods: &[(&str, &str)] = match family {
-            Family::V4 => &IPV4_METHODS,
-            Family::V6 => &IPV6_METHODS,
-        };
-        let mut options = choices(methods);
-        if !methods.iter().any(|(_, method)| *method == ip.method) {
-            options.push((ip.method.clone(), Value::from(ip.method.clone())));
-        }
-        let method = self.subsection(page, &section, &tr("Method"), "");
-        self.choose(
-            &method,
-            options,
-            Value::from(ip.method.clone()),
-            move |profile, value| {
-                let mut ip = profile.ip(family);
-                ip.method = value.as_str().unwrap_or("auto").to_owned();
-                profile.set_ip(family, &ip);
-            },
-        );
-        let automatic = matches!(ip.method.as_str(), "auto" | "dhcp");
-        let configured = automatic || matches!(ip.method.as_str(), "manual" | "shared");
-        if !configured {
-            return;
-        }
-        let edit_ip = move |profile: &mut Profile, change: &dyn Fn(&mut nmprofile::Ip)| {
-            let mut ip = profile.ip(family);
-            change(&mut ip);
-            profile.set_ip(family, &ip);
-        };
-        if ip.method == "manual" {
-            let addresses = self.subsection(
-                page,
-                &section,
-                &tr("Addresses"),
-                &tr("Separated by commas, each with its prefix length, such as 192.168.1.10/24"),
-            );
-            self.field(
-                &addresses,
-                &tr("Addresses"),
-                &nmprofile::format_addresses(&ip.addresses),
-                move |text, profile| {
-                    let parsed = nmprofile::parse_addresses(text, family)?;
-                    edit_ip(profile, &|ip| ip.addresses = parsed.clone());
-                    Ok(())
-                },
-            );
-            self.field(
-                &addresses,
-                &tr("Gateway"),
-                &ip.gateway,
-                move |text, profile| {
-                    let parsed = nmprofile::parse_gateway(text, family)?;
-                    edit_ip(profile, &|ip| ip.gateway = parsed.clone());
-                    Ok(())
-                },
-            );
-        }
-        let dns = self.subsection(page, &section, &tr("DNS"), "");
-        if automatic {
-            self.switch(
-                &dns,
-                "dns",
-                &tr("Automatic DNS"),
-                move |profile| profile.ip(family).automatic_dns,
-                move |profile, on| edit_ip(profile, &|ip| ip.automatic_dns = on),
-            );
-        }
-        self.field(
-            &dns,
-            &tr("DNS servers"),
-            &ip.dns.join(", "),
-            move |text, profile| {
-                let parsed = nmprofile::parse_servers(text, family)?;
-                edit_ip(profile, &|ip| ip.dns = parsed.clone());
-                Ok(())
-            },
-        );
-        self.field(
-            &dns,
-            &tr("Search domains"),
-            &ip.search.join(", "),
-            move |text, profile| {
-                let parsed = nmprofile::items(text);
-                edit_ip(profile, &|ip| ip.search = parsed.clone());
-                Ok(())
-            },
-        );
-        let routing = self.subsection(page, &section, &tr("Routing"), "");
-        if automatic {
-            self.switch(
-                &routing,
-                "route",
-                &tr("Automatic routes"),
-                move |profile| profile.ip(family).automatic_routes,
-                move |profile, on| edit_ip(profile, &|ip| ip.automatic_routes = on),
-            );
-        }
-        let own = self.switch(
-            &routing,
-            "alt_route",
-            &tr("Only for its own network"),
-            move |profile| profile.ip(family).never_default,
-            move |profile, on| edit_ip(profile, &|ip| ip.never_default = on),
-        );
-        self.hold(page.unkept_tip(
-            &own.button,
-            &tr("Never the default route: only traffic for this network's addresses and routes goes through it"),
-        ));
-        let routes = self.subsection(
-            page,
-            &section,
-            &tr("Routes"),
-            &tr(
-                "Separated by commas, written like ip route: 10.0.0.0/8 via 192.168.1.1 metric 100",
-            ),
-        );
-        self.field(
-            &routes,
-            &tr("Routes"),
-            &nmprofile::format_routes(&ip.routes),
-            move |text, profile| {
-                let parsed = nmprofile::parse_routes(text, family)?;
-                edit_ip(profile, &|ip| ip.routes = parsed.clone());
-                Ok(())
-            },
-        );
-        if family == Family::V6 && automatic {
-            let privacy = self.subsection(
-                page,
-                &section,
-                &tr("Privacy extensions"),
-                &tr("Temporary addresses change over time, so sites cannot follow this device by its address"),
-            );
-            self.choose(
-                &privacy,
-                choices(&PRIVACY),
-                Value::from(ip.privacy),
-                move |profile, value| {
-                    let privacy = value.as_i64().unwrap_or(-1) as i32;
-                    edit_ip(profile, &|ip| ip.privacy = privacy);
-                },
-            );
-        }
-    }
-
     fn actions_section(self: &Rc<Self>) {
         let section = self.section("", "");
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, BUTTON_SPACING);
@@ -1748,7 +1631,7 @@ impl Editor {
             }
         });
         row.append(&revert);
-        if !self.fresh.get() {
+        if !self.fresh.get() && matches!(self.part.get(), Part::Main) {
             row.append(&windowdialog::spacer());
             let (delete, _) = icon_button(&self.theme, "delete", false, &tr("Delete"));
             delete.connect_clicked({

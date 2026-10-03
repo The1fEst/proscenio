@@ -595,6 +595,15 @@ active connection, or says there is nothing to edit. A new profile is named
 after the network for an enterprise Wi-Fi one, with " 2", " 3" and so on
 when that name is taken.
 
+The IPv4, IPv6 and 802.1X settings are subpages of the editor (**IPv4**,
+**IPv6**, **Authentication**), opened from link rows that show the IP method or
+the 802.1X method. The draft stays in the settings window's context while the
+editor or one of its subpages is shown, so an edit made on a subpage is still
+there back on the editor; showing any page outside them, or closing the
+window, drops it. Every one of them has "Save" and "Revert"; "Delete" is on the
+editor only. A subpage opened by search for a profile that has no 802.1X
+settings, or whose 802.1X settings a revert removed, goes back to the editor.
+
 - The profile is read over D-Bus (`GetSettings` on
   `org.freedesktop.NetworkManager.Settings.Connection`), and its secrets with
   `GetSecrets` for each secret-holding setting it has, without asking for
@@ -629,13 +638,13 @@ when that name is taken.
 - **Wired**: the device it is tied to ("Any device" or an Ethernet device), the
   cloned MAC address (an address, or preserve, permanent, random or stable),
   the MTU, 0 for automatic, and "802.1X security" (with a tooltip), which adds
-  the 802.1X fields.
+  the "Authentication" link row.
 - **Wi-Fi**: the network name, "Hidden network", "Security" (None, WPA & WPA2
   Personal, WPA3 Personal, WPA & WPA2 Enterprise, WEP; other kinds get a notice
   and keep theirs) with the password, the WEP key (5 or 13 characters, or 10
-  or 26 hexadecimal digits) or the 802.1X fields, the cloned MAC address and
-  the MTU.
-- The 802.1X fields (`802-1x`): "Authentication" (PEAP, TTLS, TLS), the user
+  or 26 hexadecimal digits) or the "Authentication" link row, the cloned MAC
+  address and the MTU.
+- **Authentication** (`802-1x`): the method (PEAP, TTLS, TLS), the user
   name; for PEAP and TTLS the anonymous identity, "Inner authentication"
   (MSCHAPv2, GTC, MD5 for PEAP; PAP, MSCHAPv2, MSCHAP, CHAP for TTLS) and the
   password; for TLS the user certificate, the private key and its password;
@@ -680,7 +689,9 @@ when that name is taken.
   extensions" (Default, Off, Prefer the fixed address, Prefer a temporary
   address).
 - Structural choices (methods, security, peers, switches) rebuild the form
-  and keep the scroll position.
+  and keep the scroll position. A rebuild shows the draft, so a field whose
+  typed text was invalid shows the last valid value again and its problem
+  goes away.
 
 ### 19.2 Hotspot (subpage)
 

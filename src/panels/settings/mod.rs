@@ -106,6 +106,7 @@ impl Settings {
                 argument: Rc::default(),
                 heading: glib::WeakRef::new(),
                 back: RefCell::new(None),
+                shared: RefCell::new(None),
             }),
             view: RefCell::new(None),
         })
@@ -145,6 +146,7 @@ impl Settings {
         if let Some(view) = self.view.take() {
             view.window.destroy();
         }
+        self.context.shared.take();
     }
 
     pub fn refont(&self) {
@@ -344,6 +346,7 @@ impl Settings {
             move |_| {
                 if let Some(settings) = settings.upgrade() {
                     settings.view.replace(None);
+                    settings.context.shared.take();
                 }
                 glib::Propagation::Proceed
             }
@@ -683,6 +686,15 @@ impl View {
             self.stage.remove(&previous.root);
         }
         let wanted = self.wanted.get();
+        let kept = self
+            .context
+            .shared
+            .borrow()
+            .as_ref()
+            .is_some_and(|(owner, _)| pages::within(wanted.id, owner));
+        if !kept {
+            self.context.shared.take();
+        }
         let page = pages::build(wanted.id, wanted.subpage, &self.context);
         self.stage.append(&page.root);
         self.page.replace(Some(page));

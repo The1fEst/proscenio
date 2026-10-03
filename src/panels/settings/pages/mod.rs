@@ -12,10 +12,13 @@ pub mod connection;
 pub mod datetime;
 pub mod devices;
 pub mod displays;
+pub mod eap;
 pub mod filetypes;
 pub mod firewall;
 pub mod hiddennetwork;
 pub mod hotspot;
+pub mod ipv4;
+pub mod ipv6;
 pub mod keyboard;
 pub mod lock;
 pub mod mouse;
@@ -352,7 +355,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 21] = [
+pub const SUBPAGES: [Subpage; 24] = [
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -377,6 +380,21 @@ pub const SUBPAGES: [Subpage; 21] = [
         id: "connection",
         title: "Connection",
         parent: "network",
+    },
+    Subpage {
+        id: "ipv4",
+        title: "IPv4",
+        parent: "connection",
+    },
+    Subpage {
+        id: "ipv6",
+        title: "IPv6",
+        parent: "connection",
+    },
+    Subpage {
+        id: "eap",
+        title: "Authentication",
+        parent: "connection",
     },
     Subpage {
         id: "proxy",
@@ -487,6 +505,10 @@ pub fn ancestors(id: &str) -> Vec<&'static str> {
     chain
 }
 
+pub fn within(id: &str, ancestor: &str) -> bool {
+    id == ancestor || ancestors(id).contains(&ancestor)
+}
+
 pub fn subpage(id: &str) -> Option<&'static Subpage> {
     SUBPAGES.iter().find(|subpage| subpage.id == id)
 }
@@ -497,6 +519,9 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "wifi" => wifi::build(context),
         "network" => network::build(context),
         "connection" => connection::build(context),
+        "ipv4" => ipv4::build(context),
+        "ipv6" => ipv6::build(context),
+        "eap" => eap::build(context),
         "proxy" => proxy::build(context),
         "firewall" => firewall::build(context),
         "bluetooth" => bluetooth::build(context),
@@ -567,5 +592,10 @@ mod tests {
             assert!(index_of(subpage.id).is_none(), "{}", subpage.id);
         }
         assert_eq!(ancestors("capture"), ["privacy"]);
+        assert_eq!(ancestors("ipv4"), ["network", "connection"]);
+        assert!(within("ipv4", "connection"));
+        assert!(within("connection", "connection"));
+        assert!(!within("network", "connection"));
+        assert!(!within("proxy", "connection"));
     }
 }
