@@ -104,7 +104,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     );
     let watch = theme::watch(&theme, &provider, app);
 
-    let _ = settings::pages::split_legacy_settings();
+    let _ = settings::pages::migrate_settings_files();
     let services = Rc::new(Services::new(&config));
     std::mem::forget(StatusNotifierWatcher::start(services.session_bus.as_ref()));
     std::mem::forget(DeviceNotifications::start());

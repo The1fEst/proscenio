@@ -23,6 +23,19 @@ pub enum Area {
     Other,
 }
 
+const AREAS: [Area; 10] = [
+    Area::Appearance,
+    Area::Displays,
+    Area::Multitasking,
+    Area::Keyboard,
+    Area::Accessibility,
+    Area::Mouse,
+    Area::Devices,
+    Area::Apps,
+    Area::Binds,
+    Area::Other,
+];
+
 impl Area {
     pub fn name(self) -> &'static str {
         match self {
@@ -353,6 +366,56 @@ pub fn split_legacy(option_area: impl Fn(&str) -> Option<Area>) -> std::io::Resu
     std::fs::rename(&legacy, config_dir().join("settings.lua.bak"))
 }
 
+fn moved(
+    mut files: Vec<(Area, String)>,
+    option_area: &impl Fn(&str) -> Option<Area>,
+) -> Vec<(Area, String)> {
+    let mut moving: Vec<(Area, String, String)> = Vec::new();
+    for (area, text) in files.iter_mut() {
+        let mut kept = String::new();
+        for line in text.split_inclusive('\n') {
+            let statement = line.trim_end_matches('\n');
+            match option_of(statement).and_then(|option| Some((option_area(&option)?, option))) {
+                Some((owner, option)) if owner != *area => {
+                    moving.push((owner, option, statement.to_owned()));
+                }
+                _ => kept.push_str(line),
+            }
+        }
+        *text = kept;
+    }
+    for (owner, option, statement) in moving {
+        let index = match files.iter().position(|(area, _)| *area == owner) {
+            Some(index) => index,
+            None => {
+                files.push((owner, String::new()));
+                files.len() - 1
+            }
+        };
+        let text = &mut files[index].1;
+        let prefix = prefix_for(&option);
+        if text.lines().any(|line| line.starts_with(&prefix)) {
+            continue;
+        }
+        if !text.is_empty() && !text.ends_with('\n') {
+            text.push('\n');
+        }
+        text.push_str(&statement);
+        text.push('\n');
+    }
+    files
+}
+
+pub fn move_misplaced(option_area: impl Fn(&str) -> Option<Area>) -> std::io::Result<()> {
+    let files: Vec<(Area, String)> = AREAS.iter().map(|area| (*area, read(*area))).collect();
+    for (area, text) in moved(files.clone(), &option_area) {
+        if !files.contains(&(area, text.clone())) {
+            write(area, &text)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -473,5 +536,57 @@ mod tests {
             "shortcut(\"Window: Close\", \"SUPER + X\", false)\n"
         );
         assert_eq!(parts.len(), 8);
+    }
+
+    #[test]
+    fn an_option_moved_to_another_page_moves_to_its_file() {
+        let files = vec![
+            (
+                Area::Multitasking,
+                "hl.config({ general = { gaps_in = 2 } })\nhl.config({ general = { border_size = 3 } })\nhl.config({ misc = { mystery = 1 } })\n".to_owned(),
+            ),
+            (
+                Area::Appearance,
+                "hl.config({ decoration = { rounding = 10 } })".to_owned(),
+            ),
+            (
+                Area::Accessibility,
+                "hl.config({ misc = { animate_manual_resizes = true } })\n".to_owned(),
+            ),
+            (
+                Area::Displays,
+                "hl.config({ misc = { animate_manual_resizes = false } })\n".to_owned(),
+            ),
+        ];
+        let option_area = |option: &str| match option {
+            "general:gaps_in" => Some(Area::Multitasking),
+            "general:border_size" | "decoration:rounding" => Some(Area::Appearance),
+            "misc:animate_manual_resizes" => Some(Area::Displays),
+            "decoration:shadow:range" => Some(Area::Mouse),
+            _ => None,
+        };
+        assert_eq!(
+            moved(files, &option_area),
+            vec![
+                (
+                    Area::Multitasking,
+                    "hl.config({ general = { gaps_in = 2 } })\nhl.config({ misc = { mystery = 1 } })\n".to_owned(),
+                ),
+                (
+                    Area::Appearance,
+                    "hl.config({ decoration = { rounding = 10 } })\nhl.config({ general = { border_size = 3 } })\n".to_owned(),
+                ),
+                (Area::Accessibility, String::new()),
+                (
+                    Area::Displays,
+                    "hl.config({ misc = { animate_manual_resizes = false } })\n".to_owned(),
+                ),
+            ]
+        );
+        let unchanged = vec![(
+            Area::Mouse,
+            "hl.config({ decoration = { shadow = { range = 10 } } })\n".to_owned(),
+        )];
+        assert_eq!(moved(unchanged.clone(), &option_area), unchanged);
     }
 }

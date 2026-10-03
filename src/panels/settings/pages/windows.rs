@@ -7,7 +7,8 @@ use crate::platform::{hypr, hyprconfig};
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::spinbox::SpinBox;
 
-pub const OPTIONS: [&str; 16] = [
+pub const OPTIONS: [&str; 17] = [
+    "general:border_size",
     "decoration:rounding",
     "decoration:rounding_power",
     "decoration:blur:enabled",
@@ -158,8 +159,21 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     let borders = page.subsection(
         &windows,
-        &tr("Border opacity"),
+        &tr("Borders"),
         &tr("The border keeps the color generated from the wallpaper"),
+    );
+    hyprrows::spin(
+        &page,
+        &borders,
+        &options,
+        &spin(
+            "border_outer",
+            "Border width",
+            "general:border_size",
+            1.0,
+            (0, 20),
+            0,
+        ),
     );
     let border_row = page.row(&borders);
     for (label, border) in [
@@ -178,7 +192,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             let _ = hyprconfig::set_border_alpha(border, alpha);
             hypr::request("reload");
         });
-        page.spin_row(&border_row, "border_outer", &tr(label), &spin);
+        page.spin_row(&border_row, "opacity", &tr(label), &spin);
     }
 
     let shadows = page.subsection(&windows, &tr("Shadows"), "");

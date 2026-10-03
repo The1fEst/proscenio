@@ -936,13 +936,16 @@ blur is off.
   `~/.config/hypr/settings.lua` from before this layout into those files,
   statement by statement (an option goes to the page whose list holds it,
   anything unrecognized to `other.lua`), appends each part to its file and
-  renames the old file to `settings.lua.bak`.
+  renames the old file to `settings.lua.bak`. Then an option line found in
+  another page's file moves to the file of the page whose list holds it,
+  unless that file already sets the option, in which case the stray line is
+  dropped.
 - Hyprland options are read from the running compositor (`getoption`) and
   written one line each into the page's file, then Hyprland reloads
   (`src/services/hyproptions.rs`, `src/panels/settings/hyprrows.rs` for the
   `HyprlandSwitch` and the option spin boxes).
 - "Tiling": the layout (Dwindle, Master, Scrolling or Monocle); "Spacing"
-  (inner and outer gaps, border width, and "Smart gaps" with a tooltip, on
+  (inner and outer gaps and "Smart gaps" with a tooltip, on
   while `multitasking.lua` holds the four lines of Hyprland's example: workspace
   rules for `w[tv1]` and `f[1]` with no inner or outer gaps, and the window
   rules `no-gaps-wtv1` and `no-gaps-f1` taking border and rounding off tiled
@@ -1020,9 +1023,10 @@ far, dead while the lock is off), making a new workspace and swiping on.
 - Corner rounding and shape (the shape tenfold with one decimal,
   with a tooltip); blur with its radius and passes, dead while blur is off,
   and X-ray (with a tooltip); the focused and other windows' opacity in
-  percent and "Keep fullscreen windows opaque" (with a tooltip); "Border
-  opacity" (with a tooltip): the focused and other windows' border opacity in
-  percent, in steps of 5; "Shadows":
+  percent and "Keep fullscreen windows opaque" (with a tooltip); "Borders"
+  (with a tooltip): the border width in px (`general:border_size`, 0–20) and
+  the focused and other windows' border opacity in percent, in steps of 5;
+  "Shadows":
   drop shadows (`decoration:shadow:enabled`) with their size in px, falloff
   (`render_power`, 1–4) and a sharp edge, dead while shadows are off;
   "Dimming": dimming windows out of focus, "Keep fullscreen windows undimmed"

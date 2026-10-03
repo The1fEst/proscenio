@@ -562,7 +562,7 @@ pub const SUBPAGES: [Subpage; 38] = [
     },
 ];
 
-pub fn split_legacy_settings() -> std::io::Result<()> {
+fn option_area(option: &str) -> Option<Area> {
     let owners: [(Area, &[&str]); 6] = [
         (Area::Appearance, &windows::OPTIONS),
         (Area::Displays, &displays::OPTIONS),
@@ -571,12 +571,15 @@ pub fn split_legacy_settings() -> std::io::Result<()> {
         (Area::Accessibility, &accessibility::OPTIONS),
         (Area::Mouse, &mouse::OPTIONS),
     ];
-    hyprconfig::split_legacy(|option| {
-        owners
-            .iter()
-            .find(|(_, names)| names.iter().any(|name| name.replace('-', "_") == option))
-            .map(|(area, _)| *area)
-    })
+    owners
+        .iter()
+        .find(|(_, names)| names.iter().any(|name| name.replace('-', "_") == option))
+        .map(|(area, _)| *area)
+}
+
+pub fn migrate_settings_files() -> std::io::Result<()> {
+    hyprconfig::split_legacy(option_area)?;
+    hyprconfig::move_misplaced(option_area)
 }
 
 pub fn ancestors(id: &str) -> Vec<&'static str> {
@@ -695,5 +698,11 @@ mod tests {
         assert!(within("connection", "connection"));
         assert!(!within("network", "connection"));
         assert!(!within("proxy", "connection"));
+    }
+
+    #[test]
+    fn options_are_stored_with_the_page_that_shows_them() {
+        assert_eq!(option_area("general:border_size"), Some(Area::Appearance));
+        assert_eq!(option_area("general:gaps_in"), Some(Area::Multitasking));
     }
 }

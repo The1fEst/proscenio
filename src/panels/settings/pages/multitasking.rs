@@ -9,11 +9,10 @@ use crate::platform::hyprconfig;
 use crate::services::hyproptions::HyprOptions;
 use crate::ui::widgets::selection::Selection;
 
-pub const OPTIONS: [&str; 38] = [
+pub const OPTIONS: [&str; 37] = [
     "general:layout",
     "general:gaps_in",
     "general:gaps_out",
-    "general:border_size",
     "general:gaps_workspaces",
     "general:snap:enabled",
     "general:snap:window_gap",
@@ -170,14 +169,6 @@ pub fn build(context: &Context) -> Rc<Page> {
             "general:gaps_out",
             1.0,
             (0, 200),
-            1,
-        ),
-        spin(
-            "border_outer",
-            "Border width",
-            "general:border_size",
-            1.0,
-            (0, 20),
             1,
         ),
     ] {

@@ -220,7 +220,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         (
             "select_window",
             "Windows",
-            "Corners, blur, opacity, shadows and dimming",
+            "Corners, borders, blur, opacity, shadows and dimming",
             "windows",
         ),
     ] {
