@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "Подключено устройство USB.",
   "A USB device has been disconnected.": "Отключено устройство USB.",
   "Shell": "Оболочка",
-  "Version": "Версия"
+  "Version": "Версия",
+  "Takes focus when it asks": "Получает фокус по запросу",
+  "Never takes focus when it asks": "Никогда не получает фокус по запросу",
+  "Exceptions for single apps: Apps › Window rules": "Исключения для отдельных приложений: Приложения › Правила окон"
 }

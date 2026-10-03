@@ -44,7 +44,7 @@ enum Kind {
 
 const FLAG: Kind = Kind::Fixed("true");
 
-const RULE_KINDS: [(&str, &str, Kind); 10] = [
+const RULE_KINDS: [(&str, &str, Kind); 12] = [
     ("Always floating", "float", FLAG),
     ("Always tiled", "tile", FLAG),
     ("Pinned to every workspace", "pin", FLAG),
@@ -53,6 +53,12 @@ const RULE_KINDS: [(&str, &str, Kind); 10] = [
     ("No shadow", "no_shadow", FLAG),
     ("Square corners", "rounding", Kind::Fixed("0")),
     ("Draw without waiting for the screen", "immediate", FLAG),
+    ("Takes focus when it asks", "focus_on_activate", FLAG),
+    (
+        "Never takes focus when it asks",
+        "focus_on_activate",
+        Kind::Fixed("false"),
+    ),
     ("Opacity (%)", "opacity", Kind::Percent),
     ("Opens on workspace", "workspace", Kind::Text),
 ];

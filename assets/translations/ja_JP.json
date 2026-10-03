@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "USB デバイスが接続されました。",
   "A USB device has been disconnected.": "USB デバイスが取り外されました。",
   "Shell": "シェル",
-  "Version": "バージョン"
+  "Version": "バージョン",
+  "Takes focus when it asks": "要求するとフォーカスを得る",
+  "Never takes focus when it asks": "要求してもフォーカスを得ない",
+  "Exceptions for single apps: Apps › Window rules": "アプリごとの例外: アプリ › ウィンドウルール"
 }

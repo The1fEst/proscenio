@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "Пристрій USB з'єднано.",
   "A USB device has been disconnected.": "Пристрій USB від'єднано.",
   "Shell": "Оболонка",
-  "Version": "Версія"
+  "Version": "Версія",
+  "Takes focus when it asks": "Отримує фокус на запит",
+  "Never takes focus when it asks": "Ніколи не отримує фокус на запит",
+  "Exceptions for single apps: Apps › Window rules": "Винятки для окремих програм: Програми › Правила вікон"
 }

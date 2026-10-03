@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "一个 USB 设备已连接。",
   "A USB device has been disconnected.": "一个 USB 设备已断开连接。",
   "Shell": "外壳",
-  "Version": "版本"
+  "Version": "版本",
+  "Takes focus when it asks": "请求时获得焦点",
+  "Never takes focus when it asks": "请求时也从不获得焦点",
+  "Exceptions for single apps: Apps › Window rules": "单个应用的例外：应用 › 窗口规则"
 }

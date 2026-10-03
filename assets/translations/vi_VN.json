@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "Một thiết bị USB đã được kết nối.",
   "A USB device has been disconnected.": "Một thiết bị USB đã bị ngắt kết nối.",
   "Shell": "Shell",
-  "Version": "Phiên bản"
+  "Version": "Phiên bản",
+  "Takes focus when it asks": "Nhận tiêu điểm khi yêu cầu",
+  "Never takes focus when it asks": "Không bao giờ nhận tiêu điểm khi yêu cầu",
+  "Exceptions for single apps: Apps › Window rules": "Ngoại lệ cho từng ứng dụng: Ứng dụng › Quy tắc cửa sổ"
 }

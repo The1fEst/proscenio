@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "Bir USB aygıtı bağlandı.",
   "A USB device has been disconnected.": "Bir USB aygıtının bağlantısı kesildi.",
   "Shell": "Kabuk",
-  "Version": "Sürüm"
+  "Version": "Sürüm",
+  "Takes focus when it asks": "İstediğinde odağı alır",
+  "Never takes focus when it asks": "İstese de odağı asla almaz",
+  "Exceptions for single apps: Apps › Window rules": "Tek tek uygulamalar için istisnalar: Uygulamalar › Pencere kuralları"
 }

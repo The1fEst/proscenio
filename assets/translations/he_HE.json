@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "התקן USB חובר.",
   "A USB device has been disconnected.": "התקן USB נותק.",
   "Shell": "מעטפת",
-  "Version": "גרסה"
+  "Version": "גרסה",
+  "Takes focus when it asks": "מקבל מיקוד כשהוא מבקש",
+  "Never takes focus when it asks": "אף פעם לא מקבל מיקוד כשהוא מבקש",
+  "Exceptions for single apps: Apps › Window rules": "חריגים ליישומים בודדים: יישומים › כללי חלונות"
 }

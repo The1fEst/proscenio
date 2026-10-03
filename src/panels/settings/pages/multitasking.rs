@@ -402,13 +402,17 @@ pub fn build(context: &Context) -> Rc<Page> {
         ("input:focus_on_close", "0"),
         &FOCUS_ON_CLOSE,
     );
-    hyprrows::switch(
+    let activate = hyprrows::switch(
         &page,
         &focus,
         &options,
         "open_in_new",
         &tr("Let apps take focus when they ask for it"),
         "misc:focus_on_activate",
+    );
+    page.tip(
+        &activate.button,
+        &tr("Exceptions for single apps: Apps › Window rules"),
     );
 
     let overview = page.section("overview_key", &tr("Overview"));

@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "Se ha conectado un dispositivo USB.",
   "A USB device has been disconnected.": "Se ha desconectado un dispositivo USB.",
   "Shell": "Shell",
-  "Version": "Versión"
+  "Version": "Versión",
+  "Takes focus when it asks": "Recibe el foco cuando lo pide",
+  "Never takes focus when it asks": "Nunca recibe el foco cuando lo pide",
+  "Exceptions for single apps: Apps › Window rules": "Excepciones para aplicaciones concretas: Aplicaciones › Reglas de ventanas"
 }

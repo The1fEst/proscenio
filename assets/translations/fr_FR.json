@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "Un périphérique USB a été branché.",
   "A USB device has been disconnected.": "Un périphérique USB a été débranché.",
   "Shell": "Shell",
-  "Version": "Version"
+  "Version": "Version",
+  "Takes focus when it asks": "Prend le focus quand elle le demande",
+  "Never takes focus when it asks": "Ne prend jamais le focus quand elle le demande",
+  "Exceptions for single apps: Apps › Window rules": "Exceptions pour certaines applications : Applications › Règles de fenêtres"
 }

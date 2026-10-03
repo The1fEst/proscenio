@@ -1433,5 +1433,8 @@
   "A USB device has been connected.": "Sebuah peranti USB telah terhubung.",
   "A USB device has been disconnected.": "Sebuah peranti USB telah terlepas.",
   "Shell": "Shell",
-  "Version": "Versi"
+  "Version": "Versi",
+  "Takes focus when it asks": "Mendapat fokus saat memintanya",
+  "Never takes focus when it asks": "Tidak pernah mendapat fokus saat memintanya",
+  "Exceptions for single apps: Apps › Window rules": "Pengecualian untuk aplikasi tertentu: Aplikasi › Aturan jendela"
 }
