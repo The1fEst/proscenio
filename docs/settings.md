@@ -89,8 +89,10 @@ Each page is loaded on its own and unloaded when another is shown. A switch
 fades the old one out over 100 ms, then fades the new one in over 200 ms while
 it drops 20 px into place. A page may open a subpage, which takes its place
 under a header: a 35 px back button and the subpage's name at 19 px. A
-subpage opened from another subpage goes back to that one; otherwise back
-returns to the rail's page.
+subpage can open further subpages. Back walks the pages opened on the way, one
+at a time, down to the rail's page; choosing a rail page starts the way over.
+A subpage opened from search or IPC has its parents from the subpage table on
+the way back, so back from a nested subpage leads through each of them.
 
 ## 4. The building blocks
 

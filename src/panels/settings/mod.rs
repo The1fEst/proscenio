@@ -65,6 +65,15 @@ struct Shown {
     subpage: Option<&'static str>,
 }
 
+impl Shown {
+    fn of(id: &'static str) -> Self {
+        Shown {
+            id,
+            subpage: pages::subpage(id).map(|subpage| subpage.title),
+        }
+    }
+}
+
 struct View {
     window: gtk4::ApplicationWindow,
     context: Rc<Context>,
@@ -75,7 +84,7 @@ struct View {
     page: RefCell<Option<Rc<Page>>>,
     loaded: Cell<Option<&'static str>>,
     wanted: Cell<Shown>,
-    back_to: Cell<Option<Shown>>,
+    history: RefCell<Vec<Shown>>,
     pending: RefCell<Option<Hit>>,
     switch_start: Cell<i64>,
     switching: Cell<bool>,
@@ -126,14 +135,8 @@ impl Settings {
         }
         if let Some(subpage) = page.and_then(pages::subpage) {
             self.context.argument.take();
-            if let Some(parent) = pages::index_of(subpage.parent) {
-                view.select(parent);
-            }
+            view.open_nested(subpage.id);
             self.context.argument.replace(argument.map(str::to_owned));
-            view.show(Shown {
-                id: subpage.id,
-                subpage: Some(subpage.title),
-            });
         }
         view.window.present();
     }
@@ -230,7 +233,7 @@ impl Settings {
                 id: PAGES[0].id,
                 subpage: None,
             }),
-            back_to: Cell::new(None),
+            history: RefCell::new(Vec::new()),
             pending: RefCell::new(None),
             switch_start: Cell::new(0),
             switching: Cell::new(false),
@@ -517,15 +520,7 @@ impl View {
         self.context.argument.take();
         self.pending.replace(hit.setting.then(|| hit.clone()));
         match pages::subpage(hit.page) {
-            Some(subpage) => {
-                if let Some(parent) = pages::index_of(subpage.parent) {
-                    self.rail.set_current(parent);
-                }
-                self.show(Shown {
-                    id: subpage.id,
-                    subpage: Some(subpage.title),
-                });
-            }
+            Some(subpage) => self.open_nested(subpage.id),
             None => {
                 if let Some(index) = pages::index_of(hit.page) {
                     self.select(index);
@@ -606,10 +601,21 @@ impl View {
     }
 
     fn back(self: &Rc<Self>) {
-        match self.back_to.take() {
+        let previous = self.history.borrow_mut().pop();
+        match previous {
             Some(previous) => self.show_from(previous, false),
             None => self.select(self.rail.current()),
         }
+    }
+
+    fn open_nested(self: &Rc<Self>, id: &'static str) {
+        let chain = pages::ancestors(id);
+        if let Some(root) = chain.first().and_then(|root| pages::index_of(root)) {
+            self.select(root);
+        }
+        self.history
+            .replace(chain.into_iter().map(Shown::of).collect());
+        self.show_from(Shown::of(id), false);
     }
 
     fn show(self: &Rc<Self>, shown: Shown) {
@@ -619,9 +625,12 @@ impl View {
     fn show_from(self: &Rc<Self>, shown: Shown, remember: bool) {
         if remember {
             let current = self.wanted.get();
-            let nested =
-                shown.subpage.is_some() && current.subpage.is_some() && current.id != shown.id;
-            self.back_to.set(nested.then_some(current));
+            let mut history = self.history.borrow_mut();
+            match shown.subpage {
+                Some(_) if current.id != shown.id => history.push(current),
+                Some(_) => {}
+                None => history.clear(),
+            }
         }
         self.header.set_visible(shown.subpage.is_some());
         self.header_title

@@ -477,6 +477,16 @@ pub fn split_legacy_settings() -> std::io::Result<()> {
     })
 }
 
+pub fn ancestors(id: &str) -> Vec<&'static str> {
+    let mut chain = Vec::new();
+    let mut current = id;
+    while let Some(found) = subpage(current) {
+        chain.insert(0, found.parent);
+        current = found.parent;
+    }
+    chain
+}
+
 pub fn subpage(id: &str) -> Option<&'static Subpage> {
     SUBPAGES.iter().find(|subpage| subpage.id == id)
 }
@@ -546,14 +556,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_subpage_hangs_off_a_rail_page_and_is_not_one_itself() {
+    fn every_subpage_leads_up_to_a_rail_page_and_is_not_one_itself() {
         for subpage in &SUBPAGES {
-            assert!(index_of(subpage.parent).is_some(), "{}", subpage.id);
+            let chain = ancestors(subpage.id);
+            assert!(
+                chain.first().is_some_and(|root| index_of(root).is_some()),
+                "{}",
+                subpage.id
+            );
             assert!(index_of(subpage.id).is_none(), "{}", subpage.id);
         }
-        assert_eq!(
-            subpage("capture").map(|found| found.parent),
-            Some("privacy")
-        );
+        assert_eq!(ancestors("capture"), ["privacy"]);
     }
 }
