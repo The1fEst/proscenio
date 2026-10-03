@@ -1,24 +1,19 @@
-use gtk4::prelude::*;
 use serde_json::Value;
-use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, slider_row};
-use crate::services::audio::{self, Audio, Card, Device, Stream};
-use crate::ui::theme::SharedTheme;
+use crate::services::audio::{self, Audio, Device};
 use crate::ui::widgets::controls::{ComboBox, ConfigSwitch};
 use crate::ui::widgets::slider::Slider;
-use crate::ui::widgets::text;
 
 const PERCENT: (f64, f64) = (0.0, 100.0);
-const EMPTY_MARGIN: i32 = 8;
 const PROTECTION: &str = "/audio/protection/enable";
 const THEME: &str = "/sounds/theme";
 const DEFAULT_THEME: &str = "freedesktop";
-const NO_SERVER: &str = "No PulseAudio-compatible sound server is running, so there is nothing to control. PipeWire provides one with the pipewire-pulse package.";
+pub(super) const NO_SERVER: &str = "No PulseAudio-compatible sound server is running, so there is nothing to control. PipeWire provides one with the pipewire-pulse package.";
 const NO_THEME: &str = "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.";
 
 struct Side {
@@ -27,12 +22,6 @@ struct Side {
     combo: Rc<ComboBox>,
     slider: Rc<Slider>,
     mute: Rc<ConfigSwitch>,
-}
-
-struct Levels {
-    empty: gtk4::Label,
-    rows: gtk4::Box,
-    shown: RefCell<Vec<(u32, Rc<Slider>, gtk4::Label)>>,
 }
 
 pub fn device_label(device: &Device) -> String {
@@ -64,19 +53,29 @@ pub fn build(context: &Context) -> Rc<Page> {
     let output = side(&page, &audio, true);
     let input = side(&page, &audio, false);
 
-    let levels_section = page.section("tune", &tr("Volume Levels"));
-    let empty = text::styled(&tr("Nothing is playing"));
-    text::set_color(&empty, "colSubtext");
-    empty.set_xalign(0.0);
-    empty.set_margin_start(EMPTY_MARGIN);
-    levels_section.append(&empty);
-    let rows = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
-    levels_section.append(&rows);
-    let levels = Rc::new(Levels {
-        empty,
-        rows,
-        shown: RefCell::new(Vec::new()),
-    });
+    let more = page.section("", "");
+    for (icon, title, subtitle, id) in [
+        (
+            "tune",
+            "Volume Levels",
+            "The volume of each app playing or recording",
+            "volumelevels",
+        ),
+        (
+            "speaker",
+            "Sound cards",
+            "Which input and output configuration each card uses",
+            "soundcards",
+        ),
+    ] {
+        page.link_row(
+            &more,
+            icon,
+            &tr(title),
+            &tr(subtitle),
+            context.subpage_opener(id),
+        );
+    }
 
     let alerts = page.section("notification_sound", &tr("Alert Sound"));
     if audio::sound_themes().is_empty() {
@@ -145,11 +144,6 @@ pub fn build(context: &Context) -> Rc<Page> {
     });
     page.watch(THEME, show_themes);
 
-    let cards_section = page.section("speaker", &tr("Sound cards"));
-    let cards_holder = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
-    cards_section.append(&cards_holder);
-    load_cards(&page, &cards_holder);
-
     let protection = page.section("hearing", &tr("Earbang protection"));
     let enable = page.config_switch(&protection, "hearing", &tr("Enable"), PROTECTION, false);
     page.tip(
@@ -186,20 +180,15 @@ pub fn build(context: &Context) -> Rc<Page> {
     let refresh = {
         let audio = audio.clone();
         let (output, input) = (Rc::downgrade(&output), Rc::downgrade(&input));
-        let levels = Rc::downgrade(&levels);
-        let theme = page.theme.clone();
         move || {
             for side in [output.upgrade(), input.upgrade()].into_iter().flatten() {
                 refresh_side(&audio, &side);
-            }
-            if let Some(levels) = levels.upgrade() {
-                refresh_levels(&theme, &audio, &levels);
             }
         }
     };
     refresh();
     page.keep(audio.watch(refresh));
-    page.keep((output, input, levels));
+    page.keep((output, input));
     page
 }
 
@@ -288,127 +277,4 @@ fn refresh_side(audio: &Audio, side: &Rc<Side>) {
         side.combo.set_items(&labels, index as i32);
         side.devices.replace(devices);
     });
-}
-
-fn refresh_levels(theme: &SharedTheme, audio: &Audio, levels: &Rc<Levels>) {
-    let theme = theme.clone();
-    let audio_for_rows = audio.clone();
-    let weak = Rc::downgrade(levels);
-    audio.streams(true, move |streams: Vec<Stream>| {
-        let Some(levels) = weak.upgrade() else {
-            return;
-        };
-        levels.empty.set_visible(streams.is_empty());
-        levels.rows.set_visible(!streams.is_empty());
-        let indices: Vec<u32> = streams.iter().map(|stream| stream.index).collect();
-        let same = levels
-            .shown
-            .borrow()
-            .iter()
-            .map(|(index, _, _)| *index)
-            .eq(indices.iter().copied());
-        if !same {
-            while let Some(child) = levels.rows.first_child() {
-                levels.rows.remove(&child);
-            }
-            let mut shown = Vec::new();
-            for stream in &streams {
-                let (slider, symbol) =
-                    slider_row(&theme, &levels.rows, "volume_up", &stream.name, PERCENT);
-                slider.on_moved({
-                    let audio = audio_for_rows.clone();
-                    let index = stream.index;
-                    let tip = Rc::downgrade(&slider);
-                    move |value| {
-                        if let Some(slider) = tip.upgrade() {
-                            slider.set_tooltip(&format!("{}%", value.round()));
-                        }
-                        audio.set_stream_volume(true, index, value.round() / 100.0);
-                    }
-                });
-                shown.push((stream.index, slider, symbol));
-            }
-            levels.shown.replace(shown);
-        }
-        for ((_, slider, symbol), stream) in levels.shown.borrow().iter().zip(&streams) {
-            show_percent(slider, (stream.volume * 100.0).round());
-            symbol.set_text(if stream.muted {
-                "volume_off"
-            } else {
-                "volume_up"
-            });
-        }
-    });
-}
-
-type Held = Rc<RefCell<Vec<Box<dyn Any>>>>;
-
-fn load_cards(page: &Rc<Page>, holder: &gtk4::Box) {
-    let held: Held = Rc::default();
-    page.keep(held.clone());
-    let (page, holder, held) = (
-        Rc::downgrade(page),
-        holder.downgrade(),
-        Rc::downgrade(&held),
-    );
-    audio::cards(move |cards: Vec<Card>| {
-        if let (Some(page), Some(holder), Some(held)) =
-            (page.upgrade(), holder.upgrade(), held.upgrade())
-        {
-            fill_cards(&page, &holder, &held, cards);
-        }
-    });
-}
-
-fn fill_cards(page: &Rc<Page>, holder: &gtk4::Box, held: &Held, cards: Vec<Card>) {
-    while let Some(child) = holder.first_child() {
-        holder.remove(&child);
-    }
-    let mut kept = held.borrow_mut();
-    kept.clear();
-    for card in cards {
-        let (group, tip) = page.unkept_subsection(
-            holder,
-            &card.description,
-            &tr("Which of the card's input and output configurations PipeWire uses"),
-        );
-        let combo = ComboBox::new(&page.theme);
-        combo.set_icon("tune");
-        combo.button.set_hexpand(true);
-        group.append(&combo.button);
-        let labels: Vec<String> = card
-            .profiles
-            .iter()
-            .map(|(label, _)| label.clone())
-            .collect();
-        let index = card
-            .profiles
-            .iter()
-            .position(|(_, value)| *value == card.active)
-            .unwrap_or(0);
-        combo.set_items(&labels, index as i32);
-        combo.connect_activated({
-            let (page, holder) = (Rc::downgrade(page), holder.downgrade());
-            let held = Rc::downgrade(held);
-            let name = card.name.clone();
-            let profiles = card.profiles.clone();
-            move |index| {
-                let Some((_, profile)) = profiles.get(index) else {
-                    return;
-                };
-                let (page, holder, held) = (page.clone(), holder.clone(), held.clone());
-                audio::set_card_profile(&name, profile, move || {
-                    audio::cards(move |cards| {
-                        if let (Some(page), Some(holder), Some(held)) =
-                            (page.upgrade(), holder.upgrade(), held.upgrade())
-                        {
-                            fill_cards(&page, &holder, &held, cards);
-                        }
-                    });
-                });
-            }
-        });
-        kept.push(Box::new(combo));
-        kept.push(Box::new(tip));
-    }
 }

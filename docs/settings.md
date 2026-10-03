@@ -846,18 +846,37 @@ with them, never through a shell. The page rereads the files afterwards, and
   120 px wide (cut with an ellipsis, where Qt let a long name run into the
   slider) and an extra-small slider (12 px track) from 0 to 100 with a
   percentage tooltip and a stop at 1.
-- "Volume Levels": one slider per playing application, `volume_off` while it
-  is muted, or "Nothing is playing".
+- Link rows to the Volume Levels and Sound cards subpages.
 - "Alert Sound": two uniform rows of switches, battery and Pomodoro, then
   microphone and USB devices (both with a tooltip; `sounds.devices`, on by
   default), and the sound theme, one of the themes
   under `/usr/share/sounds` with a `stereo` folder. Alerts play the theme's
   `.oga` (else `.ogg`) file with `paplay`, which comes with `libpulse`, the
   library the shell links against.
-- "Sound cards": each card's available profiles, in `pactl`'s order, under
-  its description with a tooltip.
 - "Earbang protection": the switch, with a tooltip, and a row of the largest
   allowed step and the volume limit, dead while protection is off.
+
+### 22.1 Volume Levels (subpage)
+
+- "Playback" (apps playing, PulseAudio sink inputs) and "Recording" (apps
+  recording, source outputs), each "Nothing is playing" or "Nothing is
+  recording" while empty. The sidebar's audio and microphone tiles open this
+  page.
+- One entry per stream, 12 px apart: a row 8 px in, 10 px apart, of the app's
+  icon at 36 px and two lines 2 px apart. The icon toggles the stream's mute on
+  a click (tooltip "Click to mute" or "Click to unmute"); while muted it is at
+  40 % opacity, desaturated, under a 22 px `volume_off` or `mic_off`. The first
+  line is the app's name, then " • " and the media title when the stream has
+  one, cut with an ellipsis; the second is a settings slider from 0 to 100 with
+  a percentage tooltip.
+- The entries are rebuilt only when the set of streams changes; otherwise each
+  shows the stream's current title, volume and mute. Sound server events are
+  coalesced to one refresh per main loop pass.
+
+### 22.2 Sound cards (subpage)
+
+- Each card's available profiles, in `pactl`'s order, under its description
+  with a tooltip.
 
 ## 23. Power
 

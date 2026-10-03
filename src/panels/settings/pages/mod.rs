@@ -47,11 +47,13 @@ pub mod services;
 pub mod shortcuts;
 pub mod sidebars;
 pub mod sound;
+pub mod soundcards;
 pub mod swiping;
 pub mod system;
 pub mod touchpad;
 pub mod users;
 pub mod utilitybuttons;
+pub mod volumelevels;
 pub mod wifi;
 pub mod windowrules;
 pub mod windows;
@@ -370,7 +372,17 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 39] = [
+pub const SUBPAGES: [Subpage; 41] = [
+    Subpage {
+        id: "volumelevels",
+        title: "Volume Levels",
+        parent: "sound",
+    },
+    Subpage {
+        id: "soundcards",
+        title: "Sound cards",
+        parent: "sound",
+    },
     Subpage {
         id: "filetypes",
         title: "File types",
@@ -623,6 +635,8 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "displaycolor" => displaycolor::build(context),
         "nightlight" => nightlight::build(context),
         "sound" => sound::build(context),
+        "volumelevels" => volumelevels::build(context),
+        "soundcards" => soundcards::build(context),
         "power" => power::build(context),
         "lock" => lock::build(context),
         "multitasking" => multitasking::build(context),

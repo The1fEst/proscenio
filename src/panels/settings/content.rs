@@ -170,6 +170,13 @@ pub fn slider_row(
     name.set_max_width_chars(1);
     name.set_size_request(SLIDER_LABEL, -1);
     row.append(&Centred::new(&name));
+    let slider = new_slider(theme, range);
+    row.append(&slider.area);
+    parent.add(&row);
+    (slider, symbol)
+}
+
+pub fn new_slider(theme: &SharedTheme, range: (f64, f64)) -> Rc<Slider> {
     let slider = Slider::with(
         theme,
         Options {
@@ -183,9 +190,7 @@ pub fn slider_row(
     );
     slider.set_stops(vec![1.0]);
     slider.area.set_hexpand(true);
-    row.append(&slider.area);
-    parent.add(&row);
-    (slider, symbol)
+    slider
 }
 
 impl Parent for gtk4::Box {
