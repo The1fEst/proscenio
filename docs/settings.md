@@ -855,8 +855,9 @@ blur is off.
   monitor in `displays.lua`, Smart gaps in `multitasking.lua`, gestures in
   `mouse.lua`), `devices.lua`, `apps.lua` (window rules), `binds.lua`
   (shortcuts) and `other.lua`. The dots' `hyprland.lua` requires every
-  `.lua` file there in name order, after the keybinds and before the other
-  `custom` files. At start, before any writer runs, proscenio splits a
+  `.lua` file there in name order, after the defaults and every `custom`
+  file, so what the settings app writes wins. At start, before any writer
+  runs, proscenio splits a
   `~/.config/hypr/settings.lua` from before this layout into those files,
   statement by statement (an option goes to the page whose list holds it,
   anything unrecognized to `other.lua`), appends each part to its file and
