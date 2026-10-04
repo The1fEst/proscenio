@@ -31,7 +31,7 @@ const COMMANDS: [(&str, &str, &str); 3] = [
     (
         "Task manager",
         "/apps/taskManager",
-        "plasma-systemmonitor --page-name Processes",
+        config::TASK_MANAGER_COMMAND,
     ),
     ("System update", "/apps/update", config::UPDATE_COMMAND),
 ];

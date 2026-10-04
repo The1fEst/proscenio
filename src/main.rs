@@ -282,6 +282,17 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     }
     bind(&screens.surfaces);
     bind_states(&services.states);
+    actions::add("taskManager", "Opens the task manager on press", || {
+        platform::desktop::shell(&core::config::current().app_task_manager)
+    });
+    actions::add(
+        "toggleLightDark",
+        "Switches light and dark mode on press",
+        {
+            let session = services.session.clone();
+            move || session.toggle_dark()
+        },
+    );
     actions::add("osdVolumeTrigger", "Triggers volume OSD on press", {
         let osd = osd.clone();
         move || osd.trigger()

@@ -125,7 +125,7 @@ application to the **Let apps take focus when they ask for it** switch on
 | Field | Key | Default | Used by |
 |---|---|---|---|
 | Terminal | `apps.terminal` | `kitty -1` | the launcher, for applications whose desktop entry asks for a terminal and for `sudo` commands |
-| Task manager | `apps.taskManager` | | stored only |
+| Task manager | `apps.taskManager` | `kitty -1 btop` | the `taskManager` [global shortcut](shortcuts.md) |
 | System update | `apps.update` | `kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'` | the bar's System updates button |
 
 The keys are in `~/.config/proscenio/config.toml`. When a command's program is not installed, a
