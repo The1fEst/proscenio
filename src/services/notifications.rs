@@ -509,6 +509,7 @@ impl Notifications {
         let quiet = app_in(QUIET_APPS, &app_name);
         let forgotten = app_in(FORGOTTEN_APPS, &app_name);
         let reply = take_reply(&mut labels, &hints);
+        let noticed = !self.inhibited.get() && !self.silent.get() && !quiet;
         let notification = Notification {
             id,
             actions: labels,
@@ -521,10 +522,7 @@ impl Notifications {
             time: glib::real_time() / 1000,
             urgency: hint_byte(&hints, "urgency").unwrap_or(1),
             transient: forgotten || hint_bool(&hints, "transient").unwrap_or(false),
-            popup: !self.inhibited.get()
-                && !self.silent.get()
-                && !quiet
-                && !self.hidden_by_sharing(),
+            popup: noticed && !self.hidden_by_sharing(),
             timeout: match expire {
                 0 => 0,
                 positive if positive > 0 => positive,
@@ -547,13 +545,11 @@ impl Notifications {
         }
         write_store(&self.list.borrow());
 
-        if showing {
-            if !transient {
-                self.unread.set(self.unread.get() + 1);
-            }
-            if interval != 0 {
-                self.arm_timer(id, interval);
-            }
+        if noticed && !transient {
+            self.unread.set(self.unread.get() + 1);
+        }
+        if showing && interval != 0 {
+            self.arm_timer(id, interval);
         }
         self.announce();
         id

@@ -138,8 +138,9 @@ Opening a sidebar ends every popup at once, and removes the transient ones.
 
 ## The unread count
 
-Every notification that pops up adds one to the unread count, unless it is transient. A notification
-that cannot pop up never counts. Opening a sidebar sets the count back to zero.
+Every notification that pops up adds one to the unread count, unless it is transient, and so does
+one held back only because the screen is shared. A notification that cannot pop up for another
+reason never counts. Opening a sidebar sets the count back to zero.
 
 The [bar](bar.md) shows a bell while there are unread notifications or Do Not Disturb is on. Unread
 notifications put a dot on the bell, or their number with
