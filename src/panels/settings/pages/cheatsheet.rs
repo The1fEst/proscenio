@@ -11,7 +11,7 @@ use crate::ui::widgets::text;
 
 const SUPER_KEY: &str = "/cheatsheet/superKey";
 const SUPER_KEYS: [&str; 19] = [
-    "\u{f05b3}",
+    config::CHEATSHEET_SUPER_KEY,
     "\u{e8e5}",
     "\u{f0a21}",
     "\u{ebc6}",
@@ -51,7 +51,9 @@ pub fn build(context: &Context) -> Rc<Page> {
         let keys = Rc::downgrade(&keys);
         move || {
             if let Some(keys) = keys.upgrade() {
-                keys.set_current(&config::value(SUPER_KEY).unwrap_or(Value::from("")));
+                keys.set_current(
+                    &config::value(SUPER_KEY).unwrap_or(Value::from(config::CHEATSHEET_SUPER_KEY)),
+                );
             }
         }
     };

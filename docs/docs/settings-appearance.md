@@ -484,7 +484,7 @@ A link row opens this subpage. See [Cheat sheet](cheatsheet.md).
 
 | Control | Key | Default | Range |
 |---|---|---|---|
-| Super key symbol | `cheatsheet.superKey` | | one of 19 Nerd Font glyphs |
+| Super key symbol | `cheatsheet.superKey` | the Windows logo | one of 19 Nerd Font glyphs |
 | Use macOS-like symbols for mods keys | `cheatsheet.useMacSymbol` | off | |
 | Use symbols for function keys | `cheatsheet.useFnSymbol` | off | |
 | Use symbols for mouse | `cheatsheet.useMouseSymbol` | off | |

@@ -62,7 +62,7 @@ These options are on **Appearance › Panels › Cheat sheet** (see
 
 | Setting | Key | Default | Effect |
 |---|---|---|---|
-| Super key symbol | `superKey` | empty | The text shown for Super. Empty leaves the Super cap blank. The page offers a choice of Nerd Font symbols; any text works in the config file. |
+| Super key symbol | `superKey` | the Windows logo, Nerd Font `U+F05B3` | The text shown for Super. Empty leaves the Super cap blank. The page offers a choice of Nerd Font symbols; any text works in the config file. |
 | Use macOS-like symbols for mods keys | `useMacSymbol` | off | Symbols for Ctrl, Alt, Shift, Space, Tab, Backspace, Delete, Enter, Escape and a few more. |
 | Use symbols for function keys | `useFnSymbol` | off | Symbols for F1 to F12. |
 | Use symbols for mouse | `useMouseSymbol` | off | Symbols for the scroll wheel and the left and right buttons. |

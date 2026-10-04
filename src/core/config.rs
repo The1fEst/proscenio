@@ -17,6 +17,7 @@ pub const DATE_FORMAT: &str = "ddd, dd/MM";
 pub const DOCK_PINNED_APPS: [&str; 3] = ["org.kde.dolphin", "brave-origin", "kitty"];
 pub const TASK_MANAGER_COMMAND: &str = "kitty -1 btop";
 pub const UPDATE_COMMAND: &str = "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'";
+pub const CHEATSHEET_SUPER_KEY: &str = "\u{f05b3}";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CornerStyle {
@@ -374,7 +375,7 @@ impl Config {
                 ],
             ),
             app_terminal: text(&apps, "terminal", "kitty -1"),
-            cheatsheet_super: text(&cheatsheet, "superKey", ""),
+            cheatsheet_super: text(&cheatsheet, "superKey", CHEATSHEET_SUPER_KEY),
             cheatsheet_mac_symbols: flag(&cheatsheet, "useMacSymbol", false),
             cheatsheet_fn_symbols: flag(&cheatsheet, "useFnSymbol", false),
             cheatsheet_mouse_symbols: flag(&cheatsheet, "useMouseSymbol", false),
