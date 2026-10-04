@@ -140,6 +140,11 @@ while it lives, so the full-size frame is not kept.
 Without a usable modifier, or after the GPU path fails once, frames come over
 `wl_shm` and are shrunk on the CPU by area averaging.
 
+A tiled window on a monitor too small for its gaps, such as one that reports
+0×0 after a failed EDID read, has a negative size, and Hyprland sends it as a
+huge unsigned frame size. Such a frame is not captured, since any buffer for it
+is a fatal protocol error, and its capture counts as failed.
+
 The popup opens only once every card has its first frame. Moving to another
 app closes it until the new pictures arrive. A card whose capture fails three
 times counts as ready, so a window that cannot be captured still gets a card;

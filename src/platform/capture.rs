@@ -67,6 +67,21 @@ struct Layout {
     stride: u32,
 }
 
+impl Layout {
+    fn pool_size(&self) -> Option<i32> {
+        let (_, height) = signed_size(self.width, self.height)?;
+        i32::try_from(self.stride)
+            .ok()?
+            .checked_mul(height)
+            .filter(|size| *size > 0)
+    }
+}
+
+fn signed_size(width: u32, height: u32) -> Option<(i32, i32)> {
+    let positive = |side: u32| i32::try_from(side).ok().filter(|side| *side > 0);
+    Some((positive(width)?, positive(height)?))
+}
+
 struct Pending {
     frame: HyprlandToplevelExportFrameV1,
     limit: (u32, u32),
@@ -147,6 +162,7 @@ impl Dispatch<HyprlandToplevelExportFrameV1, u64> for State {
             hyprland_toplevel_export_frame_v1::Event::BufferDone => {
                 if let (Some((fourcc, width, height)), Some(linux_dmabuf), Some(gbm), false) =
                     (pending.offer, linux_dmabuf.as_ref(), gbm.as_ref(), *broken)
+                    && let Some((signed_width, signed_height)) = signed_size(width, height)
                 {
                     let wanted: Vec<u64> = modifiers
                         .iter()
@@ -166,8 +182,8 @@ impl Dispatch<HyprlandToplevelExportFrameV1, u64> for State {
                             );
                         }
                         params.create(
-                            width as i32,
-                            height as i32,
+                            signed_width,
+                            signed_height,
                             fourcc,
                             zwp_linux_buffer_params_v1::Flags::empty(),
                         );
@@ -553,15 +569,14 @@ impl Capture {
 }
 
 fn copy_shm(shm: &WlShm, pending: &mut Pending, id: u64, queue: &QueueHandle<State>) {
-    let Some(layout) = pending
+    let Some((layout, size)) = pending
         .layout
         .as_ref()
-        .filter(|layout| layout.width > 0 && layout.stride * layout.height > 0)
+        .and_then(|layout| Some((layout, layout.pool_size()?)))
     else {
         pending.finished = Some(false);
         return;
     };
-    let size = (layout.stride * layout.height) as i32;
     let Some(file) = scratch_file(id, size as u64) else {
         pending.finished = Some(false);
         return;
@@ -724,4 +739,27 @@ fn shrink(
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_window_with_a_negative_size_gets_no_capture_buffer() {
+        let layout = |width: i32, height: i32, stride: i32| Layout {
+            format: gdk::MemoryFormat::B8g8r8x8,
+            code: wl_shm::Format::Xrgb8888,
+            width: width as u32,
+            height: height as u32,
+            stride: stride as u32,
+        };
+        assert_eq!(layout(1268, 1386, 5072).pool_size(), Some(5072 * 1386));
+        assert_eq!(layout(-10, -8, -40).pool_size(), None);
+        assert_eq!(layout(0, 0, 0).pool_size(), None);
+        assert_eq!(layout(40_000, 40_000, 160_000).pool_size(), None);
+        assert_eq!(signed_size(1268, 1386), Some((1268, 1386)));
+        assert_eq!(signed_size(-10i32 as u32, -8i32 as u32), None);
+        assert_eq!(signed_size(0, 1386), None);
+    }
 }
