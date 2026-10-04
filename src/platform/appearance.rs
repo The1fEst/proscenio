@@ -587,7 +587,6 @@ pub fn set_icons(theme: &str) {
     }
     set_ini_key(&kdeglobals(), "Theme", theme, "[Icons]");
     set_lua_env("QT_ICON_THEME", theme);
-    set_lua_env("QS_ICON_THEME", theme);
 }
 
 fn variations(pango: &str) -> String {
