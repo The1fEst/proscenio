@@ -223,7 +223,7 @@ fn switch(
     } else {
         &mode
     };
-    generate.extend(strings(&["--mode", terminal_mode]));
+    generate.extend(strings(&["--mode", &mode, "--terminal-mode", terminal_mode]));
     matugen.extend(strings(&["--type", &scheme]));
     generate.extend(strings(&[
         "--scheme",

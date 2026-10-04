@@ -58,6 +58,7 @@ struct Options {
     size: u32,
     color: Option<String>,
     dark: bool,
+    terminal_dark: Option<bool>,
     scheme: String,
     smart: bool,
     transparent: bool,
@@ -75,6 +76,7 @@ fn parse(arguments: &[String]) -> Result<Options, String> {
         size: 128,
         color: None,
         dark: true,
+        terminal_dark: None,
         scheme: "vibrant".to_owned(),
         smart: false,
         transparent: false,
@@ -110,11 +112,16 @@ fn parse(arguments: &[String]) -> Result<Options, String> {
                     .map_err(|_| format!("argument --size: invalid int value: '{text}'"))?;
             }
             "--color" => options.color = Some(value()?),
-            "--mode" => {
-                options.dark = match value()?.as_str() {
+            "--mode" | "--terminal-mode" => {
+                let dark = match value()?.as_str() {
                     "dark" => true,
                     "light" => false,
-                    other => return Err(format!("argument --mode: invalid choice: '{other}'")),
+                    other => return Err(format!("argument {name}: invalid choice: '{other}'")),
+                };
+                if name == "--mode" {
+                    options.dark = dark;
+                } else {
+                    options.terminal_dark = Some(dark);
                 }
             }
             "--scheme" => options.scheme = value()?,
@@ -164,7 +171,8 @@ pub fn generate(arguments: &[String], terminal_scheme: Option<&str>) -> Result<S
         return Err("either --path or --color is required".to_owned());
     };
 
-    let scheme = Scheme::new(&options.scheme, Hct::new(source), options.dark);
+    let terminal_dark = options.terminal_dark.unwrap_or(options.dark);
+    let scheme = Scheme::new(&options.scheme, Hct::new(source), terminal_dark);
     let mut output = format!(
         "$darkmode: {};\n$transparent: {};\n",
         python_bool(options.dark),
@@ -176,7 +184,7 @@ pub fn generate(arguments: &[String], terminal_scheme: Option<&str>) -> Result<S
         output.push_str(&format!("${name}: {value};\n"));
         material.push((name, value));
     }
-    for (name, value) in if options.dark {
+    for (name, value) in if terminal_dark {
         SUCCESS_DARK
     } else {
         SUCCESS_LIGHT
@@ -187,7 +195,7 @@ pub fn generate(arguments: &[String], terminal_scheme: Option<&str>) -> Result<S
     if let Some(text) = options.termscheme.as_deref().or(terminal_scheme) {
         let json: Value =
             serde_json::from_str(text).map_err(|error| format!("terminal scheme: {error}"))?;
-        let mode = if options.dark { "dark" } else { "light" };
+        let mode = if terminal_dark { "dark" } else { "light" };
         let colours = json
             .get(mode)
             .and_then(Value::as_object)
@@ -222,7 +230,7 @@ pub fn generate(arguments: &[String], terminal_scheme: Option<&str>) -> Result<S
                     options.harmonize_threshold,
                     options.harmony,
                 );
-                let direction = if options.dark { 1.0 } else { -1.0 };
+                let direction = if terminal_dark { 1.0 } else { -1.0 };
                 boost_chroma_tone(shifted, 1.0, 1.0 + options.term_fg_boost * direction)
             };
             output.push_str(&format!("${name}: {};\n", hex(harmonized)));
@@ -799,4 +807,29 @@ fn with_newline(mut text: String) -> String {
         text.push('\n');
     }
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn arguments(line: &str) -> Vec<String> {
+        line.split_whitespace().map(str::to_owned).collect()
+    }
+
+    fn background(output: &str) -> Option<&str> {
+        output.lines().find(|line| line.starts_with("$background:"))
+    }
+
+    #[test]
+    fn a_terminal_forced_dark_keeps_the_palette_s_own_mode() {
+        let forced = generate(
+            &arguments("--color #6750a4 --mode light --terminal-mode dark"),
+            None,
+        )
+        .unwrap();
+        let dark = generate(&arguments("--color #6750a4 --mode dark"), None).unwrap();
+        assert!(forced.starts_with("$darkmode: False;"));
+        assert_eq!(background(&forced), background(&dark));
+    }
 }
