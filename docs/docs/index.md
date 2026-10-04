@@ -52,7 +52,7 @@ proscenio runs only on Hyprland, and leans on it in three places:
 | [System tray](tray.md) | Tray icons, the overflow menu and item menus |
 | [The sidebar](sidebar.md) | The panel on the right edge: system buttons, sliders, notification list |
 | [Quick toggles](quick-toggles.md) | The toggle grid, edit mode and the dialogs the tiles open |
-| [Notifications](notifications.md) | The notification server, popups, history and Do Not Disturb |
+| [Notifications](notifications.md) | The notification server, popups, history, Do Not Disturb and quiet screen sharing |
 | [The dock](dock.md) | Pinned and running apps with live window previews |
 | [Overview and launcher](overview.md) | Search, math, commands, clipboard and emoji, over a grid of workspaces |
 | [The background](background.md) | The wallpaper, its parallax, and the clock and weather over it |
