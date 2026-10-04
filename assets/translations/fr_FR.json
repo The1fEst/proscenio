@@ -1528,5 +1528,7 @@
   "Locks with Hyprlock and its own config instead of the shell's lock screen": "Verrouille avec Hyprlock et sa propre configuration au lieu de l'écran de verrouillage du shell",
   "Reply": "Répondre",
   "Hide popups while sharing the screen": "Masquer les fenêtres contextuelles pendant le partage d'écran",
-  "While an app shares the screen, notifications go to the sidebar without popping up": "Pendant qu'une application partage l'écran, les notifications vont dans le panneau latéral sans s'afficher"
+  "While an app shares the screen, notifications go to the sidebar without popping up": "Pendant qu'une application partage l'écran, les notifications vont dans le panneau latéral sans s'afficher",
+  "Transition (min)": "Transition (min)",
+  "How long the scheduled change takes, from the set time on; 0 switches at once": "Durée du changement programmé à partir de l'heure réglée ; 0 bascule immédiatement"
 }

@@ -56,5 +56,18 @@ pub fn build(context: &Context) -> Rc<Page> {
         (1000, 6500),
         100,
     );
+    let (transition, _) = page.config_spin(
+        &night,
+        "line_curve",
+        &tr("Transition (min)"),
+        "/light/night/transition",
+        config::NIGHT_TRANSITION as i64,
+        (0, 120),
+        5,
+    );
+    page.tip(
+        &transition,
+        &tr("How long the scheduled change takes, from the set time on; 0 switches at once"),
+    );
     page
 }

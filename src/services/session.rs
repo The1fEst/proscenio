@@ -25,14 +25,50 @@ pub struct Session {
 struct Schedule {
     from: Cell<i32>,
     to: Cell<i32>,
+    transition: Cell<i32>,
     manual: Cell<Option<(bool, i32)>>,
-    should_be_on: Cell<Option<bool>>,
+    scheduled: Cell<Option<i32>>,
     first: Cell<bool>,
-    minute: Cell<i32>,
+}
+
+#[derive(Clone, Copy)]
+struct Night {
+    from: i32,
+    to: i32,
+    transition: i32,
+    temperature: i32,
 }
 
 const DEFAULT_TEMPERATURE: i32 = 6000;
+const KELVIN_STEP: f64 = 10.0;
+const DAY: i32 = 24 * 60 * 60;
 const INHIBIT: [&str; 2] = ["idle", "inhibit"];
+
+fn scheduled(now: i32, night: &Night) -> Option<i32> {
+    let length = (night.to - night.from).rem_euclid(DAY);
+    let into = (now - night.from).rem_euclid(DAY);
+    if into >= length + night.transition {
+        return None;
+    }
+    let progress = |seconds: i32| {
+        if night.transition == 0 {
+            1.0
+        } else {
+            (seconds as f64 / night.transition as f64).clamp(0.0, 1.0)
+        }
+    };
+    let warming = progress(into);
+    let cooling = if into > length {
+        1.0 - progress(into - length)
+    } else {
+        1.0
+    };
+    let part = warming.min(cooling);
+    let day = 1e6 / DEFAULT_TEMPERATURE as f64;
+    let warm = 1e6 / night.temperature.max(1000) as f64;
+    let kelvin = 1e6 / (day + (warm - day) * part);
+    Some(((kelvin / KELVIN_STEP).round() * KELVIN_STEP) as i32)
+}
 
 fn minutes(clock: &str) -> i32 {
     let mut parts = clock
@@ -45,6 +81,16 @@ fn now_minutes() -> i32 {
     glib::DateTime::now_local()
         .map(|now| now.hour() * 60 + now.minute())
         .unwrap_or(0)
+}
+
+fn now_seconds() -> i32 {
+    glib::DateTime::now_local()
+        .map(|now| (now.hour() * 60 + now.minute()) * 60 + now.second())
+        .unwrap_or(0)
+}
+
+fn send_temperature(kelvin: i32) {
+    detach(&["hyprctl", "hyprsunset", "temperature", &kelvin.to_string()]);
 }
 
 fn between(time: i32, from: i32, to: i32) -> bool {
@@ -67,10 +113,10 @@ impl Session {
             schedule: Rc::new(Schedule {
                 from: Cell::new(minutes(&config.night_from)),
                 to: Cell::new(minutes(&config.night_to)),
+                transition: Cell::new(config.night_transition),
                 manual: Cell::new(None),
-                should_be_on: Cell::new(None),
+                scheduled: Cell::new(None),
                 first: Cell::new(true),
-                minute: Cell::new(-1),
             }),
             listeners: Rc::default(),
             following: Rc::default(),
@@ -101,24 +147,26 @@ impl Session {
         let schedule = &self.schedule;
         let from = minutes(&config.night_from);
         let to = minutes(&config.night_to);
-        let rescheduled = schedule.from.replace(from) != from || schedule.to.replace(to) != to;
+        let transition = config.night_transition;
+        let rescheduled = (schedule.from.replace(from) != from)
+            | (schedule.to.replace(to) != to)
+            | (schedule.transition.replace(transition) != transition);
         let switched = self.automatic.replace(config.night_automatic) != config.night_automatic;
-        if self.temperature.replace(config.night_temperature) != config.night_temperature
-            && self.night.get()
-        {
-            detach(&[
-                "hyprctl",
-                "hyprsunset",
-                "temperature",
-                &config.night_temperature.to_string(),
-            ]);
-        }
+        let retuned =
+            self.temperature.replace(config.night_temperature) != config.night_temperature;
         if rescheduled || switched {
             schedule.manual.set(None);
             schedule.first.set(true);
-            self.re_evaluate();
         }
+        if retuned && self.night.get() && !self.follows_schedule() {
+            send_temperature(config.night_temperature);
+        }
+        self.re_evaluate();
         self.announce();
+    }
+
+    fn follows_schedule(&self) -> bool {
+        self.automatic.get() && self.schedule.manual.get().is_none()
     }
 
     pub fn subscribe(&self, listener: impl Fn() + 'static) -> Subscription {
@@ -126,43 +174,43 @@ impl Session {
     }
 
     pub fn follow_clock(&self) {
-        let now = now_minutes();
-        if self.schedule.minute.replace(now) != now {
-            self.re_evaluate();
-        }
+        self.re_evaluate();
     }
 
     fn re_evaluate(&self) {
         let schedule = &self.schedule;
         let now = now_minutes();
-        schedule.minute.set(now);
         if let Some((_, since)) = schedule.manual.get()
             && (between(schedule.from.get(), since, now) || between(schedule.to.get(), since, now))
         {
             schedule.manual.set(None);
         }
-        let should = between(now, schedule.from.get(), schedule.to.get());
-        let changed = schedule.should_be_on.replace(Some(should)) != Some(should);
+        let night = Night {
+            from: schedule.from.get() * 60,
+            to: schedule.to.get() * 60,
+            transition: schedule.transition.get() * 60,
+            temperature: self.temperature.get(),
+        };
+        let kelvin = scheduled(now_seconds(), &night);
+        let changed = schedule.scheduled.replace(kelvin) != kelvin;
         if schedule.first.replace(false) || changed {
             self.ensure_state();
         }
     }
 
     fn ensure_state(&self) {
-        let schedule = &self.schedule;
-        if !self.automatic.get() || schedule.manual.get().is_some() {
+        if !self.follows_schedule() {
             return;
         }
-        if schedule.should_be_on.get() == Some(true) {
-            self.enable_temperature();
-        } else {
-            self.disable_temperature();
+        match self.schedule.scheduled.get() {
+            Some(kelvin) => self.enable_temperature(kelvin),
+            None => self.disable_temperature(),
         }
     }
 
-    fn enable_temperature(&self) {
+    fn enable_temperature(&self, kelvin: i32) {
         self.night.set(true);
-        let kelvin = self.temperature.get().to_string();
+        let kelvin = kelvin.to_string();
         detach(&[
             "bash",
             "-c",
@@ -175,12 +223,7 @@ impl Session {
 
     fn disable_temperature(&self) {
         self.night.set(false);
-        detach(&[
-            "hyprctl",
-            "hyprsunset",
-            "temperature",
-            &DEFAULT_TEMPERATURE.to_string(),
-        ]);
+        send_temperature(DEFAULT_TEMPERATURE);
         self.announce();
     }
 
@@ -197,7 +240,7 @@ impl Session {
         let wanted = active.unwrap_or(!previous);
         schedule.manual.set(Some((wanted, since)));
         if wanted {
-            self.enable_temperature();
+            self.enable_temperature(self.temperature.get());
         } else {
             self.disable_temperature();
         }
@@ -215,8 +258,10 @@ impl Session {
     pub fn set_temperature(&self, kelvin: i32) {
         self.temperature.set(kelvin);
         Config::store_night("colorTemperature", serde_json::Value::from(kelvin));
-        if self.night.get() {
-            detach(&["hyprctl", "hyprsunset", "temperature", &kelvin.to_string()]);
+        if self.follows_schedule() {
+            self.re_evaluate();
+        } else if self.night.get() {
+            send_temperature(kelvin);
         }
         self.announce();
     }
@@ -412,6 +457,36 @@ fn windows_entry(boot_list: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_schedule_eases_into_the_night_and_out_of_it() {
+        let clock = |hour: i32, minute: i32| (hour * 60 + minute) * 60;
+        let night = Night {
+            from: clock(19, 0),
+            to: clock(6, 30),
+            transition: 30 * 60,
+            temperature: 4000,
+        };
+        let cases = [
+            (clock(18, 59), None),
+            (clock(19, 0), Some(DEFAULT_TEMPERATURE)),
+            (clock(19, 15), Some(4800)),
+            (clock(19, 30), Some(4000)),
+            (clock(3, 0), Some(4000)),
+            (clock(6, 30), Some(4000)),
+            (clock(6, 45), Some(4800)),
+            (clock(7, 0), None),
+        ];
+        for (now, expected) in cases {
+            assert_eq!(scheduled(now, &night), expected, "at {now} s");
+        }
+        let instant = Night {
+            transition: 0,
+            ..night
+        };
+        assert_eq!(scheduled(clock(19, 0), &instant), Some(4000));
+        assert_eq!(scheduled(clock(6, 30), &instant), None);
+    }
 
     #[test]
     fn windows_entry_matches_what_the_script_grepped_for() {

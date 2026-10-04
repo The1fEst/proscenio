@@ -205,7 +205,7 @@ are zero while their feature is off, so switching the feature on runs the task o
 | `resources` | Samples memory and CPU from `/proc/meminfo` and `/proc/stat`, once for all the bars |
 | `media position` | Reads the players again while one is playing |
 | `recording` | Looks for a running `wf-recorder` in `/proc` while no recording is known, without starting a process |
-| `night light schedule` | Re-evaluates the night light schedule when the minute changes |
+| `night light schedule` | Works out the night light temperature for the moment, through the transitions, and sends it when it changes |
 | `warp` | Reads `warp-cli status` once WARP is found |
 | `weather` | Fetches the weather every `bar.weather.fetchInterval` minutes (10) while `bar.weather.enable` is on |
 | `updates` | Counts available updates every `updates.checkInterval` minutes (120) while `updates.enableCheck` is on |

@@ -18,6 +18,7 @@ pub const DOCK_PINNED_APPS: [&str; 3] = ["org.kde.dolphin", "brave-origin", "kit
 pub const TASK_MANAGER_COMMAND: &str = "kitty -1 btop";
 pub const UPDATE_COMMAND: &str = "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'";
 pub const CHEATSHEET_SUPER_KEY: &str = "\u{f05b3}";
+pub const NIGHT_TRANSITION: i32 = 30;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CornerStyle {
@@ -211,6 +212,7 @@ pub struct Config {
     pub night_automatic: bool,
     pub night_from: String,
     pub night_to: String,
+    pub night_transition: i32,
     pub pomodoro_focus: i64,
     pub pomodoro_break: i64,
     pub pomodoro_long_break: i64,
@@ -594,6 +596,10 @@ impl Config {
                 .and_then(Value::as_str)
                 .unwrap_or("06:30")
                 .to_owned(),
+            night_transition: root
+                .pointer("/light/night/transition")
+                .and_then(Value::as_i64)
+                .map_or(NIGHT_TRANSITION, |minutes| minutes.clamp(0, 120) as i32),
             pomodoro_focus: number(&pomodoro, "focus", 1500.0) as i64,
             pomodoro_break: number(&pomodoro, "breakTime", 300.0) as i64,
             pomodoro_long_break: number(&pomodoro, "longBreak", 900.0) as i64,
