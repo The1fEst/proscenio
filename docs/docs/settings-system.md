@@ -23,13 +23,15 @@ The rest talk to system services over D-Bus or edit files of their own, as each 
 | Control | Key | Default | Range |
 |---|---|---|---|
 | Do not disturb | `notifications.silent` | off | |
+| Hide popups while sharing the screen | `notifications.hideWhileSharing` | on | |
 | Stays on screen for (ms) | `notifications.timeout` | 7000 | 1000–60000, in steps of 1000 |
 | Always on one display | `notifications.forceMonitor.enable` | off | |
 | The display, under Placement | `notifications.forceMonitor.name` | | a monitor's connector name |
 | Stays on screen for (ms), under On-screen display | `osd.timeout` | 1000 | 100–3000, in steps of 100 |
 
 **Do not disturb** is the notification server's own switch: notifications still arrive and are kept
-in the sidebar, but none pops up. The time on screen applies to notifications that do not ask for a
+in the sidebar, but none pops up. **Hide popups while sharing the screen** does the same while an app
+shares or records the screen. The time on screen applies to notifications that do not ask for a
 time of their own. The display box lists the monitors as "model (connector)", is live only while
 **Always on one display** is on, and follows monitors being plugged in and out. See
 [Notifications](notifications.md) and the [on-screen display](osd.md).

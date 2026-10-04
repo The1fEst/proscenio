@@ -1526,5 +1526,7 @@
   "Make sure your player has MPRIS support": "お使いのプレイヤーがMPRISをサポートしているか確認してください",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "後からランチャーの /dark、/light、/wallpaper でいつでも変更できます\nシェルの色が変わらない場合は、サイドバーを開いて右上の「Hyprland と %1 を再読み込み」をクリックしてください",
   "Locks with Hyprlock and its own config instead of the shell's lock screen": "シェルのロック画面ではなく、Hyprlock とその独自の設定でロックします",
-  "Reply": "返信"
+  "Reply": "返信",
+  "Hide popups while sharing the screen": "画面共有中はポップアップを表示しない",
+  "While an app shares the screen, notifications go to the sidebar without popping up": "アプリが画面を共有している間、通知はポップアップせずサイドバーに入ります"
 }

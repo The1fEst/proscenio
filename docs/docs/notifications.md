@@ -95,13 +95,20 @@ instead, as long as that monitor is connected.
 Popups are hidden while the screen is locked. They are grouped by app like the sidebar's list, and
 hold only the notifications that are still popping up.
 
-A notification does not pop up while a sidebar is open, while Do Not Disturb is on, or when its app
-has popups turned off. It still goes to the sidebar's list, unless it is transient: then it is
-dropped.
+A notification does not pop up while a sidebar is open, while Do Not Disturb is on, while the screen
+is shared with `notifications.hideWhileSharing` on, or when its app has popups turned off. It still
+goes to the sidebar's list, unless it is transient: then it is dropped.
+
+The screen counts as shared while Hyprland reports a screencast, its `screencast` event: an app
+capturing the screen through the desktop portal, as meeting apps, browsers and OBS do, or a
+recorder such as `wf-recorder`, the shell's own recordings included. When sharing starts, every
+popup ends at once, as when a sidebar opens. Hyprland reports a screencast off between frames, so
+sharing counts as over only once it has been off for 3 s.
 
 ```toml
 [notifications]
 silent = false        # Do Not Disturb
+hideWhileSharing = true
 timeout = 7000        # ms, for senders that ask for no time of their own
 quietApps = []        # apps that never pop up
 forgottenApps = []    # apps whose notifications are dropped once their popup ends
@@ -112,7 +119,7 @@ name = "DP-1"
 ```
 
 These are on the **Notifications** page of the [settings window](settings.md): **Do not disturb**,
-**Stays on screen for (ms)** (1000 to 60000), **Always on one display** with its monitor list, and a
+**Hide popups while sharing the screen**, **Stays on screen for (ms)** (1000 to 60000), **Always on one display** with its monitor list, and a
 pair of switches per app.
 
 ### Timeouts

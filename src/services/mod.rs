@@ -109,6 +109,7 @@ impl Services {
         let events = Events::default();
         let hypr = HyprState::new(&events);
         let states = States::new();
+        let notifications = Notifications::new(config, session.clone(), &events);
         let services = Services {
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),
@@ -120,7 +121,7 @@ impl Services {
             states,
             wallpapers: Wallpapers::new(),
             events,
-            notifications: Notifications::new(config, session.clone()),
+            notifications,
             session_bus: session,
             audio: Audio::new(),
             light: Light::new(),

@@ -12,9 +12,12 @@ use std::time::Duration;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, persistent};
 use crate::platform::desktop;
+use crate::platform::hypr::Events;
 
 pub const QUIET_APPS: &str = "/notifications/quietApps";
 pub const FORGOTTEN_APPS: &str = "/notifications/forgottenApps";
+pub const HIDE_WHILE_SHARING: &str = "/notifications/hideWhileSharing";
+const SHARING_GRACE: Duration = Duration::from_secs(3);
 const KNOWN_APPS: &str = "notificationApps";
 const NAME: &str = "org.freedesktop.Notifications";
 const PATH: &str = "/org/freedesktop/Notifications";
@@ -164,6 +167,8 @@ pub struct Notifications {
     pub silent: Rc<Cell<bool>>,
     next_id: Rc<Cell<u32>>,
     inhibited: Rc<Cell<bool>>,
+    sharing: Rc<Cell<bool>>,
+    sharing_end: Rc<RefCell<Option<glib::SourceId>>>,
     connection: Option<gio::DBusConnection>,
     listeners: Rc<Listeners>,
     timers: Rc<RefCell<HashMap<u32, glib::SourceId>>>,
@@ -171,7 +176,11 @@ pub struct Notifications {
 }
 
 impl Notifications {
-    pub fn new(config: &crate::core::config::Config, session: Option<gio::DBusConnection>) -> Self {
+    pub fn new(
+        config: &crate::core::config::Config,
+        session: Option<gio::DBusConnection>,
+        events: &Events,
+    ) -> Self {
         let stored = read_store();
         let highest = stored.iter().map(|entry| entry.id).max().unwrap_or(0);
         let notifications = Notifications {
@@ -180,13 +189,45 @@ impl Notifications {
             silent: Rc::new(Cell::new(config.notifications_silent)),
             next_id: Rc::new(Cell::new(highest + 1)),
             inhibited: Rc::new(Cell::new(false)),
+            sharing: Rc::new(Cell::new(false)),
+            sharing_end: Rc::new(RefCell::new(None)),
             connection: session,
             listeners: Rc::default(),
             timers: Rc::new(RefCell::new(HashMap::new())),
             drafts: Rc::new(RefCell::new(HashMap::new())),
         };
         notifications.serve();
+        let watcher = notifications.clone();
+        events
+            .subscribe(move |event, data| {
+                if event == "screencast" {
+                    watcher.set_sharing(sharing(data));
+                }
+            })
+            .forever();
         notifications
+    }
+
+    fn set_sharing(&self, sharing: bool) {
+        if let Some(pending) = self.sharing_end.borrow_mut().take() {
+            pending.remove();
+        }
+        if !sharing {
+            let notifications = self.clone();
+            let pending = glib::timeout_add_local_once(SHARING_GRACE, move || {
+                notifications.sharing_end.borrow_mut().take();
+                notifications.sharing.set(false);
+            });
+            self.sharing_end.replace(Some(pending));
+            return;
+        }
+        if !self.sharing.replace(true) && self.hidden_by_sharing() {
+            self.timeout_all();
+        }
+    }
+
+    fn hidden_by_sharing(&self) -> bool {
+        self.sharing.get() && config::value_bool(HIDE_WHILE_SHARING, true)
     }
 
     pub fn subscribe(&self, listener: impl Fn() + 'static) -> Subscription {
@@ -480,7 +521,10 @@ impl Notifications {
             time: glib::real_time() / 1000,
             urgency: hint_byte(&hints, "urgency").unwrap_or(1),
             transient: forgotten || hint_bool(&hints, "transient").unwrap_or(false),
-            popup: !self.inhibited.get() && !self.silent.get() && !quiet,
+            popup: !self.inhibited.get()
+                && !self.silent.get()
+                && !quiet
+                && !self.hidden_by_sharing(),
             timeout: match expire {
                 0 => 0,
                 positive if positive > 0 => positive,
@@ -679,6 +723,10 @@ fn image_path(id: u32) -> PathBuf {
         .join(format!("{id}.png"))
 }
 
+fn sharing(screencast: &str) -> bool {
+    screencast.split(',').next() == Some("1")
+}
+
 fn take_reply(actions: &mut Vec<(String, String)>, hints: &Variant) -> Option<Reply> {
     let index = actions
         .iter()
@@ -784,6 +832,14 @@ mod tests {
         }
         let empty = HashMap::<String, Variant>::new().to_variant();
         assert_eq!(image(0, &empty), "");
+    }
+
+    #[test]
+    fn a_screencast_event_reads_its_state() {
+        assert!(sharing("1,0"));
+        assert!(sharing("1,region"));
+        assert!(!sharing("0,region"));
+        assert!(!sharing(""));
     }
 
     #[test]

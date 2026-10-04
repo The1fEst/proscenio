@@ -1526,5 +1526,7 @@
   "Make sure your player has MPRIS support": "Asegúrate de que tu reproductor tenga soporte MPRIS",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "Cámbialo cuando quieras con /dark, /light, /wallpaper en el lanzador\nSi los colores del shell no cambian, abre la barra lateral y haz clic en \"Recargar Hyprland y %1\" en su esquina superior derecha",
   "Locks with Hyprlock and its own config instead of the shell's lock screen": "Bloquea con Hyprlock y su propia configuración en lugar de la pantalla de bloqueo del shell",
-  "Reply": "Responder"
+  "Reply": "Responder",
+  "Hide popups while sharing the screen": "Ocultar las ventanas emergentes al compartir la pantalla",
+  "While an app shares the screen, notifications go to the sidebar without popping up": "Mientras una app comparte la pantalla, las notificaciones van a la barra lateral sin aparecer"
 }

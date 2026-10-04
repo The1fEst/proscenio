@@ -38,6 +38,18 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr("Notifications still arrive and are kept; they just do not pop up."),
     );
 
+    let sharing = page.config_switch(
+        &main,
+        "screen_share",
+        &tr("Hide popups while sharing the screen"),
+        notifications::HIDE_WHILE_SHARING,
+        true,
+    );
+    page.tip(
+        &sharing.button,
+        &tr("While an app shares the screen, notifications go to the sidebar without popping up"),
+    );
+
     let (timeout, _) = page.config_spin(
         &main,
         "av_timer",
