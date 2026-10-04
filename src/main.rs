@@ -436,7 +436,7 @@ fn register_ipc(
         ("session", "toggle", |held| held.session.toggle()),
         ("session", "close", |held| held.session.close()),
         ("session", "open", |held| held.session.open()),
-        ("calendar", "toggle", |held| held.calendar.toggle_centred()),
+        ("calendar", "toggle", |held| held.calendar.toggle()),
         ("calendar", "close", |held| held.calendar.close()),
         ("calendar", "open", |held| held.calendar.open()),
         ("cheatsheet", "toggle", |held| held.sheet.toggle()),
@@ -606,7 +606,7 @@ fn bind(surfaces: &Rc<RefCell<Vec<Surfaces>>>) {
         (
             "calendarToggle",
             "Toggles the calendar on press",
-            Box::new(|held: &Surfaces| held.calendar.toggle_centred()),
+            Box::new(|held: &Surfaces| held.calendar.toggle()),
         ),
         (
             "sessionToggle",

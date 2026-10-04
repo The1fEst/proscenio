@@ -76,7 +76,7 @@ general {
 |---|---|
 | `barToggle`, `barOpen`, `barClose` | Shows or hides the [bar](bar.md) on every monitor |
 | `sidebarRightToggle`, `sidebarRightOpen`, `sidebarRightClose` | The [sidebar](sidebar.md) |
-| `calendarToggle` | The [calendar](calendar.md), centered on the monitor |
+| `calendarToggle` | The [calendar](calendar.md), at the bar's clock |
 | `sessionToggle`, `sessionOpen`, `sessionClose` | The [session screen](session-screen.md) |
 | `mediaControlsToggle`, `mediaControlsOpen`, `mediaControlsClose` | The [media controls](media-controls.md) |
 | `cheatsheetToggle`, `cheatsheetOpen`, `cheatsheetClose` | The [cheatsheet](cheatsheet.md) |

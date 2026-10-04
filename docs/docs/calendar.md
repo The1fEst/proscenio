@@ -17,7 +17,8 @@ timer in `src/services/timer.rs` and the list in `src/services/todo.rs`.
   centered on the clock vertically.
 - The global shortcut `calendarToggle` (see [Shortcuts](shortcuts.md)) toggles it on the focused
   monitor, and so do the `calendar` functions `toggle`, `open` and `close` over
-  [IPC](ipc.md), for example `proscenio ipc call calendar toggle`.
+  [IPC](ipc.md), for example `proscenio ipc call calendar toggle`. It opens at the same place as
+  from the clock.
 - Escape closes it, and so does a click anywhere outside it.
 
 The page that was open last is remembered in `~/.local/state/proscenio/states.json` (under

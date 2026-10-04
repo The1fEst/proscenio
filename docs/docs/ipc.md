@@ -91,7 +91,7 @@ the first monitor when there is none.
 | `bar` | `toggle`, `open`, `close` | Shows or hides the [bar](bar.md) on every monitor |
 | `sidebarRight` | `toggle`, `open`, `close` | The [sidebar](sidebar.md) |
 | `session` | `toggle`, `open`, `close` | The [session screen](session-screen.md) |
-| `calendar` | `toggle`, `open`, `close` | The [calendar](calendar.md); `toggle` opens it centered on the monitor |
+| `calendar` | `toggle`, `open`, `close` | The [calendar](calendar.md), opened at the bar's clock |
 | `cheatsheet` | `toggle`, `open`, `close` | The [cheatsheet](cheatsheet.md) |
 | `mediaControls` | `toggle`, `open`, `close` | The [media controls](media-controls.md); opening them also hides the notification popups |
 | `search` | `toggle`, `open`, `close` | The [overview](overview.md) with its launcher |

@@ -49,6 +49,7 @@ pub struct Calendar {
     tasks: Rc<TodoPage>,
     timer: Rc<TimerPage>,
     vertical: bool,
+    clock: glib::WeakRef<gtk4::Widget>,
 }
 
 struct Pages {
@@ -160,21 +161,11 @@ impl Pages {
 }
 
 impl Calendar {
-    pub fn toggle(self: &Rc<Self>, anchor: &impl IsA<gtk4::Widget>) {
-        if self.window.is_visible() {
-            self.hide();
-            return;
-        }
-        if self.vertical {
-            self.window
-                .set_margin(Edge::Top, self.centre_beside(anchor));
-        } else {
-            self.window.set_margin(Edge::Left, self.centre_on(anchor));
-        }
-        self.show();
+    pub fn set_clock(&self, clock: &impl IsA<gtk4::Widget>) {
+        self.clock.set(Some(clock.as_ref()));
     }
 
-    pub fn toggle_centred(self: &Rc<Self>) {
+    pub fn toggle(self: &Rc<Self>) {
         if self.window.is_visible() {
             self.hide();
             return;
@@ -195,6 +186,14 @@ impl Calendar {
     }
 
     fn show(self: &Rc<Self>) {
+        if let Some(clock) = self.clock.upgrade() {
+            if self.vertical {
+                self.window
+                    .set_margin(Edge::Top, self.centre_beside(&clock));
+            } else {
+                self.window.set_margin(Edge::Left, self.centre_on(&clock));
+            }
+        }
         self.window.set_visible(true);
         let (Some(grab), Some(surface)) = (self.grab.as_ref(), self.window.surface()) else {
             return;
@@ -359,6 +358,7 @@ pub fn build(
         tasks,
         timer,
         vertical: config.vertical,
+        clock: glib::WeakRef::new(),
     });
 
     let keys = gtk4::EventControllerKey::new();

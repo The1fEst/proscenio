@@ -263,14 +263,15 @@ fn middle_section(
         &services.background,
         scope,
     );
+    calendar.set_clock(&time);
     let open_calendar = gtk4::GestureClick::new();
     open_calendar.set_button(gtk4::gdk::BUTTON_PRIMARY);
     open_calendar.connect_pressed({
         let calendar = Rc::downgrade(calendar);
         move |gesture, _, _, _| {
             gesture.set_state(gtk4::EventSequenceState::Claimed);
-            if let (Some(calendar), Some(time)) = (calendar.upgrade(), gesture.widget()) {
-                calendar.toggle(&time);
+            if let Some(calendar) = calendar.upgrade() {
+                calendar.toggle();
             }
         }
     });
