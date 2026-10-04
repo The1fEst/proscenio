@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "Bawaannya berasal dari hyprland/general.lua. Menghapus salah satunya mematikannya di mouse.lua",
   "Make sure your player has MPRIS support": "Pastikan pemutar Anda memiliki dukungan MPRIS",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "Ubah kapan saja dengan /dark, /light, /wallpaper di peluncur\nJika warna shell tidak berubah, buka sidebar lalu klik \"Muat Ulang Hyprland & %1\" di pojok kanan atasnya",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Mengunci dengan Hyprlock dan konfigurasinya sendiri, bukan dengan layar kunci shell"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Mengunci dengan Hyprlock dan konfigurasinya sendiri, bukan dengan layar kunci shell",
+  "Reply": "Balas"
 }

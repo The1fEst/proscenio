@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "Os padrões vêm de hyprland/general.lua. Remover um o desativa em mouse.lua",
   "Make sure your player has MPRIS support": "Verifique se seu player tem suporte MPRIS",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "Mude depois com /dark, /light, /wallpaper no launcher\nSe as cores não mudarem, abra a barra lateral e clique em \"Recarregar Hyprland & %1\" no canto superior direito dela",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Bloqueia com o Hyprlock e a configuração própria dele em vez da tela de bloqueio do shell"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Bloqueia com o Hyprlock e a configuração própria dele em vez da tela de bloqueio do shell",
+  "Reply": "Responder"
 }

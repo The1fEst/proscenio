@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "默认手势来自 hyprland/general.lua。移除某项会在 mouse.lua 中将其关闭",
   "Make sure your player has MPRIS support": "请确保你的播放器支持 MPRIS",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "稍后可在启动器中通过 /dark、/light、/wallpaper 随时更改\n如果 Shell 的配色没有变化，请打开侧边栏并点击其右上角的“重新加载 Hyprland 与 %1”",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "使用 Hyprlock 及其自身的配置锁屏，而不是 Shell 的锁屏界面"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "使用 Hyprlock 及其自身的配置锁屏，而不是 Shell 的锁屏界面",
+  "Reply": "回复"
 }

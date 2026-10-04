@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "Các mặc định lấy từ hyprland/general.lua. Bỏ một cử chỉ sẽ tắt nó trong mouse.lua",
   "Make sure your player has MPRIS support": "Hãy chắc trình phát của bạn hỗ trợ MPRIS",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "Có thể đổi bất cứ lúc nào bằng /dark, /light, /wallpaper trong trình khởi chạy\nNếu màu của shell không đổi, hãy mở thanh bên và nhấn «Tải lại Hyprland & %1» ở góc trên bên phải của nó",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Khóa bằng Hyprlock và cấu hình riêng của nó thay cho màn hình khóa của shell"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Khóa bằng Hyprlock và cấu hình riêng của nó thay cho màn hình khóa của shell",
+  "Reply": "Trả lời"
 }

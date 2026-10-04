@@ -53,6 +53,10 @@ const INTROSPECTION: &str = "
       <arg type='u' name='id'/>
       <arg type='s' name='action_key'/>
     </signal>
+    <signal name='NotificationReplied'>
+      <arg type='u' name='id'/>
+      <arg type='s' name='text'/>
+    </signal>
   </interface>
 </node>";
 
@@ -62,13 +66,23 @@ pub const CAPABILITIES: &[&str] = &[
     "body-hyperlinks",
     "body-markup",
     "icon-static",
+    "inline-reply",
     "persistence",
 ];
+
+const REPLY_ACTION: &str = "inline-reply";
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Reply {
+    pub label: String,
+    pub placeholder: String,
+}
 
 #[derive(Clone)]
 pub struct Notification {
     pub id: u32,
     pub actions: Vec<(String, String)>,
+    pub reply: Option<Reply>,
     pub app_icon: String,
     pub app_name: String,
     pub body: String,
@@ -127,6 +141,7 @@ impl Notification {
         Some(Notification {
             id: entry.get("notificationId").and_then(Value::as_u64)? as u32,
             actions: Vec::new(),
+            reply: None,
             app_icon: string("appIcon"),
             app_name: string("appName"),
             body: string("body"),
@@ -151,6 +166,7 @@ pub struct Notifications {
     connection: Option<gio::DBusConnection>,
     listeners: Rc<Listeners>,
     timers: Rc<RefCell<HashMap<u32, glib::SourceId>>>,
+    drafts: Rc<RefCell<HashMap<u32, String>>>,
 }
 
 impl Notifications {
@@ -166,6 +182,7 @@ impl Notifications {
             connection: session,
             listeners: Rc::default(),
             timers: Rc::new(RefCell::new(HashMap::new())),
+            drafts: Rc::new(RefCell::new(HashMap::new())),
         };
         notifications.serve();
         notifications
@@ -232,6 +249,9 @@ impl Notifications {
 
     pub fn release(&self, ids: &[u32]) {
         for id in ids {
+            if self.drafts.borrow().contains_key(id) {
+                continue;
+            }
             let interval = self
                 .list
                 .borrow()
@@ -274,6 +294,34 @@ impl Notifications {
                 NAME,
                 "ActionInvoked",
                 Some(&(id, key).to_variant()),
+            );
+        }
+        self.discard(id, 2);
+    }
+
+    pub fn draft(&self, id: u32) -> Option<String> {
+        self.drafts.borrow().get(&id).cloned()
+    }
+
+    pub fn set_draft(&self, id: u32, text: &str) {
+        self.stop_timer(id);
+        self.drafts.borrow_mut().insert(id, text.to_owned());
+    }
+
+    pub fn drop_draft(&self, id: u32) {
+        if self.drafts.borrow_mut().remove(&id).is_some() {
+            self.release(&[id]);
+        }
+    }
+
+    pub fn reply(&self, id: u32, text: &str) {
+        if let Some(connection) = &self.connection {
+            let _ = connection.emit_signal(
+                None,
+                PATH,
+                NAME,
+                "NotificationReplied",
+                Some(&(id, text).to_variant()),
             );
         }
         self.discard(id, 2);
@@ -349,6 +397,7 @@ impl Notifications {
 
     fn discard(&self, id: u32, reason: u32) {
         self.stop_timer(id);
+        self.drafts.borrow_mut().remove(&id);
         let removed = {
             let mut list = self.list.borrow_mut();
             let before = list.len();
@@ -417,9 +466,11 @@ impl Notifications {
         remember_app(&app_name);
         let quiet = app_in(QUIET_APPS, &app_name);
         let forgotten = app_in(FORGOTTEN_APPS, &app_name);
+        let reply = take_reply(&mut labels, &hints);
         let notification = Notification {
             id,
             actions: labels,
+            reply,
             app_icon: app_icon(text(2), &hints, &app_name),
             app_name,
             body: text(4),
@@ -627,6 +678,17 @@ fn image_path(id: u32) -> PathBuf {
         .join(format!("{id}.png"))
 }
 
+fn take_reply(actions: &mut Vec<(String, String)>, hints: &Variant) -> Option<Reply> {
+    let index = actions
+        .iter()
+        .position(|(identifier, _)| identifier == REPLY_ACTION)?;
+    let (_, label) = actions.remove(index);
+    Some(Reply {
+        label,
+        placeholder: hint_string(hints, "x-kde-reply-placeholder-text").unwrap_or_default(),
+    })
+}
+
 fn hint_string(hints: &Variant, key: &str) -> Option<String> {
     hint(hints, key)?.str().map(str::to_owned)
 }
@@ -689,6 +751,30 @@ mod tests {
         }
         let empty = HashMap::<String, Variant>::new().to_variant();
         assert_eq!(image(0, &empty), "");
+    }
+
+    #[test]
+    fn an_inline_reply_action_becomes_the_reply_field() {
+        let mut actions = vec![
+            ("default".to_owned(), "Open".to_owned()),
+            ("inline-reply".to_owned(), "Answer".to_owned()),
+        ];
+        let hints = HashMap::from([(
+            "x-kde-reply-placeholder-text".to_owned(),
+            "Message".to_variant(),
+        )])
+        .to_variant();
+        assert_eq!(
+            take_reply(&mut actions, &hints),
+            Some(Reply {
+                label: "Answer".to_owned(),
+                placeholder: "Message".to_owned(),
+            })
+        );
+        assert_eq!(actions, vec![("default".to_owned(), "Open".to_owned())]);
+
+        let empty = HashMap::<String, Variant>::new().to_variant();
+        assert_eq!(take_reply(&mut actions, &empty), None);
     }
 
     #[test]

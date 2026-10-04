@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "Жесты по умолчанию берутся из hyprland/general.lua. Удаление такого жеста выключает его в mouse.lua",
   "Make sure your player has MPRIS support": "Убедитесь, что плеер поддерживает MPRIS",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "Измените позже с /dark, /light, /wallpaper в лаунчере\nЕсли цвета оболочки не меняются, откройте боковую панель и нажмите «Рестарт Hyprland и %1» в её правом верхнем углу",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Блокирует через Hyprlock с его собственным конфигом вместо экрана блокировки оболочки"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Блокирует через Hyprlock с его собственным конфигом вместо экрана блокировки оболочки",
+  "Reply": "Ответить"
 }

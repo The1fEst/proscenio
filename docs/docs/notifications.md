@@ -19,10 +19,11 @@ Notifications interface, version 1.2, at `/org/freedesktop/Notifications`:
 |---|---|
 | `Notify` | adds a notification, or replaces the one whose ID is given as `replaces_id` |
 | `CloseNotification` | removes a notification, as its sender asks |
-| `GetCapabilities` | returns `actions`, `body`, `body-hyperlinks`, `body-markup`, `icon-static` and `persistence` |
+| `GetCapabilities` | returns `actions`, `body`, `body-hyperlinks`, `body-markup`, `icon-static`, `inline-reply` and `persistence` |
 | `GetServerInformation` | returns `proscenio`, `fEst`, `0.1` and `1.2` |
 | `NotificationClosed` | signals a removal, with reason 1 when it expired, 2 when the user dismissed it, 3 when `CloseNotification` closed it |
 | `ActionInvoked` | signals that the user clicked one of the notification's actions |
+| `NotificationReplied` | signals the text the user sent from the notification's reply field |
 
 The name is requested without taking it from its owner: while another notification daemon holds it,
 proscenio waits in the bus queue and takes over when that daemon exits.
@@ -32,9 +33,7 @@ proscenio waits in the bus queue and takes over when that daemon exits.
 Of the body markup, the cards show bold, italic, underline, strikethrough and links. A link keeps
 only its `href`, shows in the primary color and opens in the default handler for its address; a
 link without an `href` appears as its text, and so does an image a sender puts in the body anyway.
-There is no inline reply, so senders offer their
-own reply action instead. A notification's picture comes through the `image-data` or `image-path`
-hint, which the cards show.
+A notification's picture comes through the `image-data` or `image-path` hint, which the cards show.
 
 :::
 
@@ -47,7 +46,8 @@ hint, which the cards show.
 | app icon | `app_icon`; when that is empty, the icon of the desktop file named by the `desktop-entry` hint, else of a desktop file matching the app name by file name, `StartupWMClass` or `Name` |
 | summary and body | as sent, with surrounding whitespace trimmed |
 | image | pixels in the `image-data`, `image_data` or `icon_data` hint, saved as a PNG; otherwise the `image-path` or `image_path` hint, where a `file:` URI becomes a path and anything else is a path or an icon name |
-| actions | the identifier and label pairs from `actions` |
+| actions | the identifier and label pairs from `actions`, except `inline-reply` |
+| reply | the `inline-reply` action, if sent: its label names the reply button, and the `x-kde-reply-placeholder-text` hint is the field's placeholder |
 | urgency | the `urgency` hint: 0 low, 1 normal (the default), 2 critical |
 | transient | the `transient` hint |
 | timeout | `expire_timeout` |
@@ -177,9 +177,22 @@ since its summary is on the top line. The second line is faded when the group ha
 ### An expanded card
 
 An expanded card lists all its notifications, each with its body wrapped in full and a row of
-buttons: `close`, the sender's own actions, and `content_copy`, which copies the body text and turns
-into `inventory` for 1.5 s. With several notifications, each sits on its own background, tinted
-for a critical one.
+buttons: `close`, the sender's own actions, the reply button, and `content_copy`, which copies the
+body text and turns into `inventory` for 1.5 s. With several notifications, each sits on its own
+background, tinted for a critical one.
+
+### Replying
+
+A notification sent with an `inline-reply` action has a reply button, labeled with that action's
+label, or **Reply** when it is empty. The button opens a field under the buttons, with the
+`x-kde-reply-placeholder-text` hint, or **Reply**, as its placeholder, and a `send` button. Enter or
+`send` signals `NotificationReplied` with the text, unless it is blank, and removes the notification
+with reason 2; Escape closes the field and drops the text.
+
+While the field is open on a popup, the popup takes the keyboard for itself, and gives it back when
+the field closes or the popup goes. The notification's popup timer stops, and hovering no longer
+restarts it. The text typed so far is kept while the notification exists, so the field comes back
+with it when the card is rebuilt, as when the same app sends another notification.
 
 ### The icon
 
@@ -214,6 +227,8 @@ Edge) whose body starts with a link to the sending site loses that first paragra
 | Drag one notification of an expanded card sideways past 70 px | dismisses that notification |
 | `close` | dismisses that notification |
 | An action button | sends `ActionInvoked` to the sender, then removes the notification |
+| The reply button | opens the reply field |
+| A link in the body | opens it in the default handler |
 | `content_copy` | copies the body text |
 | Hover, on a popup | pauses the group's timers |
 

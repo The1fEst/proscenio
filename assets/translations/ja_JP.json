@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "既定のものは hyprland/general.lua から来ます。削除すると mouse.lua でオフになります",
   "Make sure your player has MPRIS support": "お使いのプレイヤーがMPRISをサポートしているか確認してください",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "後からランチャーの /dark、/light、/wallpaper でいつでも変更できます\nシェルの色が変わらない場合は、サイドバーを開いて右上の「Hyprland と %1 を再読み込み」をクリックしてください",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "シェルのロック画面ではなく、Hyprlock とその独自の設定でロックします"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "シェルのロック画面ではなく、Hyprlock とその独自の設定でロックします",
+  "Reply": "返信"
 }

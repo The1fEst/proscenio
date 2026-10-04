@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "ברירות המחדל מגיעות מ־hyprland/general.lua. הסרה של אחת מהן מכבה אותה ב־mouse.lua",
   "Make sure your player has MPRIS support": "וודא שהנגן שלך תומך ב-MPRIS",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "ניתן לשנות בכל עת עם /dark, /light, /wallpaper במפעיל\nאם צבעי ה-shell לא משתנים, פתח את הסרגל הצדדי ולחץ על \"טען מחדש Hyprland ו־%1\" בפינה הימנית העליונה שלו",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "נועל עם Hyprlock וההגדרות שלו במקום מסך הנעילה של ה-shell"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "נועל עם Hyprlock וההגדרות שלו במקום מסך הנעילה של ה-shell",
+  "Reply": "השב"
 }

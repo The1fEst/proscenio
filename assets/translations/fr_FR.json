@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "Les gestes par défaut viennent de hyprland/general.lua. En retirer un le désactive dans mouse.lua",
   "Make sure your player has MPRIS support": "Assurez-vous que votre lecteur prend en charge MPRIS",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "Modifiez à tout moment avec /dark, /light, /wallpaper dans le lanceur\nSi les couleurs du shell ne changent pas, ouvrez le panneau latéral et cliquez sur \"Recharger Hyprland et %1\" dans son coin supérieur droit",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Verrouille avec Hyprlock et sa propre configuration au lieu de l'écran de verrouillage du shell"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Verrouille avec Hyprlock et sa propre configuration au lieu de l'écran de verrouillage du shell",
+  "Reply": "Répondre"
 }

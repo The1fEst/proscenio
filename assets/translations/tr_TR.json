@@ -1525,5 +1525,6 @@
   "The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua": "Varsayılanlar hyprland/general.lua dosyasından gelir. Birini kaldırmak onu mouse.lua içinde kapatır",
   "Make sure your player has MPRIS support": "Oynatıcınızın MPRIS desteği olduğundan emin olun",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner": "İstediğiniz zaman /dark, /light, /wallpaper komutlarıyla değiştirebilirsiniz\nShell renkleri değişmiyorsa kenar çubuğunu açın ve sağ üst köşesindeki \"Yeniden yükle: Hyprland ve %1\" düğmesine tıklayın",
-  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Shell'in kilit ekranı yerine Hyprlock ve onun kendi yapılandırmasıyla kilitler"
+  "Locks with Hyprlock and its own config instead of the shell's lock screen": "Shell'in kilit ekranı yerine Hyprlock ve onun kendi yapılandırmasıyla kilitler",
+  "Reply": "Yanıtla"
 }

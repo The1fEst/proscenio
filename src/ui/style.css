@@ -176,6 +176,22 @@ tooltip label {
 .notif-item-summary { font-size: 15px; color: var(--colOnLayer2); }
 .notif-body { font-size: 15px; color: var(--colSubtext); }
 .notif-body > link { color: var(--colPrimary); }
+entry.notif-reply {
+    background-color: var(--colLayer4);
+    border: none;
+    border-radius: 12px;
+    box-shadow: none;
+    outline: none;
+    min-height: 34px;
+    padding: 0 12px;
+    color: var(--colOnLayer2);
+    caret-color: var(--colPrimary);
+}
+entry.notif-reply > text > placeholder { color: var(--colSubtext); }
+entry.notif-reply > text > selection {
+    background-color: var(--colSecondaryContainer);
+    color: var(--colOnSecondaryContainer);
+}
 .notif-action {
     background-color: var(--colLayer4);
     border: none;
