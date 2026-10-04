@@ -148,7 +148,9 @@ settings page it belongs to names it along with the package it comes in.
 | `cava` | cava | the media controls show no audio wave |
 | `cliphist` | cliphist | the launcher's clipboard prefix finds nothing |
 | `ddcutil` | ddcutil | external monitors' brightness cannot change |
+| `djpeg` | libjpeg-turbo | the shell cannot read colors from a JPEG wallpaper |
 | `easyeffects` | easyeffects | the EasyEffects toggle does nothing |
+| `efibootmgr` | efibootmgr | the session screen cannot restart into Windows |
 | `gnome-keyring-daemon` | gnome-keyring | unlocking leaves the keyring as it is |
 | `grim`, `magick`, `wl-copy`, `satty` | grim, imagemagick, wl-clipboard, satty | screenshots and the snip actions fail |
 | `hypridle` | hypridle | the session never blanks, locks or suspends on its own |
@@ -156,13 +158,15 @@ settings page it belongs to names it along with the package it comes in.
 | `hyprpicker` | hyprpicker | the color picker does nothing |
 | `hyprsunset` | hyprsunset | night light does nothing |
 | `kdialog` | kdialog | there is no file picker for wallpapers, pictures and certificates |
-| `matugen` | matugen | apps themed through matugen templates keep their colors |
+| `matugen` | matugen | nothing follows the wallpaper: the shell keeps its built-in palette, since its own colors come from a matugen template too (see [Colors](colors.md)) |
 | `mpvpaper`, `ffmpeg` | mpvpaper, ffmpeg | a video cannot be the wallpaper |
 | `nmcli` | networkmanager | connections are not listed or switched |
+| `pactl` | libpulse | `proscenio record --sound` finds no output to record |
 | `pw-dump` | pipewire | the microphone and screen always read as unused |
 | `qalc` | libqalculate | the launcher shows no math results |
 | `slurp`, `wf-recorder` | slurp, wf-recorder | screen recording fails |
 | `ufw` | ufw | the firewall cannot be set up |
+| `warp-cli` | cloudflare-warp-bin (AUR) | the Cloudflare WARP toggle stays unavailable |
 | `wg` | wireguard-tools | a WireGuard connection gets no key |
 | `wpctl` | wireplumber | the microphone button does nothing |
 | `ydotool` | ydotool | the on-screen keyboard types nothing |
@@ -173,5 +177,6 @@ The shell draws with GTK's Cairo renderer by default, so its surfaces hold no GP
 Vulkan are a setting away. A newly picked renderer is on trial: after the restart a dialog, drawn
 with Cairo so that it shows even if the new renderer fails, asks whether to keep it, and reverting,
 closing it or letting its 15 seconds run out goes back to the previous one. `GSK_RENDERER` set in
-the environment overrides the setting; the shell clears it once its windows exist, so the apps it
-starts do not inherit it.
+the environment overrides the setting and stays in the environment the shell's apps inherit; a
+renderer the shell picks from the setting is cleared once its windows exist, so the apps it starts
+do not inherit that one.

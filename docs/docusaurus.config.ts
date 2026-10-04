@@ -113,6 +113,16 @@ const config: Config = {
           items: [
             {label: 'Overview', to: '/docs'},
             {label: 'Building and installing', to: '/docs/installing'},
+            {label: 'The settings window', to: '/docs/settings'},
+            {label: 'Architecture', to: '/docs/architecture'},
+          ],
+        },
+        {
+          title: 'Scripting',
+          items: [
+            {label: 'Command line', to: '/docs/command-line'},
+            {label: 'IPC', to: '/docs/ipc'},
+            {label: 'Global shortcuts', to: '/docs/shortcuts'},
           ],
         },
         {
