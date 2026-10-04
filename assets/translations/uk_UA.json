@@ -1511,7 +1511,6 @@
   "The workspace grid, its size, order and looks": "Сітка робочих столів: розмір, порядок і вигляд",
   "How far a swipe goes, when it gives up and when it locks": "Довжина свайпу, коли він скасовується і коли фіксує напрямок",
   "Borders": "Рамки",
-  "The border keeps the color generated from the wallpaper": "Колір рамки й далі береться зі шпалер",
   "Keyboard options": "Параметри клавіатури",
   "Compose, alternate characters, Caps Lock, Ctrl, Alt and Super": "Compose, додаткові символи, Caps Lock, Ctrl, Alt і Super",
   "Color profile, HDR and luminance of this display": "Колірний профіль, HDR і яскравість цього дисплея",
@@ -1526,5 +1525,13 @@
   "Which input and output configuration each card uses": "Яку конфігурацію входів і виходів використовує кожна карта",
   "Playback": "Відтворення",
   "Recording": "Запис",
-  "Nothing is recording": "Нічого не записується"
+  "Nothing is recording": "Нічого не записується",
+  "Border colors are taken from the palette generated from the wallpaper": "Кольори рамок беруться з палітри, створеної за шпалерами",
+  "Focused window": "Активне вікно",
+  "Other windows": "Інші вікна",
+  "Outline": "Контур",
+  "Outline variant": "Варіант контуру",
+  "Primary": "Основний",
+  "Secondary": "Вторинний",
+  "Tertiary": "Третинний"
 }

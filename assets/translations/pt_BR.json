@@ -1511,7 +1511,6 @@
   "The workspace grid, its size, order and looks": "A grade de áreas de trabalho: tamanho, ordem e aparência",
   "How far a swipe goes, when it gives up and when it locks": "Até onde um deslize vai, quando é cancelado e quando trava a direção",
   "Borders": "Bordas",
-  "The border keeps the color generated from the wallpaper": "A borda mantém a cor gerada a partir do papel de parede",
   "Keyboard options": "Opções do teclado",
   "Compose, alternate characters, Caps Lock, Ctrl, Alt and Super": "Compose, caracteres alternativos, Caps Lock, Ctrl, Alt e Super",
   "Color profile, HDR and luminance of this display": "Perfil de cor, HDR e luminância desta tela",
@@ -1526,5 +1525,13 @@
   "Which input and output configuration each card uses": "Qual configuração de entrada e saída cada placa usa",
   "Playback": "Reprodução",
   "Recording": "Gravação",
-  "Nothing is recording": "Nada gravando"
+  "Nothing is recording": "Nada gravando",
+  "Border colors are taken from the palette generated from the wallpaper": "As cores das bordas vêm da paleta gerada a partir do papel de parede",
+  "Focused window": "Janela ativa",
+  "Other windows": "Outras janelas",
+  "Outline": "Contorno",
+  "Outline variant": "Variante de contorno",
+  "Primary": "Primária",
+  "Secondary": "Secundária",
+  "Tertiary": "Terciária"
 }

@@ -1511,7 +1511,6 @@
   "The workspace grid, its size, order and looks": "La grille des espaces de travail : taille, ordre et aspect",
   "How far a swipe goes, when it gives up and when it locks": "La distance d'un glissement, quand il s'annule et quand il verrouille la direction",
   "Borders": "Bordures",
-  "The border keeps the color generated from the wallpaper": "La bordure garde la couleur générée à partir du fond d'écran",
   "Keyboard options": "Options du clavier",
   "Compose, alternate characters, Caps Lock, Ctrl, Alt and Super": "Compose, caractères secondaires, Verr. Maj, Ctrl, Alt et Super",
   "Color profile, HDR and luminance of this display": "Profil colorimétrique, HDR et luminance de cet écran",
@@ -1526,5 +1525,13 @@
   "Which input and output configuration each card uses": "La configuration d'entrée et de sortie utilisée par chaque carte",
   "Playback": "Lecture",
   "Recording": "Enregistrement",
-  "Nothing is recording": "Rien n'est en enregistrement"
+  "Nothing is recording": "Rien n'est en enregistrement",
+  "Border colors are taken from the palette generated from the wallpaper": "Les couleurs des bordures viennent de la palette générée à partir du fond d'écran",
+  "Focused window": "Fenêtre active",
+  "Other windows": "Autres fenêtres",
+  "Outline": "Contour",
+  "Outline variant": "Variante de contour",
+  "Primary": "Primaire",
+  "Secondary": "Secondaire",
+  "Tertiary": "Tertiaire"
 }

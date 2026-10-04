@@ -1511,7 +1511,6 @@
   "The workspace grid, its size, order and looks": "Çalışma alanı ızgarası: boyutu, sırası ve görünümü",
   "How far a swipe goes, when it gives up and when it locks": "Bir kaydırmanın ne kadar gittiği, ne zaman vazgeçildiği ve yönün ne zaman kilitlendiği",
   "Borders": "Kenarlıklar",
-  "The border keeps the color generated from the wallpaper": "Kenarlık, duvar kâğıdından üretilen rengi korur",
   "Keyboard options": "Klavye seçenekleri",
   "Compose, alternate characters, Caps Lock, Ctrl, Alt and Super": "Compose, alternatif karakterler, Caps Lock, Ctrl, Alt ve Super",
   "Color profile, HDR and luminance of this display": "Bu ekranın renk profili, HDR'si ve parlaklığı",
@@ -1526,5 +1525,13 @@
   "Which input and output configuration each card uses": "Her kartın kullandığı giriş ve çıkış yapılandırması",
   "Playback": "Çalma",
   "Recording": "Kayıt",
-  "Nothing is recording": "Kaydeden bir şey yok"
+  "Nothing is recording": "Kaydeden bir şey yok",
+  "Border colors are taken from the palette generated from the wallpaper": "Kenarlık renkleri, duvar kâğıdından üretilen paletten alınır",
+  "Focused window": "Odaklı pencere",
+  "Other windows": "Diğer pencereler",
+  "Outline": "Dış çizgi",
+  "Outline variant": "Dış çizgi varyantı",
+  "Primary": "Birincil",
+  "Secondary": "İkincil",
+  "Tertiary": "Üçüncül"
 }

@@ -1511,7 +1511,6 @@
   "The workspace grid, its size, order and looks": "Lưới vùng làm việc: kích thước, thứ tự và giao diện",
   "How far a swipe goes, when it gives up and when it locks": "Một lần vuốt đi bao xa, khi nào bị hủy và khi nào khóa hướng",
   "Borders": "Viền",
-  "The border keeps the color generated from the wallpaper": "Viền vẫn giữ màu được tạo từ hình nền",
   "Keyboard options": "Tùy chọn bàn phím",
   "Compose, alternate characters, Caps Lock, Ctrl, Alt and Super": "Compose, ký tự thay thế, Caps Lock, Ctrl, Alt và Super",
   "Color profile, HDR and luminance of this display": "Hồ sơ màu, HDR và độ sáng của màn hình này",
@@ -1526,5 +1525,13 @@
   "Which input and output configuration each card uses": "Cấu hình đầu vào và đầu ra mà mỗi card dùng",
   "Playback": "Phát",
   "Recording": "Ghi âm",
-  "Nothing is recording": "Không có gì đang ghi âm"
+  "Nothing is recording": "Không có gì đang ghi âm",
+  "Border colors are taken from the palette generated from the wallpaper": "Màu viền được lấy từ bảng màu tạo từ hình nền",
+  "Focused window": "Cửa sổ đang chọn",
+  "Other windows": "Cửa sổ khác",
+  "Outline": "Đường viền ngoài",
+  "Outline variant": "Biến thể đường viền ngoài",
+  "Primary": "Chính",
+  "Secondary": "Phụ",
+  "Tertiary": "Thứ ba"
 }
