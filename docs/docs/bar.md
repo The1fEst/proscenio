@@ -150,9 +150,15 @@ Holding Super for a moment reveals an auto-hidden bar and shows workspace number
 twice in Hyprland's config, once on press and once on release:
 
 ```lua
-hl.bind("SUPER_L", hl.dsp.global("proscenio:workspaceNumber"), { ignore_mods = true, transparent = true })
-hl.bind("SUPER_L", hl.dsp.global("proscenio:workspaceNumber"),
-    { ignore_mods = true, transparent = true, release = true })
+hl.bind("SUPER_L", hl.dsp.global("proscenio:workspaceNumber"), {
+    ignore_mods = true,
+    transparent = true,
+})
+hl.bind("SUPER_L", hl.dsp.global("proscenio:workspaceNumber"), {
+    ignore_mods = true,
+    transparent = true,
+    release = true,
+})
 ```
 
 Bind `SUPER_R` the same way to use either Super key.

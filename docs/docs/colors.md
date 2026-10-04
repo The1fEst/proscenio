@@ -10,7 +10,8 @@ One command changes the wallpaper, the accent color or light and dark mode, and 
 that follows the wallpaper:
 
 ```bash
-proscenio switchwall [--mode dark|light] [--type SCHEME] [--color [HEX|clear]] [--image PATH] [--noswitch] [PATH]
+proscenio switchwall [--mode dark|light] [--type SCHEME] [--color [HEX|clear]] \
+    [--image PATH] [--noswitch] [PATH]
 ```
 
 Every control in the shell that touches these runs it, among them the
@@ -94,7 +95,8 @@ in, run the script when Hyprland starts:
 
 ```lua
 hl.on("hyprland.start", function()
-    hl.exec_cmd(os.getenv("HOME") .. "/.config/hypr/custom/scripts/__restore_video_wallpaper.sh")
+    local home = os.getenv("HOME")
+    hl.exec_cmd(home .. "/.config/hypr/custom/scripts/__restore_video_wallpaper.sh")
 end)
 ```
 

@@ -26,11 +26,16 @@ In Hyprland's Lua config, the `global` dispatcher fires a shortcut by its full n
 `proscenio:<name>`:
 
 ```lua
-hl.bind("SUPER + Slash", hl.dsp.global("proscenio:cheatsheetToggle"),
-    { description = "Shell: Toggle cheatsheet" })
-hl.bind("SUPER + A", hl.dsp.global("proscenio:searchToggle"), { description = "Shell: Toggle search" })
+hl.bind("SUPER + Slash", hl.dsp.global("proscenio:cheatsheetToggle"), {
+    description = "Shell: Toggle cheatsheet",
+})
+hl.bind("SUPER + A", hl.dsp.global("proscenio:searchToggle"), {
+    description = "Shell: Toggle search",
+})
 hl.bind("SUPER + N", hl.dsp.global("proscenio:sidebarRightToggle"))
-hl.bind("Print", hl.dsp.global("proscenio:regionScreenshot"), { description = "Utilities: Screen snip" })
+hl.bind("Print", hl.dsp.global("proscenio:regionScreenshot"), {
+    description = "Utilities: Screen snip",
+})
 ```
 
 A bind's `description` is what the [cheatsheet](cheatsheet.md) shows for it; the text before the
@@ -47,9 +52,15 @@ the key comes up. Only `workspaceNumber` uses the release, so it takes two binds
 
 ```lua
 for _, key in ipairs({ "SUPER_L", "SUPER_R" }) do
-    hl.bind(key, hl.dsp.global("proscenio:workspaceNumber"), { ignore_mods = true, transparent = true })
-    hl.bind(key, hl.dsp.global("proscenio:workspaceNumber"),
-        { ignore_mods = true, transparent = true, release = true })
+    hl.bind(key, hl.dsp.global("proscenio:workspaceNumber"), {
+        ignore_mods = true,
+        transparent = true,
+    })
+    hl.bind(key, hl.dsp.global("proscenio:workspaceNumber"), {
+        ignore_mods = true,
+        transparent = true,
+        release = true,
+    })
 end
 ```
 
@@ -134,7 +145,9 @@ Most shortcuts have a twin among the [IPC](ipc.md) functions. `workspaceNumber`,
 media players and brightness only through IPC, so a key reaches them with `hl.dsp.exec_cmd`:
 
 ```lua
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("proscenio ipc call mpris playPause"), { locked = true })
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("proscenio ipc call mpris playPause"), {
+    locked = true,
+})
 ```
 
 Buttons inside the shell that stand for a shortcut run the same action without going through

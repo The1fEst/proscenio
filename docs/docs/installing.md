@@ -96,7 +96,8 @@ folder, and loads it last, so that a change made in the settings window wins ove
 config:
 
 ```lua
-local settings = io.popen('ls -1 "' .. os.getenv("HOME") .. '/.config/hypr/settings" 2>/dev/null')
+local folder = os.getenv("HOME") .. "/.config/hypr/settings"
+local settings = io.popen('ls -1 "' .. folder .. '" 2>/dev/null')
 if settings then
     for name in settings:lines() do
         local area = name:match("^(.+)%.lua$")

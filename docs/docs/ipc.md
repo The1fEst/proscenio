@@ -153,10 +153,16 @@ An unknown ID opens the settings where they were.
 A bind runs a call like any other command:
 
 ```lua
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("proscenio ipc call brightness increment"),
-    { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("proscenio ipc call brightness decrement"),
-    { locked = true, repeating = true })
+hl.bind(
+    "XF86MonBrightnessUp",
+    hl.dsp.exec_cmd("proscenio ipc call brightness increment"),
+    { locked = true, repeating = true }
+)
+hl.bind(
+    "XF86MonBrightnessDown",
+    hl.dsp.exec_cmd("proscenio ipc call brightness decrement"),
+    { locked = true, repeating = true }
+)
 ```
 
 Most panels also answer a global shortcut, which needs no process per key press; see

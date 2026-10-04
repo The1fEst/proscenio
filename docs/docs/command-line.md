@@ -54,7 +54,8 @@ runs. [IPC](ipc.md) lists every target.
 ## switchwall
 
 ```bash
-proscenio switchwall [--mode dark|light] [--type SCHEME] [--color [HEX|clear]] [--image PATH] [--noswitch] [PATH]
+proscenio switchwall [--mode dark|light] [--type SCHEME] [--color [HEX|clear]] \
+    [--image PATH] [--noswitch] [PATH]
 ```
 
 Sets the wallpaper, the accent color or the mode, then runs `matugen` and writes the palette, the
