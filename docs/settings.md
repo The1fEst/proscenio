@@ -1055,8 +1055,10 @@ far, dead while the lock is off), making a new workspace and swiping on.
   with a tooltip); blur with its radius and passes, dead while blur is off,
   and X-ray (with a tooltip); the focused and other windows' opacity in
   percent and "Keep fullscreen windows opaque" (with a tooltip); "Borders"
-  (with a tooltip): the border width in px (`general:border_size`, 0–20) and
-  the focused and other windows' border opacity in percent, in steps of 5;
+  (with a tooltip): the border width in px (`general:border_size`, 0–20), then
+  a row each for the focused and the other windows with the border color
+  (Default, Outline, Outline variant, Primary, Secondary or Tertiary) and its
+  opacity in percent, in steps of 5;
   "Shadows":
   drop shadows (`decoration:shadow:enabled`) with their size in px, falloff
   (`render_power`, 1–4) and a sharp edge, dead while shadows are off;
@@ -1073,12 +1075,16 @@ far, dead while the lock is off), making a new workspace and swiping on.
   (`hyprrows::lines_switch`, the same mechanism as Smart gaps).
 - The border colors come from the dots' matugen template
   `hyprland/colors.lua`, which sets them as the Lua table `border_colors`
-  (`active`, `inactive`, hex without alpha) and uses them with alphas 77 and
-  33. Each opacity owns one line in `appearance.lua`,
-  `if border_colors then hl.config({ general = { col = { active_border = "rgba(" .. border_colors.active .. "CC)" } } }) end`,
-  so the border keeps following the wallpaper with the alpha chosen here, and
-  a `colors.lua` without the table leaves the line inert. Without a line the
-  template's alpha shows. A change rewrites the line and reloads Hyprland.
+  (hex without alpha): `active` and `inactive`, the defaults it uses itself
+  with alphas 77 and 33, and the palette roles `outline`, `outline_variant`,
+  `primary`, `secondary` and `tertiary`. Default picks `active` or
+  `inactive`. Each border owns one line in `appearance.lua`,
+  `if border_colors and border_colors.secondary then hl.config({ general = { col = { active_border = "rgba(" .. border_colors.secondary .. "CC)" } } }) end`,
+  so the border keeps following the wallpaper with the role and alpha chosen
+  here, and a `colors.lua` without that key leaves the line inert. Without a
+  line the template's color and alpha show. A change to either control
+  rewrites the line and reloads Hyprland; a line with only the
+  `if border_colors then` guard is read and replaced the same way.
 
 ## 27. Background (subpage)
 

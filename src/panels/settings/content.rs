@@ -38,6 +38,7 @@ const ROW_MARGIN: i32 = 8;
 const ROW_SPACING: i32 = 10;
 const ROW_GAP: i32 = 4;
 const LINK_HEIGHT: i32 = 56;
+const COMBO_ROW_WIDTH: i32 = 220;
 const LINK_PADDING: i32 = 12;
 const LINK_SPACING: i32 = 12;
 const NOTICE_SPACING: i32 = 8;
@@ -174,6 +175,25 @@ pub fn slider_row(
     row.append(&slider.area);
     parent.add(&row);
     (slider, symbol)
+}
+
+fn labeled_row(icon: &str, label: &str) -> gtk4::Box {
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, ROW_SPACING);
+    row.set_margin_start(ROW_MARGIN);
+    row.set_margin_end(ROW_MARGIN);
+    if !icon.is_empty() {
+        let symbol = text::symbol(icon, pixel_size::LARGER as f64);
+        text::set_color(&symbol, "colOnSecondaryContainer");
+        row.append(&Centred::integral(&symbol));
+    }
+    let name = text::styled(label);
+    text::set_color(&name, "colOnSecondaryContainer");
+    name.set_xalign(0.0);
+    name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+    let name_box = Centred::filling_width(&name);
+    name_box.set_hexpand(true);
+    row.append(&name_box);
+    row
 }
 
 pub fn new_slider(theme: &SharedTheme, range: (f64, f64)) -> Rc<Slider> {
@@ -644,24 +664,23 @@ impl Page {
         label: &str,
         spin: &Rc<SpinBox>,
     ) -> gtk4::Box {
-        let row = gtk4::Box::new(gtk4::Orientation::Horizontal, ROW_SPACING);
-        row.set_margin_start(ROW_MARGIN);
-        row.set_margin_end(ROW_MARGIN);
-        if !icon.is_empty() {
-            let symbol = text::symbol(icon, pixel_size::LARGER as f64);
-            text::set_color(&symbol, "colOnSecondaryContainer");
-            row.append(&Centred::integral(&symbol));
-        }
-        let name = text::styled(label);
-        text::set_color(&name, "colOnSecondaryContainer");
-        name.set_xalign(0.0);
-        name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
-        let name_box = Centred::filling_width(&name);
-        name_box.set_hexpand(true);
-        row.append(&name_box);
+        let row = labeled_row(icon, label);
         row.append(&spin.root);
         parent.add(&row);
         row
+    }
+
+    pub fn combo_row(&self, parent: &impl Parent, icon: &str, label: &str) -> Rc<ComboBox> {
+        let combo = ComboBox::new(&self.theme);
+        combo
+            .button
+            .set_size_request(COMBO_ROW_WIDTH, combo.button.size_request().1);
+        combo.button.set_hexpand(false);
+        let row = labeled_row(icon, label);
+        row.append(&combo.button);
+        parent.add(&row);
+        self.keep(combo.clone());
+        combo
     }
 
     #[allow(clippy::too_many_arguments)]

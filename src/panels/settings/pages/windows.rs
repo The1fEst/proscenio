@@ -26,6 +26,14 @@ pub const OPTIONS: [&str; 16] = [
     "decoration:dim_special",
 ];
 
+const BORDER_COLORS: [(&str, &str); 5] = [
+    ("Outline", "outline"),
+    ("Outline variant", "outline_variant"),
+    ("Primary", "primary"),
+    ("Secondary", "secondary"),
+    ("Tertiary", "tertiary"),
+];
+
 fn spin(
     icon: &'static str,
     label: &'static str,
@@ -159,7 +167,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let borders = page.subsection(
         &windows,
         &tr("Borders"),
-        &tr("The border keeps the color generated from the wallpaper"),
+        &tr("Border colors are taken from the palette generated from the wallpaper"),
     );
     hyprrows::spin(
         &page,
@@ -174,6 +182,37 @@ pub fn build(context: &Context) -> Rc<Page> {
             0,
         ),
     );
+    for (label, border) in [
+        ("Focused window", &hyprconfig::ACTIVE_BORDER),
+        ("Other windows", &hyprconfig::INACTIVE_BORDER),
+    ] {
+        let combo = page.combo_row(&borders, "palette", &tr(label));
+        let keys: Vec<&str> = std::iter::once(border.color)
+            .chain(BORDER_COLORS.iter().map(|(_, key)| *key))
+            .collect();
+        let names: Vec<String> = std::iter::once("Default")
+            .chain(BORDER_COLORS.iter().map(|(name, _)| *name))
+            .map(tr)
+            .collect();
+        let current = hyprconfig::border_color(border).key;
+        let index = keys.iter().position(|key| *key == current).unwrap_or(0);
+        combo.set_items(&names, index as i32);
+        combo.connect_activated({
+            let combo = Rc::downgrade(&combo);
+            move |index| {
+                let mut color = hyprconfig::border_color(border);
+                if color.key == keys[index] {
+                    return;
+                }
+                color.key = keys[index].to_owned();
+                let _ = hyprconfig::set_border_color(border, &color);
+                hypr::request("reload");
+                if let Some(combo) = combo.upgrade() {
+                    combo.set_items(&names, index as i32);
+                }
+            }
+        });
+    }
     let border_row = page.row(&borders);
     for (label, border) in [
         ("Focused window (%)", &hyprconfig::ACTIVE_BORDER),
@@ -181,14 +220,16 @@ pub fn build(context: &Context) -> Rc<Page> {
     ] {
         let spin = SpinBox::new(&page.theme, 0, 100, 5, 0);
         spin.set_value(
-            (f64::from(hyprconfig::border_alpha(border)) * 100.0 / 255.0).round() as i64,
+            (f64::from(hyprconfig::border_color(border).alpha) * 100.0 / 255.0).round() as i64,
         );
         spin.connect_changed(move |percent| {
+            let mut color = hyprconfig::border_color(border);
             let alpha = (percent as f64 * 255.0 / 100.0).round() as u8;
-            if hyprconfig::border_alpha(border) == alpha {
+            if color.alpha == alpha {
                 return;
             }
-            let _ = hyprconfig::set_border_alpha(border, alpha);
+            color.alpha = alpha;
+            let _ = hyprconfig::set_border_color(border, &color);
             hypr::request("reload");
         });
         page.spin_row(&border_row, "opacity", &tr(label), &spin);

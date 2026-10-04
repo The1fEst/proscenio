@@ -188,30 +188,52 @@ pub const INACTIVE_BORDER: Border = Border {
     default: 0x33,
 };
 
-fn border_prefix(border: &Border) -> String {
-    format!(
-        "if border_colors then hl.config({{ general = {{ col = {{ {} = \"rgba(\" .. border_colors.{} .. \"",
-        border.field, border.color
-    )
+#[derive(Debug, PartialEq)]
+pub struct BorderColor {
+    pub key: String,
+    pub alpha: u8,
 }
 
-fn border_alpha_in(text: &str, border: &Border) -> u8 {
-    let prefix = border_prefix(border);
+const BORDER_GUARD: &str = "if border_colors";
+
+fn border_marker(border: &Border) -> String {
+    format!("col = {{ {} = \"rgba(\" .. border_colors.", border.field)
+}
+
+fn is_border_line(line: &str, marker: &str) -> bool {
+    line.starts_with(BORDER_GUARD) && line.contains(marker)
+}
+
+fn border_color_in(text: &str, border: &Border) -> BorderColor {
+    let marker = border_marker(border);
     text.lines()
-        .find_map(|line| line.strip_prefix(&prefix))
-        .and_then(|rest| rest.get(..2))
-        .and_then(|hex| u8::from_str_radix(hex, 16).ok())
-        .unwrap_or(border.default)
+        .filter(|line| is_border_line(line, &marker))
+        .find_map(|line| {
+            let (key, rest) = line.split_once(&marker)?.1.split_once(" .. \"")?;
+            let alpha = u8::from_str_radix(rest.get(..2)?, 16).ok()?;
+            Some(BorderColor {
+                key: key.to_owned(),
+                alpha,
+            })
+        })
+        .unwrap_or_else(|| BorderColor {
+            key: border.color.to_owned(),
+            alpha: border.default,
+        })
 }
 
-fn with_border_alpha(text: &str, border: &Border, alpha: u8) -> String {
-    let prefix = border_prefix(border);
-    let line = format!("{prefix}{alpha:02X})\" }} }} }}) end");
+fn with_border_color(text: &str, border: &Border, color: &BorderColor) -> String {
+    let marker = border_marker(border);
+    let key = &color.key;
+    let line = format!(
+        "{BORDER_GUARD} and border_colors.{key} then hl.config({{ general = {{ {marker}{key} .. \"{:02X})\" }} }} }}) end",
+        color.alpha
+    );
     let mut found = false;
     let mut lines: Vec<String> = text
         .lines()
         .map(|existing| {
-            if existing.starts_with(&prefix) {
+            if is_border_line(existing, &marker) {
                 found = true;
                 line.clone()
             } else {
@@ -227,14 +249,14 @@ fn with_border_alpha(text: &str, border: &Border, alpha: u8) -> String {
     joined
 }
 
-pub fn border_alpha(border: &Border) -> u8 {
-    border_alpha_in(&read(Area::Appearance), border)
+pub fn border_color(border: &Border) -> BorderColor {
+    border_color_in(&read(Area::Appearance), border)
 }
 
-pub fn set_border_alpha(border: &Border, alpha: u8) -> std::io::Result<()> {
+pub fn set_border_color(border: &Border, color: &BorderColor) -> std::io::Result<()> {
     write(
         Area::Appearance,
-        &with_border_alpha(&read(Area::Appearance), border, alpha),
+        &with_border_color(&read(Area::Appearance), border, color),
     )
 }
 
@@ -433,19 +455,53 @@ mod tests {
     }
 
     #[test]
-    fn a_border_alpha_is_one_guarded_line_over_the_generated_color() {
+    fn a_border_color_is_one_guarded_line_over_a_generated_palette_color() {
+        let color = |key: &str, alpha: u8| BorderColor {
+            key: key.to_owned(),
+            alpha,
+        };
         let text = "hl.config({ general = { gaps_in = 4 } })\n";
-        assert_eq!(border_alpha_in(text, &ACTIVE_BORDER), 0x77);
-        let set = with_border_alpha(text, &ACTIVE_BORDER, 0xCC);
+        assert_eq!(border_color_in(text, &ACTIVE_BORDER), color("active", 0x77));
+        let set = with_border_color(text, &ACTIVE_BORDER, &color("active", 0xCC));
         assert_eq!(
             set,
-            "hl.config({ general = { gaps_in = 4 } })\nif border_colors then hl.config({ general = { col = { active_border = \"rgba(\" .. border_colors.active .. \"CC)\" } } }) end\n"
+            "hl.config({ general = { gaps_in = 4 } })\nif border_colors and border_colors.active then hl.config({ general = { col = { active_border = \"rgba(\" .. border_colors.active .. \"CC)\" } } }) end\n"
         );
-        assert_eq!(border_alpha_in(&set, &ACTIVE_BORDER), 0xCC);
-        assert_eq!(border_alpha_in(&set, &INACTIVE_BORDER), 0x33);
-        let again = with_border_alpha(&set, &ACTIVE_BORDER, 0xFF);
+        assert_eq!(border_color_in(&set, &ACTIVE_BORDER), color("active", 0xCC));
+        assert_eq!(
+            border_color_in(&set, &INACTIVE_BORDER),
+            color("inactive", 0x33)
+        );
+        let again = with_border_color(&set, &ACTIVE_BORDER, &color("secondary", 0xFF));
         assert_eq!(again.lines().count(), 2);
-        assert_eq!(border_alpha_in(&again, &ACTIVE_BORDER), 0xFF);
+        assert_eq!(
+            border_color_in(&again, &ACTIVE_BORDER),
+            color("secondary", 0xFF)
+        );
+    }
+
+    #[test]
+    fn a_border_line_without_the_palette_key_guard_is_read_and_replaced() {
+        let text = "if border_colors then hl.config({ general = { col = { inactive_border = \"rgba(\" .. border_colors.inactive .. \"80)\" } } }) end\n";
+        assert_eq!(
+            border_color_in(text, &INACTIVE_BORDER),
+            BorderColor {
+                key: "inactive".to_owned(),
+                alpha: 0x80,
+            }
+        );
+        let set = with_border_color(
+            text,
+            &INACTIVE_BORDER,
+            &BorderColor {
+                key: "primary".to_owned(),
+                alpha: 0x80,
+            },
+        );
+        assert_eq!(
+            set,
+            "if border_colors and border_colors.primary then hl.config({ general = { col = { inactive_border = \"rgba(\" .. border_colors.primary .. \"80)\" } } }) end\n"
+        );
     }
 
     #[test]
