@@ -436,9 +436,9 @@ entry.search-input > text > selection {
 .cheatsheet-comment { font-size: 12px; color: var(--colOnLayer1); }
 .cheatsheet-plus { font-size: 15px; color: var(--colOnLayer1); }
 .cheatsheet-key {
-    background-color: var(--colOnLayer0);
+    border: solid var(--colOnLayer0);
+    border-width: 1px 1px 3px 1px;
     border-radius: 5px;
-    padding: 1px 1px 3px 1px;
 }
 .cheatsheet-key-face {
     background-color: var(--colLayer1);
