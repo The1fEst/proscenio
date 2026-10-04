@@ -14,6 +14,7 @@ pub const CAVA: &str = text_asset!("cava.conf");
 pub const KITTY_THEME: &str = text_asset!("terminal/kitty-theme.conf");
 pub const TERMINAL_SEQUENCES: &str = text_asset!("terminal/sequences.txt");
 pub const TERMINAL_SCHEME: &str = text_asset!("terminal/scheme-base.json");
+pub const LOGO: &str = text_asset!("icons/proscenio.svg");
 
 const ICONS: [(&str, &[u8]); 13] = [
     ("arch-symbolic", asset!("icons/arch-symbolic.svg")),

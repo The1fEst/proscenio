@@ -225,8 +225,7 @@ on `PATH`. The runtime folder is emptied at logout, so restarting the shell star
 | Device | the host name and kernel from `/proc/sys/kernel`, the first `model name` in `/proc/cpuinfo`, the graphics controllers `lspci -mm` lists, `MemTotal` from `/proc/meminfo` in GiB, and the session, `XDG_CURRENT_DESKTOP` with Wayland or X11. A row with no value is hidden |
 | Storage | one card per `/dev/` device `df` lists, squashfs left out: the mount point, the share used, a bar, the free and total space, and the device and filesystem. Hidden without disks |
 | Distro | the name, logo and home page from `/etc/os-release`, with buttons for its documentation, support, bug report and privacy policy pages |
-| Dotfiles | the dotfiles project's banner, with buttons for its documentation, issues, discussions and donations |
-| Shell | proscenio's banner and repository link; the version, `r<commits>.<short hash>` of the build's git checkout, or the crate version outside one; the GTK version it runs on; the settings window's renderer, Cairo, OpenGL or Vulkan; and buttons for the documentation and the issues |
+| Shell | proscenio's logo, in the palette's primary fixed colors, with the repository link; the version, `r<commits>.<short hash>` of the build's git checkout, or the crate version outside one; the GTK version it runs on; the settings window's renderer, Cairo, OpenGL or Vulkan; and buttons for the documentation and the issues |
 
 Links open in the default handler.
 

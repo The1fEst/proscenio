@@ -1,15 +1,15 @@
 use gtk4::glib;
-use gtk4::graphene;
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::assets;
 use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::{BASE_WIDTH, Context, Page};
 use crate::services::sysinfo::{self, Disk};
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::centred::Centred;
+use crate::ui::widgets::customicon;
 use crate::ui::widgets::flow::Flow;
-use crate::ui::widgets::paint::Paint;
 use crate::ui::widgets::progress::{Colours, ProgressBar};
 use crate::ui::widgets::text;
 
@@ -26,13 +26,15 @@ const BANNER_MARGIN: i32 = 10;
 const BANNER_ICON: i32 = 80;
 const BANNER_LINES: i32 = 5;
 const LINKS_SPACING: i32 = 5;
-const DOTFILES: &str = "https://github.com/The1fEst/dots-hyprland";
-const UPSTREAM: &str = "https://github.com/end-4/dots-hyprland";
 const REPOSITORY: &str = "https://github.com/The1fEst/proscenio";
+const DOCUMENTATION: &str = "https://the1fest.github.io/proscenio/";
 const VERSION: &str = env!("PROSCENIO_VERSION");
-const STAGE_SIZE: f64 = 80.0;
-const STAGE_FRAME: f64 = 3.5;
-const STAGE_TIE: f64 = 3.0;
+const LOGO_COLORS: [&str; 4] = [
+    "m3onPrimaryFixedVariant",
+    "m3primaryFixedDim",
+    "m3onPrimaryFixed",
+    "m3primaryFixed",
+];
 
 struct Link {
     icon: &'static str,
@@ -94,7 +96,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     distro.append(&banner(
         &logo(&release.logo),
         &release.name,
-        &[Line::Link(&release.home_url, pixel_size::NORMAL)],
+        &release.home_url,
     ));
     distro.append(&links(
         &page,
@@ -126,51 +128,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         ],
     ));
 
-    let dotfiles = page.section("folder_managed", &tr("Dotfiles"));
-    dotfiles.append(&banner(
-        &logo("illogical-impulse"),
-        &tr("illogical-impulse"),
-        &[
-            Line::Link(DOTFILES, pixel_size::NORMAL),
-            Line::Credit("Forked from %1", UPSTREAM),
-        ],
-    ));
-    dotfiles.append(&links(
-        &page,
-        vec![
-            Link {
-                icon: "auto_stories",
-                filled: true,
-                label: "Documentation",
-                url: "https://end-4.github.io/dots-hyprland-wiki/en/ii-qs/02usage/".to_owned(),
-            },
-            Link {
-                icon: "adjust",
-                filled: false,
-                label: "Issues",
-                url: format!("{DOTFILES}/issues"),
-            },
-            Link {
-                icon: "forum",
-                filled: true,
-                label: "Discussions",
-                url: format!("{UPSTREAM}/discussions"),
-            },
-            Link {
-                icon: "favorite",
-                filled: true,
-                label: "Donate",
-                url: "https://github.com/sponsors/end-4".to_owned(),
-            },
-        ],
-    ));
-
     let shell = page.section("curtains", &tr("Shell"));
-    shell.append(&banner(
-        &stage(),
-        "proscenio",
-        &[Line::Link(REPOSITORY, pixel_size::NORMAL)],
-    ));
+    shell.append(&banner(&shell_logo(), "proscenio", REPOSITORY));
     fact(&shell, &tr("Version"), VERSION);
     fact(
         &shell,
@@ -199,7 +158,7 @@ pub fn build(context: &Context) -> Rc<Page> {
                 icon: "auto_stories",
                 filled: true,
                 label: "Documentation",
-                url: format!("{REPOSITORY}/tree/main/docs"),
+                url: DOCUMENTATION.to_owned(),
             },
             Link {
                 icon: "adjust",
@@ -212,52 +171,23 @@ pub fn build(context: &Context) -> Rc<Page> {
     page
 }
 
-fn stage() -> gtk4::Widget {
-    let paint = Paint::new(|_, _, _| {});
-    text::set_color(&paint, "colPrimary");
-    let weak = paint.downgrade();
-    paint.set_draw(move |snapshot, width, height| {
-        let Some(paint) = weak.upgrade() else {
-            return;
-        };
-        let bounds = graphene::Rect::new(0.0, 0.0, width, height);
-        let cr = snapshot.append_cairo(&bounds);
-        let scale = f64::from(width.min(height)) / STAGE_SIZE;
-        cr.scale(scale, scale);
-        cr.set_line_cap(gtk4::cairo::LineCap::Round);
-        cr.set_source_color(&paint.color());
-        let matrix = cr.matrix();
-        for mirrored in [false, true] {
-            if mirrored {
-                cr.translate(STAGE_SIZE, 0.0);
-                cr.scale(-1.0, 1.0);
-            }
-            cr.move_to(13.0, 11.0);
-            cr.line_to(38.0, 11.0);
-            cr.curve_to(38.0, 29.0, 32.0, 37.0, 22.0, 42.0);
-            cr.curve_to(23.0, 53.0, 22.0, 62.0, 19.0, 71.0);
-            cr.line_to(13.0, 71.0);
-            cr.close_path();
-            let _ = cr.fill();
-            cr.set_operator(gtk4::cairo::Operator::Clear);
-            cr.set_line_width(STAGE_TIE);
-            cr.move_to(10.0, 45.0);
-            cr.line_to(28.0, 42.5);
-            let _ = cr.stroke();
-            cr.set_operator(gtk4::cairo::Operator::Over);
-            cr.set_line_width(STAGE_FRAME);
-            cr.move_to(12.0, 11.0);
-            cr.line_to(12.0, 71.0);
-            let _ = cr.stroke();
-            cr.set_matrix(matrix);
+fn shell_logo() -> gtk4::Widget {
+    let mut lines = assets::LOGO.lines();
+    let header = lines.next().unwrap_or_default();
+    let paths = lines
+        .map(str::trim)
+        .filter(|line| line.starts_with("<path"));
+    let overlay = gtk4::Overlay::new();
+    for (path, color) in paths.zip(LOGO_COLORS) {
+        let layer = customicon::from_svg(format!("{header}{path}</svg>"), BANNER_ICON);
+        text::set_color(&layer, color);
+        if overlay.child().is_none() {
+            overlay.set_child(Some(&layer));
+        } else {
+            overlay.add_overlay(&layer);
         }
-        cr.move_to(7.0, 11.0);
-        cr.line_to(STAGE_SIZE - 7.0, 11.0);
-        cr.move_to(4.0, 72.0);
-        cr.line_to(STAGE_SIZE - 4.0, 72.0);
-        let _ = cr.stroke();
-    });
-    paint.upcast()
+    }
+    overlay.upcast()
 }
 
 fn renderer_name(type_name: &str) -> &str {
@@ -369,18 +299,13 @@ fn disk_card(theme: &SharedTheme, disk: &Disk) -> gtk4::Widget {
     column.upcast()
 }
 
-enum Line<'a> {
-    Link(&'a str, i32),
-    Credit(&'a str, &'a str),
-}
-
 fn logo(icon: &str) -> gtk4::Widget {
     let image = gtk4::Image::from_icon_name(icon);
     image.set_pixel_size(BANNER_ICON);
     image.upcast()
 }
 
-fn banner(image: &gtk4::Widget, title: &str, lines: &[Line]) -> gtk4::Box {
+fn banner(image: &gtk4::Widget, title: &str, url: &str) -> gtk4::Box {
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, BANNER_SPACING);
     row.set_halign(gtk4::Align::Start);
     row.set_margin_top(BANNER_MARGIN);
@@ -392,20 +317,14 @@ fn banner(image: &gtk4::Widget, title: &str, lines: &[Line]) -> gtk4::Box {
     let name = text::styled_sized(title, pixel_size::TITLE);
     name.set_xalign(0.0);
     column.append(&Centred::filling_width(&name));
-    for line in lines {
-        let (label, size) = match line {
-            Line::Link(url, size) => (link_label(&link_markup(url)), *size),
-            Line::Credit(template, url) => {
-                let markup =
-                    glib::markup_escape_text(&tr(template)).replace("%1", &link_markup(url));
-                let label = link_label(&markup);
-                text::set_color(&label, "colSubtext");
-                (label, pixel_size::SMALLER)
-            }
-        };
-        text::set_font(&label, text::Family::Main, size as f64, "wght=450");
-        column.append(&Centred::filling_width(&label));
-    }
+    let link = link_label(&link_markup(url));
+    text::set_font(
+        &link,
+        text::Family::Main,
+        pixel_size::NORMAL as f64,
+        "wght=450",
+    );
+    column.append(&Centred::filling_width(&link));
     row.append(&column);
     let mut widest: f64 = 0.0;
     let mut line = column.first_child();

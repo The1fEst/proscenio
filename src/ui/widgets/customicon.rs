@@ -7,14 +7,24 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 pub fn build(name: &str, size: i32) -> gtk4::DrawingArea {
+    area(
+        crate::core::assets::icon(name).map(glib::Bytes::from_static),
+        size,
+    )
+}
+
+pub fn from_svg(svg: String, size: i32) -> gtk4::DrawingArea {
+    area(Some(glib::Bytes::from_owned(svg.into_bytes())), size)
+}
+
+fn area(svg: Option<glib::Bytes>, size: i32) -> gtk4::DrawingArea {
     let area = gtk4::DrawingArea::new();
     area.add_css_class("custom-icon");
     area.set_content_width(size);
     area.set_content_height(size);
-    let svg = crate::core::assets::icon(name);
     let cache: Rc<RefCell<Option<(i32, cairo::ImageSurface)>>> = Rc::new(RefCell::new(None));
     area.set_draw_func(move |area, cr, width, height| {
-        let Some(svg) = svg else {
+        let Some(svg) = svg.as_ref() else {
             return;
         };
         let scale = area.scale_factor().max(1);
@@ -49,8 +59,8 @@ pub fn build(name: &str, size: i32) -> gtk4::DrawingArea {
     area
 }
 
-fn rasterise(svg: &'static [u8], size: i32) -> Option<cairo::ImageSurface> {
-    let stream = gio::MemoryInputStream::from_bytes(&glib::Bytes::from_static(svg));
+fn rasterise(svg: &glib::Bytes, size: i32) -> Option<cairo::ImageSurface> {
+    let stream = gio::MemoryInputStream::from_bytes(svg);
     let pixbuf =
         Pixbuf::from_stream_at_scale(&stream, size, size, true, gio::Cancellable::NONE).ok()?;
     let (width, height) = (pixbuf.width(), pixbuf.height());
