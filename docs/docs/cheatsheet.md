@@ -32,13 +32,8 @@ category. Binds whose description has no `:` go into a last category, *Uncategor
 The categories flow left to right and wrap onto new rows, 10 pixels apart. Within a category, the
 key caps line up in a column as wide as the widest of them, with the descriptions beside them.
 
-:::note
-
-The list is read when the cheatsheet window is built: at start-up, for a newly connected monitor,
-and when a `cheatsheet` option, the fonts or the icon theme change. A keybind added to Hyprland's
-config later appears after one of those.
-
-:::
+The list is read from Hyprland each time the cheatsheet opens, so a keybind added to Hyprland's
+config shows the next time it opens.
 
 ## Repeated binds
 

@@ -22,6 +22,8 @@ const BLACKLIST: [&str; 2] = ["SUPER_L", "SUPER_R"];
 pub struct Cheatsheet {
     pub window: gtk4::ApplicationWindow,
     grab: Option<Rc<grab::Grab>>,
+    config: Rc<Config>,
+    scroll: gtk4::ScrolledWindow,
 }
 
 impl Cheatsheet {
@@ -37,6 +39,7 @@ impl Cheatsheet {
         if self.window.is_visible() {
             return;
         }
+        self.scroll.set_child(Some(&keybinds(&self.config)));
         self.window.set_visible(true);
         let (Some(grab), Some(surface)) = (self.grab.as_ref(), self.window.surface()) else {
             return;
@@ -60,10 +63,14 @@ pub fn build(
 ) -> Rc<Cheatsheet> {
     let geometry = monitor.geometry();
 
+    let scroll = gtk4::ScrolledWindow::new();
+    scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
+    scroll.set_size_request(geometry.width() * 7 / 10, geometry.height() * 7 / 10);
+
     let column = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     column.set_halign(gtk4::Align::Center);
     column.set_valign(gtk4::Align::Center);
-    column.append(&keybinds(config, geometry.width(), geometry.height()));
+    column.append(&scroll);
 
     let close = gtk4::Button::new();
     close.add_css_class("cheatsheet-close");
@@ -111,6 +118,8 @@ pub fn build(
     let sheet = Rc::new(Cheatsheet {
         window: window.clone(),
         grab: grab::Grab::new(&monitor.display()),
+        config: config.clone(),
+        scroll,
     });
 
     close.connect_clicked({
@@ -137,19 +146,14 @@ pub fn build(
     sheet
 }
 
-fn keybinds(config: &Rc<Config>, width: i32, height: i32) -> gtk4::Widget {
+fn keybinds(config: &Rc<Config>) -> Flow {
     let flow = Flow::new(CATEGORY_SPACING);
     flow.set_valign(gtk4::Align::Start);
 
     for (name, binds) in grouped() {
         flow.append(&category(config, &name, &binds));
     }
-
-    let scroll = gtk4::ScrolledWindow::new();
-    scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
-    scroll.set_child(Some(&flow));
-    scroll.set_size_request(width * 7 / 10, height * 7 / 10);
-    scroll.upcast()
+    flow
 }
 
 struct Bind {
