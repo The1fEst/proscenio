@@ -79,7 +79,7 @@ impl Sidebar {
             grab.release();
         }
         if let Some(dialog) = self.dialog.borrow_mut().take() {
-            self.overlay.remove_overlay(&dialog.root);
+            dialog.remove_from(&self.overlay);
         }
         if let Some(stop_editing) = &self.stop_editing {
             stop_editing();
@@ -169,7 +169,7 @@ pub fn build(
                     return;
                 };
                 if let Some(previous) = open.borrow_mut().take() {
-                    overlay.remove_overlay(&previous.root);
+                    previous.remove_from(&overlay);
                 }
                 let dialog = dialogs::open(menu, &context);
                 dialog.root.set_margin_top(GAP);

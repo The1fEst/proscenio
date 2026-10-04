@@ -367,11 +367,26 @@ glib::wrapper! {
         @implements gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget;
 }
 
+#[derive(Default)]
+struct ClosedCallbacks(RefCell<Vec<Box<dyn Fn()>>>);
+
+impl ClosedCallbacks {
+    fn add(&self, callback: impl Fn() + 'static) {
+        self.0.borrow_mut().push(Box::new(callback));
+    }
+
+    fn run(&self) {
+        for callback in self.0.take() {
+            callback();
+        }
+    }
+}
+
 pub struct WindowDialog {
     pub root: Dialog,
     pub column: DialogColumn,
     dismissed: RefCell<Option<Rc<dyn Fn()>>>,
-    hidden: RefCell<Vec<Box<dyn Fn()>>>,
+    hidden: ClosedCallbacks,
     kept: RefCell<Vec<Rc<dyn std::any::Any>>>,
 }
 
@@ -391,7 +406,7 @@ impl WindowDialog {
             root: root.clone(),
             column,
             dismissed: RefCell::new(None),
-            hidden: RefCell::new(Vec::new()),
+            hidden: ClosedCallbacks::default(),
             kept: RefCell::new(Vec::new()),
         });
 
@@ -448,7 +463,7 @@ impl WindowDialog {
     }
 
     pub fn connect_closed(&self, action: impl Fn() + 'static) {
-        self.hidden.borrow_mut().push(Box::new(action));
+        self.hidden.add(action);
     }
 
     pub fn keep(&self, value: Rc<dyn std::any::Any>) {
@@ -460,6 +475,11 @@ impl WindowDialog {
         if let Some(action) = action {
             action();
         }
+    }
+
+    pub fn remove_from(&self, overlay: &gtk4::Overlay) {
+        self.hidden.run();
+        overlay.remove_overlay(&self.root);
     }
 
     pub fn show(&self, shown: bool, closed: impl FnOnce() + 'static) {
@@ -485,9 +505,7 @@ impl WindowDialog {
         imp.scrim.set(scrim);
         if !shown {
             imp.closed.replace(Some(Box::new(closed)));
-            for action in self.hidden.borrow().iter() {
-                action();
-            }
+            self.hidden.run();
         }
         if shown {
             self.root.grab_focus();
@@ -651,4 +669,22 @@ pub fn set_list_item_active(button: &RippleButton, active: bool) {
         ..Look::default()
     });
     button.set_cursor_from_name(if active { None } else { Some("pointer") });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn closed_callbacks_run_once_however_often_the_dialog_closes() {
+        let count = Rc::new(Cell::new(0));
+        let callbacks = ClosedCallbacks::default();
+        callbacks.add({
+            let count = count.clone();
+            move || count.set(count.get() + 1)
+        });
+        callbacks.run();
+        callbacks.run();
+        assert_eq!(count.get(), 1);
+    }
 }
