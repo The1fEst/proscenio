@@ -56,14 +56,11 @@ const INTROSPECTION: &str = "
   </interface>
 </node>";
 
-const CAPABILITIES: &[&str] = &[
+pub const CAPABILITIES: &[&str] = &[
     "actions",
     "body",
-    "body-hyperlinks",
-    "body-images",
     "body-markup",
     "icon-static",
-    "inline-reply",
     "persistence",
 ];
 
@@ -691,5 +688,13 @@ mod tests {
         }
         let empty = HashMap::<String, Variant>::new().to_variant();
         assert_eq!(image(0, &empty), "");
+    }
+
+    #[test]
+    fn inline_reply_is_advertised_only_with_its_signal() {
+        assert_eq!(
+            CAPABILITIES.contains(&"inline-reply"),
+            INTROSPECTION.contains("NotificationReplied")
+        );
     }
 }

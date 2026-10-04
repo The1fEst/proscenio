@@ -598,6 +598,7 @@ fn check(markup: String) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{body_text, markup};
+    use crate::services::notifications::CAPABILITIES;
 
     #[test]
     fn chromium_notifications_lose_their_link_line() {
@@ -618,6 +619,16 @@ mod tests {
             markup("<b>bold</b> <a href=\"x\">link</a> <img src=\"y\"/> plain"),
             Some("<b>bold</b> link  plain".to_owned())
         );
+    }
+
+    #[test]
+    fn links_and_images_are_advertised_only_if_the_body_keeps_them() {
+        let kept = markup("<a href=\"x\">link</a> <img src=\"y\"/>").unwrap_or_default();
+        assert_eq!(
+            CAPABILITIES.contains(&"body-hyperlinks"),
+            kept.contains("<a")
+        );
+        assert_eq!(CAPABILITIES.contains(&"body-images"), kept.contains("<img"));
     }
 
     #[test]
