@@ -59,6 +59,7 @@ const INTROSPECTION: &str = "
 pub const CAPABILITIES: &[&str] = &[
     "actions",
     "body",
+    "body-hyperlinks",
     "body-markup",
     "icon-static",
     "persistence",

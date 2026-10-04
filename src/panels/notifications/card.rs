@@ -440,6 +440,11 @@ fn body_label(notification: &Notification, wrap: bool) -> gtk4::Widget {
         Some(markup) => label.set_markup(&markup),
         None => label.set_text(&text),
     }
+    label.connect_activate_link(|_, address| {
+        let _ =
+            gtk4::gio::AppInfo::launch_default_for_uri(address, gtk4::gio::AppLaunchContext::NONE);
+        glib::Propagation::Stop
+    });
     if wrap {
         label.set_wrap(true);
         label.set_wrap_mode(pango::WrapMode::WordChar);
@@ -566,33 +571,88 @@ pub fn body_text(body: &str, app_name: &str) -> String {
 
 fn markup(text: &str) -> Option<String> {
     let mut out = String::with_capacity(text.len());
+    let mut checked = String::with_capacity(text.len());
+    let mut linked = false;
     let mut rest = text;
     while let Some(start) = rest.find('<') {
-        out.push_str(&glib::markup_escape_text(&rest[..start]));
+        let plain = glib::markup_escape_text(&rest[..start]);
+        out.push_str(&plain);
+        checked.push_str(&plain);
         let Some(end) = rest[start..].find('>') else {
-            out.push_str(&glib::markup_escape_text(&rest[start..]));
-            return check(out);
+            let tail = glib::markup_escape_text(&rest[start..]);
+            out.push_str(&tail);
+            checked.push_str(&tail);
+            return check(out, &checked);
         };
         let tag = &rest[start + 1..start + end];
+        let closing = tag.starts_with('/');
         let name = tag
             .trim_start_matches('/')
             .split_whitespace()
             .next()
             .unwrap_or("")
             .to_lowercase();
-        if matches!(name.as_str(), "b" | "i" | "u" | "s") {
-            out.push('<');
-            out.push_str(tag);
-            out.push('>');
+        match name.as_str() {
+            "b" | "i" | "u" | "s" => {
+                let kept = format!("<{tag}>");
+                out.push_str(&kept);
+                checked.push_str(&kept);
+            }
+            "a" if closing && linked => {
+                linked = false;
+                out.push_str("</a>");
+                checked.push_str("</span>");
+            }
+            "a" if !closing && !linked => {
+                if let Some(address) = attribute(tag, "href") {
+                    linked = true;
+                    let address = glib::markup_escape_text(&unescape(&address));
+                    out.push_str(&format!("<a href=\"{address}\">"));
+                    checked.push_str("<span>");
+                }
+            }
+            _ => {}
         }
         rest = &rest[start + end + 1..];
     }
-    out.push_str(&glib::markup_escape_text(rest));
-    check(out)
+    let tail = glib::markup_escape_text(rest);
+    out.push_str(&tail);
+    checked.push_str(&tail);
+    if linked {
+        out.push_str("</a>");
+        checked.push_str("</span>");
+    }
+    check(out, &checked)
 }
 
-fn check(markup: String) -> Option<String> {
-    pango::parse_markup(&markup, '\u{0}').ok().map(|_| markup)
+fn attribute(tag: &str, wanted: &str) -> Option<String> {
+    let mut rest = tag.split_once(char::is_whitespace)?.1;
+    loop {
+        let (name, after) = rest.split_once('=')?;
+        let after = after.trim_start();
+        let quote = after
+            .chars()
+            .next()
+            .filter(|mark| matches!(mark, '"' | '\''))?;
+        let (value, next) = after[1..].split_once(quote)?;
+        if name.trim().eq_ignore_ascii_case(wanted) {
+            return Some(value.to_owned());
+        }
+        rest = next;
+    }
+}
+
+fn unescape(text: &str) -> String {
+    text.replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+}
+
+fn check(markup: String, checked: &str) -> Option<String> {
+    pango::parse_markup(checked, '\u{0}').ok().map(|_| markup)
 }
 
 #[cfg(test)]
@@ -614,10 +674,26 @@ mod tests {
     }
 
     #[test]
-    fn markup_keeps_emphasis_and_drops_everything_else() {
+    fn markup_keeps_emphasis_and_links_and_drops_everything_else() {
         assert_eq!(
-            markup("<b>bold</b> <a href=\"x\">link</a> <img src=\"y\"/> plain"),
-            Some("<b>bold</b> link  plain".to_owned())
+            markup("<b>bold</b> <a href=\"https://x.invalid\">link</a> <span>plain</span>"),
+            Some("<b>bold</b> <a href=\"https://x.invalid\">link</a> plain".to_owned())
+        );
+    }
+
+    #[test]
+    fn a_link_keeps_only_its_address_escaped_once() {
+        assert_eq!(
+            markup("<a class='c' href='https://x.invalid/?a=1&amp;b=\"2\"'>link</a>"),
+            Some("<a href=\"https://x.invalid/?a=1&amp;b=&quot;2&quot;\">link</a>".to_owned())
+        );
+    }
+
+    #[test]
+    fn a_link_without_an_address_becomes_its_text() {
+        assert_eq!(
+            markup("<a name=\"top\">link</a> text"),
+            Some("link text".to_owned())
         );
     }
 

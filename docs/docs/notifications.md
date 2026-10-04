@@ -19,7 +19,7 @@ Notifications interface, version 1.2, at `/org/freedesktop/Notifications`:
 |---|---|
 | `Notify` | adds a notification, or replaces the one whose ID is given as `replaces_id` |
 | `CloseNotification` | removes a notification, as its sender asks |
-| `GetCapabilities` | returns `actions`, `body`, `body-markup`, `icon-static` and `persistence` |
+| `GetCapabilities` | returns `actions`, `body`, `body-hyperlinks`, `body-markup`, `icon-static` and `persistence` |
 | `GetServerInformation` | returns `proscenio`, `fEst`, `0.1` and `1.2` |
 | `NotificationClosed` | signals a removal, with reason 1 when it expired, 2 when the user dismissed it, 3 when `CloseNotification` closed it |
 | `ActionInvoked` | signals that the user clicked one of the notification's actions |
@@ -29,8 +29,10 @@ proscenio waits in the bus queue and takes over when that daemon exits.
 
 :::note
 
-Of the body markup, the cards show bold, italic, underline and strikethrough; a link or an image a
-sender puts in the body anyway appears as its text. There is no inline reply, so senders offer their
+Of the body markup, the cards show bold, italic, underline, strikethrough and links. A link keeps
+only its `href`, shows in the primary color and opens in the default handler for its address; a
+link without an `href` appears as its text, and so does an image a sender puts in the body anyway.
+There is no inline reply, so senders offer their
 own reply action instead. A notification's picture comes through the `image-data` or `image-path`
 hint, which the cards show.
 

@@ -175,6 +175,7 @@ tooltip label {
 .notif-item.open.urgent { background-color: mix(var(--colLayer2), var(--colSecondaryContainer), 0.35); }
 .notif-item-summary { font-size: 15px; color: var(--colOnLayer2); }
 .notif-body { font-size: 15px; color: var(--colSubtext); }
+.notif-body > link { color: var(--colPrimary); }
 .notif-action {
     background-color: var(--colLayer4);
     border: none;
