@@ -120,7 +120,7 @@ Every setting applies at once.
 | `dock.hoverRegionHeight` | `2` | Hover region height (px) |
 | `dock.monochromeIcons` | `true` | Tint app icons |
 | `dock.height` | `60` | Height (px) |
-| `dock.pinnedApps` | `org.kde.dolphin`, `brave-origin`, `kitty`; an empty list pins nothing | Pinned apps |
+| `dock.pinnedApps` | `org.kde.dolphin`, `brave-origin`, `kitty`; an empty list pins nothing | arranged in the dock by dragging |
 | `dock.ignoredAppRegexes` | none | Ignored apps |
 
 ```toml

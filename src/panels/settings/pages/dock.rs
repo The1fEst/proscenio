@@ -53,17 +53,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         (30, 150),
         5,
     );
-    let pinned = page.subsection(
-        &dock,
-        &tr("Pinned apps"),
-        &tr("Comma-separated desktop entry IDs, in the order they should appear"),
-    );
-    page.config_list(
-        &pinned,
-        &tr("e.g. org.kde.dolphin, kitty"),
-        "/dock/pinnedApps",
-        &config::DOCK_PINNED_APPS,
-    );
     let ignored = page.subsection(
         &dock,
         &tr("Ignored apps"),

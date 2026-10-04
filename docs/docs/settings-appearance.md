@@ -440,11 +440,9 @@ A link row opens this subpage. See [Dock](dock.md).
 | Hover region height (px) | `dock.hoverRegionHeight` | 2 | 1–50, live only while hovering reveals |
 | Tint app icons | `dock.monochromeIcons` | on | |
 | Height (px) | `dock.height` | 60 | 30–150, in steps of 5 |
-| Pinned apps | `dock.pinnedApps` | `org.kde.dolphin`, `brave-origin`, `kitty` | |
 | Ignored apps | `dock.ignoredAppRegexes` | empty | |
 
-**Pinned apps** is a comma-separated list of desktop entry IDs, in the order they appear; pinning
-and unpinning in the dock itself rewrites the same key.
+Pinned apps are arranged in the [dock](dock.md) itself, by dragging.
 **Ignored apps** is a comma-separated list of regular expressions; a window that matches one gets no
 dock entry.
 

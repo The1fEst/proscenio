@@ -145,6 +145,7 @@ settings page it belongs to names it along with the package it comes in.
 |---|---|---|
 | `bluetoothctl` | bluez-utils | pairing a device that asks for confirmation fails |
 | `brightnessctl` | brightnessctl | the built-in screen's brightness cannot change |
+| `btop`, `kitty` | btop, kitty | the default task manager command opens nothing |
 | `cava` | cava | the media controls show no audio wave |
 | `cliphist` | cliphist | the launcher's clipboard prefix finds nothing |
 | `ddcutil` | ddcutil | external monitors' brightness cannot change |
