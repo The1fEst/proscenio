@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::core::i18n::{self, tr, trf};
-use crate::core::{actions, config, paths, process, watch};
+use crate::core::{actions, config, paths, process, shell, watch};
 use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Choice, Page};
 use crate::panels::settings::pages::power::{IdleTimeout, hypridle_available, idle_timeout_row};
@@ -51,7 +51,7 @@ const USAGE: &str = "https://end-4.github.io/dots-hyprland-wiki/en/ii-qs/02usage
 const CONFIGURATION: &str = "https://end-4.github.io/dots-hyprland-wiki/en/ii-qs/03config/";
 const GITHUB: &str = "https://github.com/end-4/dots-hyprland";
 const SPONSORS: &str = "https://github.com/sponsors/end-4";
-const NOTICE: &str = "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing:\n    1. Open the right sidebar with Super+N\n    2. Click \"Reload Hyprland & Quickshell\" in the top-right corner";
+const NOTICE: &str = "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner";
 
 pub struct Welcome {
     app: gtk4::Application,
@@ -278,7 +278,7 @@ fn content(theme: &SharedTheme, services: &Rc<Services>) -> Rc<Page> {
     let choose = quick::choose_wallpaper(&page);
     choose.set_halign(gtk4::Align::Center);
     styling.append(&choose);
-    page.notice(&styling, "info", &tr(NOTICE));
+    page.notice(&styling, "info", &trf(NOTICE, &[shell::name()]));
 
     let power = page.section("bedtime", &tr("Power saving"));
     if hypridle_available(&page, &power) {

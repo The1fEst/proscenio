@@ -105,7 +105,7 @@ impl Gestures {
         let (_, before) = gestures::read();
         if let Err(error) = gestures::write(&settings) {
             self.say(&trf(
-                "settings.lua could not be written: %1",
+                "mouse.lua could not be written: %1",
                 &[&error.to_string()],
             ));
             return;
@@ -220,9 +220,7 @@ pub fn section(page: &Rc<Page>, parent: &gtk4::Box) {
     let listed = page.subsection(
         parent,
         &tr("Gestures"),
-        &tr(
-            "The defaults come from hyprland/general.lua. Removing one turns it off in settings.lua",
-        ),
+        &tr("The defaults come from hyprland/general.lua. Removing one turns it off in mouse.lua"),
     );
     let empty = text::styled(&tr("No gestures"));
     text::set_color(&empty, "colSubtext");

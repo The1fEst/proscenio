@@ -106,7 +106,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &push.button,
-        &tr("Reserve space for the bar even when it's hidden"),
+        &tr("While the hidden bar shows, windows make room for it instead of staying under it"),
     );
     let (hover, _) = page.config_spin(
         &positioning,

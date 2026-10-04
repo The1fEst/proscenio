@@ -59,7 +59,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &hyprlock.button,
-        &tr("If you want to somehow use fingerprint unlock..."),
+        &tr("Locks with Hyprlock and its own config instead of the shell's lock screen"),
     );
     page.config_switch(
         &main,

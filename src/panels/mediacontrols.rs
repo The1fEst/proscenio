@@ -253,9 +253,7 @@ pub fn build(
 fn placeholder() -> gtk4::Widget {
     let title = text::styled_sized(&tr("No active player"), pixel_size::LARGE);
     title.set_xalign(0.0);
-    let hint = text::styled(&tr(
-        "Make sure your player has MPRIS support\nor try turning off duplicate player filtering",
-    ));
+    let hint = text::styled(&tr("Make sure your player has MPRIS support"));
     text::set_color(&hint, "colSubtext");
     hint.set_xalign(0.0);
 
