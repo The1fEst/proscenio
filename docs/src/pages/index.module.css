@@ -11,16 +11,18 @@
 
 .title {
   margin: 1rem 0 0;
-  font-size: 3rem;
-  letter-spacing: 0.02em;
+  font-size: 3.5625rem;
+  font-weight: 400;
+  line-height: 4rem;
+  letter-spacing: -0.015625rem;
 }
 
 .tagline {
   max-width: 42rem;
   margin: 1.25rem auto 0;
-  font-size: 1.15rem;
-  line-height: 1.6;
-  color: var(--ifm-color-emphasis-700);
+  font-size: 1.375rem;
+  line-height: 1.75rem;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .install {
@@ -46,28 +48,31 @@
   height: calc(100% - 1.75rem);
   margin-bottom: 1.75rem;
   padding: 1.25rem;
-  border: 1px solid var(--ifm-toc-border-color);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-large);
+  background-color: var(--md-sys-color-surface-container-low);
   color: inherit;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: background-color var(--md-sys-motion-duration-short4)
+    var(--md-sys-motion-easing-standard);
 }
 
 .feature:hover {
-  border-color: var(--pro-accent);
+  background-color: var(--md-sys-color-surface-container-high);
   color: inherit;
   text-decoration: none;
-  transform: translateY(-2px);
 }
 
 .feature h3 {
   margin-bottom: 0.5rem;
-  font-size: 1.05rem;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5rem;
 }
 
 .feature p {
   margin: 0;
-  font-size: 0.95rem;
-  color: var(--ifm-color-emphasis-700);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 @media (max-width: 996px) {
@@ -77,9 +82,11 @@
 
   .title {
     font-size: 2.25rem;
+    line-height: 2.75rem;
   }
 
   .tagline {
     font-size: 1rem;
+    line-height: 1.5rem;
   }
 }
