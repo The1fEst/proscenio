@@ -25,6 +25,8 @@ const ITEM_OVERSHOOT: f64 = 38.0 + 20.0;
 const ACTION_HEIGHT: i32 = 34;
 const ACTION_PADDING: i32 = 15;
 const COLLAPSED: i32 = 80;
+const ENTRY_SPACING: i32 = 3;
+const REPLY_ROOM: i32 = ACTION_HEIGHT + ENTRY_SPACING;
 const PADDING: i32 = 10;
 const COPY_RESET: Duration = Duration::from_millis(1500);
 const BODY_IMAGE_WIDTH: i32 = 300;
@@ -111,12 +113,12 @@ pub fn build(
                 _ => 0,
             });
             fill(&items, &group, &notifications, &theme, &alive, open, &drags);
-            let cap = (!open).then_some(COLLAPSED);
+            let cap = (!open).then(|| collapsed_height(&group));
             if !animate {
                 clip.follow(cap);
                 return;
             }
-            let after = measure(&clip, &row, open);
+            let after = measure(&clip, &row, cap);
             height.jump(before);
             height.to(after as f64);
             let height = height.clone();
@@ -243,7 +245,7 @@ struct Head {
     expand: RippleButton,
 }
 
-fn measure(clip: &FixedHeight, row: &gtk4::Box, expanded: bool) -> i32 {
+fn measure(clip: &FixedHeight, row: &gtk4::Box, cap: Option<i32>) -> i32 {
     let width = clip.width();
     let natural = row
         .measure(
@@ -251,10 +253,18 @@ fn measure(clip: &FixedHeight, row: &gtk4::Box, expanded: bool) -> i32 {
             if width > 0 { width } else { -1 },
         )
         .1;
-    if expanded {
-        natural
+    cap.map_or(natural, |cap| natural.min(cap))
+}
+
+fn collapsed_height(group: &Group) -> i32 {
+    let replies = group
+        .notifications
+        .last()
+        .is_some_and(|newest| newest.reply.is_some());
+    if replies {
+        COLLAPSED + REPLY_ROOM
     } else {
-        natural.min(COLLAPSED)
+        COLLAPSED
     }
 }
 
@@ -374,8 +384,11 @@ fn fill(
             notification,
             notifications,
             theme,
-            expanded,
-            only,
+            Shape {
+                expanded,
+                only,
+                newest: index == 0,
+            },
             dismiss.clone(),
         );
         if !expanded && index == 1 && group.notifications.len() > 2 {
@@ -389,15 +402,25 @@ fn fill(
     }
 }
 
+struct Shape {
+    expanded: bool,
+    only: bool,
+    newest: bool,
+}
+
 fn entry(
     notification: &Notification,
     notifications: &Notifications,
     theme: &SharedTheme,
-    expanded: bool,
-    only: bool,
+    shape: Shape,
     dismiss: Rc<dyn Fn(bool)>,
 ) -> gtk4::Widget {
-    let column = gtk4::Box::new(gtk4::Orientation::Vertical, 3);
+    let Shape {
+        expanded,
+        only,
+        newest,
+    } = shape;
+    let column = gtk4::Box::new(gtk4::Orientation::Vertical, ENTRY_SPACING);
     column.add_css_class("notif-item");
     if expanded && !only {
         column.add_css_class("open");
@@ -424,27 +447,24 @@ fn entry(
         column.append(&body_label(notification, false));
     }
 
+    let field = notification
+        .reply
+        .as_ref()
+        .filter(|_| expanded || newest)
+        .map(|reply| reply_field(notification, reply, notifications, theme));
     if expanded {
         let open = gtk4::Box::new(gtk4::Orientation::Vertical, 5);
         open.append(&body_label(notification, true));
         for path in body_images(&body_text(&notification.body, &notification.app_name)) {
             open.append(&body_image(path));
         }
-        let field = notification
-            .reply
-            .as_ref()
-            .map(|reply| reply_field(notification, reply, notifications, theme));
-        open.append(&actions(
-            notification,
-            notifications,
-            theme,
-            dismiss,
-            field.as_ref(),
-        ));
+        open.append(&actions(notification, notifications, theme, dismiss));
         if let Some(field) = &field {
             open.append(field);
         }
         column.append(&open);
+    } else if let Some(field) = &field {
+        column.append(field);
     }
 
     column.upcast()
@@ -481,10 +501,9 @@ fn actions(
     notifications: &Notifications,
     theme: &SharedTheme,
     dismiss: Rc<dyn Fn(bool)>,
-    field: Option<&gtk4::Box>,
 ) -> gtk4::Widget {
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 5);
-    let bare = notification.actions.is_empty() && field.is_none();
+    let bare = notification.actions.is_empty();
     row.set_homogeneous(bare);
     if !bare {
         row.set_halign(gtk4::Align::Start);
@@ -502,30 +521,6 @@ fn actions(
             let id = notification.id;
             let identifier = identifier.clone();
             move |_| notifications.invoke(id, &identifier)
-        });
-        row.append(&button);
-    }
-
-    if let (Some(reply), Some(field)) = (&notification.reply, field) {
-        let label = if reply.label.is_empty() {
-            tr("Reply")
-        } else {
-            reply.label.clone()
-        };
-        let button = action_button(theme, Some(&label), None, urgent);
-        button.connect_clicked({
-            let field = field.downgrade();
-            let notifications = notifications.clone();
-            let id = notification.id;
-            move |_| {
-                let Some(field) = field.upgrade() else {
-                    return;
-                };
-                if notifications.draft(id).is_none() {
-                    notifications.set_draft(id, "");
-                }
-                field.set_visible(true);
-            }
         });
         row.append(&button);
     }
@@ -563,17 +558,17 @@ fn reply_field(
     let entry = gtk4::Entry::new();
     entry.add_css_class("notif-reply");
     entry.set_hexpand(true);
-    entry.set_placeholder_text(Some(&if reply.placeholder.is_empty() {
-        tr("Reply")
-    } else {
-        reply.placeholder.clone()
-    }));
+    let placeholder = [&reply.placeholder, &reply.label]
+        .into_iter()
+        .find(|text| !text.is_empty())
+        .cloned()
+        .unwrap_or_else(|| tr("Reply"));
+    entry.set_placeholder_text(Some(&placeholder));
     let send = action_button(theme, None, Some("send"), notification.urgency == 2);
 
     let field = gtk4::Box::new(gtk4::Orientation::Horizontal, 5);
     field.append(&entry);
     field.append(&send);
-    field.set_visible(false);
 
     let submit: Rc<dyn Fn()> = {
         let entry = entry.downgrade();
@@ -597,59 +592,87 @@ fn reply_field(
     entry.connect_changed({
         let notifications = notifications.clone();
         move |entry| {
-            if entry.is_mapped() {
-                notifications.set_draft(id, &entry.text());
+            if !entry.is_mapped() {
+                return;
+            }
+            let text = entry.text();
+            if text.is_empty() {
+                notifications.drop_draft(id);
+            } else {
+                notifications.set_draft(id, &text);
             }
         }
     });
 
-    let keys = gtk4::EventControllerKey::new();
-    keys.connect_key_pressed({
-        let field = field.downgrade();
-        let notifications = notifications.clone();
-        move |_, key, _, _| {
-            let Some(field) = field.upgrade().filter(|_| key == gdk::Key::Escape) else {
-                return glib::Propagation::Proceed;
+    let held: Rc<Held> = Rc::default();
+    let take = gtk4::GestureClick::new();
+    take.set_propagation_phase(gtk4::PropagationPhase::Capture);
+    take.connect_pressed({
+        let held = Rc::downgrade(&held);
+        move |gesture, _, _, _| {
+            let Some(held) = held.upgrade() else {
+                return;
             };
-            notifications.drop_draft(id);
-            field.set_visible(false);
-            glib::Propagation::Stop
-        }
-    });
-    entry.add_controller(keys);
-
-    let raised: Rc<RefCell<Option<glib::WeakRef<gtk4::Window>>>> = Rc::default();
-    field.connect_map({
-        let raised = raised.clone();
-        let entry = entry.downgrade();
-        move |field| {
-            let window = field
-                .root()
+            let window = gesture
+                .widget()
+                .and_then(|entry| entry.root())
                 .and_downcast::<gtk4::Window>()
                 .filter(|window| {
                     window.is_layer_window() && window.keyboard_mode() == KeyboardMode::None
                 });
             if let Some(window) = window {
                 window.set_keyboard_mode(KeyboardMode::Exclusive);
-                raised.replace(Some(window.downgrade()));
-            }
-            if let Some(entry) = entry.upgrade() {
-                entry.grab_focus_without_selecting();
-                entry.set_position(-1);
+                held.replace(Some(window.downgrade()));
             }
         }
     });
-    field.connect_unmap(move |_| {
-        if let Some(window) = raised.take().and_then(|window| window.upgrade()) {
-            window.set_keyboard_mode(KeyboardMode::None);
+    entry.add_controller(take);
+
+    let keys = gtk4::EventControllerKey::new();
+    keys.connect_key_pressed({
+        let entry = entry.downgrade();
+        let held = Rc::downgrade(&held);
+        move |_, key, _, _| {
+            let Some(entry) = entry.upgrade().filter(|_| key == gdk::Key::Escape) else {
+                return glib::Propagation::Proceed;
+            };
+            let cleared = !entry.text().is_empty();
+            entry.set_text("");
+            let released = held.upgrade().is_some_and(|held| release_keyboard(&held));
+            if cleared || released {
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
         }
     });
+    entry.add_controller(keys);
 
     if let Some(text) = notifications.draft(id) {
         entry.set_text(&text);
-        field.set_visible(true);
     }
+    let entry = entry.downgrade();
+    field.connect_map(move |_| {
+        if let Some(entry) = entry.upgrade() {
+            entry.grab_focus_without_selecting();
+            entry.set_position(-1);
+        }
+    });
+    field.connect_unmap(move |_| {
+        release_keyboard(&held);
+    });
     field
+}
+
+type Held = RefCell<Option<glib::WeakRef<gtk4::Window>>>;
+
+fn release_keyboard(held: &Held) -> bool {
+    let Some(window) = held.take().and_then(|window| window.upgrade()) else {
+        return false;
+    };
+    let raised = window.keyboard_mode() != KeyboardMode::None;
+    window.set_keyboard_mode(KeyboardMode::None);
+    raised
 }
 
 fn action_button(
@@ -864,9 +887,19 @@ fn check(markup: String, checked: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{body_images, body_text, markup};
-    use crate::services::notifications::CAPABILITIES;
+    use super::{COLLAPSED, REPLY_ROOM, body_images, body_text, collapsed_height, markup};
+    use crate::services::notifications::{CAPABILITIES, sample_group};
     use std::path::PathBuf;
+
+    #[test]
+    fn a_collapsed_card_makes_room_for_the_newest_notification_s_reply_field() {
+        assert_eq!(collapsed_height(&sample_group(&[false])), COLLAPSED);
+        assert_eq!(collapsed_height(&sample_group(&[true, false])), COLLAPSED);
+        assert_eq!(
+            collapsed_height(&sample_group(&[false, true])),
+            COLLAPSED + REPLY_ROOM
+        );
+    }
 
     #[test]
     fn chromium_notifications_lose_their_link_line() {

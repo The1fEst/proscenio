@@ -1,6 +1,6 @@
 use gtk4::gdk;
 use gtk4::prelude::*;
-use gtk4_layer_shell::{Edge, Layer, LayerShell};
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::rc::Rc;
 
 use crate::core::scope::Scope;
@@ -46,6 +46,18 @@ pub fn open(
     window.set_anchor(Edge::Right, true);
     window.set_exclusive_zone(0);
     window.set_visible(false);
+    window.connect_is_active_notify(|window| {
+        if window.is_active() && window.keyboard_mode() == KeyboardMode::Exclusive {
+            window.set_keyboard_mode(KeyboardMode::OnDemand);
+        }
+    });
+    let leave = gtk4::EventControllerMotion::new();
+    leave.connect_leave(|controller| {
+        if let Some(window) = controller.widget().and_downcast::<gtk4::Window>() {
+            window.set_keyboard_mode(KeyboardMode::None);
+        }
+    });
+    window.add_controller(leave);
 
     let connector: String = monitor.connector().map(Into::into).unwrap_or_default();
 

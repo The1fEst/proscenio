@@ -735,6 +735,38 @@ fn write_store(list: &[Notification]) {
 }
 
 #[cfg(test)]
+pub fn sample_group(replies: &[bool]) -> Group {
+    let notifications = replies
+        .iter()
+        .enumerate()
+        .map(|(index, replies)| Notification {
+            id: index as u32 + 1,
+            actions: Vec::new(),
+            reply: replies.then(|| Reply {
+                label: String::new(),
+                placeholder: String::new(),
+            }),
+            app_icon: String::new(),
+            app_name: "Chat".to_owned(),
+            body: String::new(),
+            image: String::new(),
+            summary: String::new(),
+            time: 0,
+            urgency: 1,
+            transient: false,
+            popup: true,
+            timeout: 0,
+        })
+        .collect();
+    Group {
+        app_name: "Chat".to_owned(),
+        app_icon: String::new(),
+        time: 0,
+        notifications,
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

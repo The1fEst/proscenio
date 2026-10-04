@@ -50,7 +50,7 @@ in the icon.
 | summary and body | as sent, with surrounding whitespace trimmed |
 | image | pixels in the `image-data`, `image_data` or `icon_data` hint, saved as a PNG; otherwise the `image-path` or `image_path` hint, where a `file:` URI becomes a path and anything else is a path or an icon name |
 | actions | the identifier and label pairs from `actions`, except `inline-reply` |
-| reply | the `inline-reply` action, if sent: its label names the reply button, and the `x-kde-reply-placeholder-text` hint is the field's placeholder |
+| reply | the `inline-reply` action, if sent, with the `x-kde-reply-placeholder-text` hint |
 | urgency | the `urgency` hint: 0 low, 1 normal (the default), 2 critical |
 | transient | the `transient` hint |
 | timeout | `expire_timeout` |
@@ -171,31 +171,34 @@ background color of its own.
 
 ### A collapsed card
 
-A card starts collapsed and is at most 80 px tall. Its top line holds the summary when the group has
-one notification, or the app name when it has several; how long ago the newest arrived; and the
-expand button, which shows the count when there are several. Under it are the two newest
-notifications, one line each: the summary, then the body. A group of one shows only the body there,
-since its summary is on the top line. The second line is faded when the group has more than two.
+A card starts collapsed and is at most 80 px tall, or 117 px when its newest notification takes a
+reply. Its top line holds the summary when the group has one notification, or the app name when it
+has several; how long ago the newest arrived; and the expand button, which shows the count when
+there are several. Under it are the two newest notifications, one line each: the summary, then the
+body. A group of one shows only the body there, since its summary is on the top line. The second
+line is faded when the group has more than two. The newest notification's reply field, if it takes
+one, sits under its line.
 
 ### An expanded card
 
 An expanded card lists all its notifications, each with its body wrapped in full, the images of the
-body under it, and a row of buttons: `close`, the sender's own actions, the reply button, and `content_copy`, which copies the
-body text and turns into `inventory` for 1.5 s. With several notifications, each sits on its own
-background, tinted for a critical one.
+body under it, a row of buttons, and its reply field if it takes one. The buttons are `close`, the
+sender's own actions, and `content_copy`, which copies the body text and turns into `inventory` for
+1.5 s. With several notifications, each sits on its own background, tinted for a critical one.
 
 ### Replying
 
-A notification sent with an `inline-reply` action has a reply button, labeled with that action's
-label, or **Reply** when it is empty. The button opens a field under the buttons, with the
-`x-kde-reply-placeholder-text` hint, or **Reply**, as its placeholder, and a `send` button. Enter or
-`send` signals `NotificationReplied` with the text, unless it is blank, and removes the notification
-with reason 2; Escape closes the field and drops the text.
+A notification sent with an `inline-reply` action has a reply field with a `send` button, shown
+without expanding the card. Its placeholder is the `x-kde-reply-placeholder-text` hint, else the
+action's label, else **Reply**. Enter or `send` signals `NotificationReplied` with the text, unless
+it is blank, and removes the notification with reason 2. Escape empties the field; in an empty field
+it does what it does elsewhere, such as closing the sidebar.
 
-While the field is open on a popup, the popup takes the keyboard for itself, and gives it back when
-the field closes or the popup goes. The notification's popup timer stops, and hovering no longer
-restarts it. The text typed so far is kept while the notification exists, so the field comes back
-with it when the card is rebuilt, as when the same app sends another notification.
+A popup never takes the keyboard by itself, not even under the pointer: a click in a reply field
+gives it the keyboard, and it gives the keyboard back when the pointer leaves the popups, Escape
+empties the field, or the field goes. While a field holds text, its notification's popup timer
+stops, and hovering no longer restarts it. The text is kept while the notification exists, so the
+field still holds it when the card is rebuilt, as when the same app sends another notification.
 
 ### The icon
 
@@ -230,7 +233,7 @@ Edge) whose body starts with a link to the sending site loses that first paragra
 | Drag one notification of an expanded card sideways past 70 px | dismisses that notification |
 | `close` | dismisses that notification |
 | An action button | sends `ActionInvoked` to the sender, then removes the notification |
-| The reply button | opens the reply field |
+| Click a reply field, on a popup | gives the popups the keyboard until the pointer leaves them |
 | A link in the body | opens it in the default handler |
 | `content_copy` | copies the body text |
 | Hover, on a popup | pauses the group's timers |
