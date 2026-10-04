@@ -206,7 +206,8 @@ toward the scheme's primary color:
 | `forceDarkMode` | `false` | Generates the palette in dark mode whatever the mode |
 
 `term0`, the background, comes from `surfaceContainerLow` and `term15` from `onSurface`.
-`forceDarkMode` applies to the whole of `material_colors.scss`, not only its terminal colors.
+`forceDarkMode` applies to the roles and terminal colors in `material_colors.scss`; its `$darkmode`
+stays the real mode, so the dark mode toggle still switches both ways.
 
 ## GTK and Qt
 

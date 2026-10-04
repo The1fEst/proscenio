@@ -79,8 +79,10 @@ Prints a Material 3 palette as SCSS variables, the format of `material_colors.sc
 |---|---|---|
 | `--path IMAGE` | | Takes the source color from an image |
 | `--color HEX` | | Takes the source color as given; `--path` wins when both are there |
-| `--mode dark\|light` | `dark` | The mode of the palette |
-| `--scheme NAME` | tonal spot | One of the `scheme-*` names `switchwall --type` takes, or `scheme-vibrant`; any other name gives tonal spot |
+| `--mode dark\|light` | `dark` | The mode recorded in `$darkmode`, and of the palette unless `--terminal-mode` is given |
+| `--terminal-mode dark\|light` | `--mode` | The mode of the palette and the terminal colors |
+| `--scheme NAME` | `scheme-tonal-spot` | One of the `scheme-*` names `switchwall --type` takes, or `scheme-vibrant`; any other name gives tonal spot. With `scheme-monochrome`, the terminal colors are the base ones, unchanged |
+| `--smart` | off | With `--path`, takes `scheme-neutral` when the image's source color has a chroma under 20 |
 | `--size N` | 128 | The image is scaled to the area of an N × N square before its colors are counted |
 | `--transparency transparent\|opaque` | `opaque` | Sets `$transparent` |
 | `--termscheme FILE` | | A JSON file with two objects of base terminal colors, `term0` to `term15`, under `dark` and `light`; without it no terminal colors are printed |

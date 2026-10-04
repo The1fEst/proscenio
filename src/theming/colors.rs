@@ -77,7 +77,7 @@ fn parse(arguments: &[String]) -> Result<Options, String> {
         color: None,
         dark: true,
         terminal_dark: None,
-        scheme: "vibrant".to_owned(),
+        scheme: "scheme-tonal-spot".to_owned(),
         smart: false,
         transparent: false,
         termscheme: None,
@@ -162,7 +162,7 @@ pub fn generate(arguments: &[String], terminal_scheme: Option<&str>) -> Result<S
             std::fs::write(cache, hex(argb)).map_err(|error| format!("{cache}: {error}"))?;
         }
         if options.smart && Hct::new(argb).get_chroma() < 20.0 {
-            options.scheme = "neutral".to_owned();
+            options.scheme = "scheme-neutral".to_owned();
         }
         argb
     } else if let Some(color) = &options.color {
@@ -214,7 +214,7 @@ pub fn generate(arguments: &[String], terminal_scheme: Option<&str>) -> Result<S
             let Some(value) = colours[name].as_str() else {
                 continue;
             };
-            if options.scheme == "monochrome" {
+            if options.scheme == "scheme-monochrome" {
                 output.push_str(&format!("${name}: {value};\n"));
                 continue;
             }
@@ -831,5 +831,31 @@ mod tests {
         let dark = generate(&arguments("--color #6750a4 --mode dark"), None).unwrap();
         assert!(forced.starts_with("$darkmode: False;"));
         assert_eq!(background(&forced), background(&dark));
+    }
+
+    #[test]
+    fn monochrome_keeps_the_terminal_colors_as_given() {
+        let output = generate(
+            &arguments("--color #6750a4 --scheme scheme-monochrome"),
+            Some(r##"{"dark": {"term1": "#ff0000"}}"##),
+        )
+        .unwrap();
+        assert!(output.ends_with("$term1: #ff0000;\n"));
+    }
+
+    #[test]
+    fn smart_takes_the_neutral_scheme_for_a_dull_image() {
+        let path = std::env::temp_dir().join(format!("proscenio-dull-{}.png", std::process::id()));
+        let pixbuf = Pixbuf::new(gtk4::gdk_pixbuf::Colorspace::Rgb, false, 8, 16, 16).unwrap();
+        pixbuf.fill(0x6c7480ff);
+        pixbuf.savev(&path, "png", &[]).unwrap();
+        let image = path.to_string_lossy();
+        let smart = generate(&arguments(&format!("--path {image} --smart")), None);
+        let neutral = generate(
+            &arguments(&format!("--path {image} --scheme scheme-neutral")),
+            None,
+        );
+        std::fs::remove_file(&path).unwrap();
+        assert_eq!(smart, neutral);
     }
 }
