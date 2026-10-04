@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::core::i18n::tr;
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Choice, Context, Page, Style};
-use crate::theming::switchwall;
+use crate::theming::{colors, switchwall};
 
 const FIELD_MARGIN: i32 = 8;
 const PERCENT: f64 = 100.0;
@@ -69,7 +69,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         "invert_colors",
         &tr("Harmony (%)"),
         "/appearance/wallpaperTheming/terminalGenerationProps/harmony",
-        0.6,
+        colors::HARMONY,
         100.0,
         (0, 100),
         10,
@@ -79,7 +79,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         "gradient",
         &tr("Harmonize threshold"),
         "/appearance/wallpaperTheming/terminalGenerationProps/harmonizeThreshold",
-        100,
+        colors::HARMONIZE_THRESHOLD as i64,
         (0, 100),
         10,
     );
@@ -88,7 +88,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         "format_color_text",
         &tr("Foreground boost (%)"),
         "/appearance/wallpaperTheming/terminalGenerationProps/termFgBoost",
-        0.35,
+        colors::TERM_FG_BOOST,
         100.0,
         (0, 100),
         10,

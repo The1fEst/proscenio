@@ -16,6 +16,9 @@ const PRECISION_BITS: u32 = 32 - 8 - 2;
 const QUANTIZE_COLORS: usize = 128;
 const SCHEME_IMAGE_SIZE: u32 = 128;
 const COLORFUL: f64 = 40.0;
+pub const HARMONY: f64 = 0.8;
+pub const HARMONIZE_THRESHOLD: f64 = 100.0;
+pub const TERM_FG_BOOST: f64 = 0.35;
 
 const SUCCESS_DARK: [(&str, &str); 4] = [
     ("success", "#B5CCBA"),
@@ -76,9 +79,9 @@ fn parse(arguments: &[String]) -> Result<Options, String> {
         smart: false,
         transparent: false,
         termscheme: None,
-        harmony: 0.8,
-        harmonize_threshold: 100.0,
-        term_fg_boost: 0.35,
+        harmony: HARMONY,
+        harmonize_threshold: HARMONIZE_THRESHOLD,
+        term_fg_boost: TERM_FG_BOOST,
         blend_bg_fg: false,
         cache: None,
     };

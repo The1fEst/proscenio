@@ -119,7 +119,7 @@ it is missing.
 | Control | Key | Default | Range |
 |---|---|---|---|
 | Force dark mode in terminal | `appearance.wallpaperTheming.terminalGenerationProps.forceDarkMode` | off | |
-| Harmony (%) | `…terminalGenerationProps.harmony` | 60 %, stored as 0.6 | 0–100 % |
+| Harmony (%) | `…terminalGenerationProps.harmony` | 80 %, stored as 0.8 | 0–100 % |
 | Harmonize threshold | `…terminalGenerationProps.harmonizeThreshold` | 100 | 0–100 |
 | Foreground boost (%) | `…terminalGenerationProps.termFgBoost` | 35 %, stored as 0.35 | 0–100 % |
 
@@ -370,7 +370,7 @@ from 0 to 100 in steps of 5.
 | Tint icons | `tray.monochromeIcons` | on |
 | Hide passive items | `tray.filterPassive` | on |
 | Show item IDs in tooltips | `tray.showItemId` | off |
-| Pinned items or Unpinned items | `tray.pinnedItems` | `Fcitx` |
+| Pinned items or Unpinned items | `tray.pinnedItems` | empty |
 
 The last field is a comma-separated list of [tray](tray.md) item IDs. While icons are pinned by
 default its title reads **Unpinned items** and the list names the items that are not; otherwise it
@@ -440,7 +440,7 @@ A link row opens this subpage. See [Dock](dock.md).
 | Hover region height (px) | `dock.hoverRegionHeight` | 2 | 1–50, live only while hovering reveals |
 | Tint app icons | `dock.monochromeIcons` | on | |
 | Height (px) | `dock.height` | 60 | 30–150, in steps of 5 |
-| Pinned apps | `dock.pinnedApps` | | |
+| Pinned apps | `dock.pinnedApps` | `org.kde.dolphin`, `brave-origin`, `kitty` | |
 | Ignored apps | `dock.ignoredAppRegexes` | empty | |
 
 **Pinned apps** is a comma-separated list of desktop entry IDs, in the order they appear; pinning

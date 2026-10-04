@@ -70,7 +70,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             choice(&tr("Roman"), "account_balance", Value::from(ROMAN.to_vec())),
         ],
         &[NUMBER_MAP],
-        || config::value(NUMBER_MAP).unwrap_or_else(|| Value::from(vec!["1", "2"])),
+        || config::value(NUMBER_MAP).unwrap_or_else(|| Value::from(Vec::<String>::new())),
         |value| config::store_value(NUMBER_MAP, value),
     );
     page

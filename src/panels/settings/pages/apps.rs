@@ -33,11 +33,7 @@ const COMMANDS: [(&str, &str, &str); 3] = [
         "/apps/taskManager",
         "plasma-systemmonitor --page-name Processes",
     ),
-    (
-        "System update",
-        "/apps/update",
-        "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'",
-    ),
+    ("System update", "/apps/update", config::UPDATE_COMMAND),
 ];
 
 fn role_prompt(key: &str) -> &'static str {

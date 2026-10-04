@@ -137,9 +137,9 @@ The error of the last call shows under them. Each call lets polkit ask for a pas
 
 | Section | Control | Key | Default | Range |
 |---|---|---|---|---|
-| Time Format | 24h, 12h am/pm or 12h AM/PM | `time.format` | | `hh:mm`, `h:mm ap`, `h:mm AP` |
+| Time Format | 24h, 12h am/pm or 12h AM/PM | `time.format` | `hh:mm` (24h) | `hh:mm`, `h:mm ap`, `h:mm AP` |
 | Clock & Calendar | Seconds | `time.secondPrecision` | off | |
-| Date formats | Date | `time.dateFormat` | | |
+| Date formats | Date | `time.dateFormat` | `ddd, dd/MM` | |
 | Date formats | Short date | `time.shortDateFormat` | `dd/MM` | |
 | Date formats | Date with year | `time.dateWithYearFormat` | `dd/MM/yyyy` | |
 | Pomodoro | Focus (min) | `time.pomodoro.focus` | 25 min, stored as 1500 s | 1–180 min, in steps of 5 |

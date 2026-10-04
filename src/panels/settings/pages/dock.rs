@@ -62,7 +62,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &pinned,
         &tr("e.g. org.kde.dolphin, kitty"),
         "/dock/pinnedApps",
-        &["org.kde.dolphin", "kitty"],
+        &config::DOCK_PINNED_APPS,
     );
     let ignored = page.subsection(
         &dock,

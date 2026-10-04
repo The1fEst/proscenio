@@ -100,8 +100,8 @@ impl Settings {
             centre: flag("/lock/centerClock", true),
             locked_text: flag("/lock/showLockedText", true),
             blur: flag("/lock/blur/enable", true),
-            time_format: text("/time/format", "hh:mm"),
-            date_format: text("/time/dateFormat", "ddd, dd/MM"),
+            time_format: text("/time/format", config::TIME_FORMAT),
+            date_format: text("/time/dateFormat", config::DATE_FORMAT),
             parallax: number("/background/parallax/widgetsFactor", 1.2),
             zoom: number("/background/parallax/workspaceZoom", 1.07),
         }

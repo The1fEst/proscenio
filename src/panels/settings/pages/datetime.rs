@@ -412,7 +412,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             },
         ],
         "/time/format",
-        Value::from("h:mm AP"),
+        Value::from(config::TIME_FORMAT),
         |value| {
             let twelve_hour = value.as_str() != Some(TWENTY_FOUR_HOUR);
             switch_hyprlock_clock(twelve_hour);
@@ -442,7 +442,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         Style::Outlined,
         &tr("Date (e.g. ddd, dd/MM)"),
         "/time/dateFormat",
-        "ddd d MMM",
+        config::DATE_FORMAT,
     );
     page.config_text(
         &dates,

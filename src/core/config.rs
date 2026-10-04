@@ -12,6 +12,10 @@ pub const BASE_VERTICAL_BAR_WIDTH: i32 = 46;
 pub const HYPRLAND_GAPS_OUT: i32 = 5;
 pub const NOTIFICATION_TIMEOUT: i64 = 7000;
 pub const OSD_TIMEOUT: i64 = 1000;
+pub const TIME_FORMAT: &str = "hh:mm";
+pub const DATE_FORMAT: &str = "ddd, dd/MM";
+pub const DOCK_PINNED_APPS: [&str; 3] = ["org.kde.dolphin", "brave-origin", "kitty"];
+pub const UPDATE_COMMAND: &str = "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CornerStyle {
@@ -275,7 +279,7 @@ impl Config {
             dock_hover_region: number(&dock, "hoverRegionHeight", 2.0) as i32,
             dock_pinned_on_startup: flag(&dock, "pinnedOnStartup", false),
             dock_hover_to_reveal: flag(&dock, "hoverToReveal", true),
-            dock_pinned: RefCell::new(strings(&dock, "pinnedApps")),
+            dock_pinned: RefCell::new(strings_or(dock.get("pinnedApps"), &DOCK_PINNED_APPS)),
             dock_ignored: strings(&dock, "ignoredAppRegexes"),
             region: RegionOptions {
                 show_pointer: Cell::new(flag(&region, "showPointer", false)),
@@ -489,7 +493,7 @@ impl Config {
             updates_advise: number(&updates, "adviseUpdateThreshold", 75.0) as i32,
             updates_strongly_advise: number(&updates, "stronglyAdviseUpdateThreshold", 200.0)
                 as i32,
-            app_update: text(&apps, "update", ""),
+            app_update: text(&apps, "update", UPDATE_COMMAND),
             battery_low: number(&battery, "low", 20.0) / 100.0,
             battery_critical: number(&battery, "critical", 5.0) / 100.0,
             battery_full: number(&battery, "full", 101.0) / 100.0,
@@ -537,8 +541,8 @@ impl Config {
             transparency_automatic: flag(&transparency, "automatic", true),
             background_transparency: number(&transparency, "backgroundTransparency", 0.11) as f32,
             content_transparency: number(&transparency, "contentTransparency", 0.57) as f32,
-            time_format: text(&time, "format", "hh:mm"),
-            date_format: text(&time, "dateFormat", "ddd, dd/MM"),
+            time_format: text(&time, "format", TIME_FORMAT),
+            date_format: text(&time, "dateFormat", DATE_FORMAT),
             short_date_format: text(&time, "shortDateFormat", "dd/MM"),
             memory_warning: number(&resources, "memoryWarningThreshold", 95.0),
             swap_warning: number(&resources, "swapWarningThreshold", 85.0),

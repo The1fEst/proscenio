@@ -284,7 +284,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr(pinned_title()),
         &tr("Comma-separated tray item IDs"),
     );
-    page.config_list(&pinned, &tr("e.g. Fcitx, steam"), PINNED_ITEMS, &["Fcitx"]);
+    page.config_list(&pinned, &tr("e.g. Fcitx, steam"), PINNED_ITEMS, &[]);
     page.watch(INVERT_PINNED, move || {
         Page::set_subsection_title(&pinned, &tr(pinned_title()))
     });
