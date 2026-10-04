@@ -176,6 +176,7 @@ tooltip label {
 .notif-item-summary { font-size: 15px; color: var(--colOnLayer2); }
 .notif-body { font-size: 15px; color: var(--colSubtext); }
 .notif-body > link { color: var(--colPrimary); }
+.notif-body-image { border-radius: 12px; }
 entry.notif-reply {
     background-color: var(--colLayer4);
     border: none;

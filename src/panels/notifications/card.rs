@@ -4,6 +4,7 @@ use gtk4::pango;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{KeyboardMode, LayerShell};
 use std::cell::{Cell, RefCell};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -26,6 +27,8 @@ const ACTION_PADDING: i32 = 15;
 const COLLAPSED: i32 = 80;
 const PADDING: i32 = 10;
 const COPY_RESET: Duration = Duration::from_millis(1500);
+const BODY_IMAGE_WIDTH: i32 = 300;
+const BODY_IMAGE_HEIGHT: i32 = 200;
 
 pub struct Placement {
     pub popup: bool,
@@ -424,6 +427,9 @@ fn entry(
     if expanded {
         let open = gtk4::Box::new(gtk4::Orientation::Vertical, 5);
         open.append(&body_label(notification, true));
+        for path in body_images(&body_text(&notification.body, &notification.app_name)) {
+            open.append(&body_image(path));
+        }
         let field = notification
             .reply
             .as_ref()
@@ -749,6 +755,13 @@ fn markup(text: &str) -> Option<String> {
                     checked.push_str("<span>");
                 }
             }
+            "img" if !closing => {
+                if let Some(alt) = attribute(tag, "alt") {
+                    let alt = glib::markup_escape_text(&unescape(&alt));
+                    out.push_str(&alt);
+                    checked.push_str(&alt);
+                }
+            }
             _ => {}
         }
         rest = &rest[start + end + 1..];
@@ -761,6 +774,62 @@ fn markup(text: &str) -> Option<String> {
         checked.push_str("</span>");
     }
     check(out, &checked)
+}
+
+fn body_images(text: &str) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    let mut rest = text;
+    while let Some(start) = rest.find('<') {
+        let Some(end) = rest[start..].find('>') else {
+            break;
+        };
+        let tag = &rest[start + 1..start + end];
+        let image = tag
+            .split_whitespace()
+            .next()
+            .is_some_and(|name| name.eq_ignore_ascii_case("img"));
+        if let Some(source) = attribute(tag, "src").filter(|_| image) {
+            let source = unescape(&source);
+            if source.starts_with("file:") {
+                found.extend(gtk4::gio::File::for_uri(&source).path());
+            } else if source.starts_with('/') {
+                found.push(PathBuf::from(source));
+            }
+        }
+        rest = &rest[start + end + 1..];
+    }
+    found
+}
+
+fn body_image(path: PathBuf) -> gtk4::Widget {
+    let picture = gtk4::Picture::new();
+    picture.add_css_class("notif-body-image");
+    picture.set_overflow(gtk4::Overflow::Hidden);
+    picture.set_can_shrink(true);
+    picture.set_content_fit(gtk4::ContentFit::ScaleDown);
+    picture.set_halign(gtk4::Align::Start);
+    picture.set_visible(false);
+    let scale = gdk::Display::default()
+        .map(|display| {
+            display
+                .monitors()
+                .iter::<gdk::Monitor>()
+                .flatten()
+                .map(|monitor| monitor.scale_factor())
+                .max()
+                .unwrap_or(1)
+        })
+        .unwrap_or(1);
+    let size = (BODY_IMAGE_WIDTH * scale, BODY_IMAGE_HEIGHT * scale);
+    let target = picture.downgrade();
+    glib::spawn_future_local(async move {
+        let texture = crate::ui::image::texture(path, size).await;
+        if let (Some(picture), Some(texture)) = (target.upgrade(), texture) {
+            picture.set_paintable(Some(&texture));
+            picture.set_visible(true);
+        }
+    });
+    picture.upcast()
 }
 
 fn attribute(tag: &str, wanted: &str) -> Option<String> {
@@ -795,8 +864,9 @@ fn check(markup: String, checked: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{body_text, markup};
+    use super::{body_images, body_text, markup};
     use crate::services::notifications::CAPABILITIES;
+    use std::path::PathBuf;
 
     #[test]
     fn chromium_notifications_lose_their_link_line() {
@@ -837,12 +907,34 @@ mod tests {
 
     #[test]
     fn links_and_images_are_advertised_only_if_the_body_keeps_them() {
-        let kept = markup("<a href=\"x\">link</a> <img src=\"y\"/>").unwrap_or_default();
+        let kept = markup("<a href=\"x\">link</a>").unwrap_or_default();
         assert_eq!(
             CAPABILITIES.contains(&"body-hyperlinks"),
             kept.contains("<a")
         );
-        assert_eq!(CAPABILITIES.contains(&"body-images"), kept.contains("<img"));
+        assert_eq!(
+            CAPABILITIES.contains(&"body-images"),
+            !body_images("<img src=\"/tmp/picture.png\"/>").is_empty()
+        );
+    }
+
+    #[test]
+    fn an_image_reads_as_its_alt_text_in_the_line() {
+        assert_eq!(
+            markup("see <img src=\"/tmp/a.png\" alt=\"a cat\"/> and <img src=\"/tmp/b.png\"/>."),
+            Some("see a cat and .".to_owned())
+        );
+    }
+
+    #[test]
+    fn body_images_are_local_files_only() {
+        assert_eq!(
+            body_images(
+                "<img src=\"file:///tmp/a%20b.png\"/> <img alt='c' src='/tmp/c.png'> \
+                 <img src=\"https://x.invalid/d.png\"/> <img src=\"e.png\"/>"
+            ),
+            vec![PathBuf::from("/tmp/a b.png"), PathBuf::from("/tmp/c.png")]
+        );
     }
 
     #[test]

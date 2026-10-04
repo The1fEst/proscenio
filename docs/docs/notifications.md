@@ -19,7 +19,7 @@ Notifications interface, version 1.2, at `/org/freedesktop/Notifications`:
 |---|---|
 | `Notify` | adds a notification, or replaces the one whose ID is given as `replaces_id` |
 | `CloseNotification` | removes a notification, as its sender asks |
-| `GetCapabilities` | returns `actions`, `body`, `body-hyperlinks`, `body-markup`, `icon-static`, `inline-reply` and `persistence` |
+| `GetCapabilities` | returns `actions`, `body`, `body-hyperlinks`, `body-images`, `body-markup`, `icon-static`, `inline-reply` and `persistence` |
 | `GetServerInformation` | returns `proscenio`, `fEst`, `0.1` and `1.2` |
 | `NotificationClosed` | signals a removal, with reason 1 when it expired, 2 when the user dismissed it, 3 when `CloseNotification` closed it |
 | `ActionInvoked` | signals that the user clicked one of the notification's actions |
@@ -30,10 +30,13 @@ proscenio waits in the bus queue and takes over when that daemon exits.
 
 :::note
 
-Of the body markup, the cards show bold, italic, underline, strikethrough and links. A link keeps
-only its `href`, shows in the primary color and opens in the default handler for its address; a
-link without an `href` appears as its text, and so does an image a sender puts in the body anyway.
-A notification's picture comes through the `image-data` or `image-path` hint, which the cards show.
+Of the body markup, the cards show bold, italic, underline, strikethrough, links and images. A link
+keeps only its `href`, shows in the primary color and opens in the default handler for its address;
+a link without an `href` appears as its text. An `<img>` reads as its `alt` text in the line, and an
+expanded card shows the image itself under the body, scaled down to fit 300 × 200 px, when its `src`
+is a local file, given as an absolute path or a `file:` URI; images from anywhere else are not
+fetched. A notification's own picture comes through the `image-data` or `image-path` hint instead,
+in the icon.
 
 :::
 
@@ -176,8 +179,8 @@ since its summary is on the top line. The second line is faded when the group ha
 
 ### An expanded card
 
-An expanded card lists all its notifications, each with its body wrapped in full and a row of
-buttons: `close`, the sender's own actions, the reply button, and `content_copy`, which copies the
+An expanded card lists all its notifications, each with its body wrapped in full, the images of the
+body under it, and a row of buttons: `close`, the sender's own actions, the reply button, and `content_copy`, which copies the
 body text and turns into `inventory` for 1.5 s. With several notifications, each sits on its own
 background, tinted for a critical one.
 

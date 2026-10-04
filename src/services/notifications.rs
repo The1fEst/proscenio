@@ -64,6 +64,7 @@ pub const CAPABILITIES: &[&str] = &[
     "actions",
     "body",
     "body-hyperlinks",
+    "body-images",
     "body-markup",
     "icon-static",
     "inline-reply",
