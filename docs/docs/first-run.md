@@ -78,8 +78,8 @@ holds a **Show next time** switch and a close button.
 | Bar | The bar's position (Top, Left, Bottom, Right) and style (Hug, Float, Rect) |
 | Style & wallpaper | Large Light and Dark buttons, each a small preview of the shell in that mode, and **Choose file**, which opens `kdialog` to pick a wallpaper |
 | Power saving | The automatic screen blank and the suspend timeouts, which need `hypridle` |
-| Info | **Keybinds**, which opens the [cheat sheet](cheatsheet.md), and two links to guides on the web |
-| Useless buttons | Two more links to web pages |
+| Info | **Keybinds**, which opens the [cheat sheet](cheatsheet.md); **Usage**, which opens this documentation; and **Configuration**, which opens its [Settings](settings.md) page |
+| Useless buttons | **GitHub**, which opens proscenio's repository |
 
 Every control acts at once, as it does in the settings window.
 
