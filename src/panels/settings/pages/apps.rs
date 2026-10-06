@@ -26,13 +26,8 @@ const DIALOG_ICON: i32 = 24;
 const DIALOG_ITEM_VERTICAL: i32 = 12;
 const RESCAN_DELAY: std::time::Duration = std::time::Duration::from_secs(1);
 
-const COMMANDS: [(&str, &str, &str); 4] = [
+const COMMANDS: [(&str, &str, &str); 3] = [
     ("Terminal", "/apps/terminal", "kitty -1"),
-    (
-        "Task manager",
-        "/apps/taskManager",
-        config::TASK_MANAGER_COMMAND,
-    ),
     ("System update", "/apps/update", config::UPDATE_COMMAND),
     (
         "Shell update",

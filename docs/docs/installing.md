@@ -157,7 +157,6 @@ settings page it belongs to names it along with the package it comes in.
 |---|---|---|
 | `bluetoothctl` | bluez-utils | pairing a device that asks for confirmation fails |
 | `brightnessctl` | brightnessctl | the built-in screen's brightness cannot change |
-| `btop`, `kitty` | btop, kitty | the default task manager command opens nothing |
 | `cava` | cava | the media controls show no audio wave |
 | `cliphist` | cliphist | the launcher's clipboard prefix finds nothing |
 | `ddcutil` | ddcutil | external monitors' brightness cannot change |
@@ -170,6 +169,7 @@ settings page it belongs to names it along with the package it comes in.
 | `hyprlock` | hyprlock | the session always locks with proscenio's own lock screen |
 | `hyprpicker` | hyprpicker | the color picker does nothing |
 | `kdialog` | kdialog | there is no file picker for wallpapers, pictures and certificates |
+| `kitty` | kitty | the default terminal and update commands open nothing |
 | `matugen` | matugen | nothing follows the wallpaper: the shell keeps its built-in palette, since its own colors come from a matugen template too (see [Colors](colors.md)) |
 | `mpvpaper`, `ffmpeg` | mpvpaper, ffmpeg | a video cannot be the wallpaper |
 | `nmcli` | networkmanager | connections are not listed or switched |

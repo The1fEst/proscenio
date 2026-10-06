@@ -131,7 +131,6 @@ general {
 | `micMuteToggle` | Mutes or unmutes the default microphone |
 | `xkbLayoutNext` | Switches every keyboard to the next layout |
 | `toggleLightDark` | Switches the palette between light and dark mode |
-| `taskManager` | Runs the task manager command, `apps.taskManager` (`kitty -1 btop` by default) |
 
 `micMuteToggle` exists when the shell reached the sound server at start. Whenever the default
 microphone is muted or unmuted, from this shortcut or anywhere else, a short-lived notification says
@@ -141,8 +140,8 @@ so, and with `sounds.microphone` on, the default, the sound theme's `device-remo
 ## Shortcuts and IPC
 
 Most shortcuts have a twin among the [IPC](ipc.md) functions. `workspaceNumber`, `micMuteToggle`,
-`xkbLayoutNext`, `taskManager` and `recordStop` exist only as shortcuts; the settings window, the
-media players and brightness only through IPC, so a key reaches them with `hl.dsp.exec_cmd`:
+`xkbLayoutNext` and `recordStop` exist only as shortcuts; the settings window, the media players and
+brightness only through IPC, so a key reaches them with `hl.dsp.exec_cmd`:
 
 ```lua
 hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("proscenio ipc call mpris playPause"), {
