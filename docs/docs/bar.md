@@ -270,7 +270,6 @@ A row of round buttons after the clock, shown on wide screens with Verbose on. E
 
 | Button | Key | Default | Action |
 |---|---|---|---|
-| System updates | `showUpdates` | on | runs the System update command (`apps.update`, on the [Apps](settings-apps.md) page) |
 | Screen snip | `showScreenSnip` | on | opens the [region selector](region-selector.md) for a screenshot |
 | Record | `showScreenRecord` | off | runs `proscenio record`: pick a region with `slurp`, record it with `wf-recorder` |
 | Color picker | `showColorPicker` | off | runs `hyprpicker -a`, which copies the picked color |
@@ -279,11 +278,7 @@ A row of round buttons after the clock, shown on wide screens with Verbose on. E
 | Dark/Light toggle | `showDarkModeToggle` | on | switches the [color scheme](colors.md) between dark and light and keeps the wallpaper |
 | Performance profile toggle | `showPerformanceProfileToggle` | off | cycles power saver, balanced and performance; without a performance profile it switches between balanced and power saver |
 
-The System updates button shows only once enough packages wait. The shell counts them with
-`checkupdates` every `updates.checkInterval` minutes (120) while `updates.enableCheck` is on. The
-button appears when the count passes `updates.adviseUpdateThreshold` (75), turns red past
-`updates.stronglyAdviseUpdateThreshold` (200), and its tooltip gives the count. These are under
-**System → Services → System updates**. The performance profile button needs power-profiles-daemon.
+The performance profile button needs power-profiles-daemon.
 
 ### Battery
 
@@ -371,6 +366,7 @@ From left to right; the ones that come and go slide in and out:
 
 | Indicator | Shown | Looks like |
 |---|---|---|
+| Updates | while the shell is behind its GitHub repository or the package count reaches `updates.adviseUpdateThreshold`; see [Updates](sidebar.md#updates) | `deployed_code_update`, red from `updates.stronglyAdviseUpdateThreshold` packages |
 | Speaker muted | while the default output is muted | `volume_off` |
 | Microphone muted | while the default input is muted | `mic_off` |
 | Keyboard layout | when Hyprland has more than one layout | the layout code, cut to four letters before any `-` and upper-cased; a two-part code stacks on two lines |
@@ -443,7 +439,7 @@ Every key lives in `~/.config/proscenio/config.toml`. A dotted key is a TOML tab
 | `tray.*` | see [System tray](tray.md) | Appearance → Bar → Tray |
 | `time.format`, `dateFormat`, `shortDateFormat`, `secondPrecision` | `hh:mm`, `ddd, dd/MM`, `dd/MM`, `false` | System → Date & Time |
 | `resources.updateInterval` | `3000` | System → Services → Polling interval |
-| `updates.enableCheck`, `checkInterval`, `adviseUpdateThreshold`, `stronglyAdviseUpdateThreshold` | `true`, `120`, `75`, `200` | System → Services → System updates |
+| `updates.enableCheck`, `checkInterval`, `adviseUpdateThreshold`, `stronglyAdviseUpdateThreshold` | `true`, `120`, `1`, `200` | System → Services → Updates |
 | `battery.low` | `20` | Power → Battery |
 | `interactions.deadPixelWorkaround.enable` | `false` | System → Advanced |
 

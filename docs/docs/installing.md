@@ -29,6 +29,17 @@ code with line tables kept, for a profiler.
 
 ## Installing
 
+On Arch Linux, `packaging/PKGBUILD` builds the package `fEst-proscenio` from `main` on GitHub; it
+installs the binary and the polkit policy:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/The1fEst/proscenio/main/packaging/PKGBUILD
+makepkg -si
+```
+
+The sidebar's Shell update button runs the same two steps in `~/.cache/proscenio/package` (see
+[Updates](sidebar.md#updates)). Elsewhere, install the build by hand:
+
 ```bash
 sudo install -m755 target/release/proscenio /usr/bin/proscenio
 sudo install -m644 packaging/dev.fEst.Proscenio.policy /usr/share/polkit-1/actions/
@@ -163,6 +174,7 @@ settings page it belongs to names it along with the package it comes in.
 | `mpvpaper`, `ffmpeg` | mpvpaper, ffmpeg | a video cannot be the wallpaper |
 | `nmcli` | networkmanager | connections are not listed or switched |
 | `pactl` | libpulse | `proscenio record --sound` finds no output to record |
+| `paru` or `yay` | paru or yay (AUR) | the update count leaves out AUR packages, since `pacman` counts the repositories only |
 | `pw-dump` | pipewire | the microphone and screen always read as unused |
 | `qalc` | libqalculate | the launcher shows no math results |
 | `slurp`, `wf-recorder` | slurp, wf-recorder | screen recording fails |

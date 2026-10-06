@@ -393,13 +393,10 @@ A link row opens this subpage. Each switch shows one button in the bar:
 | Dark/Light toggle | `bar.utilButtons.showDarkModeToggle` | on |
 | Performance Profile toggle | `bar.utilButtons.showPerformanceProfileToggle` | off |
 | Record | `bar.utilButtons.showScreenRecord` | off |
-| System updates | `bar.utilButtons.showUpdates` | on |
 
 A notice names whichever of `grim`, `magick`, `wl-copy`, `hyprpicker`, `ydotool`, `wpctl`,
 `wf-recorder` and `slurp` are missing, and another says so when power-profiles-daemon
-(`net.hadess.PowerProfiles`) is not on the system bus. The System updates button appears once
-enough packages are out of date; the threshold is under Services on
-[System settings](settings-system.md).
+(`net.hadess.PowerProfiles`) is not on the system bus.
 
 ### Workspaces
 

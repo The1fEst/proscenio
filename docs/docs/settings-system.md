@@ -237,9 +237,9 @@ Links open in the default handler.
 |---|---|---|---|---|
 | Resources | Polling interval (ms) | `resources.updateInterval` | 3000 | 100–10000, in steps of 100 |
 | Conflict killer | Kill notification daemons without asking | `conflictKiller.autoKillNotificationDaemons` | off | |
-| System updates (Arch only) | Enable update checks | `updates.enableCheck` | on | |
-| System updates | Check interval (mins) | `updates.checkInterval` | 120 | 60–1440, in steps of 60 |
-| Pending package thresholds | Advise updating at | `updates.adviseUpdateThreshold` | 75 | 1–1000, in steps of 25 |
+| Updates | Enable update checks | `updates.enableCheck` | on | |
+| Updates | Check interval (mins) | `updates.checkInterval` | 120 | 60–1440, in steps of 60 |
+| Pending package thresholds | Advise updating at | `updates.adviseUpdateThreshold` | 1 | 1–1000, in steps of 25 |
 | Pending package thresholds | Strongly advise updating at | `updates.stronglyAdviseUpdateThreshold` | 200 | 1–2000, in steps of 25 |
 | Weather | Enable GPS based location | `bar.weather.enableGPS` | on | |
 | Weather | Fahrenheit unit | `bar.weather.useUSCS` | off | |
@@ -250,11 +250,11 @@ Links open in the default handler.
 with its own notification server. With the switch on it stops them (`pkill -x`); otherwise a dialog
 asks, with **Always**, which also turns the switch on, **No** and **Yes**.
 
-**System updates** count the packages pacman could upgrade with `checkupdates`, from the
-pacman-contrib package; a notice says so while checks are on and it is missing. The interval and
-both thresholds are disabled while checks are off. With more pending packages than **Advise
-updating at**, the bar shows its System updates button; with more than **Strongly advise updating
-at**, the button turns to the error color.
+**Updates** counts the packages that can be upgraded and the commits the shell is behind; the
+[sidebar](sidebar.md#updates) describes how. The interval and both thresholds are disabled while
+checks are off. From **Advise updating at** pending packages, the bar shows its updates indicator
+and the sidebar its update buttons; from **Strongly advise updating at**, the indicator turns to the
+error color.
 
 The weather comes from wttr.in: for the position GeoClue gives while GPS based location is on, and
 otherwise for the city named here.

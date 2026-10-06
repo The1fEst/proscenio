@@ -7,8 +7,9 @@ description: The panel on the right edge of the screen — how it opens and clos
 # The sidebar
 
 The sidebar is a full-height panel on the right edge of the screen. From top to bottom it holds a
-row of system buttons, an optional group of sliders, the [quick toggles](quick-toggles.md), and the
-[notification](notifications.md) list, which takes whatever height is left.
+row of system buttons, an optional group of sliders, a row of update buttons while there is
+something to update, the [quick toggles](quick-toggles.md), and the [notification](notifications.md)
+list, which takes whatever height is left.
 
 ## Opening and closing
 
@@ -108,6 +109,33 @@ shows the gamma and a dot on the track marks the backlight level.
 
 The volume of the default output and of the default input, 0 to 100 %. Muting is on the
 [quick toggles](quick-toggles.md).
+
+## Updates
+
+Under the sliders, a row of two wide buttons appears while the shell is behind its repository or
+enough packages wait. The bar shows the `deployed_code_update` indicator at the same time (see
+[Indicators](bar.md#indicators)).
+
+| Button | Status | Click runs |
+|---|---|---|
+| Shell update | how many commits `main` of `The1fEst/proscenio` has that the running build lacks, or **Up to date** | `apps.shellUpdate` |
+| System update | how many packages can be upgraded, or **Up to date** | `apps.update` |
+
+A button with nothing to update is dimmed. The System update button turns the primary color from
+`updates.stronglyAdviseUpdateThreshold` packages (200). Clicking a button closes the sidebar and runs
+its command; both are on the [Apps](settings-apps.md) page.
+
+While `updates.enableCheck` is on, the shell checks at start and then every
+`updates.checkInterval` minutes (120):
+
+- **Packages**: it syncs a private copy of the package databases in `~/.cache/proscenio/pacman`
+  with `unshare -r pacman -Sy`, which needs no root and leaves the system databases alone, then
+  asks the first of `paru`, `yay` and `pacman` it finds for `-Qu` against that copy. `paru` and
+  `yay` count AUR packages too. Ignored packages do not count. The row and the indicator appear
+  once the count reaches `updates.adviseUpdateThreshold` (1).
+- **The shell**: the build's version, `r<commits>.<hash>`, names the commit it was built from. The
+  shell asks the GitHub API to compare that commit with `main` and counts the commits `main` is
+  ahead. A build from a commit GitHub does not have counts as up to date.
 
 ## The notification list
 
