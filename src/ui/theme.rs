@@ -519,6 +519,15 @@ pub fn average(image: Pixbuf) -> Option<RGBA> {
     ))
 }
 
+pub fn queue_draw_all(widget: &gtk4::Widget) {
+    widget.queue_draw();
+    let mut child = widget.first_child();
+    while let Some(current) = child {
+        queue_draw_all(&current);
+        child = current.next_sibling();
+    }
+}
+
 pub struct Following {
     _palette: Option<gio::FileMonitor>,
     _config: Vec<watch::Watch>,
@@ -538,7 +547,7 @@ pub fn watch(
             provider.load_from_string(&fresh.css());
             theme.replace(fresh);
             for window in app.windows() {
-                window.queue_draw();
+                queue_draw_all(window.upcast_ref());
             }
         }
     });

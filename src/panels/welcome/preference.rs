@@ -8,7 +8,7 @@ use crate::core::i18n::tr;
 use crate::panels::settings::content::Page;
 use crate::services::session;
 use crate::theming::switchwall;
-use crate::ui::theme::{SharedTheme, Theme, mix, rounding};
+use crate::ui::theme::{SharedTheme, Theme, mix, queue_draw_all, rounding};
 use crate::ui::widgets::centred::Centred;
 use crate::ui::widgets::paint::Paint;
 use crate::ui::widgets::progress::{Colours, ProgressBar};
@@ -275,15 +275,6 @@ fn block(theme: &SharedTheme, width: i32, height: i32, corners: Corners, shade: 
         paint.set_hexpand(true);
     }
     paint
-}
-
-fn queue_draw_all(widget: &gtk4::Widget) {
-    widget.queue_draw();
-    let mut child = widget.first_child();
-    while let Some(current) = child {
-        queue_draw_all(&current);
-        child = current.next_sibling();
-    }
 }
 
 fn preview_background(theme: &Theme, dark: bool) -> RGBA {
