@@ -51,6 +51,7 @@ pub mod soundcards;
 pub mod swiping;
 pub mod system;
 pub mod touchpad;
+pub mod updates;
 pub mod users;
 pub mod utilitybuttons;
 pub mod volumelevels;
@@ -372,7 +373,7 @@ pub struct Subpage {
     pub parent: &'static str,
 }
 
-pub const SUBPAGES: [Subpage; 41] = [
+pub const SUBPAGES: [Subpage; 42] = [
     Subpage {
         id: "volumelevels",
         title: "Volume Levels",
@@ -506,6 +507,11 @@ pub const SUBPAGES: [Subpage; 41] = [
     Subpage {
         id: "autostart",
         title: "Autostart",
+        parent: "system",
+    },
+    Subpage {
+        id: "updates",
+        title: "Updates",
         parent: "system",
     },
     Subpage {
@@ -677,6 +683,7 @@ pub fn build(id: &str, subpage: Option<&str>, context: &Context) -> Rc<Page> {
         "filetypes" => filetypes::build(context),
         "windowrules" => windowrules::build(context),
         "shortcuts" => shortcuts::build(context),
+        "updates" => updates::build(context),
         "about" => about::build(context),
         "services" => services::build(context),
         "advanced" => advanced::build(context),

@@ -125,8 +125,6 @@ application to the **Let apps take focus when they ask for it** switch on
 | Field | Key | Default | Used by |
 |---|---|---|---|
 | Terminal | `apps.terminal` | `kitty -1` | the launcher, for applications whose desktop entry asks for a terminal and for `sudo` commands |
-| System update | `apps.update` | `kitty -1 --hold=yes fish -i -c 'if command -q paru; paru -Syu; else if command -q yay; yay -Syu; else; pkexec pacman -Syu; end'` | the sidebar's System update button |
-| Shell update | `apps.shellUpdate` | `kitty -1 --hold=yes fish -i -c 'mkdir -p ~/.cache/proscenio/package; and cd ~/.cache/proscenio/package; and curl -fsSLO https://raw.githubusercontent.com/The1fEst/proscenio/main/packaging/PKGBUILD; and makepkg -Acfsi; and systemctl --user restart proscenio'` | the sidebar's Shell update button |
 
 The keys are in `~/.config/proscenio/config.toml`. When a command's program is not installed, a
 notice names the program and its field, and it updates as the fields change.

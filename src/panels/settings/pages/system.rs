@@ -46,6 +46,13 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.link_row(
         &main,
+        "deployed_code_update",
+        &tr("Updates"),
+        &tr("Install package and shell updates"),
+        context.subpage_opener("updates"),
+    );
+    page.link_row(
+        &main,
         "info",
         &tr("About"),
         &tr("What this machine is and what it runs"),

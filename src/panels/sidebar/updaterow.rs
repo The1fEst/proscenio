@@ -1,13 +1,12 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
-use crate::core::config;
 use crate::core::i18n::{tr, trf};
 use crate::core::scope::Scope;
 use crate::core::watch;
+use crate::panels::settings::Settings;
 use crate::panels::sidebar::quicktoggle::{Glyph, Look, QuickToggle, Start};
-use crate::platform::desktop;
-use crate::services::updates::Updates;
+use crate::services::updates::{Job, Updates};
 use crate::ui::theme::SharedTheme;
 use crate::ui::widgets::group::ButtonGroup;
 
@@ -17,6 +16,7 @@ const WIDE: i32 = 2;
 pub fn build(
     theme: &SharedTheme,
     updates: &Updates,
+    settings: &Rc<Settings>,
     width: f64,
     close: Rc<dyn Fn()>,
     scope: &Scope,
@@ -26,7 +26,7 @@ pub fn build(
     group.set_halign(gtk4::Align::Start);
 
     let tile_width = (width - SPACING) / 2.0;
-    let tile = |run: fn() -> String| {
+    let tile = |job: Job| {
         let toggle = QuickToggle::new(
             theme,
             tile_width,
@@ -39,25 +39,28 @@ pub fn build(
             },
         );
         let close = close.clone();
+        let updates = updates.clone();
+        let settings = settings.clone();
         toggle.connect_actions(
             Rc::new(move || {
                 close();
-                desktop::shell(&run());
+                updates.start(job);
+                settings.open(Some("updates"));
             }),
             None,
         );
         group.append(&toggle.button);
         toggle
     };
-    let shell = tile(|| config::current().app_shell_update.clone());
-    let system = tile(|| config::current().app_update.clone());
+    let shell = tile(Job::Shell);
+    let system = tile(Job::System);
 
     let show = {
         let group = group.clone();
         let updates = updates.clone();
         move || {
             let behind = updates.behind.get();
-            let count = updates.count.get();
+            let count = updates.count();
             group.set_visible(updates.shell_behind() || updates.advised());
             shell.show(&Look {
                 name: "Shell update",

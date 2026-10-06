@@ -37,8 +37,8 @@ curl -fsSLO https://raw.githubusercontent.com/The1fEst/proscenio/main/packaging/
 makepkg -si
 ```
 
-The sidebar's Shell update button runs the same two steps in `~/.cache/proscenio/package` (see
-[Updates](sidebar.md#updates)). Elsewhere, install the build by hand:
+The shell's own update runs the same two steps in `~/.cache/proscenio/package` (see
+[Updates](settings-system.md#updates)). Elsewhere, install the build by hand:
 
 ```bash
 sudo install -m755 target/release/proscenio /usr/bin/proscenio
@@ -169,7 +169,7 @@ settings page it belongs to names it along with the package it comes in.
 | `hyprlock` | hyprlock | the session always locks with proscenio's own lock screen |
 | `hyprpicker` | hyprpicker | the color picker does nothing |
 | `kdialog` | kdialog | there is no file picker for wallpapers, pictures and certificates |
-| `kitty` | kitty | the default terminal and update commands open nothing |
+| `kitty` | kitty | the default terminal command opens nothing |
 | `matugen` | matugen | nothing follows the wallpaper: the shell keeps its built-in palette, since its own colors come from a matugen template too (see [Colors](colors.md)) |
 | `mpvpaper`, `ffmpeg` | mpvpaper, ffmpeg | a video cannot be the wallpaper |
 | `nmcli` | networkmanager | connections are not listed or switched |

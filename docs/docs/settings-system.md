@@ -1,7 +1,7 @@
 ---
 title: System settings
 sidebar_label: System
-description: The Notifications, Privacy & Security and System pages, with their subpages for screenshots, language, date and time, users, autostart, the About page, the shell's services and advanced options.
+description: The Notifications, Privacy & Security and System pages, with their subpages for screenshots, language, date and time, users, autostart, updates, the About page, the shell's services and advanced options.
 ---
 
 # System settings
@@ -12,7 +12,7 @@ These settings span three pages of the settings window and their subpages:
 |---|---|
 | Notifications | |
 | Privacy & Security | Screen Lock, Screenshots & Recording |
-| System | Region & Language, Date & Time, Users, Autostart, About, Services, Advanced |
+| System | Region & Language, Date & Time, Users, Autostart, Updates, About, Services, Advanced |
 
 Controls bound to the shell's config write `~/.config/proscenio/config.toml`. Its keys below are
 dotted TOML paths, so `notifications.timeout` is the `timeout` key of the `[notifications]` table.
@@ -108,8 +108,8 @@ well. The region selector is the one screen snipping uses; see
 ## System
 
 The page is link rows to its subpages: **Region & Language**, **Date & Time**, **Users**, whose
-second line is the account's name from AccountsService, **Autostart** and **About**, then, under
-**The shell itself**, **Services** and **Advanced**.
+second line is the account's name from AccountsService, **Autostart**, **Updates** and **About**,
+then, under **The shell itself**, **Services** and **Advanced**.
 
 ### Region & Language
 
@@ -219,6 +219,27 @@ The shell starts the enabled entries itself, once per session. When it starts, u
 entry whose `OnlyShowIn` and `NotShowIn` allow `XDG_CURRENT_DESKTOP` and whose `TryExec`, if any, is
 on `PATH`. The runtime folder is emptied at logout, so restarting the shell starts nothing twice.
 `/etc/xdg/autostart` is not read.
+
+### Updates
+
+**Check now** counts the pending packages and the commits the shell is behind again, the way the
+[sidebar](sidebar.md#updates) describes. Two sections show the result:
+
+| Section | Shows | Update runs |
+|---|---|---|
+| System | the number of packages that can be upgraded and, for each, its version change from `-Qu` | `paru -Syu`, `yay -Syu` or `pkexec pacman -Syu`, the first of the three installed, without questions: `--noconfirm`, and for `paru` and `yay` no PKGBUILD review and `pkexec` in place of `sudo` |
+| Shell | the number of commits `main` is ahead and their subjects | downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm`, with `pkexec` as its `PACMAN_AUTH`, then restarts `proscenio.service` |
+
+A list longer than eight lines shows seven and how many more there are. Each update asks for the
+password through polkit, in the shell's own dialog, whenever it installs; an AUR package `paru` or
+`yay` builds asks again when it is installed. Updates run without a terminal, in a systemd scope of
+their own so that restarting the shell does not stop them, and one at a time: both **Update**
+buttons are disabled while one runs.
+
+**Log** appears once an update has started. It reads **Updating…** while the update runs, then
+**Done** or **Failed** by its exit status, and shows its output and errors as they come; it scrolls
+along with the output unless scrolled up. The log lasts until the next update or until the shell
+restarts. When an update ends, the shell checks again.
 
 ### About
 

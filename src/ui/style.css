@@ -344,6 +344,13 @@ textview.material-text > text > selection, text.material-text > selection {
     background-color: var(--colSecondaryContainer);
     color: var(--m3onSecondaryContainer);
 }
+textview.settings-log, textview.settings-log > text {
+    background-color: var(--colLayer2);
+    color: var(--colOnLayer2);
+    font-family: var(--fontMonospace);
+    font-size: 12px;
+    padding: 8px;
+}
 text.spin-value {
     background: none;
     color: var(--colOnLayer2);

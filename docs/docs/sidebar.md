@@ -116,14 +116,14 @@ Under the sliders, a row of two wide buttons appears while the shell is behind i
 enough packages wait. The bar shows the `deployed_code_update` indicator at the same time (see
 [Indicators](bar.md#indicators)).
 
-| Button | Status | Click runs |
-|---|---|---|
-| Shell update | how many commits `main` of `The1fEst/proscenio` has that the running build lacks, or **Up to date** | `apps.shellUpdate` |
-| System update | how many packages can be upgraded, or **Up to date** | `apps.update` |
+| Button | Status |
+|---|---|
+| Shell update | how many commits `main` of `The1fEst/proscenio` has that the running build lacks, or **Up to date** |
+| System update | how many packages can be upgraded, or **Up to date** |
 
 A button with nothing to update is dimmed. The System update button turns the primary color from
-`updates.stronglyAdviseUpdateThreshold` packages (200). Clicking a button closes the sidebar and runs
-its command; both are on the [Apps](settings-apps.md) page.
+`updates.stronglyAdviseUpdateThreshold` packages (200). Clicking a button closes the sidebar, starts
+that update and opens the [Updates](settings-system.md#updates) page, whose log shows its output.
 
 While `updates.enableCheck` is on, the shell checks at start and then every
 `updates.checkInterval` minutes (120):

@@ -152,6 +152,7 @@ pub fn build(
     column.append(&updaterow::build(
         theme,
         &services.updates,
+        settings,
         (WIDTH - GAP - ELEVATION - PADDING * 2) as f64,
         close.clone(),
         scope,
