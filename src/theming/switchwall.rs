@@ -424,7 +424,7 @@ fn apply_terminal(scss: &str) {
     );
     process::run(&["pkill", "-USR1", "-x", "kitty"]);
 
-    let sequences = fill(assets::TERMINAL_SEQUENCES, &colours).replace("$alpha", TERMINAL_ALPHA);
+    let sequences = terminal_sequences(&colours);
     let _ = std::fs::write(output.join("sequences.txt"), &sequences);
     let Ok(entries) = std::fs::read_dir("/dev/pts") else {
         return;
@@ -446,6 +446,14 @@ fn apply_terminal(scss: &str) {
             let _ = terminal.write_all(sequences.as_bytes());
         }
     }
+}
+
+fn terminal_sequences(colours: &[(&str, &str)]) -> String {
+    fill(assets::TERMINAL_SEQUENCES, colours)
+        .lines()
+        .map(|line| line.replace("\\e", "\x1b"))
+        .collect::<String>()
+        .replace("$alpha", TERMINAL_ALPHA)
 }
 
 fn fill(template: &str, colours: &[(&str, &str)]) -> String {
@@ -579,6 +587,18 @@ fn strings(items: &[&str]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_terminal_sequence_is_terminated() {
+        let sequences = terminal_sequences(&[("$term0", "#1B1A1E")]);
+        assert!(sequences.starts_with("\x1b]4;0;#1B1A1E\x1b\\"));
+        assert!(!sequences.contains('\n'));
+        let commands: Vec<&str> = sequences.split("\x1b]").skip(1).collect();
+        assert_eq!(commands.len(), 45);
+        for command in commands {
+            assert!(command.ends_with("\x1b\\"), "unterminated: {command:?}");
+        }
+    }
 
     #[test]
     fn code_color_replaces_or_joins_the_settings() {
