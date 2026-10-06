@@ -252,15 +252,26 @@ h6 {
   padding: 0 0.75rem;
 }
 
+.theme-layout-navbar-left {
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: baseline;
+}
+
+.navbar__toggle {
+  align-self: center;
+}
+
 .navbar__brand {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   margin-right: 1rem;
 }
 
 .navbar__logo {
   display: flex;
   align-items: center;
+  align-self: center;
 }
 
 .navbar__logo img {
