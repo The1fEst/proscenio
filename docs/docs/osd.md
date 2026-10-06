@@ -26,14 +26,14 @@ switching the default output does not show it.
 |---|---|---|---|
 | Volume | `volume_off` when muted, else `volume_up` | the output volume | 0 to 100% |
 | Brightness | `routine` while night light is on, else `light_mode` | the focused monitor's brightness | 0 to 100% |
-| Gamma | `wb_twilight` | the `hyprsunset` gamma | 25 to 100% |
+| Gamma | `wb_twilight` | the gamma of the screen's color matrix | 25 to 100% |
 
 The brightness icon grows and turns as the level rises: from 20 pixels and upright at 0% to 30
 pixels and upside down at 100%, easing over 400 ms.
 
 **Brightness and gamma.** The `brightness` IPC functions `increment` and `decrement` and the
 brightness scroll areas step the focused monitor's brightness by 5%. Stepping down past 0% dims the
-screen further through `hyprsunset` instead, in 5% steps of gamma down to 25%; stepping up brings
+screen further through its color matrix instead, in 5% steps of gamma down to 25%; stepping up brings
 the gamma back to 100% first, then raises the brightness. That is when the gamma indicator shows.
 
 ## Where and for how long

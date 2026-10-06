@@ -104,7 +104,7 @@ the first monitor when there is none.
 | `region` | `screenshot`, `record`, `recordWithSound` | Opens the [region selector](region-selector.md) to take a screenshot or record, with or without sound |
 | `mpris` | `playPause`, `previous`, `next` | The active player: the one playing most recently, else the first. `next` seeks to the end of the track when the player cannot skip but can seek |
 | | `pauseAll` | Pauses every player that can pause |
-| `brightness` | `increment`, `decrement` | The focused monitor's brightness, in steps of 5 %. At zero, `decrement` dims further through `hyprsunset`'s gamma, down to 25 %, and `increment` brings the gamma back to 100 % before it raises the brightness |
+| `brightness` | `increment`, `decrement` | The focused monitor's brightness, in steps of 5 %. At zero, `decrement` dims further through the gamma of the screen's color matrix, down to 25 %, and `increment` brings the gamma back to 100 % before it raises the brightness |
 | `theme` | `toggleLightDark` | Switches between dark and light mode with `proscenio switchwall --noswitch`; see [Colors from the wallpaper](colors.md) |
 | `cliphistService` | `update` | Reads the clipboard history from `cliphist` again |
 | `wallpaperSelector` | `toggle` | The [wallpaper selector](wallpaper-selector.md) |

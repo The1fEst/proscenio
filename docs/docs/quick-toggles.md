@@ -138,8 +138,8 @@ and the **Do not disturb** switch in the settings window. See [Notifications](no
 
 ### Night Light
 
-Turning it on runs `hyprsunset` at `light.night.colorTemperature`, 5000 K by default; turning it off
-sets hyprsunset back to 6000 K. With `light.night.automatic` on, the default, night light follows
+Turning it on warms every monitor to `light.night.colorTemperature`, 5000 K by default; turning it
+off gives the screen its own colors back. With `light.night.automatic` on, the default, night light follows
 the schedule from `light.night.from` to `light.night.to`, 19:00 to 06:30 by default, easing in and
 out over `light.night.transition` minutes, 30 by default, and a click switches at once and
 overrides the schedule until its next start or end time. The icon is `night_sight_auto` while the

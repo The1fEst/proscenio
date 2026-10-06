@@ -96,7 +96,7 @@ One slider drives two controls of the monitor the sidebar is on:
 | Part of the slider | Controls |
 |---|---|
 | Upper 70 % | the backlight, 0 to 100 %: `brightnessctl` for a built-in screen, `ddcutil` (DDC/CI) for an external monitor |
-| Lower 30 % | the gamma, 25 to 100 %, through `hyprctl hyprsunset gamma` |
+| Lower 30 % | the gamma, 25 to 100 %, through the screen's color matrix (see [Night light](settings-displays.md#night-light)) |
 
 Dragging into the lower part turns the backlight down to zero and dims further with gamma; dragging
 back up sets gamma to 100 % again. A `wb_twilight` icon marks the split. The tooltip shows the

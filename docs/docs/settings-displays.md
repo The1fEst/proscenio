@@ -1,7 +1,7 @@
 ---
 title: Display settings
 sidebar_label: Displays
-description: The Displays page and its Color and Night light subpages, which arrange monitors and set their mode, color, HDR and luminance through Hyprland monitor rules, and schedule night light through hyprsunset.
+description: The Displays page and its Color and Night light subpages, which arrange monitors and set their mode, color, HDR and luminance through Hyprland monitor rules, and schedule night light, which warms each monitor through its color matrix.
 ---
 
 # Display settings
@@ -131,8 +131,9 @@ The three display figures describe the panel itself; −1 leaves each one to wha
 
 ## Night light
 
-Night light warms the screen through `hyprsunset`; without it a notice says that night light does
-nothing. Its settings are keys in `~/.config/proscenio/config.toml`.
+Night light warms the screen through each monitor's color matrix, which the shell sets over
+Hyprland's `hyprland-ctm-control-v1` protocol. Its settings are keys in
+`~/.config/proscenio/config.toml`.
 
 | Control | Key | Default |
 |---|---|---|
@@ -143,15 +144,24 @@ nothing. Its settings are keys in `~/.config/proscenio/config.toml`.
 | Transition (min) | `light.night.transition`, 0 to 120 in steps of 5 | 30 |
 
 The From and To fields are inactive while the schedule is off. With the schedule on, night light
-starts at From and warms the screen from 6000 K to the set temperature over the transition, then
-starts at To and cools it back to 6000 K over the transition, when it turns off. The temperature
+starts at From and warms the screen from 6600 K to the set temperature over the transition, then
+starts at To and cools it back to 6600 K over the transition, when it turns off. The temperature
 moves evenly in mireds, one million divided by the kelvins, so the steps look even, and is rounded
 to 10 K; it is worked out on every tick of the background loop and sent only when it changes. A
 transition of 0 switches at From and To at once.
 
-Each new temperature runs `hyprsunset -t <temperature>`, or `hyprctl hyprsunset temperature
-<temperature>` when `hyprsunset` is already running; turning night light off sets the temperature
-back to 6000 K. `hyprsunset` gives every monitor the same temperature. Switching night light by
+A temperature becomes a scale for red, green and blue from the blackbody fit `hyprsunset` uses; from
+6600 K up the scale is 1, so with night light off every matrix is the identity. Hyprland applies the
+matrix to the encoded signal, so a monitor with the `hdr` or `hdredid` color preset, whose signal is
+PQ, gets the scale converted at its SDR white, `sdr_max_luminance` times `sdrbrightness`: the screen
+there turns as warm as an SDR monitor at the same temperature. Every other preset takes the scale as
+it is. The matrices are set again whenever a monitor is added or the Hyprland config reloads, and
+Hyprland resets them all to the identity when the shell exits.
+
+Only one client can hold the protocol. When a running `hyprsunset` holds it, the shell stops
+`hyprsunset` and takes it over; a `hyprsunset` started while the shell runs changes nothing.
+
+Switching night light by
 hand, from its quick toggle or the sidebar's night light dialog, applies the set temperature at once
 and holds until the next From or To. A temperature changed while night light is on applies at once,
 in the middle of a transition at the point the transition has reached.

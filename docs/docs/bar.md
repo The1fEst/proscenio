@@ -313,8 +313,8 @@ brightness of the focused monitor, and the [on-screen display](osd.md) shows the
 - Scrolling down lowers the brightness by 5 % until it reaches zero, then the gamma by 5 points, down
   to 25 %.
 
-Past zero brightness the screen keeps dimming through the gamma. The gamma goes through
-`hyprctl hyprsunset gamma`, which needs `hyprsunset` running; the brightness goes through
+Past zero brightness the screen keeps dimming through the gamma, which scales the same color matrix
+night light sets (see [Night light](settings-displays.md#night-light)); the brightness goes through
 `brightnessctl` or `ddcutil`.
 
 Hovering the region reveals a hint at the screen edge: arrows around a sun icon (`light_mode` at full

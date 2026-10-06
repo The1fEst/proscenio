@@ -158,7 +158,6 @@ settings page it belongs to names it along with the package it comes in.
 | `hypridle` | hypridle | the session never blanks, locks or suspends on its own |
 | `hyprlock` | hyprlock | the session always locks with proscenio's own lock screen |
 | `hyprpicker` | hyprpicker | the color picker does nothing |
-| `hyprsunset` | hyprsunset | night light does nothing |
 | `kdialog` | kdialog | there is no file picker for wallpapers, pictures and certificates |
 | `matugen` | matugen | nothing follows the wallpaper: the shell keeps its built-in palette, since its own colors come from a matugen template too (see [Colors](colors.md)) |
 | `mpvpaper`, `ffmpeg` | mpvpaper, ffmpeg | a video cannot be the wallpaper |
