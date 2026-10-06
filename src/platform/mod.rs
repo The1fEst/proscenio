@@ -4,6 +4,7 @@ pub mod autostart;
 pub mod capture;
 pub mod colorfilter;
 pub mod crypt;
+pub mod ctm;
 pub mod dbus;
 pub mod dbusmenu;
 pub mod defaultapps;

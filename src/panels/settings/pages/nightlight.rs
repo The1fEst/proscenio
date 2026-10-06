@@ -1,8 +1,8 @@
 use serde_json::Value;
 use std::rc::Rc;
 
+use crate::core::config;
 use crate::core::i18n::tr;
-use crate::core::{config, tools};
 use crate::panels::settings::content::{Context, Page, Style};
 
 const NIGHT_AUTOMATIC: &str = "/light/night/automatic";
@@ -11,11 +11,6 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
     let night = page.section("", "");
-    page.tools_notice(
-        &night,
-        &[&tools::HYPRSUNSET],
-        &tr("night light does nothing"),
-    );
     page.config_switch(
         &night,
         "schedule",

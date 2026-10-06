@@ -23,6 +23,7 @@ pub mod power;
 pub mod privacy;
 pub mod prompter;
 pub mod recording;
+pub mod screencolor;
 pub mod session;
 pub mod shellusage;
 pub mod states;
@@ -59,6 +60,7 @@ use crate::services::polkit::Polkit;
 use crate::services::power::Power;
 use crate::services::prompter::Prompter;
 use crate::services::recording::Recording;
+use crate::services::screencolor::ScreenColor;
 use crate::services::session::Session;
 use crate::services::states::States;
 use crate::services::sysinfo::Resources;
@@ -110,6 +112,7 @@ impl Services {
         let hypr = HyprState::new(&events);
         let states = States::new();
         let notifications = Notifications::new(config, session.clone(), &events);
+        let color = ScreenColor::new(&events);
         let services = Services {
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),
@@ -124,13 +127,13 @@ impl Services {
             notifications,
             session_bus: session,
             audio: Audio::new(),
-            light: Light::new(),
+            light: Light::new(&color),
             cliphist: Cliphist::new(),
             net: Net::new(system.clone()),
             bluez: Bluez::new(system.clone()),
             power: Power::new(system.clone()),
             polkit: Polkit::new(system.clone()),
-            session: Session::new(config),
+            session: Session::new(config, &color),
             weather: Weather::new(system.clone()),
             battery: Battery::new(system),
             updates: Updates::new(),

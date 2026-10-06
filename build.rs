@@ -7,6 +7,7 @@ use std::process::Command;
 const PAGES: &str = "src/panels/settings/pages";
 
 fn main() {
+    println!("cargo:rerun-if-changed=protocols/hyprland-ctm-control-v1.xml");
     println!("cargo:rerun-if-changed=protocols/hyprland-focus-grab-v1.xml");
     println!("cargo:rerun-if-changed=protocols/hyprland-global-shortcuts-v1.xml");
     println!("cargo:rerun-if-changed=protocols/hyprland-lock-notify-v1.xml");

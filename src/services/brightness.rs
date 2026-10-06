@@ -6,6 +6,7 @@ use std::time::Duration;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process;
 use crate::platform::hypr;
+use crate::services::screencolor::ScreenColor;
 use crate::ui::anim::EXPRESSIVE_EFFECTS;
 
 pub const GAMMA_FLOOR: f64 = 25.0;
@@ -36,17 +37,19 @@ pub struct Light {
     screens: Rc<RefCell<Vec<Rc<Screen>>>>,
     names: Rc<RefCell<Vec<String>>>,
     pub gamma: Rc<Cell<f64>>,
+    color: Rc<ScreenColor>,
     writer: Rc<RefCell<Option<process::Running>>>,
     generation: Rc<Cell<u64>>,
     listeners: Rc<Listeners<Change>>,
 }
 
 impl Light {
-    pub fn new() -> Self {
+    pub fn new(color: &Rc<ScreenColor>) -> Self {
         Light {
             screens: Rc::default(),
             names: Rc::default(),
             gamma: Rc::new(Cell::new(100.0)),
+            color: color.clone(),
             writer: Rc::default(),
             generation: Rc::default(),
             listeners: Rc::default(),
@@ -272,8 +275,7 @@ impl Light {
     pub fn set_gamma(&self, percent: f64) {
         let percent = percent.clamp(GAMMA_FLOOR, 100.0).round();
         self.gamma.set(percent);
-        let gamma = percent.to_string();
-        process::start(process::quiet(&["hyprctl", "hyprsunset", "gamma", &gamma]));
+        self.color.set_gamma(percent);
         self.announce(Change::Gamma);
     }
 }

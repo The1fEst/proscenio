@@ -21,7 +21,6 @@ pub const GRIM: Tool = tool("grim", "grim");
 pub const HYPRIDLE: Tool = tool("hypridle", "hypridle");
 pub const HYPRLOCK: Tool = tool("hyprlock", "hyprlock");
 pub const HYPRPICKER: Tool = tool("hyprpicker", "hyprpicker");
-pub const HYPRSUNSET: Tool = tool("hyprsunset", "hyprsunset");
 pub const KDIALOG: Tool = tool("kdialog", "kdialog");
 pub const MAGICK: Tool = tool("magick", "imagemagick");
 pub const MATUGEN: Tool = tool("matugen", "matugen");

@@ -8,6 +8,7 @@ use crate::core::config::{self, Config};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::{self, detach};
 use crate::core::{persistent, watch};
+use crate::services::screencolor::{NEUTRAL_TEMPERATURE, ScreenColor};
 
 #[derive(Clone)]
 pub struct Session {
@@ -16,6 +17,7 @@ pub struct Session {
     pub dark: Rc<Cell<bool>>,
     pub automatic: Rc<Cell<bool>>,
     pub temperature: Rc<Cell<i32>>,
+    color: Rc<ScreenColor>,
     inhibitor: Rc<RefCell<Option<process::Running>>>,
     schedule: Rc<Schedule>,
     listeners: Rc<Listeners>,
@@ -39,7 +41,6 @@ struct Night {
     temperature: i32,
 }
 
-const DEFAULT_TEMPERATURE: i32 = 6000;
 const KELVIN_STEP: f64 = 10.0;
 const DAY: i32 = 24 * 60 * 60;
 const INHIBIT: [&str; 2] = ["idle", "inhibit"];
@@ -64,7 +65,7 @@ fn scheduled(now: i32, night: &Night) -> Option<i32> {
         1.0
     };
     let part = warming.min(cooling);
-    let day = 1e6 / DEFAULT_TEMPERATURE as f64;
+    let day = 1e6 / NEUTRAL_TEMPERATURE as f64;
     let warm = 1e6 / night.temperature.max(1000) as f64;
     let kelvin = 1e6 / (day + (warm - day) * part);
     Some(((kelvin / KELVIN_STEP).round() * KELVIN_STEP) as i32)
@@ -89,10 +90,6 @@ fn now_seconds() -> i32 {
         .unwrap_or(0)
 }
 
-fn send_temperature(kelvin: i32) {
-    detach(&["hyprctl", "hyprsunset", "temperature", &kelvin.to_string()]);
-}
-
 fn between(time: i32, from: i32, to: i32) -> bool {
     if from < to {
         time >= from && time <= to
@@ -102,13 +99,14 @@ fn between(time: i32, from: i32, to: i32) -> bool {
 }
 
 impl Session {
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config, color: &Rc<ScreenColor>) -> Self {
         let session = Session {
             night: Rc::new(Cell::new(false)),
             awake: Rc::new(Cell::new(false)),
             dark: Rc::new(Cell::new(dark_mode())),
             automatic: Rc::new(Cell::new(config.night_automatic)),
             temperature: Rc::new(Cell::new(config.night_temperature)),
+            color: color.clone(),
             inhibitor: Rc::new(RefCell::new(None)),
             schedule: Rc::new(Schedule {
                 from: Cell::new(minutes(&config.night_from)),
@@ -121,7 +119,6 @@ impl Session {
             listeners: Rc::default(),
             following: Rc::default(),
         };
-        session.read_night();
         session.watch_mode();
         session.re_evaluate();
         let kept_awake = !persistent::is_new_hyprland_instance()
@@ -159,7 +156,7 @@ impl Session {
             schedule.first.set(true);
         }
         if retuned && self.night.get() && !self.follows_schedule() {
-            send_temperature(config.night_temperature);
+            self.color.set_temperature(Some(config.night_temperature));
         }
         self.re_evaluate();
         self.announce();
@@ -210,20 +207,13 @@ impl Session {
 
     fn enable_temperature(&self, kelvin: i32) {
         self.night.set(true);
-        let kelvin = kelvin.to_string();
-        detach(&[
-            "bash",
-            "-c",
-            "if pidof hyprsunset >/dev/null; then hyprctl hyprsunset temperature \"$1\"; else hyprsunset -t \"$1\"; fi",
-            "night",
-            &kelvin,
-        ]);
+        self.color.set_temperature(Some(kelvin));
         self.announce();
     }
 
     fn disable_temperature(&self) {
         self.night.set(false);
-        send_temperature(DEFAULT_TEMPERATURE);
+        self.color.set_temperature(None);
         self.announce();
     }
 
@@ -261,7 +251,7 @@ impl Session {
         if self.follows_schedule() {
             self.re_evaluate();
         } else if self.night.get() {
-            send_temperature(kelvin);
+            self.color.set_temperature(Some(kelvin));
         }
         self.announce();
     }
@@ -369,19 +359,6 @@ impl Session {
         std::mem::forget(monitor);
     }
 
-    fn read_night(&self) {
-        let session = self.clone();
-        let command = process::command(&["hyprctl", "hyprsunset", "temperature"]);
-        glib::spawn_future_local(async move {
-            if let Some(output) = process::capture_text(command).await
-                && let Ok(value) = output.trim().parse::<i32>()
-            {
-                session.night.set(value != DEFAULT_TEMPERATURE);
-                session.announce();
-            }
-        });
-    }
-
     fn announce(&self) {
         self.listeners.notify();
     }
@@ -469,12 +446,12 @@ mod tests {
         };
         let cases = [
             (clock(18, 59), None),
-            (clock(19, 0), Some(DEFAULT_TEMPERATURE)),
-            (clock(19, 15), Some(4800)),
+            (clock(19, 0), Some(6600)),
+            (clock(19, 15), Some(4980)),
             (clock(19, 30), Some(4000)),
             (clock(3, 0), Some(4000)),
             (clock(6, 30), Some(4000)),
-            (clock(6, 45), Some(4800)),
+            (clock(6, 45), Some(4980)),
             (clock(7, 0), None),
         ];
         for (now, expected) in cases {
