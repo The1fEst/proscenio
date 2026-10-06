@@ -1,0 +1,47 @@
+pkgname=fEst-proscenio
+pkgver=r0
+pkgrel=1
+pkgdesc='proscenio, a desktop shell for Hyprland written on GTK 4'
+arch=(x86_64 aarch64)
+url='https://github.com/The1fEst/proscenio'
+license=('unknown')
+depends=(
+  'accountsservice'
+  'gtk4'
+  'gtk4-layer-shell'
+  'libpulse'
+  'pam'
+  'mesa'
+  'vulkan-icd-loader'
+)
+makedepends=(
+  'cargo'
+  'git'
+)
+provides=('proscenio')
+conflicts=('proscenio')
+
+source=("proscenio::git+https://github.com/The1fEst/proscenio.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd proscenio
+  printf 'r%s.%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+  cd proscenio
+  cargo fetch --locked --target "$(rustc --print host-tuple)"
+}
+
+build() {
+  cd proscenio
+  CARGO_TARGET_DIR=target cargo build --frozen --release
+}
+
+package() {
+  cd proscenio
+  install -Dm755 target/release/proscenio "$pkgdir/usr/bin/proscenio"
+  install -Dm644 packaging/dev.fEst.Proscenio.policy \
+    "$pkgdir/usr/share/polkit-1/actions/dev.fEst.Proscenio.policy"
+}

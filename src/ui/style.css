@@ -80,6 +80,7 @@ label {
 .bar-indicators.toggled image,
 .bar-indicators.toggled .notify-icon,
 .bar-indicators.toggled .custom-icon { color: var(--m3onSecondaryContainer); }
+.bar-indicators label.urgent { color: var(--colError); }
 popover.bar-popup {
     background: none;
     padding: 0;

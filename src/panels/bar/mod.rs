@@ -10,6 +10,7 @@ pub mod resources;
 pub mod strip;
 pub mod tray;
 pub mod traymenu;
+pub mod updates;
 pub mod utilbuttons;
 pub mod vertical;
 pub mod weather;
@@ -408,6 +409,7 @@ fn right_section(
     area.add_controller(open);
     scroll_volume(&area, services);
 
+    indicators.append(&updates::build(&services.updates, false, scope));
     if let Some(audio) = &services.audio {
         let (sink, source) = mute::build(audio, false, scope);
         indicators.append(&sink);

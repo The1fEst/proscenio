@@ -1,16 +1,13 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
-use crate::core::config::{self, Config};
-use crate::core::i18n::trf;
+use crate::core::config::Config;
 use crate::core::process::detach;
 use crate::core::scope::Scope;
-use crate::core::watch;
-use crate::platform::desktop;
 use crate::services::Services;
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::ripple::RippleButton;
-use crate::ui::widgets::{text, tooltip};
+use crate::ui::widgets::text;
 
 const SPACING: i32 = 4;
 const SIZE: i32 = 26;
@@ -26,41 +23,6 @@ pub fn build(
     row.set_halign(gtk4::Align::Center);
     row.set_margin_start(SPACING);
     row.set_margin_end(SPACING);
-
-    if config.util_updates {
-        let (button, icon) = circle(theme, "deployed_code_update", 1.0);
-        let tip = tooltip::Tooltip::new(&button, theme, tooltip::Kind::Styled);
-        tooltip::hover_delay(&button, &tip, 0);
-        let show = Rc::new({
-            let button = button.clone();
-            let updates = services.updates.clone();
-            move || {
-                button.set_visible(updates.advised());
-                tip.set_text(&trf(
-                    "%1 packages can be updated",
-                    &[&updates.count.get().to_string()],
-                ));
-                text::set_color(
-                    &icon,
-                    if updates.strongly_advised() {
-                        "colError"
-                    } else {
-                        "colOnLayer2"
-                    },
-                );
-            }
-        });
-        show();
-        scope.keep(services.updates.subscribe({
-            let show = show.clone();
-            move || show()
-        }));
-        scope.hold(watch::config("/updates", move || show()));
-        button.connect_clicked(|_| {
-            desktop::shell(&config::current().app_update);
-        });
-        row.append(&button);
-    }
 
     if config.util_screen_snip {
         let (button, _) = circle(theme, "screenshot_region", 1.0);

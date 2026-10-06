@@ -4,6 +4,7 @@ pub mod quickpanel;
 pub mod quicktoggle;
 pub mod systemrow;
 pub mod toggles;
+pub mod updaterow;
 
 use gtk4::gdk;
 use gtk4::prelude::*;
@@ -148,6 +149,13 @@ pub fn build(
     {
         column.append(&sliders(config, theme, services, &screen, scope));
     }
+    column.append(&updaterow::build(
+        theme,
+        &services.updates,
+        (WIDTH - GAP - ELEVATION - PADDING * 2) as f64,
+        close.clone(),
+        scope,
+    ));
 
     let overlay = gtk4::Overlay::new();
     overlay.set_child(Some(&column));

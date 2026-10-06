@@ -1,5 +1,3 @@
-use gtk4::glib;
-use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::config;
@@ -37,7 +35,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
 
-    let updates = page.section("deployed_code_update", &tr("System updates (Arch only)"));
+    let updates = page.section("deployed_code_update", &tr("Updates"));
     let check = page.config_switch(
         &updates,
         "check",
@@ -48,14 +46,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.tip(
         &check.button,
         &tr(
-            "Counts the packages pacman could upgrade.\nThe bar shows a button once the count passes the threshold below.",
-        ),
-    );
-    let missing = page.notice(
-        &updates,
-        "info",
-        &tr(
-            "checkupdates is not installed, so nothing is counted. It comes with the pacman-contrib package.",
+            "Counts the packages paru, yay or pacman could upgrade, the first one installed; paru and yay count the AUR too. Also counts the commits the shell is behind on GitHub.\nThe bar shows an icon and the sidebar a button when the shell is behind or the package count reaches the threshold below.",
         ),
     );
     let (interval_row, interval) = page.config_spin(
@@ -73,7 +64,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         "info",
         &tr("Advise updating at"),
         "/updates/adviseUpdateThreshold",
-        75,
+        1,
         (1, 1000),
         25,
     );
@@ -86,10 +77,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         (1, 2000),
         25,
     );
-    let installed = glib::find_program_in_path("checkupdates").is_some();
     let follow = move || {
         let enabled = config::value_bool(ENABLE_CHECK, true);
-        missing.set_visible(enabled && !installed);
         Page::set_spin_row_enabled(&interval_row, &interval, enabled);
         Page::set_spin_row_enabled(&advise_row, &advise, enabled);
         Page::set_spin_row_enabled(&strongly_row, &strongly, enabled);

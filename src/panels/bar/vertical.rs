@@ -18,7 +18,7 @@ use crate::ui::widgets::text;
 use super::{
     Group, Screen, VERTICAL_INDICATOR_SPACING, battery, bluetooth, clock, horizontal_separator,
     indicator_look, keyboard, media, mute, network, over_button, resources, scroll_volume, tray,
-    watch_moved_away, workspaces,
+    updates, watch_moved_away, workspaces,
 };
 
 const MIDDLE_SPACING: i32 = 4;
@@ -273,6 +273,7 @@ fn bottom_section(
     let indicators = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     indicators.set_halign(gtk4::Align::Center);
     indicators.set_valign(gtk4::Align::Center);
+    indicators.append(&updates::build(&services.updates, true, scope));
     if let Some(audio) = &services.audio {
         let (sink, source) = mute::build(audio, true, scope);
         indicators.append(&sink);

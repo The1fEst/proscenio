@@ -16,7 +16,8 @@ pub const TIME_FORMAT: &str = "hh:mm";
 pub const DATE_FORMAT: &str = "ddd, dd/MM";
 pub const DOCK_PINNED_APPS: [&str; 3] = ["org.kde.dolphin", "brave-origin", "kitty"];
 pub const TASK_MANAGER_COMMAND: &str = "kitty -1 btop";
-pub const UPDATE_COMMAND: &str = "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'";
+pub const UPDATE_COMMAND: &str = "kitty -1 --hold=yes fish -i -c 'if command -q paru; paru -Syu; else if command -q yay; yay -Syu; else; pkexec pacman -Syu; end'";
+pub const SHELL_UPDATE_COMMAND: &str = "kitty -1 --hold=yes fish -i -c 'mkdir -p ~/.cache/proscenio/package; and cd ~/.cache/proscenio/package; and curl -fsSLO https://raw.githubusercontent.com/The1fEst/proscenio/main/packaging/PKGBUILD; and makepkg -Acfsi; and systemctl --user restart proscenio'";
 pub const CHEATSHEET_SUPER_KEY: &str = "\u{f05b3}";
 pub const NIGHT_TRANSITION: i32 = 30;
 
@@ -147,7 +148,6 @@ pub struct Config {
     pub update_interval: u32,
     pub time_second_precision: bool,
     pub date_with_year_format: String,
-    pub util_updates: bool,
     pub util_screen_snip: bool,
     pub util_screen_record: bool,
     pub util_color_picker: bool,
@@ -160,6 +160,7 @@ pub struct Config {
     pub updates_advise: i32,
     pub updates_strongly_advise: i32,
     pub app_update: String,
+    pub app_shell_update: String,
     pub app_task_manager: String,
     pub battery_low: f64,
     pub battery_critical: f64,
@@ -485,7 +486,6 @@ impl Config {
                 .unwrap_or(3000) as u32,
             time_second_precision: flag(&time, "secondPrecision", false),
             date_with_year_format: text(&time, "dateWithYearFormat", "dd/MM/yyyy"),
-            util_updates: flag(&util, "showUpdates", true),
             util_screen_snip: flag(&util, "showScreenSnip", true),
             util_screen_record: flag(&util, "showScreenRecord", false),
             util_color_picker: flag(&util, "showColorPicker", false),
@@ -495,10 +495,11 @@ impl Config {
             util_power_profile: flag(&util, "showPerformanceProfileToggle", false),
             updates_enable_check: flag(&updates, "enableCheck", true),
             updates_interval: number(&updates, "checkInterval", 120.0) as i32,
-            updates_advise: number(&updates, "adviseUpdateThreshold", 75.0) as i32,
+            updates_advise: number(&updates, "adviseUpdateThreshold", 1.0) as i32,
             updates_strongly_advise: number(&updates, "stronglyAdviseUpdateThreshold", 200.0)
                 as i32,
             app_update: text(&apps, "update", UPDATE_COMMAND),
+            app_shell_update: text(&apps, "shellUpdate", SHELL_UPDATE_COMMAND),
             app_task_manager: text(&apps, "taskManager", TASK_MANAGER_COMMAND),
             battery_low: number(&battery, "low", 20.0) / 100.0,
             battery_critical: number(&battery, "critical", 5.0) / 100.0,
