@@ -47,10 +47,9 @@ const NERD_BUTTON_HEIGHT: i32 = 35;
 const NERD_BUTTON_PADDING: i32 = 10;
 const NERD_BUTTON_SPACING: i32 = 5;
 const FIRST_RUN_CONTENT: &str = "This file is just here to confirm you've been greeted :>";
-const USAGE: &str = "https://end-4.github.io/dots-hyprland-wiki/en/ii-qs/02usage/";
-const CONFIGURATION: &str = "https://end-4.github.io/dots-hyprland-wiki/en/ii-qs/03config/";
-const GITHUB: &str = "https://github.com/end-4/dots-hyprland";
-const SPONSORS: &str = "https://github.com/sponsors/end-4";
+const USAGE: &str = "https://the1fest.github.io/proscenio/docs/";
+const CONFIGURATION: &str = "https://the1fest.github.io/proscenio/docs/settings";
+const GITHUB: &str = "https://github.com/The1fEst/proscenio";
 const NOTICE: &str = "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing, open the sidebar and click \"Reload Hyprland & %1\" in its top-right corner";
 
 pub struct Welcome {
@@ -335,7 +334,6 @@ fn content(theme: &SharedTheme, services: &Rc<Services>) -> Rc<Page> {
     let useless = page.section("monitoring", &tr("Useless buttons"));
     let buttons = Flow::new(FLOW_SPACING);
     buttons.append(&nerd_link(&page, "\u{f02a4}", &tr("GitHub"), GITHUB));
-    buttons.append(&link(&page, "favorite", &tr("Funny number"), SPONSORS));
     useless.append(&buttons);
     page
 }
@@ -678,4 +676,20 @@ fn index_of<T: PartialEq>(values: &[T], current: &T) -> i32 {
         .iter()
         .position(|value| value == current)
         .map_or(0, |index| index as i32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_welcome_links_lead_to_proscenio_pages() {
+        for url in [USAGE, CONFIGURATION, GITHUB] {
+            assert!(
+                url.starts_with("https://the1fest.github.io/proscenio/")
+                    || url == "https://github.com/The1fEst/proscenio",
+                "{url}"
+            );
+        }
+    }
 }
