@@ -11,6 +11,7 @@ use crate::core::i18n::{tr, trf};
 use crate::core::{assets, config, gsettings, paths, process};
 use crate::platform::hypr;
 use crate::platform::notify::{self, Notification};
+use crate::services::updates;
 use crate::theming::{colors, kde};
 
 const SCHEMES: [&str; 8] = [
@@ -338,7 +339,9 @@ fn offer_upscale(image: &str) {
         if !install {
             return;
         }
-        process::run(&["kitty", "-1", "paru", "-S", "upscayl-bin"]);
+        if let Some(command) = updates::install_command(&["upscayl-bin"]) {
+            process::run(&command);
+        }
         if !process::exists("upscayl") {
             return;
         }
@@ -359,9 +362,9 @@ fn offer_install(missing: &[&str]) {
     if !install {
         return;
     }
-    let mut command = vec!["kitty", "-1", "sudo", "pacman", "-S"];
-    command.extend_from_slice(missing);
-    process::run(&command);
+    if let Some(command) = updates::install_command(missing) {
+        process::run(&command);
+    }
     if process::exists("mpvpaper") && process::exists("ffmpeg") {
         notify::send_blocking(&Notification {
             app: APP_NAME,

@@ -76,8 +76,9 @@ result, and choosing it copies it to the clipboard. Without `qalc` there is no m
 
 ### Commands
 
-The command row runs the query, without the command prefix, through `bash -c`. A query that starts
-with `sudo` opens in the terminal instead: `apps.terminal` runs `fish -C` with the command.
+The command row runs the query, without the command prefix, through `bash -c`. A leading `sudo`
+becomes `pkexec`, so the command asks for the password through polkit and runs as root in `/root`,
+with the clean environment `pkexec` gives.
 
 ### Actions
 

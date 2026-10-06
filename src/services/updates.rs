@@ -275,11 +275,19 @@ fn new_commits(comparison: &Value) -> Vec<String> {
         .collect()
 }
 
-fn upgrade_command(manager: &str) -> Vec<&'static str> {
-    match manager {
+pub fn install_command<'a>(packages: &[&'a str]) -> Option<Vec<&'a str>> {
+    Some(unattended(package_manager()?, "-S", packages))
+}
+
+fn upgrade_command(manager: &str) -> Vec<&str> {
+    unattended(manager, "-Syu", &[])
+}
+
+fn unattended<'a>(manager: &'a str, operation: &'a str, packages: &[&'a str]) -> Vec<&'a str> {
+    let mut line = match manager {
         "paru" => vec![
             "paru",
-            "-Syu",
+            operation,
             "--noconfirm",
             "--skipreview",
             "--batchinstall",
@@ -289,7 +297,7 @@ fn upgrade_command(manager: &str) -> Vec<&'static str> {
         ],
         "yay" => vec![
             "yay",
-            "-Syu",
+            operation,
             "--noconfirm",
             "--answerclean",
             "None",
@@ -299,8 +307,10 @@ fn upgrade_command(manager: &str) -> Vec<&'static str> {
             "pkexec",
             "--nosudoloop",
         ],
-        _ => vec!["pkexec", "pacman", "-Syu", "--noconfirm"],
-    }
+        _ => vec!["pkexec", "pacman", operation, "--noconfirm"],
+    };
+    line.extend_from_slice(packages);
+    line
 }
 
 #[cfg(test)]
@@ -378,5 +388,24 @@ mod tests {
         }
         assert_eq!(upgrade_command("paru")[0], "paru");
         assert_eq!(upgrade_command("yay")[0], "yay");
+    }
+
+    #[test]
+    fn an_install_runs_like_an_upgrade_with_the_packages_at_the_end() {
+        assert_eq!(
+            unattended("pacman", "-S", &["mpvpaper", "ffmpeg"]),
+            [
+                "pkexec",
+                "pacman",
+                "-S",
+                "--noconfirm",
+                "mpvpaper",
+                "ffmpeg"
+            ]
+        );
+        let paru = unattended("paru", "-S", &["upscayl-bin"]);
+        assert_eq!(paru[..2], ["paru", "-S"]);
+        assert_eq!(paru[2..paru.len() - 1], upgrade_command("paru")[2..]);
+        assert_eq!(paru.last(), Some(&"upscayl-bin"));
     }
 }

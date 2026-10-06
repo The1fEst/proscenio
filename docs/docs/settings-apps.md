@@ -124,7 +124,7 @@ application to the **Let apps take focus when they ask for it** switch on
 
 | Field | Key | Default | Used by |
 |---|---|---|---|
-| Terminal | `apps.terminal` | `kitty -1` | the launcher, for applications whose desktop entry asks for a terminal and for `sudo` commands |
+| Terminal | `apps.terminal` | `kitty -1` | the launcher, for applications whose desktop entry asks for a terminal |
 
 The keys are in `~/.config/proscenio/config.toml`. When a command's program is not installed, a
 notice names the program and its field, and it updates as the fields change.

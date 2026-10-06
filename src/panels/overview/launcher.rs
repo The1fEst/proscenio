@@ -349,10 +349,7 @@ impl Launcher {
         let cleaned = query.replace("file://", "");
         let cleaned = cleaned.strip_prefix(shell).unwrap_or(&cleaned);
         let cleaned = cleaned.strip_prefix(shell).unwrap_or(cleaned);
-        if query.starts_with("sudo") {
-            return format!("{} fish -C '{cleaned}'", self.config().app_terminal);
-        }
-        cleaned.to_owned()
+        privileged(cleaned)
     }
 
     fn app_results(&self, search: &str) -> Vec<Item> {
@@ -644,4 +641,27 @@ fn load_emojis() -> Vec<String> {
 
 async fn read(line: &[&str]) -> Option<String> {
     process::capture_text(process::command(line)).await
+}
+
+fn privileged(command: &str) -> String {
+    match command.strip_prefix("sudo") {
+        Some(rest) if rest.starts_with(char::is_whitespace) => format!("pkexec{rest}"),
+        _ => command.to_owned(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_sudo_command_asks_for_the_password_through_polkit() {
+        assert_eq!(privileged("sudo pacman -Syu"), "pkexec pacman -Syu");
+        assert_eq!(
+            privileged("sudo  systemctl restart sddm"),
+            "pkexec  systemctl restart sddm"
+        );
+        assert_eq!(privileged("sudoku"), "sudoku");
+        assert_eq!(privileged("echo sudo"), "echo sudo");
+    }
 }

@@ -72,7 +72,8 @@ decoded with `djpeg` and 16-bit PNG images with `magick`; other formats go throu
 1. **The wallpaper**, unless the colors come from an accent color. Any running `mpvpaper` stops, the
    path is stored in `background.wallpaperPath`, and a video starts playing; with `--noswitch`, all
    of this happens to the current wallpaper. When a chosen image is smaller than the largest monitor,
-   a notification offers to open Upscayl.
+   a notification offers to open Upscayl, and to install `upscayl-bin` from the AUR when it is
+   missing.
 2. **The mode.** `color-scheme` in `org.gnome.desktop.interface` becomes `prefer-dark` or
    `prefer-light`, and `gtk-theme` becomes `adw-gtk3-dark` or `adw-gtk3`.
 3. If `appearance.wallpaperTheming.enableAppsAndShell` is `false`, the run stops here.
@@ -84,7 +85,9 @@ decoded with `djpeg` and 16-bit PNG images with `magick`; other formats go throu
 ### Video wallpapers
 
 A video needs `mpvpaper` and `ffmpeg`; when one is missing, a notification says so and offers to
-install them. The video plays muted and looped through `mpvpaper` on every monitor. `ffmpeg` saves
+install them. Both installs run without a terminal, the way the
+[system update](settings-system.md#updates) does: through `paru`, `yay` or `pkexec pacman`, without
+questions, asking for the password through polkit. The video plays muted and looped through `mpvpaper` on every monitor. `ffmpeg` saves
 its first frame to `~/.config/hypr/custom/scripts/mpvpaper_thumbnails/<file name>.jpg`, which is
 stored as `background.thumbnailPath` and supplies the colors.
 
