@@ -46,7 +46,10 @@ write at a time, and every write is followed by a fresh read of all of them.
 | Qt style | Fusion, Windows and the style plugins in `/usr/lib/qt6/plugins/styles` and `/usr/lib/qt/plugins/styles` | `widgetStyle` in `~/.config/kdeglobals`, the file Qt apps read their style and fonts from |
 | Icon theme | icon themes in `~/.icons`, `~/.local/share/icons` and `/usr/share/icons`, except `hicolor` | gsettings `icon-theme`, `gtk-icon-theme-name` in both `settings.ini` files, `Theme` in the `[Icons]` group of `kdeglobals`, and `hl.env` lines for the Qt icon theme in `appearance.lua` |
 
-The icon theme applies to GTK apps, Qt apps and the shell at once.
+The icon theme applies to GTK apps, Qt apps and the shell at once. Switching between light and dark
+mode switches the icon theme to its installed variant for that mode: `Papirus-Dark` becomes
+`Papirus-Light`, or `Papirus` without it, and `breeze` becomes `breeze-dark`. A theme without a
+`-Dark` or `-Light` variant stays as it is.
 
 ### Pointer
 

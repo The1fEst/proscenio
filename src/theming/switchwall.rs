@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use crate::core::i18n::{tr, trf};
 use crate::core::{assets, config, gsettings, paths, process};
-use crate::platform::hypr;
 use crate::platform::notify::{self, Notification};
+use crate::platform::{appearance, hypr};
 use crate::services::updates;
 use crate::theming::{colors, kde};
 
@@ -239,10 +239,14 @@ fn switch(
         &paths::generated().join("color.txt").to_string_lossy(),
     ]));
 
-    match mode.as_str() {
-        "dark" => gsettings::set_dark(true),
-        "light" => gsettings::set_dark(false),
-        _ => {}
+    let dark = match mode.as_str() {
+        "dark" => Some(true),
+        "light" => Some(false),
+        _ => None,
+    };
+    if let Some(dark) = dark {
+        gsettings::set_dark(dark);
+        appearance::follow_mode(dark);
     }
 
     if config::value(&format!("{THEMING}/enableAppsAndShell")) == Some(Value::Bool(false)) {

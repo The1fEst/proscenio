@@ -305,6 +305,39 @@ fn set_lua_env(name: &str, value: &str) {
     edit_hypr_settings(|text| with_lua_env(text, name, value));
 }
 
+pub fn follow_mode(dark: bool) {
+    let current = read_ini_key(&kdeglobals(), "Theme", "[Icons]");
+    if let Some(theme) = icon_variant(&current, dark, &themes(Kind::Icon)) {
+        set_icons(&theme);
+    }
+}
+
+fn icon_variant(theme: &str, dark: bool, installed: &[String]) -> Option<String> {
+    let base = ["-dark", "-light"]
+        .iter()
+        .find_map(|suffix| {
+            let start = theme.len().checked_sub(suffix.len())?;
+            theme
+                .get(start..)
+                .filter(|end| end.eq_ignore_ascii_case(suffix))
+                .map(|_| &theme[..start])
+        })
+        .unwrap_or(theme);
+    let candidates = if dark {
+        vec![format!("{base}-Dark"), format!("{base}-dark")]
+    } else {
+        vec![
+            format!("{base}-Light"),
+            format!("{base}-light"),
+            base.to_owned(),
+        ]
+    };
+    candidates
+        .into_iter()
+        .find(|name| installed.contains(name))
+        .filter(|name| name != theme)
+}
+
 fn themes(kind: Kind) -> Vec<String> {
     let home = home();
     let roots = match kind {
@@ -672,6 +705,32 @@ mod tests {
     use super::*;
 
     const FONTS: &str = "DejaVu Sans,DejaVu Sans Condensed:style=Condensed Bold,Bold\nDejaVu Sans:style=Book\nInter:style=Italic\nInter:style=Bold Italic,Italic\nInter:style=Regular\nInter:style=Medium\nSF Pro Text:style=Medium\nSF Pro Text:style=Regular\n:style=Nothing\nNoStyle\n";
+
+    #[test]
+    fn an_icon_theme_turns_into_its_installed_variant_for_the_mode() {
+        let installed: Vec<String> = ["breeze", "breeze-dark", "Papirus", "Papirus-Dark"]
+            .map(str::to_owned)
+            .into();
+        let variant = |theme: &str, dark: bool| icon_variant(theme, dark, &installed);
+        assert_eq!(variant("Papirus-Dark", false).as_deref(), Some("Papirus"));
+        assert_eq!(variant("Papirus", true).as_deref(), Some("Papirus-Dark"));
+        assert_eq!(variant("breeze-dark", false).as_deref(), Some("breeze"));
+        assert_eq!(variant("breeze", true).as_deref(), Some("breeze-dark"));
+        assert_eq!(variant("Papirus-Dark", true), None);
+        assert_eq!(variant("Adwaita", true), None);
+
+        let with_light: Vec<String> = ["Papirus", "Papirus-Dark", "Papirus-Light"]
+            .map(str::to_owned)
+            .into();
+        assert_eq!(
+            icon_variant("Papirus-Dark", false, &with_light).as_deref(),
+            Some("Papirus-Light")
+        );
+        assert_eq!(
+            icon_variant("Papirus-Light", true, &with_light).as_deref(),
+            Some("Papirus-Dark")
+        );
+    }
 
     #[test]
     fn ini_keys_are_written_inside_their_own_section() {

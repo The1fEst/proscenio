@@ -75,7 +75,8 @@ decoded with `djpeg` and 16-bit PNG images with `magick`; other formats go throu
    a notification offers to open Upscayl, and to install `upscayl-bin` from the AUR when it is
    missing.
 2. **The mode.** `color-scheme` in `org.gnome.desktop.interface` becomes `prefer-dark` or
-   `prefer-light`, and `gtk-theme` becomes `adw-gtk3-dark` or `adw-gtk3`.
+   `prefer-light`, `gtk-theme` becomes `adw-gtk3-dark` or `adw-gtk3`, and the icon theme becomes
+   its installed variant for the mode (see [Appearance](settings-appearance.md)).
 3. If `appearance.wallpaperTheming.enableAppsAndShell` is `false`, the run stops here.
 4. **matugen**, with the user's own config and templates.
 5. **The palette**, written to `material_colors.scss`.
