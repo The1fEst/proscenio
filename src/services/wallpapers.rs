@@ -50,7 +50,10 @@ pub struct Wallpapers {
 
 impl Wallpapers {
     pub fn new() -> Rc<Self> {
-        let folder = pictures().join("Wallpapers");
+        let folder = start_folder(
+            &pictures().join("Wallpapers"),
+            Path::new(&crate::core::config::current().wallpaper),
+        );
         Rc::new(Wallpapers {
             directory: RefCell::new(folder.clone()),
             history: RefCell::new(vec![folder]),
@@ -285,6 +288,17 @@ impl Wallpapers {
     }
 }
 
+fn start_folder(wallpapers: &Path, current: &Path) -> PathBuf {
+    if wallpapers.is_dir() {
+        return wallpapers.to_path_buf();
+    }
+    current
+        .parent()
+        .filter(|folder| folder.is_dir())
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| wallpapers.to_path_buf())
+}
+
 pub fn pictures() -> PathBuf {
     glib::user_special_dir(glib::UserDirectory::Pictures).unwrap_or_else(glib::home_dir)
 }
@@ -314,6 +328,23 @@ fn matches(name: &str, terms: &[&str]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn without_a_wallpapers_folder_the_selector_starts_where_the_wallpaper_is() {
+        let root = std::env::temp_dir().join(format!("proscenio-start-{}", std::process::id()));
+        let wallpapers = root.join("Pictures/Wallpapers");
+        let shipped = root.join("share/proscenio");
+        std::fs::create_dir_all(&shipped).unwrap();
+        let current = shipped.join("default_wallpaper.png");
+        std::fs::write(&current, b"").unwrap();
+
+        assert_eq!(start_folder(&wallpapers, &current), shipped);
+        assert_eq!(start_folder(&wallpapers, Path::new("")), wallpapers);
+        std::fs::create_dir_all(&wallpapers).unwrap();
+        assert_eq!(start_folder(&wallpapers, &current), wallpapers);
+
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 
     #[test]
     fn the_filter_wants_every_word_in_order_and_a_wallpaper_extension() {

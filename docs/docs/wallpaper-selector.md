@@ -72,8 +72,9 @@ always listed. Files are listed when their extension is one of `jpg`, `jpeg`, `p
 The search keeps the files whose name, without its extension, contains every word typed, in that
 order and ignoring case. It does not filter folders.
 
-The selector starts in the `Wallpapers` folder each time the shell starts, and remembers the folder
-it was left in until the shell exits. It follows changes on disk while it is open. Back and forward
+The selector starts in the `Wallpapers` folder each time the shell starts, or, while that folder
+does not exist, in the folder of the current wallpaper, and remembers the folder it was left in
+until the shell exits. It follows changes on disk while it is open. Back and forward
 follow the folders visited.
 
 :::note
