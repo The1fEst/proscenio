@@ -67,11 +67,13 @@ impl NavRail {
 
             let label = text::styled_sized(&tr(name), LABEL);
             text::set_color(&label, "colOnLayer1");
-            label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
-            label.set_max_width_chars(1);
-            label.set_size_request(BASE as i32, -1);
             label.set_xalign(0.5);
-            widget.put(&label, 0.0, y + top + HIGHLIGHT + LABEL_GAP);
+            let width = label.measure(gtk4::Orientation::Horizontal, -1).1 as f64;
+            widget.put(
+                &label,
+                (BASE - width) / 2.0,
+                y + top + HIGHLIGHT + LABEL_GAP,
+            );
 
             items.push(Item {
                 symbol,
