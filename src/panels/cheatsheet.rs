@@ -166,9 +166,12 @@ fn grouped() -> Vec<(String, Vec<Bind>)> {
     let binds = crate::platform::hypr::json("binds")
         .and_then(|value| value.as_array().cloned())
         .unwrap_or_default();
+    grouped_from(&binds)
+}
 
+fn grouped_from(binds: &[Value]) -> Vec<(String, Vec<Bind>)> {
     let mut groups: Vec<(String, Vec<Bind>)> = Vec::new();
-    for entry in &binds {
+    for entry in binds {
         let description = entry
             .get("description")
             .and_then(Value::as_str)
@@ -182,7 +185,7 @@ fn grouped() -> Vec<(String, Vec<Bind>)> {
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_owned();
-        if repeated(&key) {
+        if key.is_empty() || repeated(&key) {
             continue;
         }
         let name = match description.find(':') {
@@ -424,4 +427,24 @@ fn described(name: &str, bind: &Bind) -> String {
         }
     }
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_bind_hyprland_reports_without_a_key_is_left_out() {
+        let binds: Vec<Value> = serde_json::from_str(
+            r#"[
+                {"modmask":64,"key":"Equal","keycode":0,"description":"Screen: Zoom in"},
+                {"modmask":64,"key":"","keycode":0,"description":"Screen: Zoom in"}
+            ]"#,
+        )
+        .unwrap();
+        let groups = grouped_from(&binds);
+        let keys: Vec<&str> = groups[0].1.iter().map(|bind| bind.key.as_str()).collect();
+        assert_eq!(groups[0].0, "Screen");
+        assert_eq!(keys, ["Equal"]);
+    }
 }

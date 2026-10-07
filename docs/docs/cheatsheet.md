@@ -25,7 +25,8 @@ takes 70% of the monitor's width and height and scrolls vertically when it is lo
 ## Where the list comes from
 
 The shell asks Hyprland for its keybinds (`binds` over the IPC socket) and keeps those that have a
-description. The text before the first `:` in a description is the bind's category, and the rest is
+description and a key. A bind on a raw keycode, such as `code:86`, comes with an empty key and is
+left out. The text before the first `:` in a description is the bind's category, and the rest is
 what the row says: a bind described as `Apps: Terminal` shows as *Terminal* in the *Apps*
 category. Binds whose description has no `:` go into a last category, *Uncategorized*.
 
