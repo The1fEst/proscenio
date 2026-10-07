@@ -10,6 +10,10 @@ The overview opens at the top of the focused monitor. It holds a search field an
 the field is empty, a grid of workspaces with a live picture of every window. Typing hides the grid
 and lists results instead.
 
+![The overview with its workspace grid](/img/screenshots/overview.webp)
+
+![The launcher listing results for "dol"](/img/screenshots/search.webp)
+
 ## Opening it
 
 | Global shortcut | `proscenio ipc call search …` | Does |

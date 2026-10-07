@@ -9,6 +9,8 @@ description: The card that lists every Hyprland keybind with a description, grou
 A card in the middle of the screen listing every Hyprland keybind that has a description, grouped
 into categories and drawn as key caps. The source is `src/panels/cheatsheet.rs`.
 
+![The cheatsheet with the keybinds of hypr-dots](/img/screenshots/cheatsheet.webp)
+
 ## Opening and closing
 
 - The global shortcuts `cheatsheetToggle`, `cheatsheetOpen` and `cheatsheetClose` (see

@@ -10,6 +10,8 @@ The wallpaper selector is a folder browser for pictures. It opens on the focused
 center under the bar, and choosing a picture makes it the wallpaper, recolors the shell from it (see
 [Colors](colors.md)) and closes the selector.
 
+![The wallpaper selector showing the default wallpaper](/img/screenshots/wallpapers.webp)
+
 ## Opening it
 
 | Global shortcut | `proscenio ipc call …` | Does |

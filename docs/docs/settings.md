@@ -11,6 +11,10 @@ an ordinary Hyprland window, 1100 Ã— 750 when it opens and no smaller than 750 Ã
 `proscenio Settings` for window rules to match. There is only one: opening it while it is already
 open brings it forward and focuses it on its workspace.
 
+![The settings window on the Appearance page, in dark mode](/img/screenshots/settings-dark.webp)
+
+![The settings window on the Appearance page, in light mode](/img/screenshots/settings-light.webp)
+
 ## Opening it
 
 | From | Opens |

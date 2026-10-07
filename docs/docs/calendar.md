@@ -10,6 +10,8 @@ Clicking the clock on the [bar](bar.md) opens a panel with a navigation rail on 
 pages: **Calendar**, **To Do** and **Timer**. The source is in `src/panels/calendar/`, with the
 timer in `src/services/timer.rs` and the list in `src/services/todo.rs`.
 
+![The calendar panel under the bar's clock](/img/screenshots/calendar.webp)
+
 ## Opening and closing
 
 - A left click on the bar's clock toggles the panel. With a horizontal bar it hangs from the top

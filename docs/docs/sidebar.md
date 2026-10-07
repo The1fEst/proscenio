@@ -11,6 +11,8 @@ row of system buttons, an optional group of sliders, a row of update buttons whi
 something to update, the [quick toggles](quick-toggles.md), and the [notification](notifications.md)
 list, which takes whatever height is left.
 
+![The sidebar with its quick toggles and three notifications, in light mode](/img/screenshots/sidebar-light.webp)
+
 ## Opening and closing
 
 Every monitor the shell runs on has a sidebar of its own.

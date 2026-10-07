@@ -21,6 +21,10 @@ the dark mode buttons of the bar and of the [quick toggles](quick-toggles.md), t
 it in a transient systemd scope of its own (`systemd-run --user --scope`), outside the shell's
 process.
 
+![The default wallpaper in dark mode](/img/screenshots/desktop-dark.webp)
+
+![The default wallpaper in light mode](/img/screenshots/desktop-light.webp)
+
 ## Arguments
 
 | Argument | Effect |

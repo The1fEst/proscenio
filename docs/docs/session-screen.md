@@ -10,6 +10,8 @@ The session screen is a full-screen menu for leaving the session: locking, sleep
 restarting or shutting down. It covers the focused monitor, with the desktop showing faintly through
 its background.
 
+![The session screen with Lock selected](/img/screenshots/session.webp)
+
 ## Opening it
 
 | Global shortcut | `proscenio ipc call session …` | Does |

@@ -10,6 +10,8 @@ The first time proscenio starts for a user, it applies a set of defaults and ope
 window: one page with the settings a fresh setup most often needs, such as the language, the
 displays, the bar and the wallpaper.
 
+![The welcome window](/img/screenshots/welcome.webp)
+
 ## What the first start does
 
 At every start, proscenio looks for `first_run.txt` in `~/.local/state/proscenio/`

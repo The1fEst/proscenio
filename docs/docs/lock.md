@@ -10,6 +10,8 @@ proscenio locks the session itself, through the `ext-session-lock-v1` protocol. 
 holds, all input goes to the lock screen, which shows the wallpaper, blurred by default, and the
 clock, with the password field and a few controls along the bottom edge.
 
+![The lock screen](/img/screenshots/lock.webp)
+
 ## Locking
 
 | Way | Locks |

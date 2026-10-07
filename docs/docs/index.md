@@ -13,6 +13,8 @@ the windows: the bar, the sidebar with its quick toggles, notifications, the doc
 workspace overview, on-screen indicators, the session and lock screens, and a settings app for the
 shell and for Hyprland itself. Its colors come from the wallpaper.
 
+![The desktop with the sidebar open, in dark mode](/img/screenshots/sidebar-dark.webp)
+
 It is built to stay small and quick:
 
 - every panel is compiled Rust, with no scripting engine underneath;
