@@ -152,6 +152,16 @@ pub fn modes_of(monitor: &Monitor) -> Vec<Mode> {
             Some(_) => {}
         }
     }
+    let listed = seen
+        .iter()
+        .any(|mode| mode.width == monitor.width && mode.height == monitor.height);
+    if !listed && monitor.width > 0 && monitor.height > 0 {
+        seen.push(Mode {
+            width: monitor.width,
+            height: monitor.height,
+            rates: vec![monitor.refresh_rate],
+        });
+    }
     seen.sort_by_key(|mode| std::cmp::Reverse(mode.width * mode.height));
     seen
 }
@@ -580,6 +590,18 @@ mod tests {
             available_modes: modes.iter().map(|mode| (*mode).to_owned()).collect(),
             disabled: false,
         }
+    }
+
+    #[test]
+    fn a_mode_the_monitor_does_not_list_is_still_offered_as_the_current_one() {
+        let screen = monitor(&["5120x2160@50.00Hz", "3840x2160@60.00Hz"], 2560, 1440);
+        let shown: Vec<(i64, i64)> = shown_modes_of(&screen, false)
+            .iter()
+            .map(|mode| (mode.width, mode.height))
+            .collect();
+        assert!(shown.contains(&(2560, 1440)), "{shown:?}");
+        assert_eq!(rates_of(&screen), [60.0]);
+        assert_eq!(modes_of(&screen)[0].width, 5120);
     }
 
     #[test]

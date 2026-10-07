@@ -76,7 +76,9 @@ that gives whole pixels, as logical sizes: picking one keeps the native mode and
 divisor. The native size is marked "(Default)". The panel's mode at the size the display is running
 is listed as well, and with **Show all resolutions** every mode the panel reports; a size already in
 the list is not repeated. Picking one of these panel modes sets it at scale 1 and its highest refresh
-rate.
+rate. A mode the display runs in but does not report, such as a custom mode set in the Hyprland
+config, counts as one of its modes, with the refresh rate it runs at, so the current resolution and
+rate show as chosen.
 
 **Reserved area** keeps a strip along each edge free of windows: Top, Right, Bottom and Left, 0 to
 2000 pixels, written together as `reserved_area = { top = …, right = …, bottom = …, left = … }`.
