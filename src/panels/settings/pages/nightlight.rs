@@ -62,7 +62,9 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.tip(
         &transition,
-        &tr("How long the scheduled change takes, from the set time on; 0 switches at once"),
+        &tr(
+            "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once",
+        ),
     );
     page
 }

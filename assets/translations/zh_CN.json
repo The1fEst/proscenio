@@ -1533,5 +1533,5 @@
   "Hide popups while sharing the screen": "共享屏幕时隐藏弹出通知",
   "While an app shares the screen, notifications go to the sidebar without popping up": "当应用正在共享屏幕时，通知会进入侧边栏而不弹出",
   "Transition (min)": "过渡时长（分钟）",
-  "How long the scheduled change takes, from the set time on; 0 switches at once": "定时切换从设定时间开始持续的时长；0 表示立即切换"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "定时切换的时长：在开始时间前完成，在结束时间开始；0 表示立即切换"
 }

@@ -1533,5 +1533,5 @@
   "Hide popups while sharing the screen": "Скрывать всплывающие уведомления при демонстрации экрана",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Пока приложение показывает экран, уведомления уходят в боковую панель, не всплывая",
   "Transition (min)": "Переход (мин)",
-  "How long the scheduled change takes, from the set time on; 0 switches at once": "Сколько длится смена по расписанию, начиная с заданного времени; 0 переключает сразу"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Сколько длится смена по расписанию: к времени начала она завершена, со времени окончания начинается; 0 переключает сразу"
 }

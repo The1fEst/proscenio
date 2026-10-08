@@ -1533,5 +1533,5 @@
   "Hide popups while sharing the screen": "Ẩn cửa sổ bật lên khi đang chia sẻ màn hình",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Khi một ứng dụng đang chia sẻ màn hình, thông báo sẽ vào thanh bên mà không bật lên",
   "Transition (min)": "Chuyển tiếp (phút)",
-  "How long the scheduled change takes, from the set time on; 0 switches at once": "Thời gian thay đổi theo lịch kéo dài kể từ giờ đã đặt; 0 sẽ chuyển ngay"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Thời gian thay đổi theo lịch: hoàn tất trước giờ bắt đầu và bắt đầu vào giờ kết thúc; 0 sẽ chuyển ngay"
 }

@@ -1533,5 +1533,5 @@
   "Hide popups while sharing the screen": "Masquer les fenêtres contextuelles pendant le partage d'écran",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Pendant qu'une application partage l'écran, les notifications vont dans le panneau latéral sans s'afficher",
   "Transition (min)": "Transition (min)",
-  "How long the scheduled change takes, from the set time on; 0 switches at once": "Durée du changement programmé à partir de l'heure réglée ; 0 bascule immédiatement"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Durée du changement programmé : il est terminé à l'heure de début et commence à l'heure de fin ; 0 bascule immédiatement"
 }

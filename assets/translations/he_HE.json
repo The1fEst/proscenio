@@ -1533,5 +1533,5 @@
   "Hide popups while sharing the screen": "הסתר חלונות קופצים בזמן שיתוף המסך",
   "While an app shares the screen, notifications go to the sidebar without popping up": "בזמן שאפליקציה משתפת את המסך, ההתראות עוברות לסרגל הצדדי בלי לקפוץ",
   "Transition (min)": "מעבר (דק׳)",
-  "How long the scheduled change takes, from the set time on; 0 switches at once": "כמה זמן נמשך השינוי המתוזמן מהשעה שנקבעה; 0 מחליף מיד"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "כמה זמן נמשך השינוי המתוזמן: הוא מסתיים עד שעת ההתחלה ומתחיל בשעת הסיום; 0 מחליף מיד"
 }

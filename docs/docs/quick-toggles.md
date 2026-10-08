@@ -140,9 +140,10 @@ and the **Do not disturb** switch in the settings window. See [Notifications](no
 
 Turning it on warms every monitor to `light.night.colorTemperature`, 5000 K by default; turning it
 off gives the screen its own colors back. With `light.night.automatic` on, the default, night light follows
-the schedule from `light.night.from` to `light.night.to`, 19:00 to 06:30 by default, easing in and
-out over `light.night.transition` minutes, 30 by default, and a click switches at once and
-overrides the schedule until its next start or end time. The icon is `night_sight_auto` while the
+the schedule from `light.night.from` to `light.night.to`, 19:00 to 06:30 by default: it eases in
+over the `light.night.transition` minutes before From, 30 by default, so it is fully warm at From,
+and eases out over as many minutes after To. A click switches at once and overrides the schedule
+until it next starts easing in or reaches To. The icon is `night_sight_auto` while the
 schedule is on and `bedtime` otherwise. The schedule and the temperature are also under **Displays ›
 Night light**; see [Display settings](settings-displays.md).
 

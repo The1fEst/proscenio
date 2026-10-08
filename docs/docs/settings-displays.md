@@ -146,8 +146,10 @@ Hyprland's `hyprland-ctm-control-v1` protocol. Its settings are keys in
 | Transition (min) | `light.night.transition`, 0 to 120 in steps of 5 | 30 |
 
 The From and To fields are inactive while the schedule is off. With the schedule on, night light
-starts at From and warms the screen from 6600 K to the set temperature over the transition, then
-starts at To and cools it back to 6600 K over the transition, when it turns off. The temperature
+starts one transition before From and warms the screen from 6600 K so that it reaches the set
+temperature at From, keeps it until To, then cools it back to 6600 K over the transition after To,
+when it turns off. With From at 18:00, To at 06:30 and 120 minutes, it warms from 16:00 and cools
+until 08:30. The temperature
 moves evenly in mireds, one million divided by the kelvins, so the steps look even, and is rounded
 to 10 K; it is worked out on every tick of the background loop and sent only when it changes. A
 transition of 0 switches at From and To at once.

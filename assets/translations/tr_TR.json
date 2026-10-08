@@ -1533,5 +1533,5 @@
   "Hide popups while sharing the screen": "Ekran paylaşılırken açılır pencereleri gizle",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Bir uygulama ekranı paylaşırken bildirimler açılmadan kenar çubuğuna gider",
   "Transition (min)": "Geçiş (dk)",
-  "How long the scheduled change takes, from the set time on; 0 switches at once": "Zamanlanmış değişimin ayarlanan saatten itibaren ne kadar süreceği; 0 hemen geçer"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Zamanlanmış değişimin ne kadar süreceği: başlangıç saatinde tamamlanır, bitiş saatinde başlar; 0 hemen geçer"
 }

@@ -46,8 +46,9 @@ const DAY: i32 = 24 * 60 * 60;
 const INHIBIT: [&str; 2] = ["idle", "inhibit"];
 
 fn scheduled(now: i32, night: &Night) -> Option<i32> {
-    let length = (night.to - night.from).rem_euclid(DAY);
-    let into = (now - night.from).rem_euclid(DAY);
+    let start = night.from - night.transition;
+    let length = (night.to - start).rem_euclid(DAY);
+    let into = (now - start).rem_euclid(DAY);
     if into >= length + night.transition {
         return None;
     }
@@ -177,8 +178,9 @@ impl Session {
     fn re_evaluate(&self) {
         let schedule = &self.schedule;
         let now = now_minutes();
+        let start = (schedule.from.get() - schedule.transition.get()).rem_euclid(24 * 60);
         if let Some((_, since)) = schedule.manual.get()
-            && (between(schedule.from.get(), since, now) || between(schedule.to.get(), since, now))
+            && (between(start, since, now) || between(schedule.to.get(), since, now))
         {
             schedule.manual.set(None);
         }
@@ -436,7 +438,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_schedule_eases_into_the_night_and_out_of_it() {
+    fn the_schedule_is_fully_warm_from_its_start_and_eases_out_after_its_end() {
         let clock = |hour: i32, minute: i32| (hour * 60 + minute) * 60;
         let night = Night {
             from: clock(19, 0),
@@ -445,10 +447,10 @@ mod tests {
             temperature: 4000,
         };
         let cases = [
-            (clock(18, 59), None),
-            (clock(19, 0), Some(6600)),
-            (clock(19, 15), Some(4980)),
-            (clock(19, 30), Some(4000)),
+            (clock(18, 29), None),
+            (clock(18, 30), Some(6600)),
+            (clock(18, 45), Some(4980)),
+            (clock(19, 0), Some(4000)),
             (clock(3, 0), Some(4000)),
             (clock(6, 30), Some(4000)),
             (clock(6, 45), Some(4980)),
