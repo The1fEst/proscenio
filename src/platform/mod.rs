@@ -35,6 +35,7 @@ pub mod readable;
 pub mod secretexchange;
 pub mod sessionlock;
 pub mod shortcuts;
+pub mod sleep;
 pub mod udev;
 pub mod vulkan;
 pub mod windowrules;

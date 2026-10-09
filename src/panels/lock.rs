@@ -15,6 +15,7 @@ use crate::panels::bar::tray;
 use crate::platform::fprint::Reader;
 use crate::platform::locknotify::LockNotifier;
 use crate::platform::sessionlock::SessionLock;
+use crate::platform::sleep::SleepWatcher;
 use crate::platform::{hypr, pam};
 use crate::services::Services;
 use crate::ui::anim::{EMPHASIZED_DECEL, EXPRESSIVE_EFFECTS, EXPRESSIVE_FAST, Tween};
@@ -70,6 +71,8 @@ const SHAKE: [(f64, f64); 5] = [
 const CLEAR_AFTER: Duration = Duration::from_secs(10);
 const RESTORE_DELAY: Duration = Duration::from_millis(150);
 const GRANT_TIMEOUT: Duration = Duration::from_secs(6);
+const LOCK_WAIT: Duration = Duration::from_millis(500);
+const SLEEP_DELAY_LIMIT: Duration = Duration::from_secs(2);
 const HIDDEN_WORKSPACE: i64 = 2_147_483_647;
 const CHAR_SHAPES: [Shape; 7] = [
     Shape::Clover4Leaf,
@@ -296,6 +299,8 @@ fn pair(icon: &str, start: i32) -> (gtk4::Box, gtk4::Label, gtk4::Label) {
 
 struct Surface {
     window: gtk4::Window,
+    monitor: gdk::Monitor,
+    settled: Cell<bool>,
     field: gtk4::Text,
     dots: gtk4::DrawingArea,
     shift: Shift,
@@ -440,6 +445,12 @@ pub struct Lock {
     granted: Cell<bool>,
     seen: Cell<bool>,
     waiting: RefCell<Option<glib::SourceId>>,
+    sleep: RefCell<Option<Rc<SleepWatcher>>>,
+    sleep_timer: RefCell<Option<glib::SourceId>>,
+}
+
+fn ready_for_sleep(granted: bool, settled: &[bool]) -> bool {
+    granted && !settled.is_empty() && settled.iter().all(|settled| *settled)
 }
 
 impl Lock {
@@ -457,6 +468,8 @@ impl Lock {
             granted: Cell::new(false),
             seen: Cell::new(false),
             waiting: RefCell::new(None),
+            sleep: RefCell::new(None),
+            sleep_timer: RefCell::new(None),
         });
         let notifier = LockNotifier::watch({
             let lock = Rc::downgrade(&lock);
@@ -467,7 +480,94 @@ impl Lock {
             }
         });
         lock.notifier.replace(notifier);
+        let weak = Rc::downgrade(&lock);
+        glib::spawn_future_local(async move {
+            let Ok(system) = gio::bus_get_future(gio::BusType::System).await else {
+                return;
+            };
+            let Some(lock) = weak.upgrade() else {
+                return;
+            };
+            let watcher = SleepWatcher::watch(&system, "Show the lock screen before sleep", {
+                let lock = Rc::downgrade(&lock);
+                move |sleeping| {
+                    if let Some(lock) = lock.upgrade() {
+                        lock.sleep_changed(sleeping);
+                    }
+                }
+            });
+            lock.sleep.replace(Some(watcher));
+        });
         lock
+    }
+
+    fn sleep_changed(self: &Rc<Self>, sleeping: bool) {
+        if let Some(timer) = self.sleep_timer.take() {
+            timer.remove();
+        }
+        if !sleeping {
+            self.renew_surfaces();
+            return;
+        }
+        self.start_sleep_timer(LOCK_WAIT, |lock| {
+            if lock.instance.borrow().is_none() {
+                lock.release_sleep();
+                return;
+            }
+            lock.start_sleep_timer(SLEEP_DELAY_LIMIT - LOCK_WAIT, |lock| lock.release_sleep());
+        });
+        self.check_sleep();
+    }
+
+    fn start_sleep_timer(
+        self: &Rc<Self>,
+        delay: Duration,
+        action: impl FnOnce(&Rc<Self>) + 'static,
+    ) {
+        let lock = Rc::downgrade(self);
+        let timer = glib::timeout_add_local_once(delay, move || {
+            if let Some(lock) = lock.upgrade() {
+                lock.sleep_timer.take();
+                action(&lock);
+            }
+        });
+        self.sleep_timer.replace(Some(timer));
+    }
+
+    fn check_sleep(&self) {
+        if self.sleep_timer.borrow().is_none() {
+            return;
+        }
+        let settled: Vec<bool> = self
+            .surfaces
+            .borrow()
+            .iter()
+            .map(|surface| surface.settled.get())
+            .collect();
+        if ready_for_sleep(self.granted.get(), &settled) {
+            self.release_sleep();
+        }
+    }
+
+    fn release_sleep(&self) {
+        if let Some(timer) = self.sleep_timer.take() {
+            timer.remove();
+        }
+        if let Some(watcher) = self.sleep.borrow().as_ref() {
+            watcher.release();
+        }
+    }
+
+    fn renew_surfaces(self: &Rc<Self>) {
+        if !self.granted.get() {
+            return;
+        }
+        for surface in self.surfaces.take() {
+            surface.window.destroy();
+            if surface.monitor.is_valid() {
+                self.cover(&surface.monitor);
+            }
+        }
     }
 
     pub fn lock(self: &Rc<Self>) {
@@ -579,6 +679,7 @@ impl Lock {
         }
         self.granted.set(true);
         self.seen.set(self.session_locked.get());
+        self.check_sleep();
     }
 
     fn session_changed(self: &Rc<Self>, locked: bool) {
@@ -725,14 +826,38 @@ impl Lock {
         let Some(instance) = self.instance.borrow().clone() else {
             return;
         };
-        let surface = self.surface();
+        let surface = self.surface(monitor);
         instance.assign(&surface.window, monitor);
         surface.window.present();
         surface.field.grab_focus();
+        self.watch_settled(&surface);
         self.surfaces.borrow_mut().push(surface);
     }
 
-    fn surface(self: &Rc<Self>) -> Rc<Surface> {
+    fn watch_settled(self: &Rc<Self>, surface: &Rc<Surface>) {
+        let lock = Rc::downgrade(self);
+        let weak = Rc::downgrade(surface);
+        let drawn = Cell::new(false);
+        surface.islands.add_tick_callback(move |islands, clock| {
+            let Some(surface) = weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            if surface.animating(clock.frame_time()) {
+                return glib::ControlFlow::Continue;
+            }
+            if !drawn.replace(true) {
+                islands.queue_draw();
+                return glib::ControlFlow::Continue;
+            }
+            surface.settled.set(true);
+            if let Some(lock) = lock.upgrade() {
+                lock.check_sleep();
+            }
+            glib::ControlFlow::Break
+        });
+    }
+
+    fn surface(self: &Rc<Self>, monitor: &gdk::Monitor) -> Rc<Surface> {
         let theme = &self.theme;
         let context = &self.context;
 
@@ -836,6 +961,8 @@ impl Lock {
         fade.retarget(1.0, now);
         let surface = Rc::new(Surface {
             window: window.clone(),
+            monitor: monitor.clone(),
+            settled: Cell::new(false),
             field: field.clone(),
             dots: dots.clone(),
             shift,
@@ -1274,4 +1401,27 @@ fn unlock_login_keyring(bus: &gio::DBusConnection, secret: &[u8]) -> Option<()> 
         ().to_variant(),
     );
     Some(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sleep_waits_until_the_lock_is_granted_and_every_surface_has_settled() {
+        let cases: [(bool, &[bool], bool); 5] = [
+            (false, &[true, true], false),
+            (true, &[], false),
+            (true, &[true, false], false),
+            (true, &[true], true),
+            (true, &[true, true], true),
+        ];
+        for (granted, settled, ready) in cases {
+            assert_eq!(
+                ready_for_sleep(granted, settled),
+                ready,
+                "{granted} {settled:?}"
+            );
+        }
+    }
 }

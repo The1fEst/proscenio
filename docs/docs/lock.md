@@ -39,6 +39,12 @@ start, so restarting the shell inside the same session does not lock it again.
 `lockFocus` and `proscenio ipc call lock focus` give the password field the keyboard again, for when
 Hyprland takes it away after the machine wakes up.
 
+proscenio holds a logind `delay` inhibitor for sleep. When the machine is about to sleep, it keeps
+the sleep waiting until the lock screen has finished appearing and the compositor has shown that
+frame, for at most 2 seconds, or 500 ms when no lock starts. After waking, it replaces the lock
+surfaces with new ones, because a frame sent just before sleep may never be confirmed, and GTK draws
+nothing more until it is.
+
 ## What the lock screen shows
 
 The lock surfaces are transparent, and what shows through is the desktop, changed for the lock:
