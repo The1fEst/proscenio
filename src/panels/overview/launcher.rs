@@ -1,0 +1,685 @@
+use gtk4::gio;
+use gtk4::glib;
+use gtk4::prelude::*;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+use std::time::Duration;
+
+use crate::core::config::{self, Config};
+use crate::core::fuzzy::{self, SearchTarget};
+use crate::core::i18n::{tr, trf};
+use crate::core::levenshtein;
+use crate::core::listeners::{Listeners, Subscription};
+use crate::core::process;
+use crate::platform::dbus::notify::{self, Notification};
+use crate::platform::system::desktop::{self, DesktopAction, DesktopEntry};
+use crate::services::files::cliphist::{self, Cliphist};
+use crate::services::network::net::Net;
+use crate::services::session::todo::Todo;
+
+const EMOJI_DATA: &str = "### DATA ###";
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum IconType {
+    Material,
+    Text,
+    System,
+    None,
+}
+
+#[derive(Clone)]
+pub struct Item {
+    pub kind: String,
+    pub is_monospace: bool,
+    pub name: String,
+    pub raw_entry: String,
+    pub icon: String,
+    pub icon_type: IconType,
+    pub verb: String,
+    pub should_blur: bool,
+    pub run: Run,
+    pub actions: Vec<Item>,
+}
+
+impl Item {
+    fn new(name: &str, run: Run) -> Self {
+        Item {
+            kind: String::new(),
+            is_monospace: false,
+            name: name.to_owned(),
+            raw_entry: String::new(),
+            icon: String::new(),
+            icon_type: IconType::None,
+            verb: String::new(),
+            should_blur: false,
+            run,
+            actions: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum Run {
+    App(Rc<App>),
+    AppAction(Rc<App>, usize),
+    Shell(String),
+    Clipboard(String),
+    CopyEntry(String),
+    DeleteEntry(String),
+    Builtin(&'static str, String),
+    Script(String, String),
+}
+
+struct Emojis {
+    lines: Vec<String>,
+    names: Vec<SearchTarget>,
+}
+
+pub struct App {
+    entry: DesktopEntry,
+    name: String,
+    icon: String,
+    actions: Vec<DesktopAction>,
+}
+
+#[derive(Clone)]
+pub struct Launcher {
+    pub query: Rc<RefCell<String>>,
+    math_answer: Rc<RefCell<String>>,
+    math_timer: Rc<RefCell<Option<glib::SourceId>>>,
+    math_generation: Rc<Cell<u64>>,
+    apps: Rc<RefCell<Vec<Rc<App>>>>,
+    app_names: Rc<RefCell<Vec<SearchTarget>>>,
+    emojis: Rc<RefCell<Option<Rc<Emojis>>>>,
+    emoji_generation: Rc<Cell<u64>>,
+    is_emoji_loading: Rc<Cell<bool>>,
+    cliphist: Cliphist,
+    todo: Todo,
+    net: Net,
+    listeners: Rc<Listeners>,
+}
+
+impl Launcher {
+    pub fn new(cliphist: &Cliphist, todo: &Todo, net: &Net) -> Self {
+        let launcher = Launcher {
+            query: Rc::new(RefCell::new(String::new())),
+            math_answer: Rc::new(RefCell::new(String::new())),
+            math_timer: Rc::new(RefCell::new(None)),
+            math_generation: Rc::new(Cell::new(0)),
+            apps: Rc::new(RefCell::new(Vec::new())),
+            app_names: Rc::new(RefCell::new(Vec::new())),
+            emojis: Rc::new(RefCell::new(None)),
+            emoji_generation: Rc::new(Cell::new(0)),
+            is_emoji_loading: Rc::new(Cell::new(false)),
+            cliphist: cliphist.clone(),
+            todo: todo.clone(),
+            net: net.clone(),
+            listeners: Rc::new(Listeners::default()),
+        };
+        cliphist
+            .subscribe({
+                let launcher = launcher.clone();
+                move || launcher.announce()
+            })
+            .detach();
+        launcher
+    }
+
+    fn config(&self) -> Rc<Config> {
+        config::current()
+    }
+
+    pub fn subscribe(&self, listener: impl Fn() + 'static) -> Subscription {
+        self.listeners.add(listener)
+    }
+
+    fn announce(&self) {
+        self.listeners.notify();
+    }
+
+    pub fn load(&self) {
+        self.reload_apps();
+        self.cliphist.load();
+    }
+
+    pub fn release(&self) {
+        self.apps.replace(Vec::new());
+        self.app_names.replace(Vec::new());
+        self.emojis.replace(None);
+        self.emoji_generation.set(self.emoji_generation.get() + 1);
+        self.is_emoji_loading.set(false);
+        self.math_answer.replace(String::new());
+        self.cliphist.release();
+    }
+
+    fn emojis(&self) -> Option<Rc<Emojis>> {
+        if let Some(emojis) = self.emojis.borrow().as_ref() {
+            return Some(emojis.clone());
+        }
+        if self.is_emoji_loading.replace(true) {
+            return None;
+        }
+        let generation = self.emoji_generation.get();
+        let launcher = self.clone();
+        glib::spawn_future_local(async move {
+            let load_result = gio::spawn_blocking(|| {
+                let lines = load_emojis();
+                let names: Vec<SearchTarget> =
+                    lines.iter().map(|line| fuzzy::prepare(line)).collect();
+                (lines, names)
+            })
+            .await;
+            if launcher.emoji_generation.get() != generation {
+                return;
+            }
+            launcher.is_emoji_loading.set(false);
+            let Ok((lines, names)) = load_result else {
+                return;
+            };
+            launcher
+                .emojis
+                .replace(Some(Rc::new(Emojis { lines, names })));
+            launcher.announce();
+        });
+        None
+    }
+
+    fn reload_apps(&self) {
+        let apps: Vec<Rc<App>> = desktop::all()
+            .into_iter()
+            .filter(DesktopEntry::is_shown)
+            .map(|entry| {
+                Rc::new(App {
+                    name: entry.name(),
+                    icon: entry.icon(),
+                    actions: entry.actions(),
+                    entry,
+                })
+            })
+            .collect();
+        let names = apps
+            .iter()
+            .map(|app| fuzzy::prepare(&format!("{} ", app.name)))
+            .collect();
+        self.apps.replace(apps);
+        self.app_names.replace(names);
+    }
+
+    pub fn set_query(&self, query: &str) {
+        if *self.query.borrow() == query {
+            return;
+        }
+        self.query.replace(query.to_owned());
+        let is_special = query.is_empty()
+            || query.starts_with(&self.config().search_clipboard)
+            || query.starts_with(&self.config().search_emojis);
+        if !is_special {
+            self.restart_math_timer();
+        }
+        self.announce();
+    }
+
+    pub fn clean_one_prefix<'a>(&self, text: &'a str) -> &'a str {
+        let config = self.config();
+        for prefix in [
+            &config.search_action,
+            &config.search_app,
+            &config.search_clipboard,
+            &config.search_emojis,
+            &config.search_math,
+            &config.search_shell,
+        ] {
+            if let Some(rest) = text.strip_prefix(prefix.as_str()) {
+                return rest;
+            }
+        }
+        text
+    }
+
+    fn restart_math_timer(&self) {
+        if let Some(source) = self.math_timer.borrow_mut().take() {
+            source.remove();
+        }
+        let launcher = self.clone();
+        let source = glib::timeout_add_local_once(
+            Duration::from_millis(self.config().search_non_app_delay),
+            move || {
+                launcher.math_timer.borrow_mut().take();
+                let query = launcher.query.borrow().clone();
+                let expression = query
+                    .strip_prefix(launcher.config().search_math.as_str())
+                    .unwrap_or(&query)
+                    .to_owned();
+                launcher.calculate(expression);
+            },
+        );
+        self.math_timer.replace(Some(source));
+    }
+
+    fn calculate(&self, expression: String) {
+        let generation = self.math_generation.get() + 1;
+        self.math_generation.set(generation);
+        let launcher = self.clone();
+        glib::spawn_future_local(async move {
+            let Some(output) = read(&["qalc", "-t", &expression]).await else {
+                return;
+            };
+            if launcher.math_generation.get() != generation {
+                return;
+            }
+            let Some(answer) = output.lines().filter(|line| !line.is_empty()).last() else {
+                return;
+            };
+            if *launcher.math_answer.borrow() == answer {
+                return;
+            }
+            launcher.math_answer.replace(answer.to_owned());
+            launcher.announce();
+        });
+    }
+
+    pub fn results(&self) -> Vec<Item> {
+        let query = self.query.borrow().clone();
+        let config = self.config();
+        if query.is_empty() {
+            return Vec::new();
+        }
+
+        if let Some(search) = query.strip_prefix(config.search_clipboard.as_str()) {
+            return self.clipboard_results(search);
+        }
+        if let Some(search) = query.strip_prefix(config.search_emojis.as_str()) {
+            return self.emoji_results(search);
+        }
+
+        let answer = self.math_answer.borrow().clone();
+        let math = Item {
+            kind: tr("Math result"),
+            is_monospace: true,
+            icon: "calculate".to_owned(),
+            icon_type: IconType::Material,
+            verb: tr("Copy"),
+            ..Item::new(&answer, Run::Clipboard(answer.clone()))
+        };
+        let command_name = query
+            .strip_prefix(config.search_shell.as_str())
+            .unwrap_or(&query)
+            .replace("file://", "");
+        let command = Item {
+            kind: tr("Command"),
+            is_monospace: true,
+            icon: "terminal".to_owned(),
+            icon_type: IconType::Material,
+            verb: tr("Run"),
+            ..Item::new(&command_name, Run::Shell(self.command_line(&query)))
+        };
+
+        let apps = self.app_results(
+            query
+                .strip_prefix(config.search_app.as_str())
+                .unwrap_or(&query),
+        );
+        let actions = self.action_results(&query);
+
+        let starts_with_number = query.starts_with(|letter: char| letter.is_ascii_digit());
+        let has_math_prefix = query.starts_with(config.search_math.as_str());
+        let has_shell_prefix = query.starts_with(config.search_shell.as_str());
+
+        let mut results = Vec::new();
+        if starts_with_number || has_math_prefix {
+            results.push(math.clone());
+        } else if has_shell_prefix {
+            results.push(command.clone());
+        }
+        results.extend(apps);
+        results.extend(actions);
+        if config.search_default_actions {
+            if !has_shell_prefix {
+                results.push(command);
+            }
+            if !starts_with_number && !has_math_prefix {
+                results.push(math);
+            }
+        }
+        results
+    }
+
+    fn command_line(&self, query: &str) -> String {
+        let config = self.config();
+        let shell = config.search_shell.as_str();
+        let command = query.replace("file://", "");
+        let command = command.strip_prefix(shell).unwrap_or(&command);
+        let command = command.strip_prefix(shell).unwrap_or(command);
+        replace_sudo(command)
+    }
+
+    fn app_results(&self, search: &str) -> Vec<Item> {
+        let apps = self.apps.borrow();
+        let indices = if levenshtein::is_enabled() {
+            let names = apps.iter().map(|app| app.name.as_str());
+            levenshtein::rank(names, search, levenshtein::score)
+        } else {
+            let names = self.app_names.borrow();
+            let references: Vec<&SearchTarget> = names.iter().collect();
+            fuzzy::go(search, &references)
+        };
+        indices
+            .into_iter()
+            .filter_map(|index| apps.get(index).cloned())
+            .map(|app| {
+                let actions = app
+                    .actions
+                    .iter()
+                    .enumerate()
+                    .map(|(index, action)| Item {
+                        icon: action.icon.clone(),
+                        icon_type: IconType::System,
+                        ..Item::new(&action.name, Run::AppAction(app.clone(), index))
+                    })
+                    .collect();
+                Item {
+                    kind: tr("App"),
+                    icon: app.icon.clone(),
+                    icon_type: IconType::System,
+                    verb: tr("Open"),
+                    actions,
+                    ..Item::new(&app.name, Run::App(app.clone()))
+                }
+            })
+            .collect()
+    }
+
+    fn clipboard_results(&self, search: &str) -> Vec<Item> {
+        let entries = self.cliphist.fuzzy_query(search);
+        let is_guarded = self.is_clipboard_guarded();
+        let config = self.config();
+        let is_unsafe_link = |entry: Option<&String>| {
+            entry.is_some_and(|entry| {
+                let lowercase = entry.to_lowercase();
+                config
+                    .safety_links
+                    .iter()
+                    .any(|keyword| lowercase.contains(keyword.as_str()))
+            })
+        };
+        entries
+            .iter()
+            .enumerate()
+            .map(|(index, entry)| {
+                let should_blur = is_guarded
+                    && cliphist::is_image(entry)
+                    && (is_unsafe_link(
+                        index.checked_sub(1).and_then(|before| entries.get(before)),
+                    ) || is_unsafe_link(entries.get(index + 1)));
+                let entry_id = entry.split_whitespace().next().unwrap_or("");
+                Item {
+                    kind: format!("#{entry_id}"),
+                    raw_entry: entry.clone(),
+                    should_blur,
+                    actions: vec![
+                        Item {
+                            icon: "content_copy".to_owned(),
+                            icon_type: IconType::Material,
+                            ..Item::new(&tr("Copy"), Run::CopyEntry(entry.clone()))
+                        },
+                        Item {
+                            icon: "delete".to_owned(),
+                            icon_type: IconType::Material,
+                            ..Item::new(&tr("Delete"), Run::DeleteEntry(entry.clone()))
+                        },
+                    ],
+                    ..Item::new(cliphist::clean(entry), Run::CopyEntry(entry.clone()))
+                }
+            })
+            .collect()
+    }
+
+    fn is_clipboard_guarded(&self) -> bool {
+        let config = self.config();
+        if !config.safety_clipboard {
+            return false;
+        }
+        let network = self.net.name.borrow().to_lowercase();
+        config
+            .safety_networks
+            .iter()
+            .any(|keyword| network.contains(keyword.as_str()))
+    }
+
+    fn emoji_results(&self, search: &str) -> Vec<Item> {
+        let Some(emojis) = self.emojis() else {
+            return Vec::new();
+        };
+        let references: Vec<&SearchTarget> = emojis.names.iter().collect();
+        let indices: Vec<usize> = if search.is_empty() {
+            (0..emojis.lines.len()).collect()
+        } else if levenshtein::is_enabled() {
+            let lines = emojis.lines.iter().map(String::as_str);
+            levenshtein::rank(lines, search, levenshtein::text_match_score)
+        } else {
+            fuzzy::go(search, &references)
+        };
+        indices
+            .into_iter()
+            .filter_map(|index| emojis.lines.get(index))
+            .map(|line| {
+                let emoji = line.split_whitespace().next().unwrap_or("").to_owned();
+                Item {
+                    kind: tr("Emoji"),
+                    raw_entry: line.clone(),
+                    icon: emoji.clone(),
+                    icon_type: IconType::Text,
+                    verb: tr("Copy"),
+                    ..Item::new(cliphist::without_first_word(line), Run::Clipboard(emoji))
+                }
+            })
+            .collect()
+    }
+
+    fn action_results(&self, query: &str) -> Vec<Item> {
+        let arguments = query.split(' ').skip(1).collect::<Vec<_>>().join(" ");
+        let mut candidates: Vec<(String, Run)> = BUILTINS
+            .iter()
+            .map(|name| (name.to_string(), Run::Builtin(name, arguments.clone())))
+            .collect();
+        candidates.extend(
+            scripts()
+                .into_iter()
+                .map(|(name, path)| (name, Run::Script(path, arguments.clone()))),
+        );
+        candidates
+            .into_iter()
+            .filter_map(|(name, run)| {
+                let full_name = format!("{}{name}", self.config().search_action);
+                if !full_name.starts_with(query) && !query.starts_with(&full_name) {
+                    return None;
+                }
+                let display_name = if query.starts_with(&full_name) {
+                    query
+                } else {
+                    &full_name
+                };
+                Some(Item {
+                    kind: tr("Action"),
+                    icon: "settings_suggest".to_owned(),
+                    icon_type: IconType::Material,
+                    verb: tr("Run"),
+                    ..Item::new(display_name, run)
+                })
+            })
+            .collect()
+    }
+
+    pub fn execute(&self, run: &Run) {
+        match run {
+            Run::App(app) => {
+                if !app.entry.runs_in_terminal() {
+                    desktop::launch(&app.entry);
+                    return;
+                }
+                desktop::launch_in_terminal(
+                    &app.entry,
+                    &terminal_line(&self.config().app_terminal, &app.entry.command()),
+                );
+            }
+            Run::AppAction(app, index) => {
+                if let Some(action) = app.actions.get(*index) {
+                    desktop::launch_action(&app.entry, action);
+                }
+            }
+            Run::Shell(line) => desktop::run_shell(line),
+            Run::Clipboard(text) => {
+                if let Some(display) = gtk4::gdk::Display::default() {
+                    display.clipboard().set_text(text);
+                }
+            }
+            Run::CopyEntry(entry) => self.cliphist.copy(entry),
+            Run::DeleteEntry(entry) => self.cliphist.delete_entry(entry),
+            Run::Builtin(name, arguments) => self.builtin(name, arguments),
+            Run::Script(path, arguments) => {
+                let mut argv = vec![path.as_str()];
+                if !arguments.is_empty() {
+                    argv.extend(arguments.split(' '));
+                }
+                process::launch(&argv);
+            }
+        }
+    }
+
+    fn builtin(&self, name: &str, arguments: &str) {
+        match name {
+            "accentcolor" if arguments.is_empty() => {
+                crate::theming::switchwall::detach(&["--noswitch", "--color"]);
+            }
+            "accentcolor" => {
+                crate::theming::switchwall::detach(&["--noswitch", "--color", arguments])
+            }
+            "dark" => crate::theming::switchwall::detach(&["--mode", "dark", "--noswitch"]),
+            "light" => crate::theming::switchwall::detach(&["--mode", "light", "--noswitch"]),
+            "superpaste" => self.superpaste(arguments),
+            "todo" => self.todo.add(arguments),
+            "wallpaper" => crate::core::actions::run("wallpaperSelectorToggle"),
+            "wipeclipboard" => self.cliphist.wipe(),
+            _ => {}
+        }
+    }
+
+    fn superpaste(&self, arguments: &str) {
+        let argument_text = arguments.trim();
+        let digits: String = argument_text
+            .chars()
+            .take_while(char::is_ascii_digit)
+            .collect();
+        let Ok(count) = digits.parse::<usize>() else {
+            let prefix = &self.config().search_action;
+            notify::send(&Notification {
+                app: "Shell",
+                summary: &tr("Superpaste"),
+                body: &trf(
+                    "Usage: <tt>%1superpaste NUM_OF_ENTRIES[i]</tt>\nSupply <tt>i</tt> when you want images\nExamples:\n<tt>%1superpaste 4i</tt> for the last 4 images\n<tt>%1superpaste 7</tt> for the last 7 entries",
+                    &[prefix],
+                ),
+                ..Default::default()
+            });
+            return;
+        };
+        let wants_images = argument_text[digits.len()..].starts_with('i');
+        self.cliphist.superpaste(count, wants_images);
+    }
+}
+
+const BUILTINS: [&str; 7] = [
+    "accentcolor",
+    "dark",
+    "light",
+    "superpaste",
+    "todo",
+    "wallpaper",
+    "wipeclipboard",
+];
+
+fn scripts() -> Vec<(String, String)> {
+    let folder = crate::core::paths::config().join("actions");
+    let Ok(entries) = std::fs::read_dir(folder) else {
+        return Vec::new();
+    };
+    let mut script_entries: Vec<(String, String)> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| !name.starts_with('.'))
+        })
+        .filter_map(|path| {
+            let name = path.file_name()?.to_str()?;
+            let stem = match name.rfind('.') {
+                Some(at) if at > 0 => &name[..at],
+                _ => name,
+            };
+            Some((stem.to_owned(), path.to_string_lossy().into_owned()))
+        })
+        .collect();
+    script_entries.sort_by(|left, right| left.1.cmp(&right.1));
+    script_entries
+}
+
+fn load_emojis() -> Vec<String> {
+    let path = glib::user_config_dir().join("hypr/hyprland/scripts/fuzzel-emoji.sh");
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let mut lines = text.split('\n');
+    if !lines.any(|line| line == EMOJI_DATA) {
+        return Vec::new();
+    }
+    lines
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.trim().to_owned())
+        .collect()
+}
+
+async fn read(line: &[&str]) -> Option<String> {
+    process::capture_text(process::command(line)).await
+}
+
+fn terminal_line(terminal: &str, command: &[String]) -> String {
+    let arguments: Vec<String> = command
+        .iter()
+        .map(|argument| format!("'{}'", cliphist::escape(argument)))
+        .collect();
+    format!("{terminal} -e {}", arguments.join(" "))
+}
+
+fn replace_sudo(command: &str) -> String {
+    match command.strip_prefix("sudo") {
+        Some(rest) if rest.starts_with(char::is_whitespace) => format!("pkexec{rest}"),
+        _ => command.to_owned(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_sudo_command_asks_for_the_password_through_polkit() {
+        assert_eq!(replace_sudo("sudo pacman -Syu"), "pkexec pacman -Syu");
+        assert_eq!(
+            replace_sudo("sudo  systemctl restart sddm"),
+            "pkexec  systemctl restart sddm"
+        );
+        assert_eq!(replace_sudo("sudoku"), "sudoku");
+        assert_eq!(replace_sudo("echo sudo"), "echo sudo");
+    }
+
+    #[test]
+    fn a_terminal_app_keeps_each_of_its_arguments_whole() {
+        let command = ["htop", "--title=System Monitor", "it's"].map(str::to_owned);
+        assert_eq!(
+            terminal_line("kitty -1", &command),
+            "kitty -1 -e 'htop' '--title=System Monitor' 'it'\\''s'"
+        );
+    }
+}

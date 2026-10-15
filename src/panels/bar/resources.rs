@@ -1,0 +1,196 @@
+use gtk4::prelude::*;
+use std::rc::Rc;
+
+use crate::core::config::Config;
+use crate::core::i18n::tr;
+use crate::core::scope::Scope;
+use crate::services::hardware::sysinfo::{Resources, Usage};
+use crate::ui::theme::SharedTheme;
+use crate::ui::widgets::display::ring::{Ring, Shape};
+use crate::ui::widgets::display::text;
+use crate::ui::widgets::layout::centered::Centered;
+use crate::ui::widgets::overlay::popup;
+
+const VERTICAL_SPACING: i32 = 10;
+const VERTICAL_RING: Shape = Shape {
+    size: 18,
+    icon_size: 13.0,
+    icon_weight: 500,
+};
+
+struct Meter {
+    ring: Ring,
+    value: Option<gtk4::Label>,
+    threshold: f64,
+}
+
+impl Meter {
+    fn vertical(theme: &SharedTheme, icon: &'static str, threshold: f64) -> (Self, gtk4::Widget) {
+        let ring = Ring::shaped(theme.clone(), icon, VERTICAL_RING);
+        ring.area.set_halign(gtk4::Align::Center);
+        let area = ring.area.clone().upcast();
+        (
+            Meter {
+                ring,
+                value: None,
+                threshold,
+            },
+            area,
+        )
+    }
+
+    fn new(theme: &SharedTheme, icon: &'static str, threshold: f64) -> (Self, gtk4::Box) {
+        let ring = Ring::new(theme.clone(), icon);
+        let value = text::styled("0");
+        text::set_color(&value, "colOnLayer1");
+        value.set_size_request(full_value_width(), -1);
+
+        let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 2);
+        row.append(&ring.area);
+        row.append(&Centered::optical(&value));
+
+        (
+            Meter {
+                ring,
+                value: Some(value),
+                threshold,
+            },
+            row,
+        )
+    }
+
+    fn set(&self, fraction: f64) {
+        let percent = fraction * 100.0;
+        self.ring.set(fraction, percent >= self.threshold);
+        if let Some(value) = &self.value {
+            value.set_text(&format!("{}", percent.round() as i64));
+        }
+    }
+}
+
+fn full_value_width() -> i32 {
+    let (family, weight) = text::application_font();
+    let probe = gtk4::Label::new(Some("100"));
+    let mut font = gtk4::pango::FontDescription::new();
+    font.set_family(&family);
+    font.set_absolute_size(15.0 * gtk4::pango::SCALE as f64);
+    font.set_variations(Some(&format!("wght={weight},opsz=18")));
+    let attributes = gtk4::pango::AttrList::new();
+    attributes.insert(gtk4::pango::AttrFontDesc::new(&font));
+    probe.set_attributes(Some(&attributes));
+    probe.measure(gtk4::Orientation::Horizontal, -1).1
+}
+
+pub fn build(
+    theme: &SharedTheme,
+    config: &Config,
+    resources: &Rc<Resources>,
+    scope: &Scope,
+) -> gtk4::Widget {
+    let (area, meters): (gtk4::Widget, _) = if config.vertical {
+        let column = gtk4::Box::new(gtk4::Orientation::Vertical, VERTICAL_SPACING);
+        let (memory, memory_ring) = Meter::vertical(theme, "memory", config.memory_warning);
+        let (swap, swap_ring) = Meter::vertical(theme, "swap_horiz", config.swap_warning);
+        let (cpu, cpu_ring) = Meter::vertical(theme, "planner_review", config.cpu_warning);
+        column.append(&memory_ring);
+        column.append(&swap_ring);
+        column.append(&cpu_ring);
+        (column.upcast(), (memory, swap, cpu))
+    } else {
+        let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        row.set_valign(gtk4::Align::Center);
+        row.set_halign(gtk4::Align::Center);
+        let area = Centered::new(&row);
+        area.set_hexpand(true);
+        area.set_size_request(-1, crate::core::config::BASE_BAR_HEIGHT);
+
+        let (memory, memory_row) = Meter::new(theme, "memory", config.memory_warning);
+        let (swap, swap_row) = Meter::new(theme, "swap_horiz", config.swap_warning);
+        let (cpu, cpu_row) = Meter::new(theme, "planner_review", config.cpu_warning);
+        swap_row.set_margin_start(6);
+        cpu_row.set_margin_start(6);
+        row.append(&memory_row);
+        row.append(&swap_row);
+        row.append(&cpu_row);
+        (area.upcast(), (memory, swap, cpu))
+    };
+
+    let columns = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+    let (memory_column, memory_values) = meter_column("memory", "RAM", &tr("Available:"));
+    let (swap_column, swap_values) = meter_column("swap_horiz", "Swap", &tr("Free:"));
+    columns.append(&memory_column);
+    columns.append(&swap_column);
+    let cpu_column = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+    cpu_column.set_valign(gtk4::Align::Start);
+    cpu_column.append(&popup::header("planner_review", "CPU"));
+    let cpu_rows = popup::column();
+    let (load_row, load) = popup::value("bolt", &tr("Load:"), "0%");
+    load_row.set_halign(gtk4::Align::Start);
+    cpu_rows.append(&load_row);
+    cpu_column.append(&cpu_rows);
+    columns.append(&cpu_column);
+
+    let show = {
+        let resources = resources.clone();
+        move || {
+            let usage: Usage = resources.usage();
+            meters.0.set(usage.memory_fraction);
+            meters.1.set(usage.swap_fraction);
+            meters.2.set(usage.cpu_fraction);
+            for (label, kib) in memory_values.iter().zip([
+                usage.memory_used_kib(),
+                usage.memory_available_kib,
+                usage.memory_total_kib,
+            ]) {
+                label.set_text(&format_gib(kib));
+            }
+            swap_column.set_visible(usage.swap_total_kib > 0.0);
+            for (label, kib) in swap_values.iter().zip([
+                usage.swap_used_kib(),
+                usage.swap_free_kib,
+                usage.swap_total_kib,
+            ]) {
+                label.set_text(&format_gib(kib));
+            }
+            load.set_text(&format!("{}%", (usage.cpu_fraction * 100.0).round()));
+        }
+    };
+    show();
+    scope.keep(resources.subscribe(show));
+
+    popup::attach(&area, popup::Bar::of(config), &columns);
+
+    area
+}
+
+fn meter_column(icon: &str, name: &str, remaining_label: &str) -> (gtk4::Box, [gtk4::Label; 3]) {
+    let column = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+    column.set_valign(gtk4::Align::Start);
+    column.append(&popup::header(icon, name));
+
+    let rows = popup::column();
+    let (used_row, used) = popup::value("clock_loader_60", &tr("Used:"), "0");
+    let (remaining_row, remaining) = popup::value("check_circle", remaining_label, "0");
+    let (total_row, total) = popup::value("empty_dashboard", &tr("Total:"), "0");
+    for row in [&used_row, &remaining_row, &total_row] {
+        row.set_halign(gtk4::Align::Start);
+        rows.append(row);
+    }
+    column.append(&rows);
+
+    (column, [used, remaining, total])
+}
+
+fn format_gib(kib: f64) -> String {
+    format!("{:.1} GiB", kib / (1024.0 * 1024.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_kib_reading_is_shown_in_gib() {
+        assert_eq!(format_gib(13086.0 * 1024.0), "12.8 GiB");
+    }
+}

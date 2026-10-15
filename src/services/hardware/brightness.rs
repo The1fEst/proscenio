@@ -1,0 +1,333 @@
+use gtk4::glib;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+use std::time::Duration;
+
+use crate::core::listeners::{Listeners, Subscription};
+use crate::core::process;
+use crate::platform::hyprland::hypr;
+use crate::services::hyprland::screencolor::ScreenColor;
+use crate::ui::anim::EXPRESSIVE_EFFECTS;
+
+pub const GAMMA_FLOOR: f64 = 25.0;
+const STEP: f64 = 0.05;
+const DDC_DELAY: Duration = Duration::from_millis(300);
+const FADE_MICROS: f64 = 200_000.0;
+const FADE_FRAME: Duration = Duration::from_millis(16);
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Change {
+    Read,
+    Level,
+    Gamma,
+}
+
+struct Screen {
+    name: String,
+    bus: Option<String>,
+    max: Cell<f64>,
+    level: Cell<f64>,
+    applied_level: Cell<f64>,
+    is_ready: Cell<bool>,
+    write_timer: RefCell<Option<glib::SourceId>>,
+}
+
+#[derive(Clone)]
+pub struct Light {
+    screens: Rc<RefCell<Vec<Rc<Screen>>>>,
+    names: Rc<RefCell<Vec<String>>>,
+    pub gamma: Rc<Cell<f64>>,
+    color: Rc<ScreenColor>,
+    writer: Rc<RefCell<Option<process::Running>>>,
+    generation: Rc<Cell<u64>>,
+    listeners: Rc<Listeners<Change>>,
+}
+
+impl Light {
+    pub fn new(color: &Rc<ScreenColor>) -> Self {
+        Light {
+            screens: Rc::default(),
+            names: Rc::default(),
+            gamma: Rc::new(Cell::new(100.0)),
+            color: color.clone(),
+            writer: Rc::default(),
+            generation: Rc::default(),
+            listeners: Rc::default(),
+        }
+    }
+
+    pub fn subscribe(&self, listener: impl Fn(Change) + 'static) -> Subscription {
+        self.listeners.add_with(move |change| listener(*change))
+    }
+
+    fn announce(&self, change: Change) {
+        self.listeners.notify_with(&change);
+    }
+
+    pub fn set_screens(&self, names: Vec<String>) {
+        if *self.names.borrow() == names {
+            return;
+        }
+        self.names.replace(names.clone());
+        let generation = self.generation.get() + 1;
+        self.generation.set(generation);
+        for screen in self.screens.take() {
+            if let Some(source) = screen.write_timer.take() {
+                source.remove();
+            }
+        }
+        let light = self.clone();
+        read(&["ddcutil", "detect", "--brief"], move |output| {
+            if light.generation.get() != generation {
+                return;
+            }
+            let displays = ddc_displays(&output);
+            let mut used_buses: Vec<String> = Vec::new();
+            let screens: Vec<Rc<Screen>> = names
+                .iter()
+                .map(|name| {
+                    let bus = displays
+                        .iter()
+                        .find(|(connector, bus)| connector == name && !used_buses.contains(bus))
+                        .map(|(_, bus)| bus.clone());
+                    if let Some(bus) = &bus {
+                        used_buses.push(bus.clone());
+                    }
+                    Rc::new(Screen {
+                        name: name.clone(),
+                        bus,
+                        max: Cell::new(100.0),
+                        level: Cell::new(0.0),
+                        applied_level: Cell::new(0.0),
+                        is_ready: Cell::new(false),
+                        write_timer: RefCell::new(None),
+                    })
+                })
+                .collect();
+            light.screens.replace(screens.clone());
+            light.initialize(screens, generation);
+        });
+    }
+
+    fn initialize(&self, mut remaining_screens: Vec<Rc<Screen>>, generation: u64) {
+        if remaining_screens.is_empty() {
+            return;
+        }
+        let screen = remaining_screens.remove(0);
+        let light = self.clone();
+        self.read_level(&screen, move || {
+            if light.generation.get() == generation {
+                light.initialize(remaining_screens, generation);
+            }
+        });
+    }
+
+    fn read_level(&self, screen: &Rc<Screen>, on_done: impl FnOnce() + 'static) {
+        let command: Vec<String> = match &screen.bus {
+            Some(bus) => ["ddcutil", "-b", bus, "getvcp", "10", "--brief"]
+                .iter()
+                .map(|part| part.to_string())
+                .collect(),
+            None => [
+                "sh",
+                "-c",
+                "echo a b c $(brightnessctl g) $(brightnessctl m)",
+            ]
+            .iter()
+            .map(|part| part.to_string())
+            .collect(),
+        };
+        let arguments: Vec<&str> = command.iter().map(String::as_str).collect();
+        let light = self.clone();
+        let screen = screen.clone();
+        let on_done = RefCell::new(Some(on_done));
+        read(&arguments, move |output| {
+            let fields: Vec<&str> = output.split_whitespace().collect();
+            if let (Some(current), Some(max)) = (
+                fields.get(3).and_then(|value| value.parse::<f64>().ok()),
+                fields.get(4).and_then(|value| value.parse::<f64>().ok()),
+            ) && max > 0.0
+            {
+                let level = current / max;
+                let has_level_changed = screen.is_ready.get() && screen.level.get() != level;
+                screen.max.set(max);
+                screen.level.set(level);
+                screen.applied_level.set(level);
+                screen.is_ready.set(true);
+                light.announce(if has_level_changed {
+                    Change::Level
+                } else {
+                    Change::Read
+                });
+            }
+            if let Some(on_done) = on_done.take() {
+                on_done();
+            }
+        });
+    }
+
+    fn screen(&self, name: &str) -> Option<Rc<Screen>> {
+        self.screens
+            .borrow()
+            .iter()
+            .find(|screen| screen.name == name)
+            .cloned()
+    }
+
+    pub fn level(&self, name: &str) -> f64 {
+        self.screen(name).map_or(0.0, |screen| screen.level.get())
+    }
+
+    pub fn set_level(&self, name: &str, part: f64) {
+        let Some(screen) = self.screen(name) else {
+            return;
+        };
+        screen.level.set(part.clamp(0.0, 1.0));
+        if !screen.is_ready.get() {
+            return;
+        }
+        self.announce(Change::Level);
+        if let Some(source) = screen.write_timer.take() {
+            source.remove();
+        }
+        let light = self.clone();
+        let target = screen.clone();
+        let source = if screen.bus.is_some() {
+            glib::timeout_add_local_once(DDC_DELAY, move || {
+                target.write_timer.take();
+                light.write(&target, target.level.get());
+            })
+        } else {
+            let start_level = screen.applied_level.get();
+            let start_time = glib::monotonic_time();
+            glib::timeout_add_local(FADE_FRAME, move || {
+                let part = ((glib::monotonic_time() - start_time) as f64 / FADE_MICROS).min(1.0);
+                let target_level = target.level.get();
+                let level =
+                    start_level + (target_level - start_level) * EXPRESSIVE_EFFECTS.at(part);
+                if percent(level) != percent(target.applied_level.get()) {
+                    light.write(&target, level);
+                }
+                target.applied_level.set(level);
+                if part < 1.0 {
+                    return glib::ControlFlow::Continue;
+                }
+                target.write_timer.take();
+                glib::ControlFlow::Break
+            })
+        };
+        screen.write_timer.replace(Some(source));
+    }
+
+    fn write(&self, screen: &Screen, level: f64) {
+        let level = level.max(0.0);
+        let command: Vec<String> = match &screen.bus {
+            Some(bus) => vec![
+                "ddcutil".into(),
+                "-b".into(),
+                bus.clone(),
+                "setvcp".into(),
+                "10".into(),
+                ((level * screen.max.get()).floor() as i64)
+                    .max(1)
+                    .to_string(),
+            ],
+            None => {
+                let percent = percent(level);
+                vec![
+                    "brightnessctl".into(),
+                    "--class".into(),
+                    "backlight".into(),
+                    "s".into(),
+                    if percent == 0 {
+                        "1".into()
+                    } else {
+                        format!("{percent}%")
+                    },
+                    "--quiet".into(),
+                ]
+            }
+        };
+        if let Some(mut previous) = self.writer.take() {
+            previous.stop();
+        }
+        self.writer
+            .replace(process::start(process::quiet(&command)));
+    }
+
+    fn focused_monitor(&self) -> Option<String> {
+        hypr::focused_monitor()
+    }
+
+    pub fn raise(&self) {
+        if self.gamma.get() != 100.0 {
+            self.set_gamma(self.gamma.get() + 5.0);
+            return;
+        }
+        if let Some(name) = self.focused_monitor() {
+            self.set_level(&name, self.level(&name) + STEP);
+        }
+    }
+
+    pub fn lower(&self) {
+        let name = self.focused_monitor();
+        match name.filter(|name| self.level(name) > 0.0) {
+            Some(name) => self.set_level(&name, self.level(&name) - STEP),
+            None => self.set_gamma(self.gamma.get() - 5.0),
+        }
+    }
+
+    pub fn set_gamma(&self, percent: f64) {
+        let percent = percent.clamp(GAMMA_FLOOR, 100.0).round();
+        self.gamma.set(percent);
+        self.color.set_gamma(percent);
+        self.announce(Change::Gamma);
+    }
+}
+
+fn percent(level: f64) -> i64 {
+    (level.max(0.0) * 100.0).floor() as i64
+}
+
+fn ddc_displays(output: &str) -> Vec<(String, String)> {
+    output
+        .split("\n\n")
+        .filter(|block| block.starts_with("Display "))
+        .filter_map(|block| {
+            let field = |key: &str| {
+                block
+                    .lines()
+                    .map(str::trim)
+                    .find_map(|line| line.strip_prefix(key))
+                    .map(str::trim)
+            };
+            let connector = field("DRM connector:")?.split_once('-')?.1.to_owned();
+            let bus = field("I2C bus:")?.strip_prefix("/dev/i2c-")?.to_owned();
+            Some((connector, bus))
+        })
+        .collect()
+}
+
+fn read(command: &[&str], on_output: impl Fn(String) + 'static) {
+    let command = process::command(command);
+    glib::spawn_future_local(async move {
+        on_output(process::capture_text(command).await.unwrap_or_default());
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ddcutil_blocks_give_each_display_its_connector_and_bus() {
+        let output = "Display 1\n   I2C bus:          /dev/i2c-7\n   DRM connector:    card1-DP-1\n   drm_connector_id: 133\n   Monitor:          PHL:27M1N5500ZA:UHB2335025229\n\nInvalid display\n   I2C bus:  /dev/i2c-4\n\nDisplay 2\n   I2C bus:          /dev/i2c-8\n   DRM connector:    card1-DP-2\n";
+        assert_eq!(
+            ddc_displays(output),
+            vec![
+                ("DP-1".to_owned(), "7".to_owned()),
+                ("DP-2".to_owned(), "8".to_owned())
+            ]
+        );
+    }
+}

@@ -1,0 +1,9 @@
+pub mod battery;
+pub mod brightness;
+pub mod devicenotifications;
+pub mod deviceoptions;
+pub mod displays;
+pub mod power;
+pub mod shellusage;
+pub mod sysinfo;
+pub mod xkb;

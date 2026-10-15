@@ -1,0 +1,9 @@
+pub mod appearance;
+pub mod appicon;
+pub mod autostart;
+pub mod defaultapps;
+pub mod desktop;
+pub mod locale;
+pub mod udev;
+pub mod xkbregistry;
+pub mod ydotool;

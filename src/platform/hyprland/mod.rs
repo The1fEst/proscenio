@@ -1,0 +1,10 @@
+pub mod colorfilter;
+pub mod devicesettings;
+pub mod gestures;
+pub mod hypr;
+pub mod hyprconfig;
+pub mod hypridle;
+pub mod inputdevices;
+pub mod keybinds;
+pub mod monitorrules;
+pub mod windowrules;

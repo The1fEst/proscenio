@@ -1,0 +1,182 @@
+use gtk4::gio;
+use gtk4::glib;
+use gtk4::prelude::*;
+use serde_json::Value;
+use std::env;
+use std::io::{Read, Write};
+use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
+use std::rc::Rc;
+
+use crate::core::listeners::{Listeners, Subscription};
+
+pub fn socket_dir() -> Option<PathBuf> {
+    let runtime = env::var_os("XDG_RUNTIME_DIR")?;
+    let signature = env::var_os("HYPRLAND_INSTANCE_SIGNATURE")?;
+    Some(PathBuf::from(runtime).join("hypr").join(signature))
+}
+
+pub fn request(command: &str) -> Option<String> {
+    let path = socket_dir()?.join(".socket.sock");
+    let mut stream = UnixStream::connect(path).ok()?;
+    stream.write_all(command.as_bytes()).ok()?;
+    read_reply(stream)
+}
+
+fn read_reply(mut stream: impl Read) -> Option<String> {
+    let mut reply = Vec::new();
+    stream.read_to_end(&mut reply).ok()?;
+    Some(String::from_utf8_lossy(&reply).into_owned())
+}
+
+pub fn focus_window(address: &str) {
+    request(&format!(
+        "dispatch hl.dsp.focus({{ window = \"address:{address}\" }})"
+    ));
+}
+
+pub fn close_window(address: &str) {
+    request(&format!(
+        "dispatch hl.dsp.window.close({{ window = \"address:{address}\" }})"
+    ));
+}
+
+pub fn focus_workspace(id: i32) {
+    request(&format!("dispatch hl.dsp.focus({{ workspace = {id} }})"));
+}
+
+pub fn move_to_workspace(address: &str, workspace: i32) {
+    request(&format!(
+        "dispatch hl.dsp.window.move({{ workspace = {workspace}, follow = false, window = \"address:{address}\" }})"
+    ));
+}
+
+pub fn move_window(address: &str, x: f64, y: f64) {
+    request(&format!(
+        "dispatch hl.dsp.window.move({{ x = \"{x}\", y = \"{y}\", window = \"address:{address}\" }})"
+    ));
+}
+
+pub fn show_cursor() {
+    let Some(position) = json("cursorpos") else {
+        return;
+    };
+    let coordinate = |axis: &str| position.get(axis).and_then(Value::as_i64);
+    if let (Some(x), Some(y)) = (coordinate("x"), coordinate("y")) {
+        request(&format!(
+            "dispatch hl.dsp.cursor.move({{ x = {x}, y = {y} }})"
+        ));
+    }
+}
+
+pub fn set_cursor_hides_on_key(should_hide: bool) {
+    request(&format!(
+        "eval hl.config({{ cursor = {{ hide_on_key_press = {should_hide} }} }})"
+    ));
+}
+
+pub fn option_bool(name: &str) -> Option<bool> {
+    let reply = request(&format!("getoption {name}"))?;
+    let line = reply.lines().find(|line| line.starts_with("bool: "))?;
+    Some(line[6..].trim() == "true")
+}
+
+pub fn json(command: &str) -> Option<Value> {
+    serde_json::from_str(&request(&format!("j/{command}"))?).ok()
+}
+
+pub fn option_int(name: &str) -> Option<i32> {
+    let reply = request(&format!("getoption {name}"))?;
+    let line = reply.lines().find(|line| line.starts_with("int: "))?;
+    line[5..].trim().parse().ok()
+}
+
+pub fn focused_monitor() -> Option<String> {
+    json("monitors")?
+        .as_array()?
+        .iter()
+        .find(|entry| entry.get("focused").and_then(Value::as_bool) == Some(true))
+        .and_then(|entry| entry.get("name"))
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+}
+
+pub fn gaps_out_top() -> Option<i32> {
+    let reply = request("getoption general:gaps_out")?;
+    let line = reply.lines().find(|line| line.contains("gap data: "))?;
+    let values = line.split("gap data: ").nth(1)?;
+    values.split_whitespace().next()?.parse().ok()
+}
+
+#[derive(Clone, Default)]
+pub struct Events {
+    handlers: Rc<Listeners<(String, String)>>,
+}
+
+impl Events {
+    pub fn subscribe(&self, handler: impl Fn(&str, &str) + 'static) -> Subscription {
+        self.handlers
+            .add_with(move |(event, data): &(String, String)| handler(event, data))
+    }
+
+    pub fn start(&self) {
+        let Some(path) = socket_dir().map(|dir| dir.join(".socket2.sock")) else {
+            return;
+        };
+        let address = gio::UnixSocketAddress::new(&path);
+        let client = gio::SocketClient::new();
+        let Ok(connection) =
+            gio::prelude::SocketClientExt::connect(&client, &address, gio::Cancellable::NONE)
+        else {
+            return;
+        };
+        let reader = gio::DataInputStream::new(&connection.input_stream());
+        let handlers = self.handlers.clone();
+        glib::spawn_future_local(async move {
+            let _connection = connection;
+            forward(reader, handlers).await;
+        });
+    }
+}
+
+async fn forward(reader: gio::DataInputStream, handlers: Rc<Listeners<(String, String)>>) {
+    while let Ok(Some(bytes)) = reader.read_line_future(glib::Priority::DEFAULT).await {
+        let line = String::from_utf8_lossy(&bytes);
+        let (event, data) = line.split_once(">>").unwrap_or((&line, ""));
+        handlers.notify_with(&(event.to_owned(), data.to_owned()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    #[test]
+    fn a_reply_that_is_not_utf8_still_arrives() {
+        let reply = read_reply(&b"[{\"title\": \"caf\xe9\"}]"[..]);
+        assert_eq!(reply.as_deref(), Some("[{\"title\": \"caf\u{fffd}\"}]"));
+    }
+
+    #[test]
+    fn events_after_a_line_that_is_not_utf8_are_still_heard() {
+        let bytes = glib::Bytes::from_static(b"activewindow>>xterm,caf\xe9\nworkspace>>2\n");
+        let reader = gio::DataInputStream::new(&gio::MemoryInputStream::from_bytes(&bytes));
+        let handlers: Rc<Listeners<(String, String)>> = Rc::default();
+        let events = Rc::new(RefCell::new(Vec::new()));
+        let _subscription = handlers.add_with({
+            let events = events.clone();
+            move |(event, data): &(String, String)| {
+                events.borrow_mut().push(format!("{event}>>{data}"))
+            }
+        });
+        glib::MainContext::new().block_on(forward(reader, handlers));
+        assert_eq!(
+            *events.borrow(),
+            vec![
+                "activewindow>>xterm,caf\u{fffd}".to_owned(),
+                "workspace>>2".to_owned()
+            ]
+        );
+    }
+}

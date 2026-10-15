@@ -1,0 +1,193 @@
+---
+title: Display settings
+sidebar_label: Displays
+description: The Displays page and its Color and Night light subpages, which arrange monitors and set their mode, color, HDR and luminance through Hyprland monitor rules, and schedule night light, which warms each monitor through its color matrix.
+---
+
+# Display settings
+
+The Displays page arranges the monitors and sets each one's mode, rotation and refresh behavior. Its
+**Color** subpage sets a display's color profile, HDR and luminance, and its **Night light** subpage
+schedules a warmer screen in the evening.
+
+## How changes are written
+
+Everything a display's controls change goes into that display's `hl.monitor` block in
+`~/.config/hypr/settings/displays.lua`, after which Hyprland reloads:
+
+```lua
+hl.monitor({
+	output = "DP-1",
+	mode = "2560x1440@144.00",
+	position = "0x0",
+	scale = 1.25,
+	transform = 0,
+	bitdepth = 10,
+	cm = "hdr",
+})
+```
+
+Each change writes what Hyprland is running for that display (mode, position, scale, rotation, bit
+depth and color profile) together with the changed keys, and keeps the block's other keys, so a
+display that had no rule gets a complete one. The main display is a line in the same file,
+`hl.env("WAYLANDDRV_PRIMARY_MONITOR", "DP-1")`, and the options under **All displays** are
+`hl.config` lines there too. The page asks Hyprland for all monitors, turned-off ones included, and
+asks again when Hyprland reports a display added or removed. A change that touches several displays,
+such as a drag, a new main display, or turning off or mirroring the main display, writes the file
+once. Turning a display on as the main display or a mirror, and extending the mirrored main
+display, write twice, the second time only if the first succeeded. When a display's block or the
+main display line cannot be written, Hyprland is not reloaded and a line says why until a later
+write from the same page succeeds: under the **Rescan displays** button on this page, under the
+arrangement on the welcome screen, and at the top of the **Color** subpage's section. The block
+writer is `src/platform/hyprland/monitorrules.rs`.
+
+## Displays
+
+**Arrangement.** With more than one display, a field at the top shows every enabled display as a
+plate, scaled to fit, with its model or name. Tapping a plate chooses that display. Dragging one
+moves it: it snaps to the edges of its neighbors, and a plate dropped onto another is pushed out to
+the nearest free side. The positions are then written with the main display at 0 × 0. When
+displays move, here or whenever the main role changes hands, a display that is off gets only its new
+`position` written into its block, not the running values Hyprland reports for it, and a display
+that is off without a block of its own is left out.
+
+**Choosing a display.** The displays also appear as a row of buttons, "*model* (*name*)", disabled
+ones included. At the end of the row, **Rescan displays** asks every monitor again what it can do
+(`hl.dsp.force_renderer_reload()`); modes a display reports only once it is fully awake show up after
+it. The controls below apply to the chosen display.
+
+| Control | Choices | Writes |
+|---|---|---|
+| Use as | Main display, Extended display, Mirror for *another display*, Off | see below |
+| Resolution | see below | `mode` and `scale` |
+| Show all resolutions | — | nothing; lists every mode the panel reports while the page is open |
+| Refresh rate | the rates the display offers at its current size | `mode` |
+| Rotation | Standard, 90°, 180°, 270°, Flipped, Flipped 90°, Flipped 180°, Flipped 270° | `transform`, 0 to 7 |
+| Variable refresh rate | Follow the global setting, Off, On, Fullscreen only, Fullscreen games and video | `vrr`: −1, 0, 1, 2, 3 |
+| Color | — | opens the Color subpage for this display |
+
+**Use as** shows only while there is another display.
+
+- **Main display** names this display in `WAYLANDDRV_PRIMARY_MONITOR` and moves every display so that
+  this one sits at 0 × 0. Without a choice, or when the chosen display is off, the main display is
+  the first display that is on by connector: DP, then HDMI, DVI, eDP, LVDS and VGA, lower numbers
+  first.
+- **Extended display** clears `mirror`. A display that was mirroring is placed to the right of the
+  others.
+- **Mirror for** writes `mirror` with the other display's name.
+- Choosing Mirror for the main display hands the main role to the display it mirrors, when that one
+  is on and mirrors nothing or only the main display. Otherwise, and when choosing Extended display
+  for it, the main role goes to another display that is on, if there is one, preferring one that is
+  not mirroring.
+- **Off** writes `disabled = true` alone, without the running values, unless this was the main
+  display: then it hands the main role on as Extended display does, and the same write moves the
+  displays that need it, this one included with its running values, relative to the new main
+  display. It is offered while another display stays on, or when this one is already off. Picking
+  anything for a display that is off writes `disabled = false` first.
+- A display that takes the main role while it mirrors another stops mirroring in the same write.
+
+**Resolution** lists the display's native mode divided by 1, 1.25, 4⁄3, 1.5, 1.6 and 2, wherever
+that gives whole pixels, as logical sizes: picking one keeps the native mode and sets `scale` to the
+divisor. The native size is marked "(Default)". The panel's mode at the size the display is running
+is listed as well, and with **Show all resolutions** every mode the panel reports; a size already in
+the list is not repeated. Picking one of these panel modes sets it at scale 1 and its highest refresh
+rate. A mode the display runs in but does not report, such as a custom mode set in the Hyprland
+config, counts as one of its modes, with the refresh rate it runs at, so the current resolution and
+rate show as chosen.
+
+**Reserved area** keeps a strip along each edge free of windows: Top, Right, Bottom and Left, 0 to
+2000 pixels, written together as `reserved_area = { top = …, right = …, bottom = …, left = … }`.
+
+**All displays** holds Hyprland options that apply everywhere:
+
+| Control | Choices | Option |
+|---|---|---|
+| Auto HDR | Off, HDR, HDR (display profile); switches to HDR while a fullscreen window shows HDR content | `render:cm_auto_hdr`: 0, 1 (default), 2 |
+| Variable refresh rate | Off, On, Fullscreen only, Fullscreen games and video; what a display set to follow the global setting does | `misc:vrr`: 0 to 3 |
+| Allow tearing | lets a game draw a frame before the display is ready for it, trading a torn line for latency | `general:allow_tearing` |
+| Keep X11 apps sharp on scaled displays | draws X11 apps unscaled instead of stretched; they look sharp, and small unless they scale themselves (`GDK_SCALE`, `QT_SCALE_FACTOR`) | `xwayland:force_zero_scaling` |
+
+The page ends with a link row to Night light.
+
+## Color
+
+The Color subpage is titled "Color · *model* (*name*)" for the display it was opened for. Opened from
+search, it shows the first display.
+
+| Control | Choices | Writes |
+|---|---|---|
+| Color profile | Automatic, sRGB, DCI P3, Display P3, Adobe RGB, Wide color, the display's own profile (named after its model), HDR, HDR with the display's own profile | `cm`: `auto`, `srgb`, `dcip3`, `dp3`, `adobe`, `wide`, `edid`, `hdr`, `hdredid`; an HDR profile also sets `bitdepth = 10` |
+| Bit depth | 8-bit, 10-bit | `bitdepth` |
+| Force wide color | Automatic, On, Off | `supports_wide_color`: 0, 1, −1 |
+| Force HDR | Automatic, On, Off | `supports_hdr`: 0, 1, −1 |
+| SDR transfer function | Default, Automatic, sRGB, Gamma 2.2, Gamma 2.2 forced | `sdr_eotf`: `default`, `auto`, `srgb`, `gamma22`, `gamma22force` |
+| ICC profile | None, or an `.icc` or `.icm` file | `icc` |
+
+:::warning[Force HDR]
+
+Forcing HDR on a display that does not report it can leave the screen black.
+
+:::
+
+The ICC profiles offered are the files found under `~/.local/share/icc`, `~/.color/icc`,
+`/usr/local/share/color/icc` and `/usr/share/color/icc`, subfolders included.
+
+**Luminance**:
+
+| Control | Range | Writes |
+|---|---|---|
+| SDR brightness | 0 to 10, in steps of 0.05; how bright content that is not HDR is drawn while the display is in HDR | `sdrbrightness` |
+| SDR saturation | 0 to 10, in steps of 0.05 | `sdrsaturation` |
+| SDR minimum luminance | 0 to 1000 | `sdr_min_luminance` |
+| SDR maximum luminance | 0 to 10000 | `sdr_max_luminance` |
+| Display minimum luminance | −1 to 1000 | `min_luminance` |
+| Display maximum luminance | −1 to 10000 | `max_luminance` |
+| Display maximum average luminance | −1 to 10000 | `max_avg_luminance` |
+
+The three display figures describe the panel itself; −1 leaves each one to what the display reports.
+
+## Night light
+
+Night light warms the screen through each monitor's color matrix, which the shell sets over
+Hyprland's `hyprland-ctm-control-v1` protocol. Its settings are keys in
+`~/.config/proscenio/config.toml`.
+
+| Control | Key | Default |
+|---|---|---|
+| Automatic schedule | `light.night.automatic` | on |
+| From (HH:mm) | `light.night.from` | `19:00` |
+| To (HH:mm) | `light.night.to` | `06:30` |
+| Color temperature (K) | `light.night.colorTemperature`, 1000 to 6500 in steps of 100 | 5000 |
+| Transition (min) | `light.night.transition`, 0 to 120 in steps of 5 | 30 |
+
+The From and To fields are inactive while the schedule is off. They take a 24-hour time such as
+`7:05` or `19:30`, stored as `07:05` and `19:30`; anything else is not stored, and the field shows
+the stored time again once it loses focus. A stored value whose hour or minute is not a number, such
+as `7pm`, schedules as that field's default. With the schedule on, night light
+starts one transition before From and warms the screen from 6600 K so that it reaches the set
+temperature at From, keeps it until To, then cools it back to 6600 K over the transition after To,
+when it turns off. With From at 18:00, To at 06:30 and 120 minutes, it warms from 16:00 and cools
+until 08:30. The temperature
+moves evenly in mireds, one million divided by the kelvins, so the steps look even, and is rounded
+to 10 K; it is worked out on every tick of the background loop and sent only when it changes. A
+transition of 0 switches at From and To at once.
+
+A temperature becomes a scale for red, green and blue from the blackbody fit `hyprsunset` uses; from
+6600 K up the scale is 1, so with night light off every matrix is the identity. Hyprland applies the
+matrix to the encoded signal, so a monitor with the `hdr` or `hdredid` color preset, whose signal is
+PQ, gets the scale converted at its SDR white, `sdr_max_luminance` times `sdrbrightness`: the screen
+there turns as warm as an SDR monitor at the same temperature. Every other preset takes the scale as
+it is. The matrices are set again whenever a monitor is added or the Hyprland config reloads, and
+Hyprland resets them all to the identity when the shell exits.
+
+Only one client can hold the protocol. When a running `hyprsunset` holds it, the shell stops
+`hyprsunset` and takes it over; a `hyprsunset` started while the shell runs changes nothing.
+
+Switching night light by
+hand, from its quick toggle or the sidebar's night light dialog, applies the set temperature at once
+and holds until the schedule next moves away from it or arrives at it, counted in real time, so
+across sleep and daylight saving changes too. Switched on, it holds until From, where the schedule
+is fully warm, or until To, where it starts cooling; switched off, until the schedule starts warming,
+one transition before From, or has cooled back to off, one transition after To. The schedule then
+takes over at once, at the point it has reached. A temperature changed while night light is on applies at once,
+in the middle of a transition at the point the transition has reached.
