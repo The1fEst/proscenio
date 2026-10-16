@@ -10,6 +10,8 @@ A panel with one card per media player: the album art, the title and artist, the
 buttons and a seek bar. Each card takes its colors from its album art, and while music plays an
 audio wave moves behind it. Players are found over MPRIS on the session bus.
 
+![The media controls panel with one card for a playing track](/img/screenshots/media-controls.webp)
+
 The panel is `src/panels/mediacontrols/`; the player service is `src/services/media/mpris.rs`.
 
 ## Opening and closing

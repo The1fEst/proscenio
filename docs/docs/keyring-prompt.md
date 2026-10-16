@@ -11,6 +11,8 @@ choose the password of one being created, it asks the system prompter on the ses
 other gcr clients such as `pinentry-gnome3`. proscenio is that prompter: the question appears in the
 shell's own dialog, on every monitor.
 
+![The keyring prompt asking for a password to unlock a keyring](/img/screenshots/keyring-prompt.webp)
+
 ## The prompter
 
 At start, proscenio exports `org.gnome.keyring.internal.Prompter` at `/org/gnome/keyring/Prompter`

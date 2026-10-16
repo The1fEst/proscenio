@@ -92,6 +92,8 @@ matching its app name again.
 
 ## Popups
 
+![Three notification popups stacked in the top-right corner](/img/screenshots/notifications-popups.webp)
+
 Each monitor has a popup surface on the overlay layer, namespace `proscenio:notificationPopup`,
 anchored to the top-right corner, 410 px wide and as tall as its cards. Only one monitor shows
 popups: Hyprland's focused monitor, following the focus as it moves. With
@@ -188,6 +190,8 @@ the app icon of the first notification that has one.
 
 The popups and the sidebar's list show the same cards, one per app. A popup card has a shadow and a
 background color of its own.
+
+![The sidebar with its quick toggles above a list of three notification cards](/img/screenshots/notifications-sidebar.webp)
 
 ### A collapsed card
 

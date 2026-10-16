@@ -15,6 +15,8 @@ every monitor.
 pkexec true
 ```
 
+![The authentication dialog with a password field and the Cancel and OK buttons](/img/screenshots/polkit.webp)
+
 ## Registration
 
 At start, proscenio exports `org.freedesktop.PolicyKit1.AuthenticationAgent` at

@@ -9,6 +9,8 @@ description: The grid of toggles in the sidebar — tiles and what a click, a ri
 Under the system row of the [sidebar](sidebar.md) sits a grid of quick toggles: tiles that switch
 something on or off and, on a right-click, open a dialog or a settings page for it.
 
+![The sidebar's system row and quick toggle grid with Wi-Fi, Bluetooth, microphone, audio output and Night Light tiles](/img/screenshots/quick-toggles.webp)
+
 ## Two styles
 
 `sidebar.quickToggles.style` picks the look:
@@ -264,6 +266,8 @@ the main connection is wired.
 
 ### Bluetooth
 
+![The Bluetooth devices dialog listing a connected device, a paired one and a new one](/img/screenshots/quick-toggles-bluetooth.webp)
+
 **Bluetooth devices.** Opening it powers the adapter on and starts discovery, with a progress bar
 while it runs; closing the dialog stops discovery. The list puts connected devices first, then paired
 ones, then the rest, each with an icon for its kind (headphones, speaker, phone, mouse, keyboard).
@@ -279,6 +283,8 @@ A click on a device expands it:
 **Details** closes the sidebar and opens the settings window's Bluetooth page.
 
 ### Night light
+
+![The Eye protection dialog with the Night Light switches, schedule times, transition and intensity, the Brightness and Gamma sliders, and the Details and Done buttons](/img/screenshots/quick-toggles-night-light.webp)
 
 **Eye protection.** The Night Light section has the **Enable now** switch, which does what a click on
 the tile does; the **Automatic** switch, which turns the schedule on or off; the **From (HH:mm)** and

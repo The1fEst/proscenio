@@ -70,6 +70,8 @@ Two more rules decide what shows:
 
 ## The overflow button
 
+![The overflow popup open under the chevron, with three tray icons in a grid](/img/screenshots/tray-overflow.webp)
+
 When at least one item is unpinned, a chevron button leads the row. Clicking it opens a popup with
 the unpinned items in a grid, as close to square as the count allows: four items make two columns,
 five make three. The chevron turns half a turn over 200 ms while the popup is open. On a vertical bar
@@ -110,6 +112,8 @@ A click on a tray icon does not toggle the sidebar, as a click on the empty part
 does.
 
 ## The menu
+
+![The menu of a tray item, with Unpin, Open, Settings, a More submenu and Quit](/img/screenshots/tray.webp)
 
 Item menus are read over `com.canonical.dbusmenu`. Before the menu opens, and before each submenu,
 the shell calls `AboutToShow` for it and then `GetLayout`. The menu opens below the bar, or beside a

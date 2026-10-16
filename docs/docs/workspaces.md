@@ -10,6 +10,8 @@ The middle group of the [bar](bar.md) is a row of workspace cells, one per works
 marks the active workspace, a tinted band joins the workspaces that hold windows, and each cell shows
 a dot, a number or the icon of its biggest window.
 
+![The workspace indicator with workspace 2 active and app icons on the occupied workspaces 3 and 4](/img/screenshots/workspaces.webp)
+
 Each bar follows the active workspace of its own screen.
 
 ## Which workspaces it shows

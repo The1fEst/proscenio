@@ -10,6 +10,8 @@ Each monitor gets one window on the bottom layer, under the application windows,
 wallpaper and, over it, the desktop widgets: a clock and a weather card. The wallpaper is a little larger than the
 screen and slides as you change workspaces, and the widgets slide with it a little further.
 
+![The desktop with the wallpaper and the cookie clock widget](/img/screenshots/background-desktop.webp)
+
 Most of what follows is set on the **Appearance › Background** page of the settings app (see
 [Appearance settings](settings-appearance.md)); the keys named here are in
 `~/.config/proscenio/config.toml`.
@@ -121,6 +123,8 @@ The window takes input only over a widget that can be dragged: one that is enabl
 *Draggable*, and not on the lock screen. Everywhere else, clicks go through to the desktop.
 
 ### The clock
+
+![The cookie clock with the date in a bubble](/img/screenshots/background-clock.webp)
 
 Keys are under `background.widgets.clock`.
 

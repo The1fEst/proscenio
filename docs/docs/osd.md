@@ -10,6 +10,8 @@ When the volume, the screen brightness or the gamma changes, a small pill appear
 screen with an icon, the name, the value in percent and a progress bar, and goes away after a
 second. The source is `src/panels/osd.rs`.
 
+![The volume indicator at 40 percent](/img/screenshots/osd.webp)
+
 ## What shows it
 
 | Change | Indicator |

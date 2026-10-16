@@ -13,6 +13,8 @@ tool or into a screen recording.
 It needs `grim`, `magick` (ImageMagick), `wl-copy` and `satty` for screenshots, and `wf-recorder`
 and `slurp` for recordings. The settings page for screenshots names whichever of them is missing.
 
+![The region selector over two windows, with a rectangle being drawn and the toolbar at the bottom](/img/screenshots/region-selector.webp)
+
 ## Opening it
 
 | Global shortcut | `proscenio ipc call region …` | Opens the selector in |

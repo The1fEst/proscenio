@@ -11,6 +11,8 @@ is sent as a key event through `ydotool`, so it lands in whatever window has foc
 real keyboard. The source is in `src/panels/osk/`, with the key sender in
 `src/platform/system/ydotool.rs`.
 
+![The on-screen keyboard with its function row, four letter rows and the bottom row](/img/screenshots/on-screen-keyboard.webp)
+
 ## Opening and closing
 
 - The keyboard button among the bar's utility buttons, shown while

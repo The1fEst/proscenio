@@ -187,6 +187,8 @@ stay centered on the screen until a side region runs out of room; then they shif
 
 ## The center groups
 
+![The three center groups of the bar: media and resource meters, the workspaces, and the clock with the utility buttons](/img/screenshots/bar.webp)
+
 Each group sits on a pill in `colLayer1` with a 12 px radius, 32 px tall inside the 40 px bar, with
 5 px of padding at its ends and 4 px between widgets.
 

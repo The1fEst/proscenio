@@ -15,6 +15,8 @@ From left to right it holds:
 - the pinned apps, then a separator when anything is pinned, then the other apps with open windows;
 - a button that opens the [overview](overview.md).
 
+![The dock with five app buttons, a separator and the overview button](/img/screenshots/dock.webp)
+
 ## Apps
 
 The list comes from `dock.pinnedApps` and from Hyprland's list of windows:
@@ -79,6 +81,8 @@ The dock hides while the screen is locked and while a fullscreen window covers i
 fullscreen window a pinned dock keeps its space reserved, so the windows behind do not resize.
 
 ## Window previews
+
+![The preview card of a file manager window above its dock button](/img/screenshots/dock-preview.webp)
 
 Hovering the button of an app with windows for 100 ms opens a popup above it with a card for each
 window: the window's title, a close button and a live picture of the window fitted into 300 × 200.
