@@ -5,6 +5,19 @@ use super::{BRANCH, REPOSITORY, Updates};
 use crate::core::process;
 
 const VERSION: &str = env!("PROSCENIO_VERSION");
+const SHORT_SHA_LENGTH: usize = 7;
+
+#[derive(Debug, PartialEq)]
+pub struct Commit {
+    pub sha: String,
+    pub subject: String,
+}
+
+impl Commit {
+    pub fn short_sha(&self) -> &str {
+        self.sha.get(..SHORT_SHA_LENGTH).unwrap_or(&self.sha)
+    }
+}
 
 impl Updates {
     pub(super) fn refresh_shell(&self) {
@@ -35,11 +48,9 @@ impl Updates {
                 &url,
             ]))
             .await;
-            if let Some((commits_behind, commit_subjects)) =
-                body.as_deref().and_then(read_comparison)
-            {
+            if let Some((commits_behind, commits)) = body.as_deref().and_then(read_comparison) {
                 updates.commits_behind.set(commits_behind);
-                updates.commit_subjects.replace(commit_subjects);
+                updates.commits.replace(commits);
             }
             updates.is_refreshing_shell.set(false);
             updates.listeners.notify();
@@ -56,15 +67,12 @@ fn installed_commit(version: &str) -> Option<&str> {
     (is_numeric && !hash.is_empty()).then_some(hash)
 }
 
-fn read_comparison(body: &str) -> Option<(i32, Vec<String>)> {
+fn read_comparison(body: &str) -> Option<(i32, Vec<Commit>)> {
     let comparison = serde_json::from_str::<Value>(body).ok()?;
     if comparison.get("message").and_then(Value::as_str) == Some("Not Found") {
         return Some((0, Vec::new()));
     }
-    Some((
-        read_commits_behind(&comparison)?,
-        read_commit_subjects(&comparison),
-    ))
+    Some((read_commits_behind(&comparison)?, read_commits(&comparison)))
 }
 
 fn read_commits_behind(comparison: &Value) -> Option<i32> {
@@ -72,14 +80,20 @@ fn read_commits_behind(comparison: &Value) -> Option<i32> {
     Some(i32::try_from(count).unwrap_or(i32::MAX))
 }
 
-fn read_commit_subjects(comparison: &Value) -> Vec<String> {
+fn read_commits(comparison: &Value) -> Vec<Commit> {
     comparison
         .get("commits")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter_map(|commit| commit.pointer("/commit/message")?.as_str())
-        .map(|message| message.lines().next().unwrap_or_default().to_owned())
+        .filter_map(|commit| {
+            let sha = commit.get("sha")?.as_str()?;
+            let message = commit.pointer("/commit/message")?.as_str()?;
+            Some(Commit {
+                sha: sha.to_owned(),
+                subject: message.lines().next().unwrap_or_default().to_owned(),
+            })
+        })
         .collect()
 }
 
@@ -117,8 +131,16 @@ mod tests {
     #[test]
     fn a_failed_comparison_gives_no_count_and_an_unknown_commit_counts_as_up_to_date() {
         assert_eq!(
-            read_comparison(r#"{"ahead_by":1,"commits":[{"commit":{"message":"Bar: clock"}}]}"#),
-            Some((1, vec!["Bar: clock".to_owned()]))
+            read_comparison(
+                r#"{"ahead_by":1,"commits":[{"sha":"e28f698aa","commit":{"message":"Bar: clock"}}]}"#
+            ),
+            Some((
+                1,
+                vec![Commit {
+                    sha: "e28f698aa".to_owned(),
+                    subject: "Bar: clock".to_owned()
+                }]
+            ))
         );
         assert_eq!(read_comparison(""), None);
         assert_eq!(
@@ -132,21 +154,38 @@ mod tests {
     }
 
     #[test]
-    fn the_commit_subjects_are_the_first_lines_of_the_compared_commit_messages() {
+    fn the_commits_are_the_hashes_and_first_message_lines_of_the_compared_commits() {
         let comparison = serde_json::from_str(
-            r#"{"ahead_by":2,"commits":[
-                {"commit":{"message":"Theme: redraw every widget\n\nBody"}},
-                {"commit":{"message":"Docs: links"}}
+            r#"{"ahead_by":3,"commits":[
+                {"sha":"0123456789abcdef","commit":{"message":"Theme: redraw every widget\n\nBody"}},
+                {"sha":"fedcba9876543210","commit":{"message":"Docs: links"}},
+                {"commit":{"message":"No hash"}}
             ]}"#,
         )
         .unwrap();
+        let commits = read_commits(&comparison);
         assert_eq!(
-            read_commit_subjects(&comparison),
-            ["Theme: redraw every widget", "Docs: links"]
+            commits
+                .iter()
+                .map(|commit| (commit.sha.as_str(), commit.subject.as_str()))
+                .collect::<Vec<_>>(),
+            [
+                ("0123456789abcdef", "Theme: redraw every widget"),
+                ("fedcba9876543210", "Docs: links")
+            ]
         );
+        assert_eq!(commits[0].short_sha(), "0123456");
         assert!(
-            read_commit_subjects(&serde_json::from_str(r#"{"message":"Not Found"}"#).unwrap())
-                .is_empty()
+            read_commits(&serde_json::from_str(r#"{"message":"Not Found"}"#).unwrap()).is_empty()
         );
+    }
+
+    #[test]
+    fn a_hash_shorter_than_its_short_form_is_shown_whole() {
+        let commit = Commit {
+            sha: "abc".to_owned(),
+            subject: String::new(),
+        };
+        assert_eq!(commit.short_sha(), "abc");
     }
 }

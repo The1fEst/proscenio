@@ -241,9 +241,11 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 version: under **Repositories** those the [check](sidebar.md#updates) finds in the repositories,
 under **AUR** those `paru -Qua` or `yay -Qua` reports. A package's name can be selected, and the
 copy button at the end of its row copies the name; the button shows a check for a moment.
-**Commits** opens a page with the subject of every new commit. Each row is unavailable
-while its count is 0, so a check that failed and found no package leaves **Packages** closed, with
-**Could not check for updates** on the row. When part of the last check failed and some packages
+**Commits** opens a page with every new commit: its subject and, below it, the first seven
+characters of its hash, which can be selected; the copy button at the end of the row copies the
+full hash. The **Packages** and **Commits** rows are unavailable while their count is 0, so a check
+that failed and found no package leaves **Packages** closed, with **Could not check for updates**
+on the row. When part of the last check failed and some packages
 were found, the Packages page reads **Could not check for updates** above them. A page that is open
 when its last item goes reads **Up to date**. Updates run without a terminal, in a systemd scope
 of their own so that restarting the shell does not stop them, and one at a time: both **Update**

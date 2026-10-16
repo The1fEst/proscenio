@@ -14,6 +14,8 @@ use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, watch};
 use crate::services::updates::updateprogress::UpdateProgress;
 
+pub use commits::Commit;
+
 pub const REPOSITORY: &str = "The1fEst/proscenio";
 const BRANCH: &str = "main";
 const HELPER: &str = "/usr/lib/proscenio/proscenio-packages";
@@ -31,7 +33,7 @@ pub struct Updates {
     pub has_package_manager: Rc<Cell<bool>>,
     pub has_package_check_failed: Rc<Cell<bool>>,
     pub commits_behind: Rc<Cell<i32>>,
-    pub commit_subjects: Rc<RefCell<Vec<String>>>,
+    pub commits: Rc<RefCell<Vec<Commit>>>,
     pub job: Rc<Cell<Option<Job>>>,
     pub last_job_succeeded: Rc<Cell<Option<bool>>>,
     pub log: Rc<RefCell<String>>,
@@ -53,7 +55,7 @@ impl Updates {
             has_package_manager: Rc::new(Cell::new(false)),
             has_package_check_failed: Rc::new(Cell::new(false)),
             commits_behind: Rc::new(Cell::new(0)),
-            commit_subjects: Rc::default(),
+            commits: Rc::default(),
             job: Rc::default(),
             last_job_succeeded: Rc::default(),
             log: Rc::default(),
