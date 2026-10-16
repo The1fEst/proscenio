@@ -239,7 +239,9 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 
 **Packages** opens a page with every pending package, each with its installed and its new
 version: under **Repositories** those the [check](sidebar.md#updates) finds in the repositories,
-under **AUR** those `paru -Qua` or `yay -Qua` reports. **Commits** opens a page with the subject of every new commit. Each row is unavailable
+under **AUR** those `paru -Qua` or `yay -Qua` reports. A package's name can be selected, and the
+copy button at the end of its row copies the name; the button shows a check for a moment.
+**Commits** opens a page with the subject of every new commit. Each row is unavailable
 while its count is 0, so a check that failed and found no package leaves **Packages** closed, with
 **Could not check for updates** on the row. When part of the last check failed and some packages
 were found, the Packages page reads **Could not check for updates** above them. A page that is open

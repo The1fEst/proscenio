@@ -18,7 +18,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         let updates = updates.clone();
         move || {
             let subjects = updates.commit_subjects.borrow();
-            fill(&commit_section, &subjects, commit_row);
+            fill(&commit_section, &subjects, |subject| commit_row(subject));
             if let Some(section) = empty_section.parent() {
                 section.set_visible(subjects.is_empty());
             }
@@ -30,5 +30,5 @@ pub fn build(context: &Context) -> Rc<Page> {
 }
 
 fn commit_row(subject: &str) -> gtk4::Box {
-    card("commit", subject).0
+    card("commit", subject, false).0
 }
