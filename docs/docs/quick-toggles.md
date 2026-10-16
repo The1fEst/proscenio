@@ -78,8 +78,8 @@ a dialog or a settings page.
 | `network` | Wi-Fi | the Wi-Fi radio is on | turns the radio on or off | the Wi-Fi dialog |
 | `ethernet` | Ethernet | the wired device is connected | connects or disconnects it | the settings window's Network page |
 | `bluetooth` | Bluetooth | the adapter is powered | powers it on or off | the Bluetooth dialog |
-| `audio` | Audio output | the default output is not muted | mutes or unmutes it | the settings window's Volume Levels page |
-| `mic` | Audio input | the default input is not muted | mutes or unmutes it | the settings window's Volume Levels page |
+| `audio` | Audio output | the default output is not muted | mutes or unmutes it | the settings window's Sound page |
+| `mic` | Audio input | the default input is not muted | mutes or unmutes it | the settings window's Sound page |
 | `notifications` | Notifications | Do Not Disturb is off | turns Do Not Disturb on or off | — |
 | `nightLight` | Night Light | night light is active | turns it on or off | the night light dialog |
 | `darkMode` | Dark Mode | the palette is dark | switches the palette to the other mode | — |
@@ -129,9 +129,10 @@ Bluetooth page, which the dialog's **Details** button opens, is described in
 
 ### Audio output and Audio input
 
-Mute the default output and the default input. Their secondary action opens **Sound › Volume
-Levels** in the settings window, which lists every app playing and every app recording, each with
-its own volume; see [Sound settings](settings-sound.md).
+Mute the default output and the default input. Their secondary action opens **Sound** in the
+settings window, with the default devices, their volumes and a link to Volume Levels, which lists
+every app playing and every app recording, each with its own volume; see
+[Sound settings](settings-sound.md).
 
 ### Notifications
 

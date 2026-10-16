@@ -106,6 +106,14 @@ glib::wrapper! {
         @implements gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget;
 }
 
+fn find_settings_page(kind: &str) -> Option<&'static str> {
+    match kind {
+        "ethernet" => Some("network"),
+        "audio" | "mic" => Some("sound"),
+        _ => None,
+    }
+}
+
 struct Drag {
     kind: &'static str,
     target: Option<(bool, i32)>,
@@ -407,20 +415,14 @@ impl QuickPanel {
                     close();
                 }))
             }
-            (None, "ethernet" | "audio" | "mic") => {
-                let page = if kind == "ethernet" {
-                    "network"
-                } else {
-                    "volumelevels"
-                };
+            (None, _) => find_settings_page(kind).map(|page| {
                 let settings = self.settings.clone();
                 let close = self.close.clone();
-                Some(Rc::new(move || {
+                Rc::new(move || {
                     close();
                     settings.open(Some(page));
-                }))
-            }
-            (None, _) => None,
+                }) as Rc<dyn Fn()>
+            }),
         };
         let glyph = if kind == "wireGuard" {
             Glyph::Custom("wireguard-symbolic")
@@ -790,5 +792,23 @@ impl QuickPanel {
         });
 
         self.root.add_controller(gesture);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_secondary_action_of_a_tile_opens_the_settings_page_it_belongs_to() {
+        for (kind, page) in [
+            ("ethernet", Some("network")),
+            ("audio", Some("sound")),
+            ("mic", Some("sound")),
+            ("nightLight", None),
+            ("darkMode", None),
+        ] {
+            assert_eq!(find_settings_page(kind), page, "{kind}");
+        }
     }
 }

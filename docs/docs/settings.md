@@ -23,7 +23,7 @@ open brings it forward and focuses it on its workspace.
 | The sidebar's Wi-Fi dialog, **Details** | Wi-Fi, or Network while the connection is wired |
 | The sidebar's Bluetooth dialog, **Details** | Bluetooth |
 | The sidebar's WireGuard dialog, **New Connection** | Network |
-| The secondary action of a [quick toggle](quick-toggles.md) | Network for Ethernet, Volume Levels for audio and the microphone |
+| The secondary action of a [quick toggle](quick-toggles.md) | Network for Ethernet, Sound for audio and the microphone |
 | `proscenio ipc call settings open` | the window |
 | `proscenio ipc call settings openPage <id>` | the page or subpage with that id, from the table below |
 | `proscenio ipc call settings close`, `toggle` | closes it, or opens it when it is closed |

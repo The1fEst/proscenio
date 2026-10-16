@@ -25,6 +25,9 @@ notice saying so.
 Two link rows follow: **Volume Levels**, the volume of each app playing or recording, and **Sound
 cards**, which input and output configuration each card uses.
 
+The secondary action of the sidebar's audio and microphone [quick toggles](quick-toggles.md) opens
+this page.
+
 **Alert Sound** chooses which events play a sound. Its settings, and those of Earbang protection
 below, are keys in `~/.config/proscenio/config.toml`.
 
@@ -71,9 +74,6 @@ the name stands alone. Text does not read as such when:
 The first rule applies to ASCII text only, so titles in other scripts always show. Clicking the icon
 mutes or unmutes the stream; a muted stream's icon is dimmed under a crossed-out speaker or
 microphone.
-
-The secondary action of the sidebar's audio and microphone [quick toggles](quick-toggles.md) opens
-this page.
 
 ## Sound cards
 
