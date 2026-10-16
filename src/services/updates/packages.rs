@@ -24,10 +24,12 @@ impl Updates {
             self.is_package_refresh_queued.set(true);
             return;
         }
+        self.listeners.notify();
         let updates = self.clone();
         glib::spawn_future_local(async move {
             updates.load_package_lists().await;
             updates.is_refreshing_packages.set(false);
+            updates.listeners.notify();
             if updates.is_package_refresh_queued.replace(false) {
                 updates.refresh_packages();
             }

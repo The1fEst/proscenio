@@ -15,6 +15,7 @@ impl Updates {
             self.is_shell_refresh_queued.set(true);
             return;
         }
+        self.listeners.notify();
         let url = format!("https://api.github.com/repos/{REPOSITORY}/compare/{commit}...{BRANCH}");
         let updates = self.clone();
         glib::spawn_future_local(async move {
@@ -39,9 +40,9 @@ impl Updates {
             {
                 updates.commits_behind.set(commits_behind);
                 updates.commit_subjects.replace(commit_subjects);
-                updates.listeners.notify();
             }
             updates.is_refreshing_shell.set(false);
+            updates.listeners.notify();
             if updates.is_shell_refresh_queued.replace(false) {
                 updates.refresh_shell();
             }

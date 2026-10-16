@@ -39,9 +39,9 @@ pub struct Updates {
     listeners: Rc<Listeners>,
     output_listeners: Rc<Listeners>,
     config_watch: Rc<RefCell<Option<watch::Watch>>>,
-    is_refreshing_packages: Rc<Cell<bool>>,
+    pub is_refreshing_packages: Rc<Cell<bool>>,
     is_package_refresh_queued: Rc<Cell<bool>>,
-    is_refreshing_shell: Rc<Cell<bool>>,
+    pub is_refreshing_shell: Rc<Cell<bool>>,
     is_shell_refresh_queued: Rc<Cell<bool>>,
 }
 
@@ -112,6 +112,13 @@ impl Updates {
     pub fn refresh(&self) {
         self.refresh_packages();
         self.refresh_shell();
+    }
+
+    pub fn check(&self, job: Job) {
+        match job {
+            Job::System => self.refresh_packages(),
+            Job::Shell => self.refresh_shell(),
+        }
     }
 
     pub fn start(&self, job: Job) {

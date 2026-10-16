@@ -22,7 +22,8 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let updates = context.services.updates.clone();
 
-    let system_section = page.section("deployed_code_update", &tr("System"));
+    let (system_section, system_check_indicator) =
+        page.busy_section("deployed_code_update", &tr("System"));
     let (system_check_button, system_update_button) =
         header_actions(&page, &system_section, &updates, Job::System);
     let packages_summary_label = page.link_row(
@@ -33,7 +34,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         context.subpage_opener("updatepackages"),
     );
 
-    let shell_section = page.section("", &tr("Shell"));
+    let (shell_section, shell_check_indicator) = page.busy_section("", &tr("Shell"));
     if let Some(header) = shell_section.prev_sibling().and_downcast::<gtk4::Box>() {
         let logo = about::shell_logo(pixel_size::HUGEASS);
         logo.set_valign(gtk4::Align::Center);
@@ -118,6 +119,16 @@ pub fn build(context: &Context) -> Rc<Page> {
             });
 
             let job = updates.job.get();
+            let is_checking_packages = updates.is_refreshing_packages.get();
+            system_check_indicator
+                .area
+                .set_visible(is_checking_packages);
+            system_check_indicator.set_loading(is_checking_packages);
+            system_check_button.set_sensitive(!is_checking_packages);
+            let is_checking_shell = updates.is_refreshing_shell.get();
+            shell_check_indicator.area.set_visible(is_checking_shell);
+            shell_check_indicator.set_loading(is_checking_shell);
+            shell_check_button.set_sensitive(!is_checking_shell);
             system_check_button.set_visible(count == 0);
             system_update_button.set_visible(count > 0);
             system_update_button.set_sensitive(job.is_none() && updates.has_package_manager.get());
@@ -205,7 +216,7 @@ fn header_actions(
 ) -> (RippleButton, RippleButton) {
     let (check_button, _) = page.icon_button("refresh", false, &tr("Check now"), {
         let updates = updates.clone();
-        move || updates.refresh()
+        move || updates.check(job)
     });
     let (update_button, _) = page.icon_button("upgrade", true, &tr("Update"), {
         let updates = updates.clone();

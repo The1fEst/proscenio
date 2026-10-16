@@ -227,8 +227,10 @@ on `PATH`. The runtime folder is emptied at logout, so restarting the shell star
 ### Updates
 
 Two sections show what is pending. Each has one button beside its title: **Update** when there is
-something to install, otherwise **Check now**, which counts the pending packages and the commits the
-shell is behind again, the way the [sidebar](sidebar.md#updates) describes.
+something to install, otherwise **Check now**, which counts that section's part again, the way the
+[sidebar](sidebar.md#updates) describes: the pending packages under System, the commits the shell is
+behind under Shell. While a section's check runs, a loading indicator turns beside its title and its
+**Check now** is unavailable.
 
 | Section | Row under the title | Update runs |
 |---|---|---|
