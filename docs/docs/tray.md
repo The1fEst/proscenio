@@ -34,8 +34,10 @@ program that wants to be the watcher has to go.
 | `ProtocolVersion` | `0` |
 
 Each registration and removal emits `StatusNotifierItemRegistered` or
-`StatusNotifierItemUnregistered`, and the bar's tray rebuilds its row from
-`RegisteredStatusNotifierItems`. The bar also registers itself as a host, under
+`StatusNotifierItemUnregistered`, and the bar's tray updates its row from
+`RegisteredStatusNotifierItems`: the bar icons of items that stay are left as they are, and only
+added, removed or moved items change. The overflow button and its popup are rebuilt when the set of
+unpinned items changes. The bar also registers itself as a host, under
 `org.kde.StatusNotifierHost-<pid>`.
 
 ## Pinned and unpinned items
@@ -97,7 +99,7 @@ icons in their own colors.
 Pointing at an item shows a tooltip at once, below the bar on a horizontal bar. It reads the item's
 tooltip title, or its `Title`, or its ID, followed by ` • ` and the tooltip description when there
 is one. With **Show item IDs in tooltips** (`tray.showItemId`) the ID follows on its own line in
-brackets.
+brackets. The tooltip is read again when the item emits `NewToolTip` or `NewTitle`.
 
 | Button | Action |
 |---|---|

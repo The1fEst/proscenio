@@ -34,7 +34,7 @@ struct Tray {
     only_id: Option<&'static str>,
     is_vertical: bool,
     is_collapsed: bool,
-    items: RefCell<Vec<gio::SignalSubscription>>,
+    contents: RefCell<Contents>,
     is_populating: Cell<bool>,
     needs_refresh: Cell<bool>,
     generation: Cell<u64>,
@@ -47,10 +47,80 @@ impl Tray {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 struct Item {
     service: String,
     path: String,
     id: String,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Layout {
+    overflow: Vec<Item>,
+    inline: Vec<Item>,
+}
+
+#[derive(Debug, PartialEq)]
+struct LayoutDiff {
+    is_overflow_kept: bool,
+    removed: Vec<Item>,
+    added: Vec<Item>,
+}
+
+fn diff_layouts(current: &Layout, wanted: &Layout) -> LayoutDiff {
+    let mut added = Vec::new();
+    for item in &wanted.inline {
+        if !current.inline.contains(item) && !added.contains(item) {
+            added.push(item.clone());
+        }
+    }
+    LayoutDiff {
+        is_overflow_kept: current.overflow == wanted.overflow,
+        removed: current
+            .inline
+            .iter()
+            .filter(|item| !wanted.inline.contains(item))
+            .cloned()
+            .collect(),
+        added,
+    }
+}
+
+struct InlineSlot {
+    item: Item,
+    widget: gtk4::Widget,
+    _subscription: gio::SignalSubscription,
+}
+
+struct OverflowSlot {
+    items: Vec<Item>,
+    widget: gtk4::Widget,
+    _subscriptions: Rc<RefCell<Vec<gio::SignalSubscription>>>,
+}
+
+#[derive(Default)]
+struct Contents {
+    overflow: Option<OverflowSlot>,
+    inline: Vec<InlineSlot>,
+    separator: Option<gtk4::Widget>,
+}
+
+impl Contents {
+    fn layout(&self) -> Layout {
+        Layout {
+            overflow: self
+                .overflow
+                .as_ref()
+                .map(|slot| slot.items.clone())
+                .unwrap_or_default(),
+            inline: self.inline.iter().map(|slot| slot.item.clone()).collect(),
+        }
+    }
+}
+
+fn take_slot(slots: &mut Vec<InlineSlot>, item: &Item) -> Option<InlineSlot> {
+    let index = slots.iter().position(|slot| slot.item == *item)?;
+    Some(slots.swap_remove(index))
 }
 
 pub fn build(
@@ -80,7 +150,7 @@ pub fn build(
         only_id,
         is_vertical,
         is_collapsed,
-        items: RefCell::new(Vec::new()),
+        contents: RefCell::new(Contents::default()),
         is_populating: Cell::new(false),
         needs_refresh: Cell::new(false),
         generation: Cell::new(0),
@@ -122,7 +192,7 @@ pub fn build(
         let tray = tray.clone();
         move || {
             tray.is_closed.set(true);
-            tray.items.take();
+            tray.contents.take();
         }
     });
 
@@ -186,10 +256,6 @@ async fn populate(tray: &Rc<Tray>) {
         return;
     }
     let generation = tray.generation.get();
-    tray.items.take();
-    while let Some(child) = tray.row.first_child() {
-        tray.row.remove(&child);
-    }
 
     let registered_items = dbus::property(
         &tray.session,
@@ -203,8 +269,7 @@ async fn populate(tray: &Rc<Tray>) {
         return;
     };
 
-    let mut inline_items = Vec::new();
-    let mut overflow_items = Vec::new();
+    let mut wanted = Layout::default();
     for entry in registered_items.iter() {
         if !tray.is_current(generation) {
             return;
@@ -232,40 +297,100 @@ async fn populate(tray: &Rc<Tray>) {
         };
         if let Some(only_id) = tray.only_id {
             if id == only_id {
-                inline_items.push(item);
+                wanted.inline.push(item);
             }
         } else if tray.config.tray_shows(&id) && !tray.is_collapsed {
-            inline_items.push(item);
+            wanted.inline.push(item);
         } else {
-            overflow_items.push(item);
+            wanted.overflow.push(item);
         }
     }
 
     if !tray.is_current(generation) {
         return;
     }
-    let has_items = !inline_items.is_empty() || !overflow_items.is_empty();
-    if !overflow_items.is_empty() {
-        tray.row.append(&overflow(tray, overflow_items, generation));
-    }
+    let diff = diff_layouts(&tray.contents.borrow().layout(), &wanted);
 
-    for item in &inline_items {
-        let Some(child) = entry(tray, item, generation).await else {
+    let mut built = Vec::new();
+    for item in &diff.added {
+        let (widget, subscription) = entry(tray, item).await;
+        if !tray.is_current(generation) {
             return;
-        };
-        tray.row.append(&child);
+        }
+        built.push(InlineSlot {
+            item: item.clone(),
+            widget,
+            _subscription: subscription,
+        });
     }
 
+    apply(tray, wanted, &diff, built);
+}
+
+fn apply(tray: &Rc<Tray>, wanted: Layout, diff: &LayoutDiff, mut built: Vec<InlineSlot>) {
+    let mut contents = tray.contents.borrow_mut();
+    let contents = &mut *contents;
+
+    if !diff.is_overflow_kept {
+        if let Some(slot) = contents.overflow.take() {
+            tray.row.remove(&slot.widget);
+        }
+        if !wanted.overflow.is_empty() {
+            contents.overflow = Some(overflow(tray, wanted.overflow.clone()));
+        }
+    }
+
+    let (mut kept, gone): (Vec<_>, Vec<_>) = std::mem::take(&mut contents.inline)
+        .into_iter()
+        .partition(|slot| !diff.removed.contains(&slot.item));
+    for slot in &gone {
+        tray.row.remove(&slot.widget);
+    }
+    contents.inline = wanted
+        .inline
+        .iter()
+        .filter_map(|item| take_slot(&mut kept, item).or_else(|| take_slot(&mut built, item)))
+        .collect();
+
+    let has_items = !wanted.inline.is_empty() || !wanted.overflow.is_empty();
     if tray.only_id.is_some() {
         tray.row.set_visible(has_items);
-    } else if has_items {
-        let separator = text::styled_sized("•", pixel_size::LARGER);
-        text::set_color(&separator, "colSubtext");
-        tray.row.append(&Centered::new(&separator));
+    }
+
+    let mut order: Vec<gtk4::Widget> = contents
+        .overflow
+        .iter()
+        .map(|slot| slot.widget.clone())
+        .chain(contents.inline.iter().map(|slot| slot.widget.clone()))
+        .collect();
+    if tray.only_id.is_none() && has_items {
+        let separator = contents.separator.get_or_insert_with(|| {
+            let bullet = text::styled_sized("•", pixel_size::LARGER);
+            text::set_color(&bullet, "colSubtext");
+            Centered::new(&bullet).upcast()
+        });
+        order.push(separator.clone());
+    } else if let Some(separator) = contents.separator.take() {
+        tray.row.remove(&separator);
+    }
+
+    let mut previous: Option<gtk4::Widget> = None;
+    for widget in order {
+        if widget.parent().is_none() {
+            tray.row.append(&widget);
+        }
+        let expected = match &previous {
+            Some(previous) => previous.next_sibling(),
+            None => tray.row.first_child(),
+        };
+        if expected.as_ref() != Some(&widget) {
+            tray.row.reorder_child_after(&widget, previous.as_ref());
+        }
+        previous = Some(widget);
     }
 }
 
-fn overflow(tray: &Rc<Tray>, items: Vec<Item>, generation: u64) -> gtk4::Widget {
+fn overflow(tray: &Rc<Tray>, items: Vec<Item>) -> OverflowSlot {
     let chevron = text::symbol("expand_more", pixel_size::LARGER as f64);
     text::set_color(&chevron, "colOnLayer2");
     let chevron_holder = Centered::new(&chevron);
@@ -286,17 +411,22 @@ fn overflow(tray: &Rc<Tray>, items: Vec<Item>, generation: u64) -> gtk4::Widget 
     grid.set_column_spacing(OVERFLOW_SPACING);
 
     let columns = (items.len() as f64).sqrt().ceil().max(1.0) as i32;
+    let subscriptions = Rc::new(RefCell::new(Vec::new()));
     glib::spawn_future_local({
         let grid = grid.downgrade();
         let tray = Rc::downgrade(tray);
+        let subscriptions = Rc::downgrade(&subscriptions);
+        let items = items.clone();
         async move {
             for (index, item) in items.iter().enumerate() {
                 let (Some(tray), Some(grid)) = (tray.upgrade(), grid.upgrade()) else {
                     return;
                 };
-                let Some(child) = entry(&tray, item, generation).await else {
+                let (child, subscription) = entry(&tray, item).await;
+                let Some(subscriptions) = subscriptions.upgrade() else {
                     return;
                 };
+                subscriptions.borrow_mut().push(subscription);
                 let index = index as i32;
                 grid.attach(&child, index % columns, index / columns, 1, 1);
             }
@@ -359,14 +489,15 @@ fn overflow(tray: &Rc<Tray>, items: Vec<Item>, generation: u64) -> gtk4::Widget 
     });
     popup.popover().connect_closed(move |_| set_open(false));
 
-    button.upcast()
+    OverflowSlot {
+        items,
+        widget: button.upcast(),
+        _subscriptions: subscriptions,
+    }
 }
 
-async fn entry(tray: &Rc<Tray>, item: &Item, generation: u64) -> Option<gtk4::Widget> {
+async fn entry(tray: &Rc<Tray>, item: &Item) -> (gtk4::Widget, gio::SignalSubscription) {
     let tooltip_text = tooltip(tray, item).await;
-    if !tray.is_current(generation) {
-        return None;
-    }
     let image = gtk4::Image::new();
     image.set_pixel_size(SIZE);
     image.set_valign(gtk4::Align::Center);
@@ -473,19 +604,44 @@ async fn entry(tray: &Rc<Tray>, item: &Item, generation: u64) -> Option<gtk4::Wi
         move |_| redraw()
     });
 
-    tray.items
-        .borrow_mut()
-        .push(tray.session.subscribe_to_signal(
-            Some(&item.service),
-            Some(ITEM),
-            None,
-            Some(&item.path),
-            None,
-            gio::DBusSignalFlags::NONE,
-            move |_| redraw(),
-        ));
+    let refresh_tooltip = {
+        let weak_tip = Rc::downgrade(&tip);
+        let weak_tray = Rc::downgrade(tray);
+        let item = item.clone();
+        let tooltip_generation = Rc::new(Cell::new(0u64));
+        move || {
+            let (Some(tip), Some(tray)) = (weak_tip.upgrade(), weak_tray.upgrade()) else {
+                return;
+            };
+            let request_generation = tooltip_generation.get() + 1;
+            tooltip_generation.set(request_generation);
+            let tooltip_generation = tooltip_generation.clone();
+            let item = item.clone();
+            glib::spawn_future_local(async move {
+                let text = tooltip(&tray, &item).await;
+                if tooltip_generation.get() == request_generation {
+                    tip.set_text(&text);
+                }
+            });
+        }
+    };
 
-    Some(image.upcast())
+    let subscription = tray.session.subscribe_to_signal(
+        Some(&item.service),
+        Some(ITEM),
+        None,
+        Some(&item.path),
+        None,
+        gio::DBusSignalFlags::NONE,
+        move |signal| {
+            if matches!(signal.signal_name, "NewToolTip" | "NewTitle") {
+                refresh_tooltip();
+            }
+            redraw();
+        },
+    );
+
+    (image.upcast(), subscription)
 }
 
 async fn tooltip(tray: &Rc<Tray>, item: &Item) -> String {
@@ -636,6 +792,110 @@ mod tests {
 
     fn build_square_pixmap(edge: i32, fill: u8) -> (i32, i32, Vec<u8>) {
         (edge, edge, vec![fill; (edge * edge * 4) as usize])
+    }
+
+    fn build_item(name: &str, id: &str) -> Item {
+        Item {
+            service: format!(":1.{name}"),
+            path: "/StatusNotifierItem".to_owned(),
+            id: id.to_owned(),
+        }
+    }
+
+    #[test]
+    fn an_unchanged_layout_keeps_every_item_and_the_overflow() {
+        let layout = Layout {
+            overflow: vec![build_item("1", "chat")],
+            inline: vec![build_item("2", "sync"), build_item("3", "input")],
+        };
+        assert_eq!(
+            diff_layouts(&layout, &layout.clone()),
+            LayoutDiff {
+                is_overflow_kept: true,
+                removed: Vec::new(),
+                added: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn an_app_adding_its_icon_adds_only_that_item() {
+        let current = Layout {
+            overflow: Vec::new(),
+            inline: vec![build_item("1", "chat"), build_item("2", "sync")],
+        };
+        let wanted = Layout {
+            overflow: Vec::new(),
+            inline: vec![
+                build_item("1", "chat"),
+                build_item("2", "sync"),
+                build_item("3", "input"),
+            ],
+        };
+        assert_eq!(
+            diff_layouts(&current, &wanted),
+            LayoutDiff {
+                is_overflow_kept: true,
+                removed: Vec::new(),
+                added: vec![build_item("3", "input")],
+            }
+        );
+    }
+
+    #[test]
+    fn an_app_removing_its_icon_removes_only_that_item() {
+        let current = Layout {
+            overflow: Vec::new(),
+            inline: vec![
+                build_item("1", "chat"),
+                build_item("2", "sync"),
+                build_item("3", "input"),
+            ],
+        };
+        let wanted = Layout {
+            overflow: Vec::new(),
+            inline: vec![build_item("1", "chat"), build_item("3", "input")],
+        };
+        assert_eq!(
+            diff_layouts(&current, &wanted),
+            LayoutDiff {
+                is_overflow_kept: true,
+                removed: vec![build_item("2", "sync")],
+                added: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn an_item_that_changes_its_id_or_moves_to_the_overflow_is_rebuilt() {
+        let current = Layout {
+            overflow: Vec::new(),
+            inline: vec![build_item("1", "chat"), build_item("2", "sync")],
+        };
+        let wanted = Layout {
+            overflow: vec![build_item("1", "chat")],
+            inline: vec![build_item("2", "synchronizer")],
+        };
+        assert_eq!(
+            diff_layouts(&current, &wanted),
+            LayoutDiff {
+                is_overflow_kept: false,
+                removed: vec![build_item("1", "chat"), build_item("2", "sync")],
+                added: vec![build_item("2", "synchronizer")],
+            }
+        );
+    }
+
+    #[test]
+    fn an_item_registered_twice_is_added_once() {
+        let wanted = Layout {
+            overflow: Vec::new(),
+            inline: vec![build_item("1", "chat"), build_item("1", "chat")],
+        };
+        assert_eq!(
+            diff_layouts(&Layout::default(), &wanted).added,
+            vec![build_item("1", "chat")]
+        );
     }
 
     #[test]
