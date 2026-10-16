@@ -451,7 +451,7 @@ fn night(context: &Context) -> Rc<WindowDialog> {
     let theme = &context.theme;
     let session = context.services.session.clone();
     let light = context.services.light.clone();
-    let dialog = WindowDialog::new(theme, Some(760.0));
+    let dialog = WindowDialog::new(theme, None);
     let column = &dialog.column;
     let header_rule = || Place {
         top: -22.0,
