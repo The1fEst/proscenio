@@ -18,8 +18,8 @@ use crate::panels::settings::pages::desktop::displays::show_write_errors;
 use crate::panels::settings::pages::desktop::power::{
     IdleTimeout, check_hypridle_available, idle_timeout_row,
 };
-use crate::panels::settings::pages::desktop::sound::device_label;
 use crate::panels::settings::pages::quick::{self, bar_position, corner_style};
+use crate::panels::sound::devices::DevicePicker;
 use crate::platform::dbus::notify::{self, Notification};
 use crate::services::Services;
 use crate::services::hardware::displays::{Displays, format_number, rates_of, shown_modes_of};
@@ -630,36 +630,13 @@ fn sound(page: &Rc<Page>, services: &Rc<Services>) {
     let sound_section = page.section("volume_up", &tr("Sound"));
     for (is_sink, title, icon) in [(true, "Output", "speaker"), (false, "Input", "mic")] {
         let group = page.subsection(&sound_section, &tr(title), "");
-        let device_combo = page.combo(&group, icon);
-        let names: Rc<RefCell<Vec<String>>> = Rc::default();
-        device_combo.connect_activated({
-            let (audio, names) = (audio.clone(), names.clone());
-            move |index| {
-                if let Some(name) = names.borrow().get(index) {
-                    audio.set_default(is_sink, name);
-                }
-            }
-        });
+        let picker = DevicePicker::new(page.combo(&group, icon), &audio, is_sink);
         let refresh = {
-            let (audio, device_combo, names) =
-                (audio.clone(), Rc::downgrade(&device_combo), names.clone());
-            move || {
-                let (device_combo, names) = (device_combo.clone(), names.clone());
-                audio.read_devices(is_sink, move |devices, current_name| {
-                    let Some(device_combo) = device_combo.upgrade() else {
-                        return;
-                    };
-                    let labels: Vec<String> = devices.iter().map(device_label).collect();
-                    let index = devices
-                        .iter()
-                        .position(|device| device.name == current_name)
-                        .unwrap_or(0);
-                    device_combo.set_items(&labels, index as i32);
-                    names.replace(devices.into_iter().map(|device| device.name).collect());
-                });
-            }
+            let picker = picker.clone();
+            move || picker.refresh()
         };
         refresh();
+        page.keep(picker);
         page.keep(audio.subscribe(refresh));
     }
 }

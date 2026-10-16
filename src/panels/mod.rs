@@ -19,6 +19,7 @@ pub mod renderercheck;
 pub mod sessionscreen;
 pub mod settings;
 pub mod sidebar;
+pub mod sound;
 pub mod wallpaperselector;
 pub mod welcome;
 pub mod wifinetwork;

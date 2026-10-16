@@ -395,11 +395,7 @@ impl Page {
     }
 
     pub fn unkept_tip(&self, target: &impl IsA<gtk4::Widget>, text: &str) -> Rc<Tooltip> {
-        let tip = Tooltip::new(target, &self.theme, tooltip::Kind::Styled);
-        tip.place_like_qt();
-        tip.set_text(text);
-        tooltip::hover_delay(target, &tip, 0);
-        tip
+        tooltip::attach_hover_tip(target, &self.theme, text)
     }
 }
 

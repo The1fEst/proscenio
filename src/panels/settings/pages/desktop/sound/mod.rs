@@ -9,8 +9,9 @@ use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::inputs::slider_row;
 use crate::panels::settings::content::{Context, Page};
-use crate::services::media::audio::{self, Audio, Device};
-use crate::ui::widgets::input::controls::{ComboBox, ConfigSwitch};
+use crate::panels::sound::devices::DevicePicker;
+use crate::services::media::audio::{self, Audio};
+use crate::ui::widgets::input::controls::ConfigSwitch;
 use crate::ui::widgets::input::slider::Slider;
 
 const PERCENT: (f64, f64) = (0.0, 100.0);
@@ -22,23 +23,9 @@ const NO_THEME: &str = "No sound theme is installed in /usr/share/sounds, so ale
 
 struct Side {
     is_sink: bool,
-    devices: RefCell<Vec<Device>>,
-    combo: Rc<ComboBox>,
+    picker: Rc<DevicePicker>,
     slider: Rc<Slider>,
     mute_switch: Rc<ConfigSwitch>,
-}
-
-pub fn device_label(device: &Device) -> String {
-    let (description, nick) = (&device.description, &device.nick);
-    if !nick.is_empty() && description.len() > nick.len() && description.starts_with(nick.as_str())
-    {
-        return format!("{nick} · {}", description[nick.len()..].trim());
-    }
-    [description, nick, &device.name]
-        .into_iter()
-        .find(|candidate| !candidate.is_empty())
-        .cloned()
-        .unwrap_or_default()
 }
 
 fn show_percent(slider: &Slider, value: f64) {
@@ -236,22 +223,9 @@ fn side(page: &Page, audio: &Audio, is_sink: bool) -> Rc<Side> {
     });
     let side = Rc::new(Side {
         is_sink,
-        devices: RefCell::new(Vec::new()),
-        combo,
+        picker: DevicePicker::new(combo, audio, is_sink),
         slider,
         mute_switch,
-    });
-    side.combo.connect_activated({
-        let side = Rc::downgrade(&side);
-        let audio = audio.clone();
-        move |index| {
-            let Some(side) = side.upgrade() else {
-                return;
-            };
-            if let Some(device) = side.devices.borrow().get(index) {
-                audio.set_default(is_sink, &device.name);
-            }
-        }
     });
     side.slider.on_moved({
         let audio = audio.clone();
@@ -278,17 +252,5 @@ fn refresh_side(audio: &Audio, side: &Rc<Side>) {
     };
     show_percent(&side.slider, (volume * 100.0).round());
     side.mute_switch.set(is_muted);
-    let weak_side = Rc::downgrade(side);
-    audio.read_devices(side.is_sink, move |devices, current_name| {
-        let Some(side) = weak_side.upgrade() else {
-            return;
-        };
-        let labels: Vec<String> = devices.iter().map(device_label).collect();
-        let index = devices
-            .iter()
-            .position(|device| device.name == current_name)
-            .unwrap_or(0);
-        side.combo.set_items(&labels, index as i32);
-        side.devices.replace(devices);
-    });
+    side.picker.refresh();
 }

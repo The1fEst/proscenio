@@ -309,6 +309,18 @@ fn trace_rounded_rect(cr: &cairo::Context, x: f64, y: f64, width: f64, height: f
     cr.close_path();
 }
 
+pub fn attach_hover_tip(
+    target: &impl IsA<gtk4::Widget>,
+    theme: &SharedTheme,
+    text: &str,
+) -> Rc<Tooltip> {
+    let tip = Tooltip::new(target, theme, Kind::Styled);
+    tip.place_like_qt();
+    tip.set_text(text);
+    hover_delay(target, &tip, 0);
+    tip
+}
+
 pub fn hover_delay(target: &impl IsA<gtk4::Widget>, tooltip: &Rc<Tooltip>, delay_millis: u64) {
     let show_timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
     let motion_controller = gtk4::EventControllerMotion::new();
