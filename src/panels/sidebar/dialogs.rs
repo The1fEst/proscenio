@@ -3,6 +3,7 @@ use gtk4::prelude::*;
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
+use crate::core::config::{self, Config};
 use crate::core::i18n::tr;
 use crate::panels::settings::Settings;
 use crate::panels::settings::pages::connectivity::network::connection::NEW_ENTERPRISE;
@@ -11,12 +12,15 @@ use crate::panels::wifinetwork::{self, NetworkList};
 use crate::services::Services;
 use crate::services::network::net;
 use crate::services::network::wifi::Wifi;
+use crate::services::session::parse_clock_time;
 use crate::ui::theme::{SharedTheme, pixel_size, transparentize};
 use crate::ui::widgets::display::customicon;
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::controls::ConfigSwitch;
 use crate::ui::widgets::input::ripple::{Look, RippleButton};
 use crate::ui::widgets::input::slider::{Options, SMALL, Slider};
+use crate::ui::widgets::input::spinbox::SpinBox;
+use crate::ui::widgets::input::textfield::{Style, TextField};
 use crate::ui::widgets::layout::centered::Centered;
 use crate::ui::widgets::layout::column::Column;
 use crate::ui::widgets::overlay::windowdialog::{
@@ -427,11 +431,27 @@ fn dialog_slider(
     (column.upcast(), slider)
 }
 
+fn build_clock_field(
+    theme: &SharedTheme,
+    label: &str,
+    key: &'static str,
+    current: fn(&Config) -> String,
+) -> Rc<TextField> {
+    let field = TextField::new(theme, Style::Outlined, label);
+    field.connect_finished(move |text| {
+        if let Some(time) = parse_clock_time(&text) {
+            Config::store_night(key, serde_json::Value::from(time));
+        }
+    });
+    field.bind(move || current(&config::current()));
+    field
+}
+
 fn night(context: &Context) -> Rc<WindowDialog> {
     let theme = &context.theme;
     let session = context.services.session.clone();
     let light = context.services.light.clone();
-    let dialog = WindowDialog::new(theme, Some(700.0));
+    let dialog = WindowDialog::new(theme, Some(760.0));
     let column = &dialog.column;
     let header_rule = || Place {
         top: -22.0,
@@ -460,8 +480,47 @@ fn night(context: &Context) -> Rc<WindowDialog> {
     });
     group.append(&now_switch.button);
     group.append(&automatic_switch.button);
-    let (intensity, strength) = dialog_slider(theme, Some("Intensity"), 6500.0, 1200.0);
-    strength.set_stops(vec![5000.0, 1200.0]);
+
+    let time_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
+    time_row.set_homogeneous(true);
+    time_row.set_margin_start(8);
+    time_row.set_margin_end(8);
+    time_row.set_margin_top(4);
+    time_row.set_margin_bottom(4);
+    let from_field = build_clock_field(theme, &tr("From (HH:mm)"), "from", |config| {
+        config.night_from.clone()
+    });
+    let to_field = build_clock_field(theme, &tr("To (HH:mm)"), "to", |config| {
+        config.night_to.clone()
+    });
+    time_row.append(&from_field.root);
+    time_row.append(&to_field.root);
+    group.append(&time_row);
+
+    let transition_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
+    transition_row.set_margin_start(8);
+    transition_row.set_margin_end(8);
+    transition_row.set_margin_top(4);
+    transition_row.set_margin_bottom(4);
+    let transition_icon = text::symbol("line_curve", pixel_size::LARGER as f64);
+    text::set_color(&transition_icon, "colOnSecondaryContainer");
+    transition_row.append(&Centered::integral(&transition_icon));
+    let transition_name = text::styled(&tr("Transition (min)"));
+    text::set_application_font(&transition_name, pixel_size::SMALL as f64);
+    text::set_color(&transition_name, "colOnSecondaryContainer");
+    transition_name.set_xalign(0.0);
+    let transition_label = Centered::filling_width(&transition_name);
+    transition_label.set_hexpand(true);
+    transition_row.append(&transition_label);
+    let transition_spin = SpinBox::new(theme, 0, 120, 5, 0);
+    transition_spin.connect_changed(|minutes| {
+        Config::store_night("transition", serde_json::Value::from(minutes));
+    });
+    transition_row.append(&transition_spin.root);
+    group.append(&transition_row);
+
+    let (intensity, strength) = dialog_slider(theme, Some("Intensity"), 6500.0, 1000.0);
+    strength.set_stops(vec![5000.0, 1000.0]);
     strength.on_moved({
         let session = session.clone();
         let strength = Rc::downgrade(&strength);
@@ -475,10 +534,6 @@ fn night(context: &Context) -> Rc<WindowDialog> {
     group.append(&intensity);
     column.add(&group, section);
 
-    column.add(
-        &section_header(&tr("Anti-flashbang (experimental)")),
-        Place::default(),
-    );
     column.add(&section_header(&tr("Brightness")), Place::default());
     column.add(&separator(), header_rule());
     let (level, level_slider) = dialog_slider(theme, None, 0.0, 1.0);
@@ -522,7 +577,13 @@ fn night(context: &Context) -> Rc<WindowDialog> {
         let screen = context.screen.clone();
         move || {
             now_switch.set(session.is_night_light_on.get());
-            automatic_switch.set(session.is_night_light_automatic.get());
+            let is_automatic = session.is_night_light_automatic.get();
+            automatic_switch.set(is_automatic);
+            from_field.set_enabled(is_automatic);
+            to_field.set_enabled(is_automatic);
+            from_field.refresh();
+            to_field.refresh();
+            transition_spin.set_value(i64::from(config::current().night_transition));
             let kelvin = session.temperature.get() as f64;
             strength.set(kelvin);
             strength.set_tooltip(&format!("{}K", kelvin.round()));

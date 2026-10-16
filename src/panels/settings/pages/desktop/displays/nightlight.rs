@@ -4,19 +4,9 @@ use std::rc::Rc;
 use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, Style};
+use crate::services::session::parse_clock_time;
 
 const NIGHT_AUTOMATIC: &str = "/light/night/automatic";
-
-fn parse_clock_time(text: &str) -> Option<String> {
-    let (hour, minute) = text.trim().split_once(':')?;
-    let is_number =
-        |part: &str| !part.is_empty() && part.chars().all(|character| character.is_ascii_digit());
-    if !is_number(hour) || hour.len() > 2 || !is_number(minute) || minute.len() != 2 {
-        return None;
-    }
-    let (hour, minute) = (hour.parse::<u32>().ok()?, minute.parse::<u32>().ok()?);
-    (hour < 24 && minute < 60).then(|| format!("{hour:02}:{minute:02}"))
-}
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
@@ -86,21 +76,4 @@ pub fn build(context: &Context) -> Rc<Page> {
         ),
     );
     page
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_a_clock_time_is_stored() {
-        assert_eq!(parse_clock_time(" 19:30 ").as_deref(), Some("19:30"));
-        assert_eq!(parse_clock_time("7:05").as_deref(), Some("07:05"));
-        assert_eq!(parse_clock_time("00:00").as_deref(), Some("00:00"));
-        for wrong in [
-            "19.30", "7pm", "24:00", "12:60", "12:5", "12", "", "1:2:3", "-1:30",
-        ] {
-            assert_eq!(parse_clock_time(wrong), None, "{wrong}");
-        }
-    }
 }

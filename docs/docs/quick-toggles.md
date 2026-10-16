@@ -281,11 +281,15 @@ A click on a device expands it:
 ### Night light
 
 **Eye protection.** The Night Light section has the **Enable now** switch, which does what a click on
-the tile does; the **Automatic** switch, which turns the schedule on or off; and the **Intensity**
-slider, the color temperature from 6500 K at the left to 1200 K at the right, saved as
-`light.night.colorTemperature`. Under it, a **Brightness** slider sets this monitor's backlight and a
-**Gamma** slider its gamma from 25 to 100 %: the two controls the sidebar's brightness slider
-combines.
+the tile does; the **Automatic** switch, which turns the schedule on or off; the **From (HH:mm)** and
+**To (HH:mm)** fields, saved as `light.night.from` and `light.night.to` and disabled while Automatic
+is off; **Transition (min)**, 0 to 120 in steps of 5, saved as `light.night.transition`; and the
+**Intensity** slider, the color temperature from 6500 K at the left to 1000 K at the right, saved as
+`light.night.colorTemperature`. A time field takes `H:mm` or `HH:mm`, from 0:00 to 23:59; anything
+else is discarded when the field loses focus. The fields and the spin box follow changes made in
+the settings window or the config file while the dialog is open. Under them, a **Brightness** slider
+sets this monitor's backlight and a **Gamma** slider its gamma from 25 to 100 %: the two controls
+the sidebar's brightness slider combines.
 
 ### WireGuard
 
