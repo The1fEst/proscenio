@@ -24,6 +24,28 @@ const LINE_SPACING: i32 = 2;
 const ICON_SIZE: i32 = 36;
 const MUTE_SIZE: f64 = 22.0;
 const MUTED_OPACITY: f64 = 0.4;
+const GENERIC_NAMES: &[&str] = &[
+    "playback",
+    "playbackstream",
+    "audioplayback",
+    "alsaplayback",
+    "record",
+    "recording",
+    "recordstream",
+    "capture",
+    "capturestream",
+    "alsacapture",
+    "audiostream",
+    "audio",
+    "audiooutput",
+    "audioinput",
+    "stream",
+    "output",
+    "input",
+    "sound",
+    "simpledirectmedialayer",
+    "unknown",
+];
 
 struct StreamRow {
     index: u32,
@@ -183,12 +205,50 @@ fn title_of(stream: &Stream, ancestors: &[u32], players: &[Track]) -> String {
         .filter(|track| track.pid.is_some_and(|pid| ancestors.contains(&pid)))
         .max_by_key(|track| track.is_playing)
         .map(|track| track.title.as_str());
-    match player_title.or(stream.media.as_deref()) {
-        Some(title) if !title.is_empty() && title != stream.name => {
-            format!("{} • {title}", stream.name)
-        }
-        _ => stream.name.clone(),
+    let media_title = [player_title, stream.media.as_deref()]
+        .into_iter()
+        .flatten()
+        .find(|title| {
+            is_readable_text(title) && !is_repeat_of(title, &[&stream.name, &stream.node])
+        });
+    match media_title {
+        Some(title) => format!("{} • {title}", stream.name),
+        None => stream.name.clone(),
     }
+}
+
+fn is_readable_text(text: &str) -> bool {
+    let is_identifier = text.is_ascii()
+        && !text.contains(char::is_whitespace)
+        && (text.contains(['.', '_', ':', '/']) || has_digit_beside_letter(text));
+    !text.is_empty() && !is_identifier && !GENERIC_NAMES.contains(&to_generic_key(text).as_str())
+}
+
+fn has_digit_beside_letter(text: &str) -> bool {
+    text.as_bytes().windows(2).any(|pair| {
+        pair.iter().all(u8::is_ascii_alphanumeric)
+            && pair[0].is_ascii_digit() != pair[1].is_ascii_digit()
+    })
+}
+
+fn normalize_alphanumeric(text: &str) -> String {
+    text.chars()
+        .filter(|character| character.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+fn to_generic_key(text: &str) -> String {
+    normalize_alphanumeric(text)
+        .trim_end_matches(|character: char| character.is_ascii_digit())
+        .to_owned()
+}
+
+fn is_repeat_of(title: &str, names: &[&str]) -> bool {
+    let key = normalize_alphanumeric(title);
+    names
+        .iter()
+        .any(|name| *name == title || (!key.is_empty() && normalize_alphanumeric(name) == key))
 }
 
 fn show(row: &StreamRow, stream: &Stream, players: &[Track]) {
@@ -260,11 +320,86 @@ mod tests {
             title_of(&brave, &[300, 200, 100], &players),
             "Brave • Live final"
         );
-        assert_eq!(title_of(&brave, &[300], &players), "Brave • Playback");
+        assert_eq!(title_of(&brave, &[300], &players), "Brave");
+        assert_eq!(title_of(&brave, &[100], &[player(100, "", true)]), "Brave");
+        let named = stream("Brave", Some("Видео про Rust"));
         assert_eq!(
-            title_of(&brave, &[100], &[player(100, "", true)]),
-            "Brave • Playback"
+            title_of(&named, &[100], &[player(100, "org.brave.title", true)]),
+            "Brave • Видео про Rust"
         );
+        assert_eq!(
+            title_of(
+                &stream("Firefox", Some("Song - Artist")),
+                &[100],
+                &[player(100, "firefox", true)]
+            ),
+            "Firefox • Song - Artist"
+        );
+        let fallback = stream("Brave", Some("Media name"));
+        assert_eq!(
+            title_of(
+                &fallback,
+                &[100],
+                &[
+                    player(100, "Playback", true),
+                    player(100, "Paused video", false)
+                ]
+            ),
+            "Brave • Media name"
+        );
+        assert_eq!(title_of(&stream("♪", Some("♪")), &[], &[]), "♪");
+    }
+
+    #[test]
+    fn every_generic_name_is_written_as_the_key_it_is_matched_by() {
+        for name in GENERIC_NAMES {
+            assert_eq!(to_generic_key(name), *name);
+        }
+    }
+
+    #[test]
+    fn a_media_part_shows_only_when_it_reads_as_human_text() {
+        let mut firefox = stream("Firefox", Some("firefox"));
+        firefox.node = "firefox".to_owned();
+        assert_eq!(title_of(&firefox, &[], &[]), "Firefox");
+        for (media, shown) in [
+            ("ts.pa.dummy.playbackdefaultrender1", false),
+            ("org.mozilla.firefox", false),
+            ("/usr/bin/player", false),
+            ("my_stream", false),
+            ("stream:3", false),
+            ("playbackdefaultrender1", false),
+            ("Playback", false),
+            ("playback", false),
+            ("Playback Stream", false),
+            ("Playback Stream #2", false),
+            ("AudioStream", false),
+            ("Audio Stream", false),
+            ("ALSA Playback", false),
+            ("ALSA Capture", false),
+            ("Simple DirectMedia Layer", false),
+            ("Output", false),
+            ("sound", false),
+            ("Record", false),
+            ("TEAMSPEAK 3", false),
+            ("Team Speak 3", false),
+            ("Song - Artist", true),
+            ("Despacito", true),
+            ("Song 2", true),
+            ("Intro (feat. Someone)", true),
+            ("Видео про Rust", true),
+            ("Привет.", true),
+            ("♪", true),
+            ("第1話", true),
+        ] {
+            let title = title_of(&stream("TeamSpeak 3", Some(media)), &[], &[]);
+            let expected = if shown {
+                format!("TeamSpeak 3 • {media}")
+            } else {
+                "TeamSpeak 3".to_owned()
+            };
+            assert_eq!(title, expected, "{media}");
+        }
     }
 
     #[test]
