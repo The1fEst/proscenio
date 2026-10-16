@@ -1,7 +1,7 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
-use crate::core::i18n::{tr, trn};
+use crate::core::i18n::{tr, trf, trn};
 use crate::core::scope::Scope;
 use crate::core::watch;
 use crate::panels::settings::Settings;
@@ -38,17 +38,26 @@ pub fn build(
                 should_fade_in: false,
             },
         );
-        let close = close.clone();
-        let updates = updates.clone();
-        let settings = settings.clone();
-        toggle.connect_actions(
+        let open_page = {
+            let close = close.clone();
+            let settings = settings.clone();
             Rc::new(move || {
                 close();
-                updates.start(job);
                 settings.open(Some("updates"));
-            }),
-            None,
-        );
+            })
+        };
+        toggle.button.connect_alt({
+            let open_page = open_page.clone();
+            let updates = updates.clone();
+            let button = toggle.button.downgrade();
+            move || {
+                if button.upgrade().is_some_and(|button| !button.is_down()) {
+                    updates.start(job);
+                    open_page();
+                }
+            }
+        });
+        toggle.connect_actions(open_page, None);
         group.append(&toggle.button);
         toggle
     };
@@ -79,22 +88,23 @@ pub fn build(
 }
 
 fn shell_look(commits_behind: i32, is_busy: bool) -> Look {
+    let status = if is_busy {
+        tr("Updating…")
+    } else if commits_behind > 0 {
+        trn(
+            "%1 commit behind",
+            "%1 commits behind",
+            commits_behind as u64,
+        )
+    } else {
+        tr("Up to date")
+    };
     Look {
         name: "Shell update",
-        status: if is_busy {
-            tr("Updating…")
-        } else if commits_behind > 0 {
-            trn(
-                "%1 commit behind",
-                "%1 commits behind",
-                commits_behind as u64,
-            )
-        } else {
-            tr("Up to date")
-        },
+        tooltip: trf("%1 | Right-click to update", &[&status]),
+        status,
         has_status: true,
         icon: "upgrade".to_owned(),
-        tooltip: String::new(),
         is_toggled: false,
         is_available: !is_busy && commits_behind > 0,
     }
@@ -107,20 +117,21 @@ fn system_look(
     is_advised: bool,
     is_busy: bool,
 ) -> Look {
+    let status = if is_busy {
+        tr("Updating…")
+    } else if count > 0 {
+        trn("%1 package", "%1 packages", count as u64)
+    } else if has_check_failed {
+        tr("Could not check for updates")
+    } else {
+        tr("Up to date")
+    };
     Look {
         name: "System update",
-        status: if is_busy {
-            tr("Updating…")
-        } else if count > 0 {
-            trn("%1 package", "%1 packages", count as u64)
-        } else if has_check_failed {
-            tr("Could not check for updates")
-        } else {
-            tr("Up to date")
-        },
+        tooltip: trf("%1 | Right-click to update", &[&status]),
+        status,
         has_status: true,
         icon: "deployed_code_update".to_owned(),
-        tooltip: String::new(),
         is_toggled: is_advised,
         is_available: !is_busy && is_available && count > 0,
     }
@@ -131,13 +142,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_tile_tooltip_tells_that_a_right_click_starts_the_update() {
+        for look in [
+            shell_look(3, false),
+            system_look(157, true, false, true, false),
+        ] {
+            assert_eq!(
+                look.tooltip,
+                trf("%1 | Right-click to update", &[&look.status])
+            );
+        }
+    }
+
+    #[test]
     fn a_running_update_disables_both_tiles() {
         let mut shell = shell_look(3, false);
         let mut system = system_look(157, true, false, true, false);
         assert!(shell.is_available && system.is_available);
         shell.status = tr("Updating…");
+        shell.tooltip = trf("%1 | Right-click to update", &[&shell.status]);
         shell.is_available = false;
         system.status = tr("Updating…");
+        system.tooltip = trf("%1 | Right-click to update", &[&system.status]);
         system.is_available = false;
         assert_eq!(shell_look(3, true), shell);
         assert_eq!(system_look(157, true, false, true, true), system);
