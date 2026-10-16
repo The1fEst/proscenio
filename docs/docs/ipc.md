@@ -94,6 +94,7 @@ the first monitor when there is none.
 | `calendar` | `toggle`, `open`, `close` | The [calendar](calendar.md), opened at the bar's clock |
 | `cheatsheet` | `toggle`, `open`, `close` | The [cheatsheet](cheatsheet.md) |
 | `mediaControls` | `toggle`, `open`, `close` | The [media controls](media-controls.md) |
+| `volumeMixer` | `toggle`, `open`, `close` | The [volume mixer](volume-mixer.md), when a sound server was running as the shell started |
 | `search` | `toggle`, `open`, `close` | The [overview](overview.md) with its launcher |
 | | `workspacesToggle`, `workspacesClose` | The same as `toggle` and `close` |
 | | `clipboardToggle` | Toggles the overview with the clipboard prefix typed in |

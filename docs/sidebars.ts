@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
         'screen-corners',
         'calendar',
         'media-controls',
+        'volume-mixer',
         'osd',
         'on-screen-keyboard',
         'cheatsheet',

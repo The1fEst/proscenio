@@ -3,6 +3,7 @@ pub mod bluetooth;
 pub mod clock;
 pub mod keyboard;
 pub mod media;
+pub mod mixer;
 pub mod mute;
 pub mod network;
 pub mod recording;
@@ -53,6 +54,7 @@ pub fn build(
     sidebar: &Rc<crate::panels::sidebar::Sidebar>,
     calendar: &Rc<crate::panels::calendar::Calendar>,
     media: &Rc<crate::panels::mediacontrols::MediaControls>,
+    volume_mixer: &Option<Rc<crate::panels::mixer::VolumeMixer>>,
     overview: &Rc<crate::panels::overview::Overview>,
     screen: Screen<'_>,
     scope: &Scope,
@@ -62,7 +64,16 @@ pub fn build(
     let strip = Strip::new(
         &left_section(config, services, theme, scope),
         &middle_section(
-            config, theme, services, sidebar, calendar, media, overview, &screen, scope,
+            config,
+            theme,
+            services,
+            sidebar,
+            calendar,
+            media,
+            volume_mixer,
+            overview,
+            &screen,
+            scope,
         ),
         &right_section(config, theme, services, sidebar, &screen, scope),
     );
@@ -213,6 +224,7 @@ fn middle_section(
     sidebar: &Rc<crate::panels::sidebar::Sidebar>,
     calendar: &Rc<crate::panels::calendar::Calendar>,
     media: &Rc<crate::panels::mediacontrols::MediaControls>,
+    volume_mixer: &Option<Rc<crate::panels::mixer::VolumeMixer>>,
     overview: &Rc<crate::panels::overview::Overview>,
     screen: &Screen<'_>,
     scope: &Scope,
@@ -235,6 +247,9 @@ fn middle_section(
             false,
             scope,
         ));
+        if let (Some(audio), Some(volume_mixer)) = (&services.audio, volume_mixer) {
+            left.append(&mixer::build(audio, theme, volume_mixer, false, scope));
+        }
     }
     left.append(&resources::build(theme, config, &services.resources, scope));
 

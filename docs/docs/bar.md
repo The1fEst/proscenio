@@ -13,13 +13,13 @@ scrolling over the right half changes the volume, and the right end carries the 
 the button that opens the [sidebar](sidebar.md).
 
 ```text
-⇕ brightness     [weather] (media · RAM swap CPU) (workspaces) (clock · buttons · battery)     tray •  (indicators)
+⇕ brightness     [weather] (media mixer · RAM swap CPU) (workspaces) (clock · buttons · battery)     tray •  (indicators)
 ```
 
 | Part | Wheel | Left click |
 |---|---|---|
 | Left region, from the screen edge to the center groups | brightness | nothing |
-| Media and resources group | nothing | the media ring opens the media controls |
+| Media and resources group | nothing | the media ring opens the media controls, the mixer ring the volume mixer |
 | Workspaces group | previous or next workspace | focuses the workspace |
 | Clock group | nothing | the clock opens the calendar; anywhere else toggles the sidebar |
 | Right region, from the center groups to the screen edge | volume | toggles the sidebar |
@@ -180,7 +180,7 @@ The bar drops widgets on narrow screens, judged by the screen's width in logical
 |---|---|---|
 | over 1200 px | 360 px, or 140 px with Verbose off | nothing |
 | 1001 to 1200 px | 280 px | the utility buttons; every tray item moves into the overflow menu |
-| 1000 px or less | 190 px | also the date, the media ring and the battery |
+| 1000 px or less | 190 px | also the date, the media and mixer rings and the battery |
 
 The side groups are at least this wide and grow if their contents need more. The three center groups
 stay centered on the screen until a side region runs out of room; then they shift away from it.
@@ -204,6 +204,15 @@ follow.
 | Middle | play or pause |
 | Right, or Forward (button 9) | next track |
 | Back (button 8) | previous track |
+
+### Mixer
+
+A 20 px ring that fills with the volume of the default output, with a `tune` icon in the middle. It
+sits after the media ring, and exists only when a sound server was running as the shell started.
+
+| Button | Action |
+|---|---|
+| Left | opens or closes the [volume mixer](volume-mixer.md) |
 
 ### Resources
 
@@ -404,8 +413,9 @@ From top to bottom:
 
 - **The top part**, above the groups: scroll for brightness.
 - **Three groups**, centered on the screen's height:
-  - the three resource rings without numbers, a line, and the media ring. Hovering the media ring
-    shows the track title and artist, or "No media", unless the media controls are already open;
+  - the three resource rings without numbers, a line, the media ring and the mixer ring. Hovering
+    the media ring shows the track title and artist, or "No media", unless the media controls are
+    already open;
   - the workspaces, as a column;
   - the clock as hours over minutes, a smaller AM/PM line for 12-hour formats, and the short date
     (`time.shortDateFormat`), then a line and the battery: an upright capsule that fills from the
@@ -461,6 +471,6 @@ Every key lives in `~/.config/proscenio/config.toml`. A dotted key is a TOML tab
 | `src/panels/bar/mod.rs` | the horizontal layout, the groups, the left and right regions, the corners |
 | `src/panels/bar/strip.rs` | the three-part layout that keeps the center groups centered |
 | `src/panels/bar/vertical.rs` | the vertical bar |
-| `src/panels/bar/*.rs` | one file per widget: `media`, `resources`, `clock`, `recording`, `utilbuttons`, `battery`, `weather`, `keyboard`, `mute`, `network`, `wireguard`, `bluetooth`, `workspaces`, `tray`, `traymenu` |
+| `src/panels/bar/*.rs` | one file per widget: `media`, `mixer`, `resources`, `clock`, `recording`, `utilbuttons`, `battery`, `weather`, `keyboard`, `mute`, `network`, `wireguard`, `bluetooth`, `workspaces`, `tray`, `traymenu` |
 | `src/ui/widgets/overlay/popup.rs` | the hover popups |
 | `src/ui/reserve.rs` | the placeholder that holds the space while the bar hides for a fullscreen window |

@@ -7,6 +7,7 @@ use crate::core::config::Config;
 use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::panels::mediacontrols::{MediaControls, clean_title};
+use crate::panels::mixer::VolumeMixer;
 use crate::panels::notifications::indicator;
 use crate::services::Services;
 use crate::services::session::states::Osd;
@@ -17,8 +18,8 @@ use crate::ui::widgets::overlay::popup;
 
 use super::{
     Group, Screen, VERTICAL_INDICATOR_SPACING, battery, bluetooth, clock, horizontal_separator,
-    indicator_look, is_over_button, keyboard, media, mute, network, resources, scroll_volume, tray,
-    updates, watch_moved_away, workspaces,
+    indicator_look, is_over_button, keyboard, media, mixer, mute, network, resources,
+    scroll_volume, tray, updates, watch_moved_away, workspaces,
 };
 
 const MIDDLE_SPACING: i32 = 4;
@@ -36,6 +37,7 @@ pub fn build(
     sidebar: &Rc<crate::panels::sidebar::Sidebar>,
     calendar: &Rc<crate::panels::calendar::Calendar>,
     media: &Rc<MediaControls>,
+    volume_mixer: &Option<Rc<VolumeMixer>>,
     overview: &Rc<crate::panels::overview::Overview>,
     screen: Screen<'_>,
     scope: &Scope,
@@ -54,7 +56,15 @@ pub fn build(
     let sections = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     sections.append(&top_section(services));
     sections.append(&middle_section(
-        config, theme, services, calendar, media, overview, &screen, scope,
+        config,
+        theme,
+        services,
+        calendar,
+        media,
+        volume_mixer,
+        overview,
+        &screen,
+        scope,
     ));
     let rest = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     rest.set_vexpand(true);
@@ -105,6 +115,7 @@ fn middle_section(
     services: &Services,
     calendar: &Rc<crate::panels::calendar::Calendar>,
     media: &Rc<MediaControls>,
+    volume_mixer: &Option<Rc<VolumeMixer>>,
     overview: &Rc<crate::panels::overview::Overview>,
     screen: &Screen<'_>,
     scope: &Scope,
@@ -116,6 +127,9 @@ fn middle_section(
     top.append(&resources::build(theme, config, &services.resources, scope));
     top.append(&horizontal_separator());
     top.append(&media_button(config, theme, services, media, scope));
+    if let (Some(audio), Some(volume_mixer)) = (&services.audio, volume_mixer) {
+        top.append(&mixer::build(audio, theme, volume_mixer, true, scope));
+    }
 
     let center = Group::vertical(config, WORKSPACES_GROUP_PADDING);
     center.append(&workspaces::build(

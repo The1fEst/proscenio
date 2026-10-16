@@ -9,6 +9,7 @@ pub struct DevicePicker {
     audio: Audio,
     devices: RefCell<Vec<Device>>,
     combo: Rc<ComboBox>,
+    on_updated: RefCell<Option<Rc<dyn Fn()>>>,
 }
 
 impl DevicePicker {
@@ -18,6 +19,7 @@ impl DevicePicker {
             audio: audio.clone(),
             devices: RefCell::new(Vec::new()),
             combo,
+            on_updated: RefCell::new(None),
         });
         picker.combo.connect_activated({
             let picker = Rc::downgrade(&picker);
@@ -33,6 +35,10 @@ impl DevicePicker {
         picker
     }
 
+    pub fn connect_updated(&self, action: impl Fn() + 'static) {
+        self.on_updated.replace(Some(Rc::new(action)));
+    }
+
     pub fn refresh(self: &Rc<Self>) {
         let picker = Rc::downgrade(self);
         self.audio
@@ -42,8 +48,12 @@ impl DevicePicker {
                 };
                 let labels: Vec<String> = devices.iter().map(device_label).collect();
                 let index = resolve_current_index(&devices, &current_name);
-                picker.combo.set_items(&labels, index as i32);
+                let has_changed = picker.combo.set_items(&labels, index as i32);
                 picker.devices.replace(devices);
+                let on_updated = picker.on_updated.borrow().clone();
+                if let (true, Some(on_updated)) = (has_changed, on_updated) {
+                    on_updated();
+                }
             });
     }
 }

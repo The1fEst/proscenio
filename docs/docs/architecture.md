@@ -123,7 +123,7 @@ on every monitor when a config key it was built from changes.
 
 | Part | Windows | Rebuilt when these change |
 |---|---|---|
-| Panels | Sidebar, calendar, session screen, media controls | `sidebar.quickToggles.style`, `sidebar.quickToggles.android.columns`, `sidebar.quickSliders`, `bar.bottom`, `bar.vertical`, `bar.cornerStyle` |
+| Panels | Sidebar, calendar, session screen, media controls, volume mixer | `sidebar.quickToggles.style`, `sidebar.quickToggles.android.columns`, `sidebar.quickSliders`, `bar.bottom`, `bar.vertical`, `bar.cornerStyle` |
 | Overview | The overview and launcher | `overview` |
 | Sheet | The cheatsheet | `cheatsheet` |
 | Popups | Notification popups | — |
@@ -164,8 +164,8 @@ ancestors, or an `Rc` that owns them. It takes a weak reference, or asks the ges
 A panel such as the sidebar closes when you click anywhere outside it. That is Hyprland's
 `hyprland-focus-grab-v1` protocol, in `src/platform/wayland/grab.rs`.
 
-The sidebar, the calendar, the media controls, the cheatsheet, the overview and the wallpaper selector
-each own a `Grab`. All of them share one manager and one event queue on GTK's own Wayland
+The sidebar, the calendar, the media controls, the volume mixer, the cheatsheet, the overview and the
+wallpaper selector each own a `Grab`. All of them share one manager and one event queue on GTK's own Wayland
 connection. Opening a panel creates a grab holding the panel's surface, plus every persistent surface,
 and commits it. When you click outside those surfaces, Hyprland clears the grab and the panel closes
 itself. The shell reads the grab events only while a grab is held.

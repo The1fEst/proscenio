@@ -507,11 +507,12 @@ entry.search-input > text > selection {
     border-radius: 19px;
     box-shadow: 0 1px 9px 1px var(--colShadow);
 }
-.media-placeholder {
+.media-placeholder, .mixer-panel {
     background-color: var(--colLayer0);
     border-radius: 19px;
     box-shadow: 0 1px 9px 1px var(--colShadow);
 }
+.mixer-panel { padding: 16px; }
 .session-title {
     font-size: 22px;
     font-variation-settings: "wght" 550;

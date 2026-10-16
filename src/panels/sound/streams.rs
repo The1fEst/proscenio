@@ -15,13 +15,13 @@ use crate::ui::widgets::layout::centered::Centered;
 use crate::ui::widgets::layout::column::Column;
 use crate::ui::widgets::overlay::tooltip::{self, Tooltip};
 
-const PERCENT: (f64, f64) = (0.0, 100.0);
+pub const PERCENT: (f64, f64) = (0.0, 100.0);
+pub const ROW_MARGIN: i32 = 8;
+pub const COLUMN_SPACING: i32 = 10;
+pub const LINE_SPACING: i32 = 2;
+pub const ICON_SIZE: i32 = 36;
 const EMPTY_MARGIN: i32 = 8;
 const ROW_SPACING: i32 = 12;
-const ROW_MARGIN: i32 = 8;
-const COLUMN_SPACING: i32 = 10;
-const LINE_SPACING: i32 = 2;
-const ICON_SIZE: i32 = 36;
 const MUTE_SIZE: f64 = 22.0;
 const MUTED_OPACITY: f64 = 0.4;
 const GENERIC_NAMES: &[&str] = &[
@@ -67,6 +67,7 @@ pub struct StreamList {
     empty_label: gtk4::Label,
     row_box: gtk4::Box,
     rows: RefCell<Vec<StreamRow>>,
+    on_updated: RefCell<Option<Rc<dyn Fn()>>>,
 }
 
 impl StreamList {
@@ -93,7 +94,12 @@ impl StreamList {
             empty_label,
             row_box,
             rows: RefCell::new(Vec::new()),
+            on_updated: RefCell::new(None),
         })
+    }
+
+    pub fn connect_updated(&self, action: impl Fn() + 'static) {
+        self.on_updated.replace(Some(Rc::new(action)));
     }
 
     pub fn refresh(self: &Rc<Self>) {
@@ -117,9 +123,15 @@ impl StreamList {
             let rows = streams.iter().map(|stream| self.add_row(stream)).collect();
             self.rows.replace(rows);
         }
-        let players = self.mpris.players.borrow();
-        for (row, stream) in self.rows.borrow().iter().zip(streams) {
-            show(row, stream, &players);
+        {
+            let players = self.mpris.players.borrow();
+            for (row, stream) in self.rows.borrow().iter().zip(streams) {
+                show(row, stream, &players);
+            }
+        }
+        let on_updated = self.on_updated.borrow().clone();
+        if let (false, Some(on_updated)) = (has_same_rows, on_updated) {
+            on_updated();
         }
     }
 

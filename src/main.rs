@@ -20,8 +20,8 @@ use crate::core::paths;
 use crate::core::scope::Scope;
 use crate::panels::overview::{self, launcher};
 use crate::panels::{
-    bar, calendar, conflicts, keyringprompt, lock, mediacontrols, osd, osk, polkit, regionselector,
-    renderercheck, settings, sidebar, wallpaperselector, welcome,
+    bar, calendar, conflicts, keyringprompt, lock, mediacontrols, mixer, osd, osk, polkit,
+    regionselector, renderercheck, settings, sidebar, wallpaperselector, welcome,
 };
 use crate::platform::dbus::ipc;
 use crate::platform::hyprland::hypr;
@@ -431,7 +431,7 @@ fn register_ipc(
     region: &Rc<regionselector::RegionSelector>,
 ) {
     let run_on_focused = focused_runner(surfaces);
-    let panel_actions: [(&'static str, &'static str, fn(&Surfaces)); 22] = [
+    let panel_actions: [(&'static str, &'static str, fn(&Surfaces)); 25] = [
         ("sidebarRight", "toggle", |screen_surfaces| {
             screen_surfaces.sidebar.toggle()
         }),
@@ -476,6 +476,21 @@ fn register_ipc(
         }),
         ("mediaControls", "open", |screen_surfaces| {
             screen_surfaces.media.open()
+        }),
+        ("volumeMixer", "toggle", |screen_surfaces| {
+            if let Some(volume_mixer) = &screen_surfaces.volume_mixer {
+                volume_mixer.toggle()
+            }
+        }),
+        ("volumeMixer", "close", |screen_surfaces| {
+            if let Some(volume_mixer) = &screen_surfaces.volume_mixer {
+                volume_mixer.close()
+            }
+        }),
+        ("volumeMixer", "open", |screen_surfaces| {
+            if let Some(volume_mixer) = &screen_surfaces.volume_mixer {
+                volume_mixer.open()
+            }
         }),
         ("search", "toggle", |screen_surfaces| {
             screen_surfaces.overview.toggle()
@@ -575,7 +590,7 @@ fn register_ipc(
 fn bind(surfaces: &Rc<RefCell<Vec<Surfaces>>>) {
     let run_on_focused = focused_runner(surfaces);
 
-    let shortcut_actions: [(&str, &str, Box<dyn Fn(&Surfaces)>); 18] = [
+    let shortcut_actions: [(&str, &str, Box<dyn Fn(&Surfaces)>); 21] = [
         (
             "searchToggle",
             "Toggles search on press",
@@ -666,6 +681,33 @@ fn bind(surfaces: &Rc<RefCell<Vec<Surfaces>>>) {
             "Closes media controls on press",
             Box::new(|screen_surfaces: &Surfaces| screen_surfaces.media.close()),
         ),
+        (
+            "volumeMixerToggle",
+            "Toggles the volume mixer on press",
+            Box::new(|screen_surfaces: &Surfaces| {
+                if let Some(volume_mixer) = &screen_surfaces.volume_mixer {
+                    volume_mixer.toggle()
+                }
+            }),
+        ),
+        (
+            "volumeMixerOpen",
+            "Opens the volume mixer on press",
+            Box::new(|screen_surfaces: &Surfaces| {
+                if let Some(volume_mixer) = &screen_surfaces.volume_mixer {
+                    volume_mixer.open()
+                }
+            }),
+        ),
+        (
+            "volumeMixerClose",
+            "Closes the volume mixer on press",
+            Box::new(|screen_surfaces: &Surfaces| {
+                if let Some(volume_mixer) = &screen_surfaces.volume_mixer {
+                    volume_mixer.close()
+                }
+            }),
+        ),
     ];
 
     for (name, description, act) in shortcut_actions {
@@ -712,6 +754,7 @@ fn open_bar(
     sidebar: &Rc<sidebar::Sidebar>,
     calendar: &Rc<calendar::Calendar>,
     media: &Rc<mediacontrols::MediaControls>,
+    volume_mixer: &Option<Rc<mixer::VolumeMixer>>,
     overview: &Rc<overview::Overview>,
     monitor: &gdk::Monitor,
     scope: &Scope,
@@ -722,11 +765,29 @@ fn open_bar(
     };
     let body = if config.vertical {
         bar::vertical::build(
-            config, theme, services, sidebar, calendar, media, overview, screen, scope,
+            config,
+            theme,
+            services,
+            sidebar,
+            calendar,
+            media,
+            volume_mixer,
+            overview,
+            screen,
+            scope,
         )
     } else {
         bar::build(
-            config, theme, services, sidebar, calendar, media, overview, screen, scope,
+            config,
+            theme,
+            services,
+            sidebar,
+            calendar,
+            media,
+            volume_mixer,
+            overview,
+            screen,
+            scope,
         )
     };
     let content = widgets::display::text::Shift::new(&body);

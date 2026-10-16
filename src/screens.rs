@@ -11,7 +11,7 @@ use crate::core::watch;
 use crate::panels::notifications::popup;
 use crate::panels::overview::{self, launcher};
 use crate::panels::{
-    background, calendar, cheatsheet, corners, dock, mediacontrols, sessionscreen, settings,
+    background, calendar, cheatsheet, corners, dock, mediacontrols, mixer, sessionscreen, settings,
     sidebar,
 };
 use crate::platform::hyprland::hypr;
@@ -100,16 +100,23 @@ struct Panels {
     calendar: Rc<calendar::Calendar>,
     session: Rc<sessionscreen::SessionScreen>,
     media: Rc<mediacontrols::MediaControls>,
+    volume_mixer: Option<Rc<mixer::VolumeMixer>>,
 }
 
 impl Panels {
     fn windows(&self) -> Vec<gtk4::ApplicationWindow> {
-        vec![
+        let mut windows = vec![
             self.sidebar.window.clone(),
             self.calendar.window.clone(),
             self.session.window.clone(),
             self.media.window.clone(),
-        ]
+        ];
+        windows.extend(
+            self.volume_mixer
+                .iter()
+                .map(|volume_mixer| volume_mixer.window.clone()),
+        );
+        windows
     }
 }
 
@@ -131,6 +138,7 @@ pub struct Surfaces {
     pub calendar: Rc<calendar::Calendar>,
     pub session: Rc<sessionscreen::SessionScreen>,
     pub media: Rc<mediacontrols::MediaControls>,
+    pub volume_mixer: Option<Rc<mixer::VolumeMixer>>,
     pub sheet: Rc<cheatsheet::Cheatsheet>,
     pub overview: Rc<overview::Overview>,
 }
@@ -370,6 +378,7 @@ impl Screens {
                     screen_surfaces.calendar = panels.calendar;
                     screen_surfaces.session = panels.session;
                     screen_surfaces.media = panels.media;
+                    screen_surfaces.volume_mixer = panels.volume_mixer;
                 });
                 windows
             }
@@ -418,6 +427,7 @@ impl Screens {
                     &screen_surfaces.sidebar,
                     &screen_surfaces.calendar,
                     &screen_surfaces.media,
+                    &screen_surfaces.volume_mixer,
                     &screen_surfaces.overview,
                     monitor,
                     &scope,
@@ -461,6 +471,7 @@ impl Screens {
             calendar: panels.calendar,
             session: panels.session,
             media: panels.media,
+            volume_mixer: panels.volume_mixer,
             sheet,
             overview,
         });
@@ -511,6 +522,15 @@ impl Screens {
         Panels {
             calendar: calendar::build(app, config, theme, services, monitor, scope),
             media: mediacontrols::build(app, config, services, theme, monitor, scope),
+            volume_mixer: mixer::build(
+                app,
+                config,
+                services,
+                theme,
+                &shared.settings,
+                monitor,
+                scope,
+            ),
             sidebar,
             session,
         }

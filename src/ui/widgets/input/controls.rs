@@ -324,6 +324,8 @@ pub struct ComboBox {
     icon: gtk4::Label,
     label: gtk4::Label,
     popover: gtk4::Popover,
+    chevron: Centered,
+    inline_list: RefCell<Option<gtk4::Box>>,
     scroll: gtk4::ScrolledWindow,
     list: gtk4::Box,
     theme: SharedTheme,
@@ -393,6 +395,8 @@ impl ComboBox {
             icon,
             label,
             popover: popover.clone(),
+            chevron: chevron.clone(),
+            inline_list: RefCell::new(None),
             scroll,
             list,
             theme: theme.clone(),
@@ -408,6 +412,13 @@ impl ComboBox {
             move |button| {
                 if let Some(combo) = combo.upgrade() {
                     combo.build_list();
+                    let inline_list = combo.inline_list.borrow().clone();
+                    if let Some(inline_list) = inline_list {
+                        let should_open = !inline_list.is_visible();
+                        inline_list.set_visible(should_open);
+                        chevron.rotate_to(if should_open { 180.0 } else { 0.0 });
+                        return;
+                    }
                 }
                 let (width, height) = (button.width(), button.height());
                 let inset = COMBO_POPUP_SHADOW - COMBO_POPUP_GAP;
@@ -430,6 +441,36 @@ impl ComboBox {
         self.on_activated.replace(Some(Rc::new(action)));
     }
 
+    pub fn use_inline_list(&self) -> gtk4::Box {
+        let inline_list = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        inline_list.set_visible(false);
+        if let Some(frame) = self.scroll.parent().and_downcast::<gtk4::Box>() {
+            frame.remove(&self.scroll);
+        }
+        inline_list.append(&self.scroll);
+        self.inline_list.replace(Some(inline_list.clone()));
+        inline_list
+    }
+
+    fn is_open(&self) -> bool {
+        self.popover.is_visible()
+            || self
+                .inline_list
+                .borrow()
+                .as_ref()
+                .is_some_and(|list| list.is_visible())
+    }
+
+    pub fn close(&self) {
+        self.popover.popdown();
+        if let Some(inline_list) = self.inline_list.borrow().as_ref()
+            && inline_list.is_visible()
+        {
+            inline_list.set_visible(false);
+            self.chevron.rotate_to(0.0);
+        }
+    }
+
     pub fn item(&self, index: usize) -> Option<String> {
         self.items.borrow().get(index).cloned()
     }
@@ -444,9 +485,9 @@ impl ComboBox {
         self.button.set_opacity(if is_enabled { 1.0 } else { 0.4 });
     }
 
-    pub fn set_items(self: &Rc<Self>, items: &[String], current: i32) {
+    pub fn set_items(self: &Rc<Self>, items: &[String], current: i32) -> bool {
         if self.current.get() == current && *self.items.borrow() == items {
-            return;
+            return false;
         }
         self.current.set(current);
         self.label.set_text(
@@ -457,9 +498,10 @@ impl ComboBox {
         );
         self.items.replace(items.to_vec());
         self.is_built.set(false);
-        if self.popover.is_visible() {
+        if self.is_open() {
             self.build_list();
         }
+        true
     }
 
     pub fn set_items_showing(self: &Rc<Self>, items: &[String], current: &str) {
@@ -522,7 +564,7 @@ impl ComboBox {
                     let Some(combo) = combo.upgrade() else {
                         return;
                     };
-                    combo.popover.popdown();
+                    combo.close();
                     let action = combo.on_activated.borrow().clone();
                     if let Some(action) = action {
                         action(index);

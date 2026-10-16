@@ -90,6 +90,7 @@ general {
 | `calendarToggle` | The [calendar](calendar.md), at the bar's clock |
 | `sessionToggle`, `sessionOpen`, `sessionClose` | The [session screen](session-screen.md) |
 | `mediaControlsToggle`, `mediaControlsOpen`, `mediaControlsClose` | The [media controls](media-controls.md) |
+| `volumeMixerToggle`, `volumeMixerOpen`, `volumeMixerClose` | The [volume mixer](volume-mixer.md) |
 | `cheatsheetToggle`, `cheatsheetOpen`, `cheatsheetClose` | The [cheatsheet](cheatsheet.md) |
 | `oskToggle`, `oskOpen`, `oskClose` | The [on-screen keyboard](on-screen-keyboard.md) |
 | `osdVolumeTrigger` | Shows the on-screen [indicator](osd.md) for its timeout |

@@ -9,6 +9,7 @@ pub mod dock;
 pub mod keyringprompt;
 pub mod lock;
 pub mod mediacontrols;
+pub mod mixer;
 pub mod notifications;
 pub mod osd;
 pub mod osk;
