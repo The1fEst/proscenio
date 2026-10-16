@@ -31,6 +31,8 @@ locks, then one mentioning `suspend` suspends.
 
 ## Power
 
+![The Power page with the power saving, buttons and lid, and battery sections](/img/screenshots/settings-power.webp)
+
 **Power Saving**
 
 | Control | Does |
@@ -92,6 +94,8 @@ in or out, the shell switches to the chosen profile, unless it is Unchanged:
 drawing power while nobody is at it.
 
 ## Screen Lock
+
+![The Screen Lock subpage with the lock timeout, security and style settings](/img/screenshots/settings-screen-lock.webp)
 
 Screen Lock opens from the System section of Privacy & Security.
 

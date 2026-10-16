@@ -12,6 +12,8 @@ notice saying so.
 
 ## Sound
 
+![The Sound page with the output and input devices, their volumes and the links to Volume Levels and Sound cards](/img/screenshots/settings-sound.webp)
+
 **Output** and **Input** each have:
 
 | Control | Does |

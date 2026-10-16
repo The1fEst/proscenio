@@ -20,6 +20,8 @@ The rest talk to system services over D-Bus or edit files of their own, as each 
 
 ## Notifications
 
+![The Notifications page with Do not disturb, the popup settings and the list of apps](/img/screenshots/settings-notifications.webp)
+
 | Control | Key | Default | Range |
 |---|---|---|---|
 | Do not disturb | `notifications.silent` | off | |
@@ -110,6 +112,8 @@ well. The region selector is the one screen snipping uses; see
 [Region selector](region-selector.md).
 
 ## System
+
+![The System page with link rows for region, date and time, users, autostart, updates and the shell's services](/img/screenshots/settings-system.webp)
 
 The page is link rows to its subpages: **Region & Language**, **Date & Time**, **Users**, whose
 second line is the account's name from AccountsService, **Autostart**, **Updates** and **About**,
@@ -226,6 +230,8 @@ on `PATH`. The runtime folder is emptied at logout, so restarting the shell star
 
 ### Updates
 
+![The Updates subpage with the System section's pending packages and the Shell section's commits](/img/screenshots/settings-system-updates.webp)
+
 Two sections show what is pending. Each has one button beside its title: **Update** when there is
 something to install, otherwise **Check now**, which counts that section's part again, the way the
 [sidebar](sidebar.md#updates) describes: the pending packages under System, the commits the shell is
@@ -236,6 +242,8 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 |---|---|---|
 | System | **Packages**: how many packages can be upgraded, from the repositories and from AUR; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `pkexec /usr/lib/proscenio/proscenio-packages session`, which upgrades the repositories through libalpm; then, when AUR packages are pending, `paru -Sua` or `yay -Sua` without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
 | Shell | **Commits**: how many commits `main` is ahead | downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm` in a root session of `proscenio-packages`, then restarts `proscenio.service` |
+
+![The Packages subpage listing the pending packages with their old and new versions](/img/screenshots/settings-system-update-packages.webp)
 
 **Packages** opens a page with every pending package, each with its installed and its new
 version: under **Repositories** those the [check](sidebar.md#updates) finds in the repositories,

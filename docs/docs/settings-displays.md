@@ -43,6 +43,8 @@ writer is `src/platform/hyprland/monitorrules.rs`.
 
 ## Displays
 
+![The Displays page with the resolution, refresh rate and rotation of one display](/img/screenshots/settings-displays.webp)
+
 **Arrangement.** With more than one display, a field at the top shows every enabled display as a
 plate, scaled to fit, with its model or name. Tapping a plate chooses that display. Dragging one
 moves it: it snaps to the edges of its neighbors, and a plate dropped onto another is pushed out to
@@ -111,6 +113,8 @@ The page ends with a link row to Night light.
 
 ## Color
 
+![The Color subpage with the color profile, bit depth and luminance settings of one display](/img/screenshots/settings-displays-color.webp)
+
 The Color subpage is titled "Color · *model* (*name*)" for the display it was opened for. Opened from
 search, it shows the first display.
 
@@ -147,6 +151,8 @@ The ICC profiles offered are the files found under `~/.local/share/icc`, `~/.col
 The three display figures describe the panel itself; −1 leaves each one to what the display reports.
 
 ## Night light
+
+![The Night light subpage with the schedule, color temperature and transition time](/img/screenshots/settings-displays-night-light.webp)
 
 Night light warms the screen through each monitor's color matrix, which the shell sets over
 Hyprland's `hyprland-ctm-control-v1` protocol. Its settings are keys in

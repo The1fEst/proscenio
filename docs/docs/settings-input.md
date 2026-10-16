@@ -31,6 +31,8 @@ written as dotted TOML paths below.
 
 ## Mouse & Touchpad
 
+![The Mouse & Touchpad page with the general, mouse and pointer sections](/img/screenshots/settings-mouse.webp)
+
 ### General
 
 **Primary button**, Left or Right, sets `input:left_handed` (Right is `true`). It orders the
@@ -154,6 +156,8 @@ The numbers behind the workspace swipe are on [Multitasking settings](settings-m
 
 ## Keyboard
 
+![The Keyboard page with the input sources, source switching and keyboard shortcuts sections](/img/screenshots/settings-keyboard.webp)
+
 ### Input Sources
 
 The keyboard layouts, in the order they are cycled through, come from `input:kb_layout` and
@@ -233,6 +237,8 @@ removes the line, and is highlighted while **Highlight changed settings** is on 
 window.
 
 ## Accessibility
+
+![The Accessibility page with the seeing, bell, typing and zoom sections](/img/screenshots/settings-accessibility.webp)
 
 | Section | Control | Hyprland option or key | Values |
 |---|---|---|---|

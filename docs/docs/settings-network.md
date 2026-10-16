@@ -89,6 +89,8 @@ from the stored profile, read with `nmcli -s`.
 
 ## Network
 
+![The Network page with the wired, VPN, virtual interfaces and firewall and proxy sections](/img/screenshots/settings-network.webp)
+
 Three sections list NetworkManager's connections, sorted by name:
 
 | Section | Connection types | Add buttons |
@@ -116,6 +118,8 @@ On, Off or Not installed, and one to the Proxy subpage, whose second line names 
 section shows even when NetworkManager is not running.
 
 ### The connection editor
+
+![The connection editor open on a wired connection](/img/screenshots/settings-network-connection-editor.webp)
 
 The Connection subpage edits one NetworkManager profile. It opens from a card's **Edit** button, the
 add buttons, an import, or an enterprise Wi-Fi network; its header shows the profile's name. Opened

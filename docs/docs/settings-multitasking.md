@@ -31,6 +31,8 @@ The Overview subpage is the exception: it writes the shell's own config,
 
 ## Tiling
 
+![The Multitasking page with the layout choice and the spacing, Dwindle, snapping and resizing settings](/img/screenshots/settings-multitasking.webp)
+
 **Layout** sets `general:layout` to Dwindle, Master, Scrolling or Monocle. Below it the page shows
 the subsection of the layout in use, if it has one: Dwindle, Master or Scrolling.
 

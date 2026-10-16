@@ -12,6 +12,8 @@ subpages hang off it: **File types**, for every file type one at a time, and **W
 
 ## Default Apps
 
+![The Apps page with a drop-down for each kind of default app](/img/screenshots/settings-apps.webp)
+
 One box per kind of file or link: Web, Mail, Calendar, Music, Video, Photos, Text and Files. A box
 lists the installed applications that the association files or the MIME cache name for the kind's
 main type or one of its parent types, leaving out removed associations, each by the name its desktop
@@ -76,6 +78,8 @@ A type no installed application declares shows "No installed application says it
 in place of the two lists. After a change, the list shows the new default.
 
 ## Window rules
+
+![The Window rules subpage with the fields for adding a rule](/img/screenshots/settings-apps-window-rules.webp)
 
 Under **Window rules**, the **Every window rule** link row opens the subpage. Its rules are the ones
 the settings window owns: one line each in `~/.config/hypr/settings/apps.lua`, in this shape.

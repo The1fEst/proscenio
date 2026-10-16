@@ -11,6 +11,8 @@ wireless devices, and **Devices** chooses which input devices Hyprland listens t
 
 ## Bluetooth
 
+![The Bluetooth page with a connected, a paired and a new device](/img/screenshots/settings-bluetooth.webp)
+
 The Bluetooth page talks to BlueZ (`org.bluez`) on the system bus. When BlueZ is neither running nor
 ready to start on demand, the page is only a notice; it comes with the bluez package and runs as
 `bluetooth.service`. A second notice appears when `bluetoothctl` (bluez-utils) is missing, since
@@ -50,6 +52,8 @@ The sidebar's Bluetooth dialog lists the same devices; its **Details** button op
 ([Sidebar](sidebar.md)).
 
 ## Devices
+
+![The Devices page listing the input devices, each with a switch](/img/screenshots/settings-devices.webp)
 
 The Devices page turns individual input devices on or off. A mouse or keyboard often shows up as
 several devices; turning off an extra one keeps it from taking over the keyboard layout. The

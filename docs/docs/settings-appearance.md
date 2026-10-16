@@ -35,6 +35,8 @@ write at a time, and every write is followed by a fresh read of all of them.
 
 ## The Appearance page
 
+![The Appearance page with the Desktop and Theme sections](/img/screenshots/settings-appearance.webp)
+
 **Desktop** holds link rows to the Background, Bar and Panels subpages, and a section after
 **Theme** holds link rows to Colors, Fonts and Windows.
 
@@ -77,6 +79,8 @@ the pointer is drawn:
 The title bar is the one the shell draws on its own windows, such as the settings window.
 
 ## Colors
+
+![The Colors subpage with the palette, shell surfaces and color generation sections](/img/screenshots/settings-appearance-colors.webp)
 
 The palette comes from the wallpaper; [Colors](colors.md) describes how it is generated.
 
@@ -313,6 +317,8 @@ otherwise.
 [System settings](settings-system.md) under Services.
 
 ## Bar
+
+![The Bar subpage with the notifications, positioning and appearance sections](/img/screenshots/settings-appearance-bar.webp)
 
 See [Bar](bar.md) for the bar itself.
 
