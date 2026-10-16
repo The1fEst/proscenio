@@ -184,6 +184,18 @@ impl Page {
         subtitle: &str,
         action: impl Fn() + 'static,
     ) -> gtk4::Label {
+        self.link_row_with_button(parent, icon, title, subtitle, action)
+            .1
+    }
+
+    pub fn link_row_with_button(
+        &self,
+        parent: &impl Parent,
+        icon: &str,
+        title: &str,
+        subtitle: &str,
+        action: impl Fn() + 'static,
+    ) -> (RippleButton, gtk4::Label) {
         let button = RippleButton::new(&self.theme);
         button.set_radius(rounding::SMALL as f64);
         button.set_look(Look {
@@ -218,7 +230,7 @@ impl Page {
         button.set_content(&row, LINK_PADDING, 0);
         button.connect_clicked(move |_| action());
         parent.add(&button);
-        detail
+        (button, detail)
     }
 
     pub fn row(&self, parent: &impl Parent) -> Row {

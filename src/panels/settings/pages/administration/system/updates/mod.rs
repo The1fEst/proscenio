@@ -26,7 +26,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         page.busy_section("deployed_code_update", &tr("System"));
     let (system_check_button, system_update_button) =
         header_actions(&page, &system_section, &updates, Job::System);
-    let packages_summary_label = page.link_row(
+    let (packages_button, packages_summary_label) = page.link_row_with_button(
         &system_section,
         "deployed_code",
         &tr("Packages"),
@@ -42,7 +42,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
     let (shell_check_button, shell_update_button) =
         header_actions(&page, &shell_section, &updates, Job::Shell);
-    let commits_summary_label = page.link_row(
+    let (commits_button, commits_summary_label) = page.link_row_with_button(
         &shell_section,
         "commit",
         &tr("Commits"),
@@ -107,7 +107,9 @@ pub fn build(context: &Context) -> Rc<Page> {
                 (false, true) => tr("Could not check for updates"),
                 (false, false) => tr("Up to date"),
             });
+            packages_button.set_sensitive(count > 0);
             let commits_behind = updates.commits_behind.get();
+            commits_button.set_sensitive(commits_behind > 0);
             commits_summary_label.set_text(&if commits_behind > 0 {
                 trn(
                     "%1 commit behind",

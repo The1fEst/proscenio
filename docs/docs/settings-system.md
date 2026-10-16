@@ -239,9 +239,11 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 
 **Packages** opens a page with every pending package, each with its installed and its new
 version: under **Repositories** those the [check](sidebar.md#updates) finds in the repositories,
-under **AUR** those `paru -Qua` or `yay -Qua` reports. **Commits** opens a page with the subject of every new commit. Either page
-reads **Up to date** when it has nothing to list. When part of the last check failed, the Packages
-page reads **Could not check for updates** above what it did find. Updates run without a terminal, in a systemd scope
+under **AUR** those `paru -Qua` or `yay -Qua` reports. **Commits** opens a page with the subject of every new commit. Each row is unavailable
+while its count is 0, so a check that failed and found no package leaves **Packages** closed, with
+**Could not check for updates** on the row. When part of the last check failed and some packages
+were found, the Packages page reads **Could not check for updates** above them. A page that is open
+when its last item goes reads **Up to date**. Updates run without a terminal, in a systemd scope
 of their own so that restarting the shell does not stop them, and one at a time: both **Update**
 buttons are disabled while one runs.
 
