@@ -291,6 +291,8 @@ the settings window or the config file while the dialog is open. Under them, a *
 sets this monitor's backlight and a **Gamma** slider its gamma from 25 to 100 %: the two controls
 the sidebar's brightness slider combines.
 
+**Details** closes the sidebar and opens the settings window's Night light page.
+
 ### WireGuard
 
 **WireGuard Connections.** Lists every WireGuard connection NetworkManager has, each `Connected` or

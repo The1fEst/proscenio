@@ -566,10 +566,7 @@ fn night(context: &Context) -> Rc<WindowDialog> {
         },
     );
 
-    let (row, place) = button_row();
-    row.append(&spacer());
-    row.append(&done_button(context, &dialog));
-    column.add(&row, place);
+    footer(context, &dialog, "Details", || "nightlight");
 
     let sync: Rc<dyn Fn()> = Rc::new({
         let session = session.clone();
