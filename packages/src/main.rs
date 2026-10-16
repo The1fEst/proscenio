@@ -33,6 +33,7 @@ const CHECK_LOCK_TIMEOUT: Duration = Duration::from_secs(120);
 const CHECK_LOCK_RETRY_DELAY: Duration = Duration::from_millis(250);
 const CHECK_LOCK: &str = "proscenio-check.lock";
 const ALPM_LOCK: &str = "db.lck";
+const SYSTEM_HOOK_DIR: &str = "/usr/share/libalpm/hooks/";
 
 #[repr(C)]
 #[derive(Default)]
@@ -102,7 +103,20 @@ fn open_alpm(db_path: Option<&str>) -> Result<Alpm, String> {
     let db_path = db_path.unwrap_or(&pacman_config.db_path);
     let mut alpm = Alpm::new(&*pacman_config.root_dir, db_path).map_err(format_error)?;
     alpm_utils::configure_alpm(&mut alpm, &pacman_config).map_err(format_error)?;
+    alpm.set_hookdirs(list_hook_dirs(&pacman_config.hook_dir).iter())
+        .map_err(format_error)?;
     Ok(alpm)
+}
+
+fn list_hook_dirs(configured_dirs: &[String]) -> Vec<String> {
+    let mut hook_dirs = vec![SYSTEM_HOOK_DIR.to_owned()];
+    hook_dirs.extend(
+        configured_dirs
+            .iter()
+            .filter(|dir| dir.as_str() != SYSTEM_HOOK_DIR)
+            .cloned(),
+    );
+    hook_dirs
 }
 
 fn lock_check_database(db_path: &Path) -> Result<std::fs::File, String> {
@@ -628,6 +642,18 @@ mod tests {
 
     fn strings(items: &[&str]) -> Vec<String> {
         items.iter().map(|item| item.to_string()).collect()
+    }
+
+    #[test]
+    fn transactions_run_the_system_hooks_before_the_configured_ones_as_pacman_does() {
+        assert_eq!(
+            list_hook_dirs(&strings(&["/etc/pacman.d/hooks/"])),
+            strings(&[SYSTEM_HOOK_DIR, "/etc/pacman.d/hooks/"])
+        );
+        assert_eq!(
+            list_hook_dirs(&strings(&[SYSTEM_HOOK_DIR, "/etc/pacman.d/hooks/"])),
+            strings(&[SYSTEM_HOOK_DIR, "/etc/pacman.d/hooks/"])
+        );
     }
 
     #[test]
