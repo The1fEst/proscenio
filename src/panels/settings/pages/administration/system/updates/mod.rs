@@ -129,7 +129,7 @@ pub fn build(context: &Context) -> Rc<Page> {
                 .area
                 .set_visible(is_checking_packages);
             system_check_indicator.set_loading(is_checking_packages);
-            system_check_button.set_sensitive(!is_checking_packages);
+            system_check_button.set_sensitive(!is_checking_packages && job != Some(Job::System));
             let is_checking_shell = updates.is_refreshing_shell.get();
             shell_check_indicator.area.set_visible(is_checking_shell);
             shell_check_indicator.set_loading(is_checking_shell);

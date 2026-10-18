@@ -136,7 +136,9 @@ While `updates.enableCheck` is on, the shell checks at start and then every
   databases in `~/.cache/proscenio/pacman` through libalpm, which needs no root and leaves the
   system databases alone, and lists every installed package with a newer version in that copy.
   Each check holds a lock on `proscenio-check.lock` in that copy, waiting up to two minutes for a
-  check still running, and then removes a `db.lck` a stopped check left behind.
+  check still running, and then removes a `db.lck` a stopped check left behind. No check starts
+  while a system update runs; a check asked for meanwhile runs when the update ends or is
+  cancelled.
   When `paru` or `yay` is installed, its `-Qua` adds the AUR packages. Ignored packages do not
   count. `proscenio-packages check` fails on any exit status but 0. `-Qua` also exits 1 when nothing
   is pending, so it fails on any other status, or on 1 with anything on its error output but

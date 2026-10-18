@@ -236,7 +236,7 @@ Two sections show what is pending. Each has one button beside its title: **Updat
 something to install, otherwise **Check now**, which counts that section's part again, the way the
 [sidebar](sidebar.md#updates) describes: the pending packages under System, the commits the shell is
 behind under Shell. While a section's check runs, a loading indicator turns beside its title and its
-**Check now** is unavailable.
+**Check now** is unavailable, and System's also while a system update runs.
 
 | Section | Row under the title | Update runs |
 |---|---|---|

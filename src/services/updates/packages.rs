@@ -5,7 +5,7 @@ use std::process::Output;
 
 use super::manager::{aur_query, package_manager, repository_query};
 use super::output::visible_text;
-use super::{Notice, Updates};
+use super::{Job, Notice, Updates};
 use crate::core::{paths, process};
 
 pub(super) const LOCAL_DATABASE: &str = "/var/lib/pacman/local";
@@ -21,10 +21,11 @@ const AUR_NOTICES: [&str; 7] = [
 
 impl Updates {
     pub(super) fn refresh_packages(&self) {
-        if self.is_refreshing_packages.replace(true) {
+        if !is_package_check_allowed(self.job.get()) || self.is_refreshing_packages.replace(true) {
             self.is_package_refresh_queued.set(true);
             return;
         }
+        self.is_package_refresh_queued.set(false);
         self.listeners.notify();
         let updates = self.clone();
         glib::spawn_future_local(async move {
@@ -81,6 +82,10 @@ pub(super) async fn query_aur_packages(manager: &str) -> Option<Vec<String>> {
         Some(query) => query_pending_packages(&query, has_aur_query_failed).await,
         None => Some(Vec::new()),
     }
+}
+
+fn is_package_check_allowed(running_job: Option<Job>) -> bool {
+    running_job != Some(Job::System)
 }
 
 fn contradicts_notice(notice: Notice, count: i32, has_check_failed: bool) -> bool {
@@ -254,6 +259,13 @@ mod tests {
         assert_eq!(lines, ["appstream 1.2.0-1 -> 1.2.1-1"]);
         assert_eq!(parse_pending_packages(&lines.join("\n")), lines);
         assert!(list_upgrade_lines(&[]).is_empty());
+    }
+
+    #[test]
+    fn no_package_check_starts_while_a_system_update_runs() {
+        assert!(is_package_check_allowed(None));
+        assert!(is_package_check_allowed(Some(Job::Shell)));
+        assert!(!is_package_check_allowed(Some(Job::System)));
     }
 
     #[test]

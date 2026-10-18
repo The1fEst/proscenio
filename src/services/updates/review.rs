@@ -138,6 +138,9 @@ impl Updates {
         self.job.set(None);
         self.listeners.notify();
         self.output_listeners.notify();
+        if self.is_package_refresh_queued.get() {
+            self.refresh_packages();
+        }
     }
 }
 
