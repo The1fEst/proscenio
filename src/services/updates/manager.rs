@@ -14,6 +14,10 @@ pub(super) fn repository_query(database: &str) -> [&str; 3] {
     [HELPER, "check", database]
 }
 
+pub(super) fn build_plan_query(database: &str) -> [&str; 3] {
+    [HELPER, "plan", database]
+}
+
 pub(super) fn aur_query(manager: &str) -> Option<[&str; 2]> {
     matches!(manager, "paru" | "yay").then_some([manager, "-Qua"])
 }
@@ -119,6 +123,14 @@ mod tests {
         assert_eq!(
             repository_query("/tmp/db"),
             ["/usr/lib/proscenio/proscenio-packages", "check", "/tmp/db"]
+        );
+    }
+
+    #[test]
+    fn the_repository_plan_comes_from_the_helper_without_root() {
+        assert_eq!(
+            build_plan_query("/tmp/db"),
+            ["/usr/lib/proscenio/proscenio-packages", "plan", "/tmp/db"]
         );
     }
 

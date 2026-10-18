@@ -6,6 +6,7 @@ mod handle;
 mod output;
 mod pacman;
 mod plan;
+mod private_database;
 mod session;
 mod stage;
 mod transaction;

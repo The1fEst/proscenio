@@ -1,4 +1,4 @@
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 pub const TOKEN_LENGTH: usize = 32;
 pub const SOCKET_VARIABLE: &str = "PROSCENIO_PACKAGES_SOCKET";
 pub const TOKEN_VARIABLE: &str = "PROSCENIO_PACKAGES_TOKEN";
@@ -54,10 +54,12 @@ impl Change {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Request {
-    Upgrade(Vec<Change>),
+    Upgrade {
+        changes: Vec<Change>,
+        private_path: String,
+    },
     Quit,
     Allow(u32),
-    Plan,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -221,25 +223,30 @@ impl Reader<'_> {
 impl Message for Request {
     fn write(&self, writer: &mut Writer) {
         match self {
-            Request::Upgrade(changes) => {
+            Request::Upgrade {
+                changes,
+                private_path,
+            } => {
                 writer.write_u8(0);
                 writer.write_changes(changes);
+                writer.write_text(private_path);
             }
             Request::Quit => writer.write_u8(1),
             Request::Allow(pid) => {
                 writer.write_u8(2);
                 writer.write_u32(*pid);
             }
-            Request::Plan => writer.write_u8(3),
         }
     }
 
     fn read(reader: &mut Reader) -> Result<Self, Error> {
         match reader.read_u8()? {
-            0 => Ok(Request::Upgrade(reader.read_changes()?)),
+            0 => Ok(Request::Upgrade {
+                changes: reader.read_changes()?,
+                private_path: reader.read_text()?,
+            }),
             1 => Ok(Request::Quit),
             2 => Ok(Request::Allow(reader.read_u32()?)),
-            3 => Ok(Request::Plan),
             kind => Err(Error::UnknownKind(kind)),
         }
     }
@@ -489,9 +496,14 @@ mod tests {
             Change::new("libfoo", "", "1.0-1"),
             Change::new("oldlib", "2.0-1", ""),
         ];
-        round_trip(Request::Plan);
-        round_trip(Request::Upgrade(changes.clone()));
-        round_trip(Request::Upgrade(Vec::new()));
+        round_trip(Request::Upgrade {
+            changes: changes.clone(),
+            private_path: "/home/fEst/.cache/proscenio/pacman".to_owned(),
+        });
+        round_trip(Request::Upgrade {
+            changes: Vec::new(),
+            private_path: String::new(),
+        });
         round_trip(Event::Planned(changes));
         round_trip(Event::Planned(Vec::new()));
     }
@@ -634,7 +646,10 @@ mod tests {
 
     #[test]
     fn a_blocking_reader_reads_frames_one_by_one_and_stops_at_the_end() {
-        let upgrade = Request::Upgrade(vec![Change::new("linux", "7.2.9-1", "7.2.10-1")]);
+        let upgrade = Request::Upgrade {
+            changes: vec![Change::new("linux", "7.2.9-1", "7.2.10-1")],
+            private_path: "/home/fEst/.cache/proscenio/pacman".to_owned(),
+        };
         let mut stream = upgrade.encode();
         stream.extend(Request::Quit.encode());
         let mut source = std::io::Cursor::new(stream);

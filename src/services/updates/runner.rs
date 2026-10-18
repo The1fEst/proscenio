@@ -1,14 +1,16 @@
 use gtk4::glib;
-use proscenio_protocol::{Change, Decoder, Event, Message, Request, Stage};
+use proscenio_protocol::{Decoder, Event, Message, Request};
 use std::cell::{Cell, RefCell};
 use std::io::Write;
 use std::process::{ChildStdin, Stdio};
 use std::rc::Rc;
 
 use super::manager::{aur_query, aur_upgrade, package_manager};
-use super::output::{decode_events, elapsed_text, exit_code, visible_text, watch_output};
-use super::packages::{query_aur_packages, version_change};
-use super::{BRANCH, HELPER, Job, Notice, REPOSITORY, Updates};
+use super::output::{
+    decode_events, elapsed_text, exit_code, stage_text, visible_text, watch_output,
+};
+use super::packages::{private_database_dir, version_change};
+use super::{BRANCH, HELPER, Job, REPOSITORY, Review, Updates};
 use crate::core::i18n::trf;
 use crate::core::{paths, process};
 use crate::services::updates::updateprogress::UpdateProgress;
@@ -23,38 +25,20 @@ makepkg -Acfsi --noconfirm
 systemctl --user restart proscenio";
 const SHELL_COMMAND: &str = "makepkg -Acfsi --noconfirm && systemctl --user restart proscenio";
 
-#[derive(Clone)]
-enum AurListing {
-    Pending,
-    Failed,
-    Listed(Vec<String>),
-}
-
 pub(super) struct Session {
     stdin: RefCell<Option<ChildStdin>>,
     job: Job,
     manager: &'static str,
     socket_and_token: RefCell<Option<(String, Vec<u8>)>>,
-    planned_changes: RefCell<Option<Vec<Change>>>,
-    aur_listing: RefCell<AurListing>,
+    review: Review,
     aur_names: RefCell<Vec<String>>,
     includes_aur: Cell<bool>,
     is_forwarding: Cell<bool>,
     is_ok: Cell<bool>,
-    is_abandoned: Cell<bool>,
     package_index: Cell<u32>,
 }
 
 impl Session {
-    pub(super) fn is_open(&self) -> bool {
-        self.stdin.borrow().is_some()
-    }
-
-    pub(super) fn stop_early(&self) {
-        self.is_abandoned.set(true);
-        self.close();
-    }
-
     fn send(&self, request: Request) {
         if let Some(stdin) = self.stdin.borrow_mut().as_mut() {
             let _ = stdin.write_all(&request.encode());
@@ -124,7 +108,7 @@ impl Updates {
         Some(child.id())
     }
 
-    pub(super) fn start_session(&self, job: Job) -> bool {
+    pub(super) fn start_session(&self, job: Job, review: Review) -> bool {
         let Some(manager) = package_manager() else {
             return false;
         };
@@ -142,13 +126,11 @@ impl Updates {
             job,
             manager,
             socket_and_token: RefCell::new(None),
-            planned_changes: RefCell::new(None),
-            aur_listing: RefCell::new(AurListing::Pending),
+            review,
             aur_names: RefCell::new(Vec::new()),
             includes_aur: Cell::new(false),
             is_forwarding: Cell::new(false),
             is_ok: Cell::new(true),
-            is_abandoned: Cell::new(false),
             package_index: Cell::new(0),
         });
         self.session.replace(Some(session.clone()));
@@ -170,10 +152,6 @@ impl Updates {
         let updates = self.clone();
         let pid = glib::Pid(child.id() as i32);
         watch_output(stdout, pid, on_bytes, move |code| {
-            if session.is_abandoned.get() {
-                updates.abandon();
-                return;
-            }
             let status = if code == 0 && !session.is_ok.get() {
                 1 << 8
             } else {
@@ -206,13 +184,9 @@ impl Updates {
                 }
                 session.socket_and_token.replace(Some((socket, token)));
                 match session.job {
-                    Job::System => self.plan(session),
+                    Job::System => self.install_plan(session),
                     Job::Shell => self.start_build(session),
                 }
-            }
-            Event::Planned(changes) => {
-                session.planned_changes.replace(Some(changes));
-                self.continue_plan(session);
             }
             Event::Stage(stage) => self.push_log(stage_text(stage)),
             Event::Transaction {
@@ -248,60 +222,15 @@ impl Updates {
                     session.close();
                 }
             }
-            Event::Download { .. } => {}
+            Event::Download { .. } | Event::Planned(_) => {}
         }
     }
 
-    fn plan(&self, session: &Rc<Session>) {
-        session.send(Request::Plan);
-        let updates = self.clone();
-        let session = session.clone();
-        glib::spawn_future_local(async move {
-            let listing = match query_aur_packages(session.manager).await {
-                Some(aur_packages) => AurListing::Listed(aur_packages),
-                None => AurListing::Failed,
-            };
-            session.aur_listing.replace(listing);
-            updates.continue_plan(&session);
-        });
-    }
-
-    fn continue_plan(&self, session: &Rc<Session>) {
-        let planned_changes = session.planned_changes.borrow().clone();
-        let aur_listing = session.aur_listing.borrow().clone();
-        let Some(changes) = planned_changes else {
-            return;
-        };
-        if !session.is_open() {
-            return;
-        }
-        match aur_listing {
-            AurListing::Pending => {}
-            AurListing::Failed => {
-                self.push_log("Could not list the AUR packages to update");
-                self.notice.set(Some(Notice::CheckFailed));
-                self.has_package_check_failed.set(true);
-                session.stop_early();
-            }
-            AurListing::Listed(aur_packages) => {
-                self.show_plan(&changes, aur_packages.clone());
-                if changes.is_empty() && aur_packages.is_empty() {
-                    self.notice.set(Some(Notice::UpToDate));
-                    session.stop_early();
-                } else {
-                    self.open_review(session, changes, aur_packages);
-                }
-            }
-        }
-    }
-
-    pub(super) fn install_plan(
-        &self,
-        session: &Rc<Session>,
-        changes: Vec<Change>,
-        aur_packages: &[String],
-    ) {
-        let aur_names: Vec<String> = aur_packages
+    fn install_plan(&self, session: &Rc<Session>) {
+        let changes = session.review.changes.clone();
+        let aur_names: Vec<String> = session
+            .review
+            .aur_packages
             .iter()
             .filter_map(|line| version_change(line))
             .map(|(name, _, _)| name.to_owned())
@@ -315,7 +244,10 @@ impl Updates {
         session.includes_aur.set(has_aur && !aur_names.is_empty());
         session.aur_names.replace(aur_names);
         self.output_listeners.notify();
-        session.send(Request::Upgrade(changes));
+        session.send(Request::Upgrade {
+            changes,
+            private_path: private_database_dir().to_string_lossy().into_owned(),
+        });
     }
 
     fn start_aur(&self, session: &Rc<Session>) {
@@ -407,15 +339,5 @@ impl Updates {
                 session.close();
             }
         }
-    }
-}
-
-fn stage_text(stage: Stage) -> &'static str {
-    match stage {
-        Stage::Synchronize => ":: Synchronizing package databases...",
-        Stage::Prepare => ":: Resolving dependencies...",
-        Stage::Download => ":: Retrieving packages...",
-        Stage::Install => ":: Processing package changes...",
-        Stage::Hooks => ":: Running post-transaction hooks...",
     }
 }

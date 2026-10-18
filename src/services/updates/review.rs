@@ -1,11 +1,10 @@
 use gtk4::{gio, glib};
 use proscenio_protocol::Change;
 use std::path::Path;
-use std::rc::Rc;
 
 use super::packages::{LOCAL_DATABASE, version_change};
 use super::reboot::find_reboot_packages;
-use super::{Job, Session, Updates};
+use super::{Job, Updates};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Notice {
@@ -55,12 +54,50 @@ impl Updates {
         });
     }
 
-    pub(super) fn open_review(
-        &self,
-        session: &Rc<Session>,
-        changes: Vec<Change>,
-        aur_packages: Vec<String>,
-    ) {
+    pub(super) fn review_system(&self) {
+        let updates = self.clone();
+        let start_count = self.start_count.get();
+        glib::spawn_future_local(async move {
+            let plan_result = updates.load_system_plan().await;
+            if !updates.is_awaiting_system_review(start_count) {
+                return;
+            }
+            let plan = match plan_result {
+                Ok(plan) => plan,
+                Err(message) => {
+                    updates.fail_system_check(&message);
+                    return;
+                }
+            };
+            for line in &plan.log_lines {
+                updates.push_log(line);
+            }
+            let Some(aur_packages) = plan.aur_packages else {
+                updates.has_package_check_failed.set(true);
+                updates.fail_system_check("Could not list the AUR packages to update");
+                return;
+            };
+            updates.show_plan(&plan.changes, aur_packages.clone());
+            if plan.changes.is_empty() && aur_packages.is_empty() {
+                updates.notice.set(Some(Notice::UpToDate));
+                updates.abandon();
+            } else {
+                updates.open_review(plan.changes, aur_packages, start_count);
+            }
+        });
+    }
+
+    fn fail_system_check(&self, message: &str) {
+        self.push_log(message);
+        self.notice.set(Some(Notice::CheckFailed));
+        self.abandon();
+    }
+
+    fn is_awaiting_system_review(&self, start_count: u32) -> bool {
+        self.start_count.get() == start_count && self.job.get() == Some(Job::System)
+    }
+
+    fn open_review(&self, changes: Vec<Change>, aur_packages: Vec<String>, start_count: u32) {
         let installed_packages: Vec<(String, String)> = changes
             .iter()
             .filter(|change| !change.to.is_empty())
@@ -73,19 +110,13 @@ impl Updates {
             )
             .collect();
         let updates = self.clone();
-        let session = session.clone();
         glib::spawn_future_local(async move {
             let reboot_packages = gio::spawn_blocking(move || {
                 find_reboot_packages(Path::new(LOCAL_DATABASE), &installed_packages)
             })
             .await
             .unwrap_or_default();
-            let is_current = updates
-                .session
-                .borrow()
-                .as_ref()
-                .is_some_and(|current| Rc::ptr_eq(current, &session));
-            if !is_current || !session.is_open() {
+            if !updates.is_awaiting_system_review(start_count) {
                 return;
             }
             updates.review.replace(Some(Review {
@@ -101,18 +132,16 @@ impl Updates {
         let Some(review) = self.review.take() else {
             return;
         };
+        let Some(job) = self.job.get() else {
+            return;
+        };
         self.is_installing.set(true);
         self.start_time_micros.set(glib::monotonic_time());
-        let job = self.job.get();
-        if job == Some(Job::Shell) && !self.start_session(Job::Shell) {
+        if !self.start_session(job, review) {
             self.push_log("Could not start the update");
             self.last_job_succeeded.set(Some(false));
             self.abandon();
             return;
-        }
-        let session = self.session.borrow().clone();
-        if let Some(session) = session.filter(|_| job == Some(Job::System)) {
-            self.install_plan(&session, review.changes, &review.aur_packages);
         }
         self.listeners.notify();
         self.output_listeners.notify();
@@ -122,13 +151,7 @@ impl Updates {
         if self.job.get().is_none() || self.is_installing.get() {
             return;
         }
-        self.review.take();
-        let session = self.session.borrow().clone();
-        match session {
-            Some(session) => session.stop_early(),
-            None => self.abandon(),
-        }
-        self.listeners.notify();
+        self.abandon();
     }
 
     pub(super) fn abandon(&self) {

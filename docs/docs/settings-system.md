@@ -240,7 +240,7 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 
 | Section | Row under the title | Update runs |
 |---|---|---|
-| System | **Packages**: how many packages can be upgraded, from the repositories and from AUR; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `pkexec /usr/lib/proscenio/proscenio-packages session`, which lists and then upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
+| System | **Packages**: how many packages can be upgraded, from the repositories and from AUR; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `/usr/lib/proscenio/proscenio-packages plan ~/.cache/proscenio/pacman` lists the upgrade without a password; after the list is confirmed, `pkexec /usr/lib/proscenio/proscenio-packages session` upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
 | Shell | **Commits**: how many commits `main` is ahead | after the commits are listed and confirmed, downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm` in a root session of `proscenio-packages`, then restarts `proscenio.service` |
 
 ![The Packages subpage listing the pending packages with their old and new versions](/img/screenshots/settings-system-update-packages.webp)
@@ -262,8 +262,9 @@ when its last item goes reads **Up to date**. Updates run without a terminal, in
 of their own so that restarting the shell does not stop them, and one at a time: every **Update**
 button is disabled while one runs.
 
-Each update asks for the password once, through polkit's action `dev.fEst.Proscenio.packages`, in
-the shell's own dialog, by opening a root session of `proscenio-packages`. Whatever the update
+Each update asks for the password once, after its confirmation dialog, through polkit's action
+`dev.fEst.Proscenio.packages`, in the shell's own dialog, by opening a root session of
+`proscenio-packages`. Whatever the update
 builds installs through that session: `paru`, `yay` and `makepkg` get
 `/usr/lib/proscenio/proscenio-packages` as their `sudo` or `PACMAN_AUTH`, which passes their calls to
 `pacman` on to the session over an abstract Unix socket, and only with the session's random token,
@@ -272,21 +273,22 @@ user who opened it that descends from the `paru`, `yay` or build the shell start
 and holds at most 8 unanswered connections. An install of package files goes through libalpm; any
 other call runs `/usr/bin/pacman` in the session. The session ends with the update.
 
-**Update** under System refreshes before it installs anything. It opens the root session, which asks
-for the password, synchronizes the databases and plans the upgrade there, and lists the AUR packages
-(see below). The counts and lists of this page and of the [sidebar](sidebar.md#updates) show the
-refreshed result, and a dialog shows what the update would install, the same list the update
-installs. Under **Repositories** each package of the
-transaction has its installed and its new version; a package that comes in as a dependency has its
-new version alone, and a package the transaction removes reads **removed** in place of a new
-version. Under **AUR** come the packages `paru -Qua` or `yay -Qua` lists. **Update N packages**
-installs the list; N counts the dependencies and removals as well, so it can be more than the count on
-the **Packages** row. **Cancel**, Escape, a click outside the dialog and closing the Settings window
-end the session without installing anything, and so does closing the window while the refresh runs.
-When the refresh finds nothing, no dialog opens and the output below reads **Up to date**. When the
-AUR listing fails, the update stops there and the output reads **Could not check for updates**; when
-the session cannot refresh, such as with no network, the output reads **Failed** and the log names
-the error. Either message stays until the next check or update.
+**Update** under System refreshes before it installs anything, without a password.
+`proscenio-packages plan` synchronizes the private copy of the package databases, the one the
+[check](sidebar.md#updates) keeps in `~/.cache/proscenio/pacman`, and plans the upgrade there as the
+user, while `paru -Qua` or `yay -Qua` lists the AUR packages (see below). The counts and lists of
+this page and of the [sidebar](sidebar.md#updates) show the refreshed result, and a dialog shows
+what the update would install, the same list the update installs. Under **Repositories** each
+package of the transaction has its installed and its new version; a package that comes in as a
+dependency has its new version alone, and a package the transaction removes reads **removed** in
+place of a new version. Under **AUR** come the packages `paru -Qua` or `yay -Qua` lists.
+**Update N packages** asks for the password and installs the list; N counts the dependencies and
+removals as well, so it can be more than the count on the **Packages** row. **Cancel**, Escape, a
+click outside the dialog and closing the Settings window end the update before any password is
+asked for, and so does closing the window while the refresh runs. When the refresh finds nothing, no dialog opens and the
+output below reads **Up to date**. When the AUR listing fails, the update stops there and the
+output reads **Could not check for updates**; so it does when the plan fails, such as with no
+network, and the log names the error. Either message stays until the next check or update.
 
 A package reads **Needs a reboot** beside its versions, and a line above the list counts those
 packages, when it is installed and any of these holds:
@@ -302,21 +304,39 @@ The file list is the `files` entry of the installed version in `/var/lib/pacman/
 the new version are not known before it downloads, and a package that comes in as a dependency has
 no installed version.
 
-A system update upgrades the packages it listed, no others. The session first synchronizes the
-repository databases into `proscenio-stage` inside the pacman database folder, a copy of the system
-databases with their times so that unchanged ones are not downloaded again, which leaves the system
-databases as they are, and plans the same upgrade as `pacman -Syu` there: the packages to
-upgrade, to install as dependencies and to remove. `paru -Qua` or `yay -Qua` lists the AUR packages
-at the same time. The shell then sends the repository list back to the session. The session takes
-pacman's `db.lck`, which stops the update when another package manager holds it, plans the upgrade
-again in the staged copy and refuses to go on when it differs from the list in any package or
-version, such as when the repositories or the installed packages changed in between: nothing is
+A system update upgrades the packages it listed, no others, from the databases it listed them
+from. `proscenio-packages plan` plans the same upgrade as `pacman -Syu` in the private copy of the
+databases: the packages to upgrade, to install as dependencies and to remove. The shell sends that
+list and the path of the copy to the root session, which downloads no database. The session copies
+the `.db` and `.db.sig` files that the repositories of `pacman.conf` have in the copy's `sync`
+folder into `proscenio-stage` inside the pacman database folder, which also links the system's
+installed packages, with their times. It refuses the copy when:
+
+- the path is not inside the home folder `/etc/passwd` gives the user who opened the session, or
+  contains `..`;
+- the home folder is not a folder or belongs to another user;
+- a folder below the home folder on the way, or the `sync` folder, is not a folder, is a symbolic
+  link, or belongs to another user;
+- a database is a symbolic link, is not a regular file, or belongs to another user;
+- a database file is larger than 256 MiB, the files together are larger than 512 MiB, or the folder
+  holds more than 128 database files or none;
+- a database the copy holds lacks the `.db.sig` file the system `sync` folder has for it, so a
+  signed database cannot be replaced by an unsigned one.
+
+Each file is copied from the file as opened, and must belong to the user, so a change made to the
+copy afterwards does not reach the stage. `plan` checks the path and the folders on the way
+the same way before the password is asked for. The session takes pacman's `db.lck`, which stops the
+update when another package manager holds it, plans the upgrade in the staged copy and refuses to
+go on when it differs from the list in any package or version, such as when the repositories or the
+installed packages changed since the list was made, or when the copy was changed: nothing is
 installed, the system databases stay as they are and the log names the packages that differ.
-Otherwise it moves the staged databases into the system folder, plans once more against them and
-commits the transaction if it still equals the list, without a second synchronization. When the AUR
-listing fails, the update stops before it installs anything. The AUR step installs the listed AUR
-packages by name, with the version AUR has when it builds them. The staged copy is removed when the
-session ends and replaced by the next update's.
+libalpm checks the signatures of the staged databases when it loads them, as the `SigLevel` of
+`pacman.conf` requires; with the default `DatabaseOptional`, a repository whose system folder has
+no signature file may also come without one. Otherwise the session moves the staged databases into
+the system folder, plans once more against them and commits the transaction if it still equals the
+list, without a synchronization. When the AUR listing fails, the update stops before it installs
+anything. The AUR step installs the listed AUR packages by name, with the version AUR has when it
+builds them. The staged copy is removed when the session ends and replaced by the next update's.
 
 **Update** under Shell also refreshes first, without a password: it asks the GitHub API for the
 commits again, which updates the count and the list on this page and in the

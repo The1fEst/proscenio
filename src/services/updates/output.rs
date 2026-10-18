@@ -1,5 +1,5 @@
 use gtk4::glib;
-use proscenio_protocol::{Decoder, Error, Event};
+use proscenio_protocol::{Decoder, Error, Event, Stage};
 use std::cell::Cell;
 use std::process::ChildStdout;
 use std::rc::Rc;
@@ -76,6 +76,16 @@ pub(super) fn watch_output(
             glib::ControlFlow::Break
         });
     });
+}
+
+pub(super) fn stage_text(stage: Stage) -> &'static str {
+    match stage {
+        Stage::Synchronize => ":: Synchronizing package databases...",
+        Stage::Prepare => ":: Resolving dependencies...",
+        Stage::Download => ":: Retrieving packages...",
+        Stage::Install => ":: Processing package changes...",
+        Stage::Hooks => ":: Running post-transaction hooks...",
+    }
 }
 
 pub(super) fn visible_text(line: &str) -> String {

@@ -6,6 +6,7 @@ use std::io::{Read, Write};
 use std::os::fd::AsRawFd;
 use std::os::linux::net::SocketAddrExt;
 use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
@@ -14,7 +15,7 @@ use crate::errors::format_error;
 use crate::output::{emit, finish};
 use crate::pacman::run;
 use crate::stage::discard_stage;
-use crate::transaction::{plan, upgrade};
+use crate::transaction::upgrade;
 
 const FORWARD_TIMEOUT: Duration = Duration::from_secs(5);
 const ACCEPT_RETRY_DELAY: Duration = Duration::from_millis(100);
@@ -130,26 +131,13 @@ pub fn run_session() -> Result<(), String> {
         }
     });
 
-    let mut has_plan = false;
     for work in receiver {
         match work {
-            Work::Request(Request::Plan) => {
-                has_plan = false;
-                match plan() {
-                    Ok(()) => has_plan = true,
-                    Err(message) => {
-                        finish(Err(message));
-                    }
-                }
-            }
-            Work::Request(Request::Upgrade(confirmed)) => {
-                let result = if has_plan {
-                    upgrade(&confirmed)
-                } else {
-                    Err("the packages to update were not listed first".to_owned())
-                };
-                has_plan = false;
-                finish(result);
+            Work::Request(Request::Upgrade {
+                changes,
+                private_path,
+            }) => {
+                finish(upgrade(&changes, Path::new(&private_path), session_uid));
                 discard_stage();
             }
             Work::Request(Request::Quit) | Work::Closed => break,

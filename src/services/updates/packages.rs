@@ -1,10 +1,10 @@
 use gtk4::glib;
-use proscenio_protocol::Change;
-use std::path::Path;
+use proscenio_protocol::{Change, Decoder, Event};
+use std::path::{Path, PathBuf};
 use std::process::Output;
 
-use super::manager::{aur_query, package_manager, repository_query};
-use super::output::visible_text;
+use super::manager::{aur_query, build_plan_query, package_manager, repository_query};
+use super::output::{decode_events, stage_text, visible_text};
 use super::{Job, Notice, Updates};
 use crate::core::{paths, process};
 
@@ -40,7 +40,7 @@ impl Updates {
 
     async fn load_package_lists(&self) {
         let manager = package_manager();
-        let database = paths::cache().join("pacman");
+        let database = private_database_dir();
         let Some(manager) = manager.filter(|_| prepare(&database)) else {
             self.has_package_manager.set(manager.is_some());
             self.has_package_check_failed.set(manager.is_some());
@@ -67,6 +67,37 @@ impl Updates {
         self.listeners.notify();
     }
 
+    pub(super) async fn load_system_plan(&self) -> Result<SystemPlan, String> {
+        let manager =
+            package_manager().ok_or_else(|| "no package manager is installed".to_owned())?;
+        let database = private_database_dir();
+        if !prepare(&database) {
+            return Err(format!("could not prepare {}", database.display()));
+        }
+        let database = database.to_string_lossy().into_owned();
+        let query = build_plan_query(&database);
+        self.push_log(&format!("$ {}", query.join(" ")));
+        let aur_listing = glib::spawn_future_local(query_aur_packages(manager));
+        let output = process::capture(process::command(&query))
+            .await
+            .ok_or_else(|| format!("could not run {}", query[0]))?;
+        if !output.status.success() {
+            let message = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+            return Err(if message.is_empty() {
+                format!("{} exited with {}", query[0], output.status)
+            } else {
+                message
+            });
+        }
+        let (changes, log_lines) = parse_plan(&output.stdout)
+            .ok_or_else(|| format!("could not read the plan of {}", query[0]))?;
+        Ok(SystemPlan {
+            changes,
+            aur_packages: aur_listing.await.ok().flatten(),
+            log_lines,
+        })
+    }
+
     pub(super) fn show_plan(&self, changes: &[Change], aur_packages: Vec<String>) {
         self.has_package_manager.set(true);
         self.has_package_check_failed.set(false);
@@ -82,6 +113,34 @@ pub(super) async fn query_aur_packages(manager: &str) -> Option<Vec<String>> {
         Some(query) => query_pending_packages(&query, has_aur_query_failed).await,
         None => Some(Vec::new()),
     }
+}
+
+pub(super) struct SystemPlan {
+    pub(super) changes: Vec<Change>,
+    pub(super) aur_packages: Option<Vec<String>>,
+    pub(super) log_lines: Vec<String>,
+}
+
+pub(super) fn private_database_dir() -> PathBuf {
+    paths::cache().join("pacman")
+}
+
+fn parse_plan(stdout: &[u8]) -> Option<(Vec<Change>, Vec<String>)> {
+    let mut decoder = Decoder::default();
+    let messages = decode_events(&mut decoder, Some(stdout))
+        .into_iter()
+        .chain(decode_events(&mut decoder, None));
+    let mut changes = None;
+    let mut lines = Vec::new();
+    for message in messages {
+        match message.ok()? {
+            Event::Planned(planned) => changes = Some(planned),
+            Event::Stage(stage) => lines.push(stage_text(stage).to_owned()),
+            Event::Line(line) => lines.push(visible_text(&line)),
+            _ => {}
+        }
+    }
+    Some((changes?, lines))
 }
 
 fn is_package_check_allowed(running_job: Option<Job>) -> bool {
@@ -170,6 +229,7 @@ pub fn version_change(line: &str) -> Option<(&str, &str, &str)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proscenio_protocol::{Message, Stage};
 
     #[test]
     fn the_pending_packages_are_the_upgradable_ones_but_not_the_ignored_ones() {
@@ -259,6 +319,45 @@ mod tests {
         assert_eq!(lines, ["appstream 1.2.0-1 -> 1.2.1-1"]);
         assert_eq!(parse_pending_packages(&lines.join("\n")), lines);
         assert!(list_upgrade_lines(&[]).is_empty());
+    }
+
+    #[test]
+    fn a_plan_is_read_from_the_helper_frames_with_the_lines_for_the_log() {
+        let changes = vec![
+            Change::new("linux", "7.2.9-1", "7.2.10-1"),
+            Change::new("libnew", "", "1.0-1"),
+            Change::new("oldlib", "2.0-1", ""),
+        ];
+        let mut stdout = Event::Stage(Stage::Synchronize).encode();
+        stdout.extend(Event::Line("warning: skipped \x1b[0m".to_owned()).encode());
+        stdout.extend(
+            Event::Download {
+                received_bytes: 1,
+                total_bytes: 2,
+            }
+            .encode(),
+        );
+        stdout.extend(Event::Planned(changes.clone()).encode());
+        assert_eq!(
+            parse_plan(&stdout),
+            Some((
+                changes.clone(),
+                vec![
+                    ":: Synchronizing package databases...".to_owned(),
+                    "warning: skipped ".to_owned()
+                ]
+            ))
+        );
+        assert_eq!(
+            parse_plan(&Event::Planned(Vec::new()).encode()),
+            Some((Vec::new(), Vec::new()))
+        );
+
+        let frame = Event::Planned(changes).encode();
+        assert_eq!(parse_plan(&frame[..frame.len() - 1]), None);
+        assert_eq!(parse_plan(&Event::Stage(Stage::Prepare).encode()), None);
+        assert_eq!(parse_plan(&[1, 0, 0, 0, 99]), None);
+        assert_eq!(parse_plan(&[]), None);
     }
 
     #[test]

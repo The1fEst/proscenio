@@ -44,6 +44,7 @@ pub struct Updates {
     pub notice: Rc<Cell<Option<Notice>>>,
     session: Rc<RefCell<Option<Rc<Session>>>>,
     start_time_micros: Rc<Cell<i64>>,
+    start_count: Rc<Cell<u32>>,
     pub last_job_succeeded: Rc<Cell<Option<bool>>>,
     pub log: Rc<RefCell<String>>,
     pub progress: Rc<RefCell<Option<UpdateProgress>>>,
@@ -71,6 +72,7 @@ impl Updates {
             notice: Rc::default(),
             session: Rc::default(),
             start_time_micros: Rc::default(),
+            start_count: Rc::default(),
             last_job_succeeded: Rc::default(),
             log: Rc::default(),
             progress: Rc::default(),
@@ -152,12 +154,11 @@ impl Updates {
         self.review.take();
         self.is_installing.set(false);
         self.start_time_micros.set(glib::monotonic_time());
-        if job == Job::System && !self.start_session(job) {
-            return;
-        }
+        self.start_count.set(self.start_count.get().wrapping_add(1));
         self.job.set(Some(job));
-        if job == Job::Shell {
-            self.review_shell();
+        match job {
+            Job::System => self.review_system(),
+            Job::Shell => self.review_shell(),
         }
         self.listeners.notify();
         self.output_listeners.notify();

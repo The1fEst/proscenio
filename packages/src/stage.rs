@@ -18,11 +18,10 @@ pub fn prepare_stage(db_path: &Path) -> Result<PathBuf, String> {
     std::fs::create_dir(&staged_sync).map_err(|error| describe_path_error(&staged_sync, error))?;
     std::os::unix::fs::symlink(db_path.join(LOCAL_DIR), stage.join(LOCAL_DIR))
         .map_err(|error| describe_path_error(&stage, error))?;
-    seed_stage_databases(&db_path.join(SYNC_DIR), &staged_sync)?;
     Ok(stage)
 }
 
-fn list_databases(sync: &Path) -> Result<Vec<PathBuf>, String> {
+pub fn list_databases(sync: &Path) -> Result<Vec<PathBuf>, String> {
     let mut databases = Vec::new();
     for entry in std::fs::read_dir(sync).map_err(|error| describe_path_error(sync, error))? {
         let path = entry
@@ -39,21 +38,21 @@ fn list_databases(sync: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(databases)
 }
 
-fn seed_stage_databases(system_sync: &Path, staged_sync: &Path) -> Result<(), String> {
+pub fn require_signatures(system_sync: &Path, staged_sync: &Path) -> Result<(), String> {
     for path in list_databases(system_sync)? {
-        let Some(name) = path.file_name() else {
+        let Some(name) = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .filter(|name| name.ends_with(".db.sig"))
+        else {
             continue;
         };
-        let target = staged_sync.join(name);
-        let modified = std::fs::metadata(&path)
-            .and_then(|metadata| metadata.modified())
-            .map_err(|error| describe_path_error(&path, error))?;
-        std::fs::copy(&path, &target).map_err(|error| describe_path_error(&path, error))?;
-        std::fs::File::options()
-            .write(true)
-            .open(&target)
-            .and_then(|file| file.set_modified(modified))
-            .map_err(|error| describe_path_error(&target, error))?;
+        let is_staged = staged_sync.join(name.trim_end_matches(".sig")).exists();
+        if is_staged && !staged_sync.join(name).exists() {
+            return Err(format!(
+                "the databases to install lack {name}, which the system databases have"
+            ));
+        }
     }
     Ok(())
 }
@@ -74,6 +73,15 @@ pub fn find_system_database_path() -> Result<PathBuf, String> {
     Ok(PathBuf::from(pacman_config.db_path))
 }
 
+pub fn find_repository_names() -> Result<Vec<String>, String> {
+    let pacman_config = pacmanconf::Config::new().map_err(format_error)?;
+    Ok(pacman_config
+        .repos
+        .into_iter()
+        .map(|repository| repository.name)
+        .collect())
+}
+
 pub fn path_to_str(path: &Path) -> Result<&str, String> {
     path.to_str()
         .ok_or_else(|| format!("{} is not valid text", path.display()))
@@ -89,7 +97,6 @@ pub fn discard_stage() {
 mod tests {
     use super::*;
     use crate::handle::ALPM_LOCK;
-    use std::time::Duration;
 
     fn make_scratch_folder(name: &str) -> PathBuf {
         let directory =
@@ -100,44 +107,54 @@ mod tests {
     }
 
     #[test]
-    fn a_fresh_stage_shares_the_installed_packages_and_starts_from_the_system_databases() {
+    fn a_fresh_stage_shares_the_installed_packages_and_starts_without_databases() {
         let db_path = make_scratch_folder("stage");
         let stage = db_path.join(STAGE_DIR);
         std::fs::create_dir_all(stage.join(SYNC_DIR)).unwrap();
         std::fs::write(stage.join(SYNC_DIR).join("extra.db"), "earlier stage").unwrap();
         std::fs::write(stage.join(ALPM_LOCK), "").unwrap();
         std::fs::create_dir_all(db_path.join(SYNC_DIR)).unwrap();
-        let synced_time = std::time::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
-        let system_core = db_path.join(SYNC_DIR).join("core.db");
-        std::fs::write(&system_core, "system core").unwrap();
-        std::fs::write(db_path.join(SYNC_DIR).join("core.db.sig"), "signature").unwrap();
-        std::fs::write(db_path.join(SYNC_DIR).join("core.db.part"), "download").unwrap();
-        std::fs::File::options()
-            .write(true)
-            .open(&system_core)
-            .unwrap()
-            .set_modified(synced_time)
-            .unwrap();
+        std::fs::write(db_path.join(SYNC_DIR).join("core.db"), "system core").unwrap();
 
         let prepared = prepare_stage(&db_path);
         let staged_sync = stage.join(SYNC_DIR);
-        let mut names: Vec<_> = std::fs::read_dir(&staged_sync)
-            .unwrap()
-            .map(|entry| entry.unwrap().file_name().into_string().unwrap())
-            .collect();
-        names.sort();
-        let staged_core = staged_sync.join("core.db");
-        let content = std::fs::read_to_string(&staged_core).ok();
-        let staged_time = std::fs::metadata(&staged_core).and_then(|data| data.modified());
+        let staged_count = std::fs::read_dir(&staged_sync).unwrap().count();
         let local = std::fs::read_link(stage.join(LOCAL_DIR));
         let has_lock = stage.join(ALPM_LOCK).exists();
         std::fs::remove_dir_all(&db_path).unwrap();
         assert_eq!(prepared, Ok(stage));
-        assert_eq!(names, ["core.db", "core.db.sig"]);
-        assert_eq!(content.as_deref(), Some("system core"));
-        assert_eq!(staged_time.ok(), Some(synced_time));
+        assert_eq!(staged_count, 0);
         assert_eq!(local.ok(), Some(db_path.join(LOCAL_DIR)));
         assert!(!has_lock);
+    }
+
+    #[test]
+    fn a_database_signed_in_the_system_folder_stays_signed_in_the_stage() {
+        let directory = make_scratch_folder("signatures");
+        let (staged, system) = (directory.join("staged"), directory.join("system"));
+        std::fs::create_dir_all(&staged).unwrap();
+        std::fs::create_dir_all(&system).unwrap();
+        for name in ["core.db", "core.db.sig", "extra.db"] {
+            std::fs::write(system.join(name), "").unwrap();
+        }
+        for name in ["core.db", "extra.db", "extra.db.sig"] {
+            std::fs::write(staged.join(name), "").unwrap();
+        }
+
+        let unsigned_result = require_signatures(&system, &staged);
+        std::fs::write(staged.join("core.db.sig"), "").unwrap();
+        let signed_result = require_signatures(&system, &staged);
+        std::fs::remove_file(system.join("core.db.sig")).unwrap();
+        std::fs::remove_file(staged.join("core.db.sig")).unwrap();
+        let never_signed_result = require_signatures(&system, &staged);
+        std::fs::write(system.join("removed.db.sig"), "").unwrap();
+        let orphaned_result = require_signatures(&system, &staged);
+        std::fs::remove_dir_all(&directory).unwrap();
+
+        assert!(unsigned_result.unwrap_err().contains("core.db.sig"));
+        assert_eq!(signed_result, Ok(()));
+        assert_eq!(never_signed_result, Ok(()));
+        assert_eq!(orphaned_result, Ok(()));
     }
 
     #[test]

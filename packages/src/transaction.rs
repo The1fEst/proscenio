@@ -6,9 +6,10 @@ use crate::changes::{collect_changes, compare_changes};
 use crate::errors::format_error;
 use crate::handle::{open_alpm, watch};
 use crate::output::emit;
+use crate::private_database::{copy_databases, find_home};
 use crate::stage::{
-    STAGE_DIR, SYNC_DIR, find_system_database_path, install_staged_databases, path_to_str,
-    prepare_stage,
+    SYNC_DIR, find_repository_names, find_system_database_path, install_staged_databases,
+    path_to_str, prepare_stage, require_signatures,
 };
 
 pub fn plan_changes(alpm: &mut Alpm) -> Result<Vec<Change>, String> {
@@ -25,27 +26,27 @@ pub fn plan_changes(alpm: &mut Alpm) -> Result<Vec<Change>, String> {
     result
 }
 
-pub fn plan() -> Result<(), String> {
-    let stage = prepare_stage(&find_system_database_path()?)?;
-    let mut alpm = open_alpm(Some(path_to_str(&stage)?))?;
-    watch(&alpm);
-    emit(&Event::Stage(Stage::Synchronize));
-    alpm.syncdbs_mut().update(false).map_err(format_error)?;
-    emit(&Event::Stage(Stage::Prepare));
-    emit(&Event::Planned(plan_changes(&mut alpm)?));
-    Ok(())
-}
-
-pub fn upgrade(confirmed: &[Change]) -> Result<(), String> {
-    let database_path = find_system_database_path()?;
-    let stage = database_path.join(STAGE_DIR);
+pub fn upgrade(confirmed: &[Change], private_path: &Path, uid: u32) -> Result<(), String> {
+    let system_path = find_system_database_path()?;
+    let system_sync = system_path.join(SYNC_DIR);
     let mut alpm = open_alpm(None)?;
     watch(&alpm);
     emit(&Event::Stage(Stage::Prepare));
     alpm.trans_init(TransFlag::NONE).map_err(format_error)?;
-    let result = verify_stage(&stage, confirmed)
-        .and_then(|()| {
-            install_staged_databases(&stage.join(SYNC_DIR), &database_path.join(SYNC_DIR))
+    let result = prepare_stage(&system_path)
+        .and_then(|stage| {
+            let staged_sync = stage.join(SYNC_DIR);
+            let repositories = find_repository_names()?;
+            copy_databases(
+                private_path,
+                &find_home(uid)?,
+                uid,
+                &repositories,
+                &staged_sync,
+            )?;
+            require_signatures(&system_sync, &staged_sync)?;
+            verify_stage(&stage, confirmed)?;
+            install_staged_databases(&staged_sync, &system_sync)
         })
         .and_then(|()| alpm.sync_sysupgrade(false).map_err(format_error))
         .and_then(|()| commit(&mut alpm, Some(confirmed)));
