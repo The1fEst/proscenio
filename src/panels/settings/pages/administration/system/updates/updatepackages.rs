@@ -18,6 +18,7 @@ const ROW_START: i32 = 12;
 const ROW_END: i32 = 12;
 const ROW_SPACING: i32 = 12;
 const VERSION_SPACING: i32 = 4;
+const REBOOT_START: i32 = 8;
 const COPY_SIZE: i32 = 32;
 const COPY_ICON: f64 = 20.0;
 const COPY_RESET: Duration = Duration::from_millis(1500);
@@ -38,7 +39,10 @@ pub fn build(context: &Context) -> Rc<Page> {
         move || {
             let repository_packages = updates.repository_packages.borrow();
             let aur_packages = updates.aur_packages.borrow();
-            let build_row = |line: &String| package_row(&theme, line);
+            let build_row = |line: &String| {
+                let (name, from, to) = version_change(line).unwrap_or((line, "", ""));
+                package_row(&theme, name, from, to, false)
+            };
             fill(&repository_section, &repository_packages, build_row);
             fill(&aur_section, &aur_packages, build_row);
             let has_check_failed = updates.has_package_check_failed.get();
@@ -134,21 +138,40 @@ pub fn card(icon: &str, title: &str, is_title_selectable: bool) -> (gtk4::Box, g
     (card, lines)
 }
 
-fn package_row(theme: &SharedTheme, line: &str) -> gtk4::Box {
-    let (name, from, to) = version_change(line).unwrap_or((line, "", ""));
+pub fn package_row(
+    theme: &SharedTheme,
+    name: &str,
+    from: &str,
+    to: &str,
+    needs_reboot: bool,
+) -> gtk4::Box {
     let (card, lines) = card("deployed_code", name, true);
     let versions = gtk4::Box::new(gtk4::Orientation::Horizontal, VERSION_SPACING);
+    let arrow = if from.is_empty() || to.is_empty() {
+        ""
+    } else {
+        "→"
+    };
     for (part, color) in [
         (from, "colSubtext"),
-        ("→", "colSubtext"),
+        (arrow, "colSubtext"),
         (to, "colPrimary"),
     ] {
+        if part.is_empty() {
+            continue;
+        }
         let label = text::styled_sized(part, pixel_size::SMALLER);
         text::set_color(&label, color);
         label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
         versions.append(&label);
     }
-    versions.set_visible(!to.is_empty());
+    if needs_reboot {
+        let reboot_label = text::styled_sized(&tr("Needs a reboot"), pixel_size::SMALLER);
+        text::set_color(&reboot_label, "colError");
+        reboot_label.set_margin_start(REBOOT_START);
+        versions.append(&reboot_label);
+    }
+    versions.set_visible(versions.first_child().is_some());
     lines.append(&versions);
     card.append(&copy_button(theme, name));
     card

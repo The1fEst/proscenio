@@ -269,6 +269,36 @@ user who opened it that descends from the `paru`, `yay` or build the shell start
 and holds at most 8 unanswered connections. An install of package files goes through libalpm; any
 other call runs `/usr/bin/pacman` in the session. The session ends with the update.
 
+**Update** under System refreshes before it installs anything. It opens the root session, which asks
+for the password, synchronizes the databases and plans the upgrade there, and lists the AUR packages
+(see below). The counts and lists of this page and of the [sidebar](sidebar.md#updates) show the
+refreshed result, and a dialog shows what the update would install, the same list the update
+installs. Under **Repositories** each package of the
+transaction has its installed and its new version; a package that comes in as a dependency has its
+new version alone, and a package the transaction removes reads **removed** in place of a new
+version. Under **AUR** come the packages `paru -Qua` or `yay -Qua` lists. **Update N packages**
+installs the list; N counts the dependencies and removals as well, so it can be more than the count on
+the **Packages** row. **Cancel**, Escape, a click outside the dialog and closing the Settings window
+end the session without installing anything, and so does closing the window while the refresh runs.
+When the refresh finds nothing, no dialog opens and the output below reads **Up to date**. When the
+AUR listing fails, the update stops there and the output reads **Could not check for updates**; when
+the session cannot refresh, such as with no network, the output reads **Failed** and the log names
+the error. Either message stays until the next check or update.
+
+A package reads **Needs a reboot** beside its versions, and a line above the list counts those
+packages, when it is installed and any of these holds:
+
+- Its installed version ships a kernel image, `usr/lib/modules/<release>/vmlinuz`, or a kernel
+  module, a `.ko` file with or without `.zst`, `.xz` or `.gz`, under `usr/lib/modules` outside a
+  `build` folder. That covers the kernel packages and prebuilt drivers such as `nvidia-open`.
+- Its installed version ships DKMS sources, `usr/src/<folder>/dkms.conf`.
+- Its name ends in `-ucode`, the CPU microcode, or in `-dkms`.
+- It is `systemd` or `glibc`.
+
+The file list is the `files` entry of the installed version in `/var/lib/pacman/local`; the files of
+the new version are not known before it downloads, and a package that comes in as a dependency has
+no installed version.
+
 A system update upgrades the packages it listed, no others. The session first synchronizes the
 repository databases into `proscenio-stage` inside the pacman database folder, a copy of the system
 databases with their times so that unchanged ones are not downloaded again, which leaves the system
@@ -285,8 +315,9 @@ listing fails, the update stops before it installs anything. The AUR step instal
 packages by name, with the version AUR has when it builds them. The staged copy is removed when the
 session ends and replaced by the next update's.
 
-**Update** appears once an update has started. It reads **Updating…** while the update runs, then
-**Done** or **Failed** by its exit status. During a system update a bar shows the progress, with
+**Update** appears once an update has started. It reads **Checking for updates…** while the session
+refreshes and the dialog is open, **Updating…** while the update runs, then **Done** or **Failed**
+by its exit status. During a system update a bar shows the progress once the dialog is confirmed, with
 the step under it: checking, downloading by bytes, installing package by package, running hooks, or
 building an AUR package. The repositories and AUR share the bar, half each when both have packages;
 a source with nothing to install keeps a tenth for its check. Within a source, the check takes a

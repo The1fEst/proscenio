@@ -8,7 +8,7 @@ use std::rc::Rc;
 use super::manager::{aur_query, aur_upgrade, package_manager};
 use super::output::{decode_events, elapsed_text, exit_code, visible_text, watch_output};
 use super::packages::{query_aur_packages, version_change};
-use super::{BRANCH, HELPER, Job, REPOSITORY, Updates};
+use super::{BRANCH, HELPER, Job, Notice, REPOSITORY, Updates};
 use crate::core::i18n::trf;
 use crate::core::{paths, process};
 use crate::services::updates::updateprogress::UpdateProgress;
@@ -30,7 +30,7 @@ enum AurListing {
     Listed(Vec<String>),
 }
 
-struct Session {
+pub(super) struct Session {
     stdin: RefCell<Option<ChildStdin>>,
     job: Job,
     manager: &'static str,
@@ -41,12 +41,18 @@ struct Session {
     includes_aur: Cell<bool>,
     is_forwarding: Cell<bool>,
     is_ok: Cell<bool>,
+    is_abandoned: Cell<bool>,
     package_index: Cell<u32>,
 }
 
 impl Session {
-    fn is_open(&self) -> bool {
+    pub(super) fn is_open(&self) -> bool {
         self.stdin.borrow().is_some()
+    }
+
+    pub(super) fn stop_early(&self) {
+        self.is_abandoned.set(true);
+        self.close();
     }
 
     fn send(&self, request: Request) {
@@ -62,8 +68,8 @@ impl Session {
 }
 
 impl Updates {
-    fn end(&self, status: i32, start_time_micros: i64) {
-        let elapsed = elapsed_text(glib::monotonic_time() - start_time_micros);
+    fn end(&self, status: i32) {
+        let elapsed = elapsed_text(glib::monotonic_time() - self.start_time_micros.get());
         let summary = match exit_code(status) {
             Some(0) => trf("Finished in %1", &[&elapsed]),
             Some(code) => trf(
@@ -78,6 +84,8 @@ impl Updates {
             progress.finish();
         }
         self.push_log(&format!("\n{summary}"));
+        self.session.take();
+        self.review.take();
         self.job.set(None);
         self.last_job_succeeded.set(Some(status == 0));
         self.listeners.notify();
@@ -116,7 +124,7 @@ impl Updates {
         Some(child.id())
     }
 
-    pub(super) fn start_session(&self, start_time_micros: i64, job: Job) -> bool {
+    pub(super) fn start_session(&self, job: Job) -> bool {
         let Some(manager) = package_manager() else {
             return false;
         };
@@ -140,8 +148,10 @@ impl Updates {
             includes_aur: Cell::new(false),
             is_forwarding: Cell::new(false),
             is_ok: Cell::new(true),
+            is_abandoned: Cell::new(false),
             package_index: Cell::new(0),
         });
+        self.session.replace(Some(session.clone()));
 
         let mut decoder = Decoder::default();
         let updates = self.clone();
@@ -160,12 +170,16 @@ impl Updates {
         let updates = self.clone();
         let pid = glib::Pid(child.id() as i32);
         watch_output(stdout, pid, on_bytes, move |code| {
+            if session.is_abandoned.get() {
+                updates.abandon();
+                return;
+            }
             let status = if code == 0 && !session.is_ok.get() {
                 1 << 8
             } else {
                 code
             };
-            updates.end(status, start_time_micros);
+            updates.end(status);
         });
         true
     }
@@ -265,17 +279,28 @@ impl Updates {
             AurListing::Pending => {}
             AurListing::Failed => {
                 self.push_log("Could not list the AUR packages to update");
-                session.is_ok.set(false);
-                session.close();
+                self.notice.set(Some(Notice::CheckFailed));
+                self.has_package_check_failed.set(true);
+                session.stop_early();
             }
             AurListing::Listed(aur_packages) => {
                 self.show_plan(&changes, aur_packages.clone());
-                self.install_plan(session, changes, &aur_packages);
+                if changes.is_empty() && aur_packages.is_empty() {
+                    self.notice.set(Some(Notice::UpToDate));
+                    session.stop_early();
+                } else {
+                    self.open_review(session, changes, aur_packages);
+                }
             }
         }
     }
 
-    fn install_plan(&self, session: &Rc<Session>, changes: Vec<Change>, aur_packages: &[String]) {
+    pub(super) fn install_plan(
+        &self,
+        session: &Rc<Session>,
+        changes: Vec<Change>,
+        aur_packages: &[String],
+    ) {
         let aur_names: Vec<String> = aur_packages
             .iter()
             .filter_map(|line| version_change(line))

@@ -2,6 +2,8 @@ mod commits;
 pub mod manager;
 mod output;
 pub mod packages;
+mod reboot;
+mod review;
 mod runner;
 pub mod updateprogress;
 
@@ -15,6 +17,8 @@ use crate::core::{config, watch};
 use crate::services::updates::updateprogress::UpdateProgress;
 
 pub use commits::Commit;
+pub use review::{Notice, Review};
+use runner::Session;
 
 pub const REPOSITORY: &str = "The1fEst/proscenio";
 const BRANCH: &str = "main";
@@ -35,6 +39,11 @@ pub struct Updates {
     pub commits_behind: Rc<Cell<i32>>,
     pub commits: Rc<RefCell<Vec<Commit>>>,
     pub job: Rc<Cell<Option<Job>>>,
+    pub is_installing: Rc<Cell<bool>>,
+    pub review: Rc<RefCell<Option<Review>>>,
+    pub notice: Rc<Cell<Option<Notice>>>,
+    session: Rc<RefCell<Option<Rc<Session>>>>,
+    start_time_micros: Rc<Cell<i64>>,
     pub last_job_succeeded: Rc<Cell<Option<bool>>>,
     pub log: Rc<RefCell<String>>,
     pub progress: Rc<RefCell<Option<UpdateProgress>>>,
@@ -57,6 +66,11 @@ impl Updates {
             commits_behind: Rc::new(Cell::new(0)),
             commits: Rc::default(),
             job: Rc::default(),
+            is_installing: Rc::default(),
+            review: Rc::default(),
+            notice: Rc::default(),
+            session: Rc::default(),
+            start_time_micros: Rc::default(),
             last_job_succeeded: Rc::default(),
             log: Rc::default(),
             progress: Rc::default(),
@@ -130,12 +144,11 @@ impl Updates {
         self.log.borrow_mut().clear();
         self.progress.replace(None);
         self.last_job_succeeded.set(None);
-        let start_time_micros = glib::monotonic_time();
-        let is_started = match job {
-            Job::System => self.start_session(start_time_micros, Job::System),
-            Job::Shell => self.start_session(start_time_micros, Job::Shell),
-        };
-        if !is_started {
+        self.notice.set(None);
+        self.review.take();
+        self.is_installing.set(job == Job::Shell);
+        self.start_time_micros.set(glib::monotonic_time());
+        if !self.start_session(job) {
             return;
         }
         self.job.set(Some(job));

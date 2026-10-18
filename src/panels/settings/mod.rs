@@ -148,6 +148,7 @@ impl Settings {
         }
         self.context.shared.take();
         self.context.dialog.take();
+        self.context.services.updates.cancel();
     }
 
     pub fn refont(&self) {

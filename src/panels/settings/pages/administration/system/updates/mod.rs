@@ -1,26 +1,30 @@
+mod confirmation;
 pub mod shellcommits;
 pub mod updatepackages;
 
 use gtk4::glib;
 use gtk4::prelude::*;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::i18n::{tr, trf, trn};
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::administration::system::about;
 use crate::services::updates::updateprogress::Step;
-use crate::services::updates::{Job, Updates};
+use crate::services::updates::{Job, Notice, Updates};
 use crate::ui::theme::pixel_size;
 use crate::ui::widgets::display::progress::{Colors, ProgressBar};
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::ripple::RippleButton;
+use crate::ui::widgets::overlay::windowdialog::WindowDialog;
 
 const LOG_HEIGHT: i32 = 320;
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let updates = context.services.updates.clone();
+    let present: Rc<dyn Fn(Rc<WindowDialog>)> = Rc::new(context.dialog_presenter());
+    let review_dialog: Rc<RefCell<Option<Rc<WindowDialog>>>> = Rc::default();
 
     let (system_section, system_check_indicator) =
         page.busy_section("deployed_code_update", &tr("System"));
@@ -91,7 +95,27 @@ pub fn build(context: &Context) -> Rc<Page> {
     let show_state = {
         let updates = updates.clone();
         let output_section = output_section.clone();
+        let theme = context.theme.clone();
         move || {
+            if updates.review.borrow().is_none() {
+                if let Some(dialog) = review_dialog.take() {
+                    dialog.dismiss();
+                }
+            } else if review_dialog.borrow().is_none() {
+                let on_closed = {
+                    let review_dialog = review_dialog.clone();
+                    let updates = updates.clone();
+                    move || {
+                        if review_dialog.take().is_some() {
+                            updates.cancel();
+                        }
+                    }
+                };
+                if let Some(dialog) = confirmation::build(&theme, &updates, on_closed) {
+                    review_dialog.replace(Some(dialog.clone()));
+                    present(dialog);
+                }
+            }
             let count = updates.count();
             let packages_text = trn("%1 package", "%1 packages", count as u64);
             packages_summary_label.set_text(&match (
@@ -139,14 +163,20 @@ pub fn build(context: &Context) -> Rc<Page> {
             shell_update_button.set_sensitive(job.is_none());
             loading_indicator.area.set_visible(job.is_some());
             loading_indicator.set_loading(job.is_some());
-            outcome_label.set_text(&match (job, updates.last_job_succeeded.get()) {
-                (Some(_), _) => tr("Updating…"),
-                (None, Some(true)) => tr("Done"),
-                (None, Some(false)) => tr("Failed"),
-                (None, None) => String::new(),
+            let notice = updates.notice.get();
+            outcome_label.set_text(&match (job, updates.last_job_succeeded.get(), notice) {
+                (Some(_), _, _) if updates.is_installing.get() => tr("Updating…"),
+                (Some(_), _, _) => tr("Checking for updates…"),
+                (None, Some(true), _) => tr("Done"),
+                (None, Some(false), _) => tr("Failed"),
+                (None, None, Some(Notice::UpToDate)) => tr("Up to date"),
+                (None, None, Some(Notice::CheckFailed)) => tr("Could not check for updates"),
+                (None, None, None) => String::new(),
             });
             if let Some(section) = output_section.parent() {
-                section.set_visible(job.is_some() || updates.last_job_succeeded.get().is_some());
+                section.set_visible(
+                    job.is_some() || updates.last_job_succeeded.get().is_some() || notice.is_some(),
+                );
             }
         }
     };

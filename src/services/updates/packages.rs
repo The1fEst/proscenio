@@ -3,12 +3,12 @@ use proscenio_protocol::Change;
 use std::path::Path;
 use std::process::Output;
 
-use super::Updates;
 use super::manager::{aur_query, package_manager, repository_query};
 use super::output::visible_text;
+use super::{Notice, Updates};
 use crate::core::{paths, process};
 
-const LOCAL_DATABASE: &str = "/var/lib/pacman/local";
+pub(super) const LOCAL_DATABASE: &str = "/var/lib/pacman/local";
 const AUR_NOTICES: [&str; 7] = [
     "warning:",
     "missing aur packages:",
@@ -58,6 +58,11 @@ impl Updates {
         self.repository_packages
             .replace(repository_packages.unwrap_or_default());
         self.aur_packages.replace(aur_packages.unwrap_or_default());
+        if let Some(notice) = self.notice.get()
+            && contradicts_notice(notice, self.count(), self.has_package_check_failed.get())
+        {
+            self.notice.set(None);
+        }
         self.listeners.notify();
     }
 
@@ -75,6 +80,13 @@ pub(super) async fn query_aur_packages(manager: &str) -> Option<Vec<String>> {
     match aur_query(manager) {
         Some(query) => query_pending_packages(&query, has_aur_query_failed).await,
         None => Some(Vec::new()),
+    }
+}
+
+fn contradicts_notice(notice: Notice, count: i32, has_check_failed: bool) -> bool {
+    match notice {
+        Notice::UpToDate => count > 0,
+        Notice::CheckFailed => !has_check_failed,
     }
 }
 
@@ -242,6 +254,15 @@ mod tests {
         assert_eq!(lines, ["appstream 1.2.0-1 -> 1.2.1-1"]);
         assert_eq!(parse_pending_packages(&lines.join("\n")), lines);
         assert!(list_upgrade_lines(&[]).is_empty());
+    }
+
+    #[test]
+    fn a_later_check_replaces_a_notice_it_contradicts() {
+        assert!(contradicts_notice(Notice::UpToDate, 3, false));
+        assert!(!contradicts_notice(Notice::UpToDate, 0, false));
+        assert!(contradicts_notice(Notice::CheckFailed, 0, false));
+        assert!(contradicts_notice(Notice::CheckFailed, 3, false));
+        assert!(!contradicts_notice(Notice::CheckFailed, 0, true));
     }
 
     #[test]
