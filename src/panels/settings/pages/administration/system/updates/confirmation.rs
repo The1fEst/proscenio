@@ -2,10 +2,11 @@ use gtk4::prelude::*;
 use std::collections::HashSet;
 use std::rc::Rc;
 
+use super::shellcommits::commit_row;
 use super::updatepackages::package_row;
 use crate::core::i18n::{tr, trn};
 use crate::services::updates::packages::version_change;
-use crate::services::updates::{Review, Updates};
+use crate::services::updates::{Commit, Job, Review, Updates};
 use crate::ui::theme::SharedTheme;
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::flickable::follow_scroll_settings;
@@ -22,6 +23,7 @@ pub fn build(
     on_closed: impl Fn() + 'static,
 ) -> Option<Rc<WindowDialog>> {
     let review = updates.review.borrow().clone()?;
+    let job = updates.job.get()?;
     let dialog = WindowDialog::new(theme, Some(DIALOG_HEIGHT));
     dialog.set_background_width(DIALOG_WIDTH);
     dialog
@@ -43,7 +45,10 @@ pub fn build(
         .add(&windowdialog::separator(), windowdialog::separator_place());
 
     let list = gtk4::Box::new(gtk4::Orientation::Vertical, LIST_SPACING);
-    fill_packages(&list, theme, &review);
+    match job {
+        Job::System => fill_packages(&list, theme, &review),
+        Job::Shell => fill_commits(&list, theme, &updates.commits.borrow()),
+    }
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::External);
     scroll.set_child(Some(&list));
@@ -74,14 +79,15 @@ pub fn build(
         }
     });
     buttons.append(&cancel_button);
-    let update_button = windowdialog::button(
-        theme,
-        &trn(
+    let update_text = match job {
+        Job::System => trn(
             "Update %1 package",
             "Update %1 packages",
             review.count() as u64,
         ),
-    );
+        Job::Shell => tr("Update"),
+    };
+    let update_button = windowdialog::button(theme, &update_text);
     update_button.connect_clicked({
         let updates = updates.clone();
         move |_| updates.confirm()
@@ -90,6 +96,13 @@ pub fn build(
     dialog.column.add(&buttons, place);
     dialog.connect_closed(on_closed);
     Some(dialog)
+}
+
+fn fill_commits(list: &gtk4::Box, theme: &SharedTheme, commits: &[Commit]) {
+    list.append(&build_section_header(&tr("Commits")));
+    for commit in commits {
+        list.append(&commit_row(theme, commit));
+    }
 }
 
 fn fill_packages(list: &gtk4::Box, theme: &SharedTheme, review: &Review) {

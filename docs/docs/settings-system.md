@@ -241,7 +241,7 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 | Section | Row under the title | Update runs |
 |---|---|---|
 | System | **Packages**: how many packages can be upgraded, from the repositories and from AUR; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `pkexec /usr/lib/proscenio/proscenio-packages session`, which lists and then upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
-| Shell | **Commits**: how many commits `main` is ahead | downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm` in a root session of `proscenio-packages`, then restarts `proscenio.service` |
+| Shell | **Commits**: how many commits `main` is ahead | after the commits are listed and confirmed, downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm` in a root session of `proscenio-packages`, then restarts `proscenio.service` |
 
 ![The Packages subpage listing the pending packages with their old and new versions](/img/screenshots/settings-system-update-packages.webp)
 
@@ -315,7 +315,16 @@ listing fails, the update stops before it installs anything. The AUR step instal
 packages by name, with the version AUR has when it builds them. The staged copy is removed when the
 session ends and replaced by the next update's.
 
-**Update** appears once an update has started. It reads **Checking for updates…** while the session
+**Update** under Shell also refreshes first, without a password: it asks the GitHub API for the
+commits again, which updates the count and the list on this page and in the
+[sidebar](sidebar.md#updates). A dialog then lists the commits, each with its subject and the
+first seven characters of its hash, under **Commits**, with **Cancel** and **Update**. **Cancel**,
+Escape, a click outside the dialog and closing the Settings window stop before the password is asked
+for. The shell builds `main` as it is when the build starts, so a commit that lands after the refresh
+is installed as well. The output reads **Up to date** when the refresh finds no commit and **Could
+not check for updates** when the request fails.
+
+**Update** appears once an update has started. It reads **Checking for updates…** while the update
 refreshes and the dialog is open, **Updating…** while the update runs, then **Done** or **Failed**
 by its exit status. During a system update a bar shows the progress once the dialog is confirmed, with
 the step under it: checking, downloading by bytes, installing package by package, running hooks, or

@@ -21,43 +21,52 @@ impl Commit {
 
 impl Updates {
     pub(super) fn refresh_shell(&self) {
-        let Some(commit) = installed_commit(VERSION) else {
+        if installed_commit(VERSION).is_none() {
             return;
-        };
+        }
         if self.is_refreshing_shell.replace(true) {
             self.is_shell_refresh_queued.set(true);
             return;
         }
         self.listeners.notify();
-        let url = format!("https://api.github.com/repos/{REPOSITORY}/compare/{commit}...{BRANCH}");
         let updates = self.clone();
         glib::spawn_future_local(async move {
-            let body = process::capture_text(process::command(&[
-                "curl",
-                "-s",
-                "--connect-timeout",
-                "15",
-                "--speed-limit",
-                "1",
-                "--speed-time",
-                "30",
-                "--max-time",
-                "120",
-                "-H",
-                "Accept: application/vnd.github+json",
-                &url,
-            ]))
-            .await;
-            if let Some((commits_behind, commits)) = body.as_deref().and_then(read_comparison) {
-                updates.commits_behind.set(commits_behind);
-                updates.commits.replace(commits);
-            }
+            updates.load_commits().await;
             updates.is_refreshing_shell.set(false);
             updates.listeners.notify();
             if updates.is_shell_refresh_queued.replace(false) {
                 updates.refresh_shell();
             }
         });
+    }
+
+    pub(super) async fn load_commits(&self) -> bool {
+        let Some(commit) = installed_commit(VERSION) else {
+            return false;
+        };
+        let url = format!("https://api.github.com/repos/{REPOSITORY}/compare/{commit}...{BRANCH}");
+        let body = process::capture_text(process::command(&[
+            "curl",
+            "-s",
+            "--connect-timeout",
+            "15",
+            "--speed-limit",
+            "1",
+            "--speed-time",
+            "30",
+            "--max-time",
+            "120",
+            "-H",
+            "Accept: application/vnd.github+json",
+            &url,
+        ]))
+        .await;
+        let Some((commits_behind, commits)) = body.as_deref().and_then(read_comparison) else {
+            return false;
+        };
+        self.commits_behind.set(commits_behind);
+        self.commits.replace(commits);
+        true
     }
 }
 

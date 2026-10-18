@@ -36,7 +36,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page
 }
 
-fn commit_row(theme: &SharedTheme, commit: &Commit) -> gtk4::Box {
+pub fn commit_row(theme: &SharedTheme, commit: &Commit) -> gtk4::Box {
     let (card, lines) = card("commit", &commit.subject, false);
     let sha_label = text::styled_sized(commit.short_sha(), pixel_size::SMALLER);
     text::set_color(&sha_label, "colSubtext");

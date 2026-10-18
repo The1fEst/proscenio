@@ -146,12 +146,15 @@ impl Updates {
         self.last_job_succeeded.set(None);
         self.notice.set(None);
         self.review.take();
-        self.is_installing.set(job == Job::Shell);
+        self.is_installing.set(false);
         self.start_time_micros.set(glib::monotonic_time());
-        if !self.start_session(job) {
+        if job == Job::System && !self.start_session(job) {
             return;
         }
         self.job.set(Some(job));
+        if job == Job::Shell {
+            self.review_shell();
+        }
         self.listeners.notify();
         self.output_listeners.notify();
     }
