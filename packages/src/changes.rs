@@ -38,10 +38,17 @@ pub fn compare_changes(confirmed: &[Change], actual: &[Change]) -> Result<(), St
     if confirmed == actual {
         return Ok(());
     }
+    let parts: Vec<String> = [
+        ("now", list_changes(actual.difference(&confirmed))),
+        ("no longer", list_changes(confirmed.difference(&actual))),
+    ]
+    .into_iter()
+    .filter(|(_, list)| !list.is_empty())
+    .map(|(label, list)| format!("{label}: {list}"))
+    .collect();
     Err(format!(
-        "the packages to update changed since they were listed, nothing was installed (now: {}; no longer: {})",
-        list_changes(actual.difference(&confirmed)),
-        list_changes(confirmed.difference(&actual)),
+        "the packages to update changed since they were listed, nothing was installed ({})",
+        parts.join("; ")
     ))
 }
 
@@ -96,7 +103,10 @@ mod tests {
         assert!(message.contains("nothing was installed"), "{message}");
 
         let missing = compare_changes(&confirmed, &confirmed[..1]).unwrap_err();
-        assert!(missing.contains("libfoo"), "{missing}");
+        assert_eq!(
+            missing,
+            "the packages to update changed since they were listed, nothing was installed (no longer: libfoo - -> 1.0-1)"
+        );
 
         let newer = [
             Change::new("linux", "7.2.9-1", "7.2.11-1"),
