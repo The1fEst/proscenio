@@ -1,4 +1,5 @@
 use gtk4::glib;
+use proscenio_protocol::Change;
 use std::path::Path;
 use std::process::Output;
 
@@ -50,10 +51,7 @@ impl Updates {
         let database = database.to_string_lossy().into_owned();
         let repository_packages =
             query_pending_packages(&repository_query(&database), has_repository_check_failed).await;
-        let aur_packages = match aur_query(manager) {
-            Some(query) => query_pending_packages(&query, has_aur_query_failed).await,
-            None => Some(Vec::new()),
-        };
+        let aur_packages = query_aur_packages(manager).await;
         self.has_package_manager.set(true);
         self.has_package_check_failed
             .set(repository_packages.is_none() || aur_packages.is_none());
@@ -62,6 +60,30 @@ impl Updates {
         self.aur_packages.replace(aur_packages.unwrap_or_default());
         self.listeners.notify();
     }
+
+    pub(super) fn show_plan(&self, changes: &[Change], aur_packages: Vec<String>) {
+        self.has_package_manager.set(true);
+        self.has_package_check_failed.set(false);
+        self.repository_packages
+            .replace(list_upgrade_lines(changes));
+        self.aur_packages.replace(aur_packages);
+        self.listeners.notify();
+    }
+}
+
+pub(super) async fn query_aur_packages(manager: &str) -> Option<Vec<String>> {
+    match aur_query(manager) {
+        Some(query) => query_pending_packages(&query, has_aur_query_failed).await,
+        None => Some(Vec::new()),
+    }
+}
+
+fn list_upgrade_lines(changes: &[Change]) -> Vec<String> {
+    changes
+        .iter()
+        .filter(|change| !change.from.is_empty() && !change.to.is_empty())
+        .map(|change| format!("{} {} -> {}", change.name, change.from, change.to))
+        .collect()
 }
 
 async fn query_pending_packages(
@@ -207,6 +229,19 @@ mod tests {
             )),
             None
         );
+    }
+
+    #[test]
+    fn a_plan_lists_as_upgrades_only_the_packages_that_change_version() {
+        let changes = [
+            Change::new("appstream", "1.2.0-1", "1.2.1-1"),
+            Change::new("libnew", "", "1.0-1"),
+            Change::new("libgone", "2.0-1", ""),
+        ];
+        let lines = list_upgrade_lines(&changes);
+        assert_eq!(lines, ["appstream 1.2.0-1 -> 1.2.1-1"]);
+        assert_eq!(parse_pending_packages(&lines.join("\n")), lines);
+        assert!(list_upgrade_lines(&[]).is_empty());
     }
 
     #[test]

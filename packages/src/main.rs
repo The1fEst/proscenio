@@ -3,18 +3,18 @@ use alpm::{
     LogLevel, Progress, Question, TransFlag,
 };
 use proscenio_protocol::{
-    Event, Exit, Forward, Message, Request, SOCKET_VARIABLE, Stage, TOKEN_LENGTH, TOKEN_VARIABLE,
-    VERSION, hex, read_one, unhex,
+    Change, Event, Exit, Forward, Message, Request, SOCKET_VARIABLE, Stage, TOKEN_LENGTH,
+    TOKEN_VARIABLE, VERSION, hex, read_one, unhex,
 };
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::ffi::{c_int, c_void};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::os::fd::AsRawFd;
 use std::os::linux::net::SocketAddrExt;
 use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
 use std::os::unix::process::ExitStatusExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -33,6 +33,10 @@ const CHECK_LOCK_TIMEOUT: Duration = Duration::from_secs(120);
 const CHECK_LOCK_RETRY_DELAY: Duration = Duration::from_millis(250);
 const CHECK_LOCK: &str = "proscenio-check.lock";
 const ALPM_LOCK: &str = "db.lck";
+const STAGE_DIR: &str = "proscenio-stage";
+const SYNC_DIR: &str = "sync";
+const LOCAL_DIR: &str = "local";
+const MAX_LISTED_CHANGES: usize = 5;
 const SYSTEM_HOOK_DIR: &str = "/usr/share/libalpm/hooks/";
 
 #[repr(C)]
@@ -96,6 +100,10 @@ fn report(result: Result<(), String>) -> i32 {
 
 fn format_error(error: impl std::fmt::Display) -> String {
     error.to_string()
+}
+
+fn describe_path_error(path: &Path, error: std::io::Error) -> String {
+    format!("{}: {error}", path.display())
 }
 
 fn open_alpm(db_path: Option<&str>) -> Result<Alpm, String> {
@@ -171,6 +179,178 @@ fn check(db_path: &str) -> Result<(), String> {
         )
         .map_err(format_error)?;
     }
+    Ok(())
+}
+
+fn describe_change(change: &Change) -> String {
+    let from = if change.from.is_empty() {
+        "-"
+    } else {
+        &change.from
+    };
+    let to = if change.to.is_empty() {
+        "removed"
+    } else {
+        &change.to
+    };
+    format!("{} {from} -> {to}", change.name)
+}
+
+fn list_changes<'a>(mut descriptions: impl Iterator<Item = &'a String>) -> String {
+    let mut listed: Vec<String> = descriptions
+        .by_ref()
+        .take(MAX_LISTED_CHANGES)
+        .cloned()
+        .collect();
+    let unlisted_count = descriptions.count();
+    if unlisted_count > 0 {
+        listed.push(format!("and {unlisted_count} more"));
+    }
+    listed.join(", ")
+}
+
+fn compare_changes(confirmed: &[Change], actual: &[Change]) -> Result<(), String> {
+    let describe_all =
+        |changes: &[Change]| -> BTreeSet<String> { changes.iter().map(describe_change).collect() };
+    let (confirmed, actual) = (describe_all(confirmed), describe_all(actual));
+    if confirmed == actual {
+        return Ok(());
+    }
+    Err(format!(
+        "the packages to update changed since they were listed, nothing was installed (now: {}; no longer: {})",
+        list_changes(actual.difference(&confirmed)),
+        list_changes(confirmed.difference(&actual)),
+    ))
+}
+
+fn prepare_stage(db_path: &Path) -> Result<PathBuf, String> {
+    let stage = db_path.join(STAGE_DIR);
+    match std::fs::remove_dir_all(&stage) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(format_error(error)),
+    }
+    let staged_sync = stage.join(SYNC_DIR);
+    std::fs::create_dir(&stage).map_err(|error| describe_path_error(&stage, error))?;
+    std::fs::create_dir(&staged_sync).map_err(|error| describe_path_error(&staged_sync, error))?;
+    std::os::unix::fs::symlink(db_path.join(LOCAL_DIR), stage.join(LOCAL_DIR))
+        .map_err(|error| describe_path_error(&stage, error))?;
+    seed_stage_databases(&db_path.join(SYNC_DIR), &staged_sync)?;
+    Ok(stage)
+}
+
+fn list_databases(sync: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut databases = Vec::new();
+    for entry in std::fs::read_dir(sync).map_err(|error| describe_path_error(sync, error))? {
+        let path = entry
+            .map_err(|error| describe_path_error(sync, error))?
+            .path();
+        let is_database = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with(".db") || name.ends_with(".db.sig"));
+        if is_database {
+            databases.push(path);
+        }
+    }
+    Ok(databases)
+}
+
+fn seed_stage_databases(system_sync: &Path, staged_sync: &Path) -> Result<(), String> {
+    for path in list_databases(system_sync)? {
+        let Some(name) = path.file_name() else {
+            continue;
+        };
+        let target = staged_sync.join(name);
+        let modified = std::fs::metadata(&path)
+            .and_then(|metadata| metadata.modified())
+            .map_err(|error| describe_path_error(&path, error))?;
+        std::fs::copy(&path, &target).map_err(|error| describe_path_error(&path, error))?;
+        std::fs::File::options()
+            .write(true)
+            .open(&target)
+            .and_then(|file| file.set_modified(modified))
+            .map_err(|error| describe_path_error(&target, error))?;
+    }
+    Ok(())
+}
+
+fn install_staged_databases(staged_sync: &Path, system_sync: &Path) -> Result<(), String> {
+    for path in list_databases(staged_sync)? {
+        let Some(name) = path.file_name() else {
+            continue;
+        };
+        std::fs::rename(&path, system_sync.join(name))
+            .map_err(|error| describe_path_error(&path, error))?;
+    }
+    Ok(())
+}
+
+fn find_system_database_path() -> Result<PathBuf, String> {
+    let pacman_config = pacmanconf::Config::new().map_err(format_error)?;
+    Ok(PathBuf::from(pacman_config.db_path))
+}
+
+fn path_to_str(path: &Path) -> Result<&str, String> {
+    path.to_str()
+        .ok_or_else(|| format!("{} is not valid text", path.display()))
+}
+
+fn discard_stage() {
+    if let Ok(db_path) = find_system_database_path() {
+        let _ = std::fs::remove_dir_all(db_path.join(STAGE_DIR));
+    }
+}
+
+fn collect_changes(alpm: &Alpm) -> Vec<Change> {
+    let installed_version = |name: &str| {
+        alpm.localdb()
+            .pkg(name)
+            .map(|package| package.version().as_str().to_owned())
+            .unwrap_or_default()
+    };
+    let mut changes: Vec<Change> = alpm
+        .trans_add()
+        .iter()
+        .map(|package| {
+            Change::new(
+                package.name(),
+                &installed_version(package.name()),
+                package.version().as_str(),
+            )
+        })
+        .collect();
+    changes.extend(
+        alpm.trans_remove()
+            .iter()
+            .map(|package| Change::new(package.name(), package.version().as_str(), "")),
+    );
+    changes.sort_by(|left, right| left.name.cmp(&right.name));
+    changes
+}
+
+fn plan_changes(alpm: &mut Alpm) -> Result<Vec<Change>, String> {
+    alpm.trans_init(TransFlag::NONE).map_err(format_error)?;
+    let result = alpm
+        .sync_sysupgrade(false)
+        .map_err(format_error)
+        .and_then(|()| {
+            alpm.trans_prepare()
+                .map_err(|error| format!("{error}: {:?}", error.data()))
+        })
+        .map(|()| collect_changes(alpm));
+    let _ = alpm.trans_release();
+    result
+}
+
+fn plan() -> Result<(), String> {
+    let stage = prepare_stage(&find_system_database_path()?)?;
+    let mut alpm = open_alpm(Some(path_to_str(&stage)?))?;
+    watch(&alpm);
+    emit(&Event::Stage(Stage::Synchronize));
+    alpm.syncdbs_mut().update(false).map_err(format_error)?;
+    emit(&Event::Stage(Stage::Prepare));
+    emit(&Event::Planned(plan_changes(&mut alpm)?));
     Ok(())
 }
 
@@ -263,10 +443,27 @@ fn run_session() -> Result<(), String> {
         }
     });
 
+    let mut has_plan = false;
     for work in receiver {
         match work {
-            Work::Request(Request::Upgrade) => {
-                finish(upgrade());
+            Work::Request(Request::Plan) => {
+                has_plan = false;
+                match plan() {
+                    Ok(()) => has_plan = true,
+                    Err(message) => {
+                        finish(Err(message));
+                    }
+                }
+            }
+            Work::Request(Request::Upgrade(confirmed)) => {
+                let result = if has_plan {
+                    upgrade(&confirmed)
+                } else {
+                    Err("the packages to update were not listed first".to_owned())
+                };
+                has_plan = false;
+                finish(result);
+                discard_stage();
             }
             Work::Request(Request::Quit) | Work::Closed => break,
             Work::Request(Request::Allow(_)) => {}
@@ -280,6 +477,7 @@ fn run_session() -> Result<(), String> {
             }
         }
     }
+    discard_stage();
     Ok(())
 }
 
@@ -292,24 +490,35 @@ fn finish(result: Result<(), String>) -> i32 {
     if is_ok { 0 } else { 1 }
 }
 
-fn upgrade() -> Result<(), String> {
+fn upgrade(confirmed: &[Change]) -> Result<(), String> {
+    let database_path = find_system_database_path()?;
+    let stage = database_path.join(STAGE_DIR);
     let mut alpm = open_alpm(None)?;
     watch(&alpm);
-    emit(&Event::Stage(Stage::Synchronize));
-    alpm.syncdbs_mut().update(false).map_err(format_error)?;
     emit(&Event::Stage(Stage::Prepare));
     alpm.trans_init(TransFlag::NONE).map_err(format_error)?;
-    let result = alpm
-        .sync_sysupgrade(false)
-        .map_err(format_error)
-        .and_then(|()| commit(&mut alpm));
+    let result = verify_stage(&stage, confirmed)
+        .and_then(|()| {
+            install_staged_databases(&stage.join(SYNC_DIR), &database_path.join(SYNC_DIR))
+        })
+        .and_then(|()| alpm.sync_sysupgrade(false).map_err(format_error))
+        .and_then(|()| commit(&mut alpm, Some(confirmed)));
     let _ = alpm.trans_release();
     result
 }
 
-fn commit(alpm: &mut Alpm) -> Result<(), String> {
+fn verify_stage(stage: &Path, confirmed: &[Change]) -> Result<(), String> {
+    let mut staged = open_alpm(Some(path_to_str(stage)?))?;
+    watch(&staged);
+    compare_changes(confirmed, &plan_changes(&mut staged)?)
+}
+
+fn commit(alpm: &mut Alpm, confirmed: Option<&[Change]>) -> Result<(), String> {
     alpm.trans_prepare()
         .map_err(|error| format!("{error}: {:?}", error.data()))?;
+    if let Some(confirmed) = confirmed {
+        compare_changes(confirmed, &collect_changes(alpm))?;
+    }
     let package_count = alpm.trans_add().len() as u32;
     let download_bytes = alpm
         .trans_add()
@@ -345,7 +554,7 @@ fn install(files: &[&str], flags: TransFlag) -> Result<(), String> {
             break;
         }
     }
-    let result = result.and_then(|()| commit(&mut alpm));
+    let result = result.and_then(|()| commit(&mut alpm, None));
     let _ = alpm.trans_release();
     result
 }
@@ -772,6 +981,146 @@ mod tests {
         assert!(!has_alpm_lock);
         assert!(is_locked_while_held);
         assert!(is_free_after);
+    }
+
+    fn make_scratch_folder(name: &str) -> PathBuf {
+        let directory =
+            std::env::temp_dir().join(format!("proscenio-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        directory
+    }
+
+    #[test]
+    fn only_the_confirmed_packages_may_be_installed() {
+        let confirmed = [
+            Change::new("linux", "7.2.9-1", "7.2.10-1"),
+            Change::new("libfoo", "", "1.0-1"),
+        ];
+        let reordered = [confirmed[1].clone(), confirmed[0].clone()];
+        assert_eq!(compare_changes(&confirmed, &reordered), Ok(()));
+        assert_eq!(compare_changes(&[], &[]), Ok(()));
+
+        let extra = [
+            confirmed.to_vec(),
+            vec![Change::new("glibc", "2.42-1", "2.43-1")],
+        ]
+        .concat();
+        let message = compare_changes(&confirmed, &extra).unwrap_err();
+        assert!(message.contains("glibc 2.42-1 -> 2.43-1"), "{message}");
+        assert!(message.contains("nothing was installed"), "{message}");
+
+        let missing = compare_changes(&confirmed, &confirmed[..1]).unwrap_err();
+        assert!(missing.contains("libfoo"), "{missing}");
+
+        let newer = [
+            Change::new("linux", "7.2.9-1", "7.2.11-1"),
+            confirmed[1].clone(),
+        ];
+        let message = compare_changes(&confirmed, &newer).unwrap_err();
+        assert!(
+            message.contains("7.2.11-1") && message.contains("7.2.10-1"),
+            "{message}"
+        );
+
+        let removal = [confirmed.to_vec(), vec![Change::new("oldlib", "2.0-1", "")]].concat();
+        assert!(compare_changes(&confirmed, &removal).is_err());
+    }
+
+    #[test]
+    fn a_mismatch_lists_a_few_packages_and_counts_the_rest() {
+        let many: Vec<Change> = (0..MAX_LISTED_CHANGES + 3)
+            .map(|index| Change::new(&format!("package{index}"), "1-1", "2-1"))
+            .collect();
+        let message = compare_changes(&[], &many).unwrap_err();
+        assert_eq!(message.matches("-> 2-1").count(), MAX_LISTED_CHANGES);
+        assert!(message.contains("and 3 more"), "{message}");
+    }
+
+    #[test]
+    fn a_fresh_stage_shares_the_installed_packages_and_starts_from_the_system_databases() {
+        let db_path = make_scratch_folder("stage");
+        let stage = db_path.join(STAGE_DIR);
+        std::fs::create_dir_all(stage.join(SYNC_DIR)).unwrap();
+        std::fs::write(stage.join(SYNC_DIR).join("extra.db"), "earlier stage").unwrap();
+        std::fs::write(stage.join(ALPM_LOCK), "").unwrap();
+        std::fs::create_dir_all(db_path.join(SYNC_DIR)).unwrap();
+        let synced_time = std::time::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let system_core = db_path.join(SYNC_DIR).join("core.db");
+        std::fs::write(&system_core, "system core").unwrap();
+        std::fs::write(db_path.join(SYNC_DIR).join("core.db.sig"), "signature").unwrap();
+        std::fs::write(db_path.join(SYNC_DIR).join("core.db.part"), "download").unwrap();
+        std::fs::File::options()
+            .write(true)
+            .open(&system_core)
+            .unwrap()
+            .set_modified(synced_time)
+            .unwrap();
+
+        let prepared = prepare_stage(&db_path);
+        let staged_sync = stage.join(SYNC_DIR);
+        let mut names: Vec<_> = std::fs::read_dir(&staged_sync)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+            .collect();
+        names.sort();
+        let staged_core = staged_sync.join("core.db");
+        let content = std::fs::read_to_string(&staged_core).ok();
+        let staged_time = std::fs::metadata(&staged_core).and_then(|data| data.modified());
+        let local = std::fs::read_link(stage.join(LOCAL_DIR));
+        let has_lock = stage.join(ALPM_LOCK).exists();
+        std::fs::remove_dir_all(&db_path).unwrap();
+        assert_eq!(prepared, Ok(stage));
+        assert_eq!(names, ["core.db", "core.db.sig"]);
+        assert_eq!(content.as_deref(), Some("system core"));
+        assert_eq!(staged_time.ok(), Some(synced_time));
+        assert_eq!(local.ok(), Some(db_path.join(LOCAL_DIR)));
+        assert!(!has_lock);
+    }
+
+    #[test]
+    fn staged_databases_replace_the_system_ones_and_nothing_else_moves() {
+        let directory = make_scratch_folder("databases");
+        let (staged, system) = (directory.join("staged"), directory.join("system"));
+        std::fs::create_dir_all(&staged).unwrap();
+        std::fs::create_dir_all(&system).unwrap();
+        for (name, content) in [
+            ("core.db", "new core"),
+            ("core.db.sig", "new signature"),
+            ("extra.db.part", "half a download"),
+            ("notes.txt", "not a database"),
+        ] {
+            std::fs::write(staged.join(name), content).unwrap();
+        }
+        for (name, content) in [("core.db", "old core"), ("extra.db", "old extra")] {
+            std::fs::write(system.join(name), content).unwrap();
+        }
+
+        let installed = install_staged_databases(&staged, &system);
+        let read = |name: &str| std::fs::read_to_string(system.join(name)).ok();
+        let results = (
+            read("core.db"),
+            read("core.db.sig"),
+            read("extra.db"),
+            read("extra.db.part"),
+            read("notes.txt"),
+            staged.join("core.db").exists(),
+            staged.join("extra.db.part").exists(),
+        );
+        std::fs::remove_dir_all(&directory).unwrap();
+        assert_eq!(installed, Ok(()));
+        assert_eq!(
+            results,
+            (
+                Some("new core".to_owned()),
+                Some("new signature".to_owned()),
+                Some("old extra".to_owned()),
+                None,
+                None,
+                false,
+                true,
+            )
+        );
     }
 
     #[test]

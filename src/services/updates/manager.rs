@@ -22,8 +22,8 @@ pub fn install_command<'a>(packages: &[&'a str]) -> Option<Vec<&'a str>> {
     Some(unattended_command(package_manager()?, "-S", packages))
 }
 
-pub(super) fn aur_upgrade(manager: &str) -> Vec<&str> {
-    unattended_command(manager, "-Sua", &[])
+pub(super) fn aur_upgrade<'a>(manager: &'a str, packages: &[&'a str]) -> Vec<&'a str> {
+    let mut command: Vec<&str> = unattended_command(manager, "-Sa", &[])
         .into_iter()
         .map(|argument| {
             if argument == "pkexec" {
@@ -32,7 +32,9 @@ pub(super) fn aur_upgrade(manager: &str) -> Vec<&str> {
                 argument
             }
         })
-        .collect()
+        .collect();
+    command.extend_from_slice(packages);
+    command
 }
 
 fn unattended_command<'a>(
@@ -74,17 +76,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_aur_upgrade_runs_unattended_with_the_helper_in_place_of_sudo() {
+    fn the_aur_upgrade_builds_only_the_confirmed_packages_with_the_helper_in_place_of_sudo() {
         for manager in ["paru", "yay"] {
-            let command = aur_upgrade(manager);
-            assert_eq!(command[..2], [manager, "-Sua"]);
+            let command = aur_upgrade(manager, &["zen-browser-bin", "foo-git"]);
+            assert_eq!(command[..2], [manager, "-Sa"]);
+            assert!(!command.contains(&"-Sua"), "{manager}");
             assert!(command.contains(&"--noconfirm"), "{manager}");
             assert!(
                 command.windows(2).any(|pair| pair == ["--sudo", HELPER]),
                 "{manager}"
             );
             assert!(!command.contains(&"pkexec"), "{manager}");
+            assert_eq!(command[command.len() - 2..], ["zen-browser-bin", "foo-git"]);
         }
+        assert!(!aur_upgrade("paru", &["pkexec"]).ends_with(&[HELPER]));
     }
 
     #[test]

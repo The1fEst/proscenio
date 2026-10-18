@@ -240,7 +240,7 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 
 | Section | Row under the title | Update runs |
 |---|---|---|
-| System | **Packages**: how many packages can be upgraded, from the repositories and from AUR; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `pkexec /usr/lib/proscenio/proscenio-packages session`, which upgrades the repositories through libalpm; then, when AUR packages are pending, `paru -Sua` or `yay -Sua` without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
+| System | **Packages**: how many packages can be upgraded, from the repositories and from AUR; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `pkexec /usr/lib/proscenio/proscenio-packages session`, which lists and then upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
 | Shell | **Commits**: how many commits `main` is ahead | downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm` in a root session of `proscenio-packages`, then restarts `proscenio.service` |
 
 ![The Packages subpage listing the pending packages with their old and new versions](/img/screenshots/settings-system-update-packages.webp)
@@ -268,6 +268,22 @@ which the shell hands them in their environment. The session takes a call only f
 user who opened it that descends from the `paru`, `yay` or build the shell started for this update,
 and holds at most 8 unanswered connections. An install of package files goes through libalpm; any
 other call runs `/usr/bin/pacman` in the session. The session ends with the update.
+
+A system update upgrades the packages it listed, no others. The session first synchronizes the
+repository databases into `proscenio-stage` inside the pacman database folder, a copy of the system
+databases with their times so that unchanged ones are not downloaded again, which leaves the system
+databases as they are, and plans the same upgrade as `pacman -Syu` there: the packages to
+upgrade, to install as dependencies and to remove. `paru -Qua` or `yay -Qua` lists the AUR packages
+at the same time. The shell then sends the repository list back to the session. The session takes
+pacman's `db.lck`, which stops the update when another package manager holds it, plans the upgrade
+again in the staged copy and refuses to go on when it differs from the list in any package or
+version, such as when the repositories or the installed packages changed in between: nothing is
+installed, the system databases stay as they are and the log names the packages that differ.
+Otherwise it moves the staged databases into the system folder, plans once more against them and
+commits the transaction if it still equals the list, without a second synchronization. When the AUR
+listing fails, the update stops before it installs anything. The AUR step installs the listed AUR
+packages by name, with the version AUR has when it builds them. The staged copy is removed when the
+session ends and replaced by the next update's.
 
 **Update** appears once an update has started. It reads **Updating…** while the update runs, then
 **Done** or **Failed** by its exit status. During a system update a bar shows the progress, with

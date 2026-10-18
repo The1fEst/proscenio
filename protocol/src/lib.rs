@@ -1,8 +1,9 @@
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 pub const TOKEN_LENGTH: usize = 32;
 pub const SOCKET_VARIABLE: &str = "PROSCENIO_PACKAGES_SOCKET";
 pub const TOKEN_VARIABLE: &str = "PROSCENIO_PACKAGES_TOKEN";
 const MAX_FRAME_LENGTH: usize = 1 << 20;
+const MIN_CHANGE_BYTES: usize = 12;
 
 pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
@@ -28,16 +29,35 @@ pub enum Error {
     FrameTooLarge(usize),
     FieldTooLarge(usize),
     TooManyArguments(usize),
+    TooManyChanges(usize),
     UnknownKind(u8),
     Text,
     TrailingBytes(usize),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Change {
+    pub name: String,
+    pub from: String,
+    pub to: String,
+}
+
+impl Change {
+    pub fn new(name: &str, from: &str, to: &str) -> Self {
+        Change {
+            name: name.to_owned(),
+            from: from.to_owned(),
+            to: to.to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Request {
-    Upgrade,
+    Upgrade(Vec<Change>),
     Quit,
     Allow(u32),
+    Plan,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,6 +101,7 @@ pub enum Event {
         is_ok: bool,
         message: String,
     },
+    Planned(Vec<Change>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -131,6 +152,15 @@ impl Writer {
     fn write_text(&mut self, value: &str) {
         self.write_bytes(value.as_bytes());
     }
+
+    fn write_changes(&mut self, changes: &[Change]) {
+        self.write_u32(changes.len() as u32);
+        for change in changes {
+            self.write_text(&change.name);
+            self.write_text(&change.from);
+            self.write_text(&change.to);
+        }
+    }
 }
 
 pub struct Reader<'a> {
@@ -170,25 +200,46 @@ impl Reader<'_> {
     fn read_text(&mut self) -> Result<String, Error> {
         String::from_utf8(self.read_bytes()?).map_err(|_| Error::Text)
     }
+
+    fn read_changes(&mut self) -> Result<Vec<Change>, Error> {
+        let count = self.read_u32()? as usize;
+        if count > MAX_FRAME_LENGTH / MIN_CHANGE_BYTES {
+            return Err(Error::TooManyChanges(count));
+        }
+        (0..count)
+            .map(|_| {
+                Ok(Change {
+                    name: self.read_text()?,
+                    from: self.read_text()?,
+                    to: self.read_text()?,
+                })
+            })
+            .collect()
+    }
 }
 
 impl Message for Request {
     fn write(&self, writer: &mut Writer) {
         match self {
-            Request::Upgrade => writer.write_u8(0),
+            Request::Upgrade(changes) => {
+                writer.write_u8(0);
+                writer.write_changes(changes);
+            }
             Request::Quit => writer.write_u8(1),
             Request::Allow(pid) => {
                 writer.write_u8(2);
                 writer.write_u32(*pid);
             }
+            Request::Plan => writer.write_u8(3),
         }
     }
 
     fn read(reader: &mut Reader) -> Result<Self, Error> {
         match reader.read_u8()? {
-            0 => Ok(Request::Upgrade),
+            0 => Ok(Request::Upgrade(reader.read_changes()?)),
             1 => Ok(Request::Quit),
             2 => Ok(Request::Allow(reader.read_u32()?)),
+            3 => Ok(Request::Plan),
             kind => Err(Error::UnknownKind(kind)),
         }
     }
@@ -267,6 +318,10 @@ impl Message for Event {
                 writer.write_u8(u8::from(*is_ok));
                 writer.write_text(message);
             }
+            Event::Planned(changes) => {
+                writer.write_u8(8);
+                writer.write_changes(changes);
+            }
         }
     }
 
@@ -309,6 +364,7 @@ impl Message for Event {
                 is_ok: reader.read_u8()? != 0,
                 message: reader.read_text()?,
             },
+            8 => Event::Planned(reader.read_changes()?),
             kind => return Err(Error::UnknownKind(kind)),
         })
     }
@@ -427,8 +483,43 @@ mod tests {
     }
 
     #[test]
+    fn the_confirmed_changes_survive_the_trip_to_the_helper() {
+        let changes = vec![
+            Change::new("linux", "7.2.9-1", "7.2.10-1"),
+            Change::new("libfoo", "", "1.0-1"),
+            Change::new("oldlib", "2.0-1", ""),
+        ];
+        round_trip(Request::Plan);
+        round_trip(Request::Upgrade(changes.clone()));
+        round_trip(Request::Upgrade(Vec::new()));
+        round_trip(Event::Planned(changes));
+        round_trip(Event::Planned(Vec::new()));
+    }
+
+    #[test]
+    fn a_change_count_that_cannot_fit_the_frame_is_an_error_not_an_allocation() {
+        let frame = |kind: u8| {
+            let mut body = vec![kind];
+            body.extend((MAX_FRAME_LENGTH as u32).to_le_bytes());
+            let mut frame = (body.len() as u32).to_le_bytes().to_vec();
+            frame.extend(body);
+            frame
+        };
+        let mut decoder = Decoder::default();
+        decoder.push(&frame(0));
+        assert_eq!(
+            decoder.next_message::<Request>(),
+            Some(Err(Error::TooManyChanges(MAX_FRAME_LENGTH)))
+        );
+        decoder.push(&frame(8));
+        assert_eq!(
+            decoder.next_message::<Event>(),
+            Some(Err(Error::TooManyChanges(MAX_FRAME_LENGTH)))
+        );
+    }
+
+    #[test]
     fn every_message_survives_encoding_split_across_reads() {
-        round_trip(Request::Upgrade);
         round_trip(Request::Quit);
         round_trip(Request::Allow(4_194_303));
         round_trip(Event::Ready {
@@ -543,10 +634,11 @@ mod tests {
 
     #[test]
     fn a_blocking_reader_reads_frames_one_by_one_and_stops_at_the_end() {
-        let mut stream = Request::Upgrade.encode();
+        let upgrade = Request::Upgrade(vec![Change::new("linux", "7.2.9-1", "7.2.10-1")]);
+        let mut stream = upgrade.encode();
         stream.extend(Request::Quit.encode());
         let mut source = std::io::Cursor::new(stream);
-        assert_eq!(read_one(&mut source).unwrap(), Some(Request::Upgrade));
+        assert_eq!(read_one(&mut source).unwrap(), Some(upgrade));
         assert_eq!(read_one(&mut source).unwrap(), Some(Request::Quit));
         assert_eq!(read_one::<Request>(&mut source).unwrap(), None);
         let mut source = std::io::Cursor::new([2, 0, 0, 0, 1, 9]);

@@ -1,5 +1,5 @@
 use gtk4::glib;
-use proscenio_protocol::{Decoder, Event, Message, Request, Stage};
+use proscenio_protocol::{Change, Decoder, Event, Message, Request, Stage};
 use std::cell::{Cell, RefCell};
 use std::io::Write;
 use std::process::{ChildStdin, Stdio};
@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 use super::manager::{aur_query, aur_upgrade, package_manager};
 use super::output::{decode_events, elapsed_text, exit_code, visible_text, watch_output};
+use super::packages::{query_aur_packages, version_change};
 use super::{BRANCH, HELPER, Job, REPOSITORY, Updates};
 use crate::core::i18n::trf;
 use crate::core::{paths, process};
@@ -22,11 +23,21 @@ makepkg -Acfsi --noconfirm
 systemctl --user restart proscenio";
 const SHELL_COMMAND: &str = "makepkg -Acfsi --noconfirm && systemctl --user restart proscenio";
 
+#[derive(Clone)]
+enum AurListing {
+    Pending,
+    Failed,
+    Listed(Vec<String>),
+}
+
 struct Session {
     stdin: RefCell<Option<ChildStdin>>,
     job: Job,
     manager: &'static str,
     socket_and_token: RefCell<Option<(String, Vec<u8>)>>,
+    planned_changes: RefCell<Option<Vec<Change>>>,
+    aur_listing: RefCell<AurListing>,
+    aur_names: RefCell<Vec<String>>,
     includes_aur: Cell<bool>,
     is_forwarding: Cell<bool>,
     is_ok: Cell<bool>,
@@ -34,6 +45,10 @@ struct Session {
 }
 
 impl Session {
+    fn is_open(&self) -> bool {
+        self.stdin.borrow().is_some()
+    }
+
     fn send(&self, request: Request) {
         if let Some(stdin) = self.stdin.borrow_mut().as_mut() {
             let _ = stdin.write_all(&request.encode());
@@ -114,20 +129,15 @@ impl Updates {
             return false;
         };
         self.push_log(&format!("$ pkexec {HELPER} session"));
-        let has_aur = aur_query(manager).is_some();
-        if job == Job::System {
-            self.progress.replace(Some(UpdateProgress::system(
-                self.repository_packages.borrow().len(),
-                self.aur_packages.borrow().len(),
-                has_aur,
-            )));
-        }
         let session = Rc::new(Session {
             stdin: RefCell::new(Some(stdin)),
             job,
             manager,
             socket_and_token: RefCell::new(None),
-            includes_aur: Cell::new(has_aur && !self.aur_packages.borrow().is_empty()),
+            planned_changes: RefCell::new(None),
+            aur_listing: RefCell::new(AurListing::Pending),
+            aur_names: RefCell::new(Vec::new()),
+            includes_aur: Cell::new(false),
             is_forwarding: Cell::new(false),
             is_ok: Cell::new(true),
             package_index: Cell::new(0),
@@ -182,9 +192,13 @@ impl Updates {
                 }
                 session.socket_and_token.replace(Some((socket, token)));
                 match session.job {
-                    Job::System => session.send(Request::Upgrade),
+                    Job::System => self.plan(session),
                     Job::Shell => self.start_build(session),
                 }
+            }
+            Event::Planned(changes) => {
+                session.planned_changes.replace(Some(changes));
+                self.continue_plan(session);
             }
             Event::Stage(stage) => self.push_log(stage_text(stage)),
             Event::Transaction {
@@ -224,6 +238,61 @@ impl Updates {
         }
     }
 
+    fn plan(&self, session: &Rc<Session>) {
+        session.send(Request::Plan);
+        let updates = self.clone();
+        let session = session.clone();
+        glib::spawn_future_local(async move {
+            let listing = match query_aur_packages(session.manager).await {
+                Some(aur_packages) => AurListing::Listed(aur_packages),
+                None => AurListing::Failed,
+            };
+            session.aur_listing.replace(listing);
+            updates.continue_plan(&session);
+        });
+    }
+
+    fn continue_plan(&self, session: &Rc<Session>) {
+        let planned_changes = session.planned_changes.borrow().clone();
+        let aur_listing = session.aur_listing.borrow().clone();
+        let Some(changes) = planned_changes else {
+            return;
+        };
+        if !session.is_open() {
+            return;
+        }
+        match aur_listing {
+            AurListing::Pending => {}
+            AurListing::Failed => {
+                self.push_log("Could not list the AUR packages to update");
+                session.is_ok.set(false);
+                session.close();
+            }
+            AurListing::Listed(aur_packages) => {
+                self.show_plan(&changes, aur_packages.clone());
+                self.install_plan(session, changes, &aur_packages);
+            }
+        }
+    }
+
+    fn install_plan(&self, session: &Rc<Session>, changes: Vec<Change>, aur_packages: &[String]) {
+        let aur_names: Vec<String> = aur_packages
+            .iter()
+            .filter_map(|line| version_change(line))
+            .map(|(name, _, _)| name.to_owned())
+            .collect();
+        let has_aur = aur_query(session.manager).is_some();
+        self.progress.replace(Some(UpdateProgress::system(
+            changes.len(),
+            aur_names.len(),
+            has_aur,
+        )));
+        session.includes_aur.set(has_aur && !aur_names.is_empty());
+        session.aur_names.replace(aur_names);
+        self.output_listeners.notify();
+        session.send(Request::Upgrade(changes));
+    }
+
     fn start_aur(&self, session: &Rc<Session>) {
         let Some((socket, token)) = session.socket_and_token.borrow().clone() else {
             session.close();
@@ -232,7 +301,9 @@ impl Updates {
         if let Some(progress) = self.progress.borrow_mut().as_mut() {
             progress.start_aur();
         }
-        let command = aur_upgrade(session.manager);
+        let names = session.aur_names.borrow().clone();
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        let command = aur_upgrade(session.manager, &names);
         let line: Vec<String> = ["bash", "-c", MERGED_OUTPUT, "bash"]
             .into_iter()
             .chain(command.iter().copied())
