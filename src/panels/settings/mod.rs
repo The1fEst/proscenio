@@ -149,6 +149,10 @@ impl Settings {
         if let Some(view) = self.view.take() {
             view.window.destroy();
         }
+        self.clear_window_state();
+    }
+
+    fn clear_window_state(&self) {
         self.context.shared.take();
         self.context.dialog.take();
         self.context.services.updates.cancel();
@@ -354,8 +358,7 @@ impl Settings {
             move |_| {
                 if let Some(settings) = settings.upgrade() {
                     settings.view.replace(None);
-                    settings.context.shared.take();
-                    settings.context.dialog.take();
+                    settings.clear_window_state();
                 }
                 glib::Propagation::Proceed
             }
