@@ -6,12 +6,13 @@ use crate::core::scope::Scope;
 use crate::core::watch;
 use crate::panels::settings::Settings;
 use crate::panels::sidebar::quicktoggle::{Glyph, Look, QuickToggle, Start};
-use crate::services::updates::{Job, Updates};
+use crate::services::updates::Updates;
 use crate::ui::theme::SharedTheme;
 use crate::ui::widgets::layout::group::ButtonGroup;
 
 const SPACING: f64 = 6.0;
 const TILE_SPAN: i32 = 2;
+const UPDATES_PAGE: &str = "updates";
 
 pub fn build(
     theme: &SharedTheme,
@@ -26,7 +27,7 @@ pub fn build(
     group.set_halign(gtk4::Align::Start);
 
     let tile_width = (width - SPACING) / 2.0;
-    let add_tile = |job: Job| {
+    let add_tile = || {
         let toggle = QuickToggle::new(
             theme,
             tile_width,
@@ -43,15 +44,15 @@ pub fn build(
             let settings = settings.clone();
             Rc::new(move || {
                 close();
-                settings.open(Some(find_list_page(job)));
+                settings.open(Some(UPDATES_PAGE));
             })
         };
         toggle.connect_actions(open_page, None);
         group.append(&toggle.button);
         toggle
     };
-    let shell = add_tile(Job::Shell);
-    let system = add_tile(Job::System);
+    let shell = add_tile();
+    let system = add_tile();
 
     let show = {
         let group = group.clone();
@@ -74,13 +75,6 @@ pub fn build(
     scope.hold(watch::config("/updates", show));
 
     group.upcast()
-}
-
-fn find_list_page(job: Job) -> &'static str {
-    match job {
-        Job::System => "updatepackages",
-        Job::Shell => "shellcommits",
-    }
 }
 
 fn shell_look(commits_behind: i32, is_busy: bool) -> Look {
@@ -139,13 +133,8 @@ mod tests {
     use crate::panels::settings::pages;
 
     #[test]
-    fn a_tile_opens_the_list_of_what_it_would_update() {
-        assert_eq!(find_list_page(Job::System), "updatepackages");
-        assert_eq!(find_list_page(Job::Shell), "shellcommits");
-        for job in [Job::System, Job::Shell] {
-            let page = find_list_page(job);
-            assert!(pages::subpage(page).is_some(), "{page}");
-        }
+    fn a_tile_opens_a_settings_page_that_exists() {
+        assert!(pages::subpage(UPDATES_PAGE).is_some());
     }
 
     #[test]

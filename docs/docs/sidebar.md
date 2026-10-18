@@ -126,9 +126,8 @@ enough packages wait. The bar shows the `deployed_code_update` indicator at the 
 A button with nothing to update is dimmed. While either update runs, both buttons read **Updating…**
 and are dimmed. The System update button turns the primary color from
 `updates.stronglyAdviseUpdateThreshold` packages (200). Clicking a button closes the sidebar and
-opens the list of what it would update on the [Updates](settings-system.md#updates) page: the
-packages for System update, the commits for Shell update. An update starts from the Updates page or
-from either list.
+opens the [Updates](settings-system.md#updates) page, where an update starts after a dialog lists
+what it will install.
 
 While `updates.enableCheck` is on, the shell checks at start and then every
 `updates.checkInterval` minutes (120):
