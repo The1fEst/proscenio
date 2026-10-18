@@ -263,6 +263,20 @@ pub fn add_update_button(
     update_button
 }
 
+pub fn go_back_on_install(page: &Page, context: &Context) {
+    let updates = context.services.updates.clone();
+    let go_back = Rc::new(context.go_back());
+    let was_installing = Cell::new(updates.is_installing.get());
+    page.keep(context.services.updates.subscribe(move || {
+        let is_installing = updates.is_installing.get();
+        let has_started = is_installing && !was_installing.replace(is_installing);
+        if has_started {
+            let go_back = go_back.clone();
+            glib::idle_add_local_once(move || go_back());
+        }
+    }));
+}
+
 fn build_update_button(page: &Page, updates: &Updates, job: Job) -> RippleButton {
     let (update_button, _) = page.icon_button("upgrade", true, &tr("Update"), {
         let updates = updates.clone();

@@ -13,7 +13,7 @@ use crate::ui::widgets::input::flickable::follow_scroll_settings;
 use crate::ui::widgets::overlay::windowdialog::{self, Place, WindowDialog};
 
 const DIALOG_WIDTH: f64 = 460.0;
-const DIALOG_HEIGHT: f64 = 600.0;
+const LIST_MAX_HEIGHT: i32 = 420;
 const LIST_SPACING: i32 = 4;
 const HEADER_START: i32 = 8;
 
@@ -24,7 +24,7 @@ pub fn build(
 ) -> Option<Rc<WindowDialog>> {
     let review = updates.review.borrow().clone()?;
     let job = updates.job.get()?;
-    let dialog = WindowDialog::new(theme, Some(DIALOG_HEIGHT));
+    let dialog = WindowDialog::new(theme, None);
     dialog.set_background_width(DIALOG_WIDTH);
     dialog
         .column
@@ -51,6 +51,8 @@ pub fn build(
     }
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::External);
+    let list_height = list.measure(gtk4::Orientation::Vertical, -1).1;
+    scroll.set_min_content_height(list_height.min(LIST_MAX_HEIGHT));
     scroll.set_child(Some(&list));
     follow_scroll_settings(&scroll);
     dialog.column.add(

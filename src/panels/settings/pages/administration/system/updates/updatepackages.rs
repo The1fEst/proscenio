@@ -5,7 +5,9 @@ use std::time::Duration;
 
 use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::{Context, Page};
-use crate::panels::settings::pages::administration::system::updates::add_update_button;
+use crate::panels::settings::pages::administration::system::updates::{
+    add_update_button, go_back_on_install,
+};
 use crate::services::updates::packages::version_change;
 use crate::services::updates::{Job, Updates};
 use crate::ui::theme::{SharedTheme, pixel_size};
@@ -68,6 +70,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     };
     show_packages();
     page.keep(updates.subscribe(show_packages));
+    go_back_on_install(&page, context);
     page
 }
 
