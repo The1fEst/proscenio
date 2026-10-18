@@ -1,3 +1,4 @@
+use alpm::Alpm;
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
@@ -24,7 +25,7 @@ fn lock_check_database(db_path: &Path) -> Result<std::fs::File, String> {
                 std::thread::sleep(CHECK_LOCK_RETRY_DELAY);
             }
             Err(std::fs::TryLockError::WouldBlock) => {
-                return Err("another check is still running".to_owned());
+                return Err("another check or plan is still running".to_owned());
             }
             Err(std::fs::TryLockError::Error(error)) => return Err(format_error(error)),
         }
@@ -36,12 +37,17 @@ fn lock_check_database(db_path: &Path) -> Result<std::fs::File, String> {
     }
 }
 
-pub fn check(db_path: &str) -> Result<(), String> {
-    let _lock_file = lock_check_database(Path::new(db_path))?;
+pub fn open_private_alpm(db_path: &str) -> Result<(std::fs::File, Alpm), String> {
+    let lock_file = lock_check_database(Path::new(db_path))?;
     let mut alpm = open_alpm(Some(db_path))?;
     alpm.set_sandbox_user(None::<&str>).map_err(format_error)?;
     alpm.set_disable_sandbox_filesystem(true);
     alpm.set_disable_sandbox_syscalls(true);
+    Ok((lock_file, alpm))
+}
+
+pub fn check(db_path: &str) -> Result<(), String> {
+    let (_lock_file, mut alpm) = open_private_alpm(db_path)?;
     alpm.syncdbs_mut().update(false).map_err(format_error)?;
     let ignored_packages: Vec<String> = alpm.ignorepkgs().iter().map(str::to_owned).collect();
     let mut stdout = std::io::stdout().lock();

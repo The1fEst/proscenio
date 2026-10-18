@@ -11,7 +11,7 @@ use crate::stage::{
     prepare_stage,
 };
 
-fn plan_changes(alpm: &mut Alpm) -> Result<Vec<Change>, String> {
+pub fn plan_changes(alpm: &mut Alpm) -> Result<Vec<Change>, String> {
     alpm.trans_init(TransFlag::NONE).map_err(format_error)?;
     let result = alpm
         .sync_sysupgrade(false)
