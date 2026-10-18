@@ -5,8 +5,9 @@ use std::time::Duration;
 
 use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::{Context, Page};
-use crate::services::updates::Updates;
+use crate::panels::settings::pages::administration::system::updates::add_update_button;
 use crate::services::updates::packages::version_change;
+use crate::services::updates::{Job, Updates};
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::ripple::RippleButton;
@@ -31,7 +32,10 @@ pub fn build(context: &Context) -> Rc<Page> {
     let empty_label = up_to_date_label();
     empty_section.append(&empty_label);
     let repository_section = page.section("deployed_code", &tr("Repositories"));
+    let repository_update_button =
+        add_update_button(&page, &repository_section, &updates, Job::System);
     let aur_section = page.section("deployed_code_account", &tr("AUR"));
+    let aur_update_button = add_update_button(&page, &aur_section, &updates, Job::System);
 
     let show_packages = {
         let updates = updates.clone();
@@ -45,6 +49,10 @@ pub fn build(context: &Context) -> Rc<Page> {
             };
             fill(&repository_section, &repository_packages, build_row);
             fill(&aur_section, &aur_packages, build_row);
+            let can_start = updates.can_start(Job::System);
+            repository_update_button.set_sensitive(can_start);
+            aur_update_button.set_sensitive(can_start);
+            aur_update_button.set_visible(repository_packages.is_empty());
             let has_check_failed = updates.has_package_check_failed.get();
             empty_label.set_text(&if has_check_failed {
                 tr("Could not check for updates")

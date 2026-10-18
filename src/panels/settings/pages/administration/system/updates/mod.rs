@@ -8,6 +8,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::i18n::{tr, trf, trn};
+use crate::core::listeners::Subscription;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::administration::system::about;
 use crate::services::updates::updateprogress::Step;
@@ -23,8 +24,6 @@ const LOG_HEIGHT: i32 = 320;
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
     let updates = context.services.updates.clone();
-    let present: Rc<dyn Fn(Rc<WindowDialog>)> = Rc::new(context.dialog_presenter());
-    let review_dialog: Rc<RefCell<Option<Rc<WindowDialog>>>> = Rc::default();
 
     let (system_section, system_check_indicator) =
         page.busy_section("deployed_code_update", &tr("System"));
@@ -95,27 +94,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let show_state = {
         let updates = updates.clone();
         let output_section = output_section.clone();
-        let theme = context.theme.clone();
         move || {
-            if updates.review.borrow().is_none() {
-                if let Some(dialog) = review_dialog.take() {
-                    dialog.dismiss();
-                }
-            } else if review_dialog.borrow().is_none() {
-                let on_closed = {
-                    let review_dialog = review_dialog.clone();
-                    let updates = updates.clone();
-                    move || {
-                        if review_dialog.take().is_some() {
-                            updates.cancel();
-                        }
-                    }
-                };
-                if let Some(dialog) = confirmation::build(&theme, &updates, on_closed) {
-                    review_dialog.replace(Some(dialog.clone()));
-                    present(dialog);
-                }
-            }
             let count = updates.count();
             let packages_text = trn("%1 package", "%1 packages", count as u64);
             packages_summary_label.set_text(&match (
@@ -157,10 +136,10 @@ pub fn build(context: &Context) -> Rc<Page> {
             shell_check_button.set_sensitive(!is_checking_shell);
             system_check_button.set_visible(count == 0);
             system_update_button.set_visible(count > 0);
-            system_update_button.set_sensitive(job.is_none() && updates.has_package_manager.get());
+            system_update_button.set_sensitive(updates.can_start(Job::System));
             shell_check_button.set_visible(commits_behind == 0);
             shell_update_button.set_visible(commits_behind > 0);
-            shell_update_button.set_sensitive(job.is_none());
+            shell_update_button.set_sensitive(updates.can_start(Job::Shell));
             loading_indicator.area.set_visible(job.is_some());
             loading_indicator.set_loading(job.is_some());
             let notice = updates.notice.get();
@@ -240,6 +219,69 @@ fn step_text(step: &Step) -> String {
     }
 }
 
+pub fn follow_reviews(context: &Context) -> Subscription {
+    let updates = context.services.updates.clone();
+    let present = context.dialog_presenter();
+    let theme = context.theme.clone();
+    let review_dialog: Rc<RefCell<Option<Rc<WindowDialog>>>> = Rc::default();
+    let show_review = move || {
+        if updates.review.borrow().is_none() {
+            if let Some(dialog) = review_dialog.take() {
+                dialog.dismiss();
+            }
+            return;
+        }
+        if review_dialog.borrow().is_some() {
+            return;
+        }
+        let on_closed = {
+            let review_dialog = review_dialog.clone();
+            let updates = updates.clone();
+            move || {
+                if review_dialog.take().is_some() {
+                    updates.cancel();
+                }
+            }
+        };
+        if let Some(dialog) = confirmation::build(&theme, &updates, on_closed) {
+            review_dialog.replace(Some(dialog.clone()));
+            present(dialog);
+        }
+    };
+    show_review();
+    context.services.updates.subscribe(show_review)
+}
+
+pub fn add_update_button(
+    page: &Page,
+    section: &gtk4::Box,
+    updates: &Updates,
+    job: Job,
+) -> RippleButton {
+    let update_button = build_update_button(page, updates, job);
+    append_to_header(section, &[&update_button]);
+    update_button
+}
+
+fn build_update_button(page: &Page, updates: &Updates, job: Job) -> RippleButton {
+    let (update_button, _) = page.icon_button("upgrade", true, &tr("Update"), {
+        let updates = updates.clone();
+        move || updates.start(job)
+    });
+    update_button
+}
+
+fn append_to_header(section: &gtk4::Box, buttons: &[&RippleButton]) {
+    if let Some(header) = section.prev_sibling().and_downcast::<gtk4::Box>() {
+        let spacer = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        spacer.set_hexpand(true);
+        header.append(&spacer);
+        for button in buttons {
+            header.append(*button);
+        }
+    }
+}
+
 fn header_actions(
     page: &Page,
     section: &gtk4::Box,
@@ -250,17 +292,8 @@ fn header_actions(
         let updates = updates.clone();
         move || updates.check(job)
     });
-    let (update_button, _) = page.icon_button("upgrade", true, &tr("Update"), {
-        let updates = updates.clone();
-        move || updates.start(job)
-    });
-    if let Some(header) = section.prev_sibling().and_downcast::<gtk4::Box>() {
-        let spacer = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
-        spacer.set_hexpand(true);
-        header.append(&spacer);
-        header.append(&check_button);
-        header.append(&update_button);
-    }
+    let update_button = build_update_button(page, updates, job);
+    append_to_header(section, &[&check_button, &update_button]);
     (check_button, update_button)
 }
 

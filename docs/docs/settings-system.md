@@ -251,13 +251,16 @@ under **AUR** those `paru -Qua` or `yay -Qua` reports. A package's name can be s
 copy button at the end of its row copies the name; the button shows a check for a moment.
 **Commits** opens a page with every new commit: its subject and, below it, the first seven
 characters of its hash, which can be selected; the copy button at the end of the row copies the
-full hash. The **Packages** and **Commits** rows are unavailable while their count is 0, so a check
+full hash. Each of the two pages has an **Update** button beside the title of its first list
+(**Repositories**, or **AUR** when no repository package is pending; **Commits**). It starts the same
+update as the button on this page, with the same confirmation dialog. The **Packages** and
+**Commits** rows are unavailable while their count is 0, so a check
 that failed and found no package leaves **Packages** closed, with **Could not check for updates**
 on the row. When part of the last check failed and some packages
 were found, the Packages page reads **Could not check for updates** above them. A page that is open
 when its last item goes reads **Up to date**. Updates run without a terminal, in a systemd scope
-of their own so that restarting the shell does not stop them, and one at a time: both **Update**
-buttons are disabled while one runs.
+of their own so that restarting the shell does not stop them, and one at a time: every **Update**
+button is disabled while one runs.
 
 Each update asks for the password once, through polkit's action `dev.fEst.Proscenio.packages`, in
 the shell's own dialog, by opening a root session of `proscenio-packages`. Whatever the update

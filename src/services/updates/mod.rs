@@ -137,6 +137,10 @@ impl Updates {
         }
     }
 
+    pub fn can_start(&self, job: Job) -> bool {
+        is_start_allowed(job, self.job.get(), self.has_package_manager.get())
+    }
+
     pub fn start(&self, job: Job) {
         if self.job.get().is_some() {
             return;
@@ -166,5 +170,37 @@ impl Updates {
             log.push('\n');
         }
         self.output_listeners.notify();
+    }
+}
+
+fn is_start_allowed(job: Job, running_job: Option<Job>, has_package_manager: bool) -> bool {
+    running_job.is_none() && (job == Job::Shell || has_package_manager)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_job_starts_only_when_none_runs_and_a_system_job_also_needs_a_package_manager() {
+        let cases = [
+            (Job::System, None, true, true),
+            (Job::System, None, false, false),
+            (Job::System, Some(Job::System), true, false),
+            (Job::System, Some(Job::Shell), true, false),
+            (Job::Shell, None, true, true),
+            (Job::Shell, None, false, true),
+            (Job::Shell, Some(Job::System), false, false),
+            (Job::Shell, Some(Job::Shell), true, false),
+        ];
+        for (index, (job, running_job, has_package_manager, expected)) in
+            cases.into_iter().enumerate()
+        {
+            assert_eq!(
+                is_start_allowed(job, running_job, has_package_manager),
+                expected,
+                "case {index}",
+            );
+        }
     }
 }

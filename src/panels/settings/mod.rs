@@ -16,6 +16,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::i18n::{tr, trn};
+use crate::core::listeners::Subscription;
 use crate::core::{config, watch};
 use crate::platform::hyprland::hypr;
 use crate::services::Services;
@@ -29,6 +30,7 @@ use crate::ui::widgets::overlay::windowdialog::{self, Place, WindowDialog};
 use content::{Context, HIGHLIGHT_CHANGED, Page};
 use index::Hit;
 use pages::PAGES;
+use pages::administration::system::updates;
 use rail::Rail;
 
 const TITLE: &str = "proscenio Settings";
@@ -91,6 +93,7 @@ struct View {
     tips: RefCell<Vec<Rc<Tooltip>>>,
     highlight_watch: RefCell<Option<watch::Watch>>,
     _layout_watch: watch::Watch,
+    _review_subscription: Subscription,
 }
 
 impl Settings {
@@ -244,6 +247,7 @@ impl Settings {
             tips: RefCell::new(Vec::new()),
             highlight_watch: RefCell::new(None),
             _layout_watch: layout_watch,
+            _review_subscription: updates::follow_reviews(&self.context),
         });
         let highlight_watch = self.add_page_tools(&tools, &view);
         view.highlight_watch.replace(Some(highlight_watch));
