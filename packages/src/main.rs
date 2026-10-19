@@ -14,10 +14,14 @@ mod transaction;
 
 use check::check;
 use forwarding::{forward, is_pacman};
+use handle::{USER_AGENT_VARIABLE, describe_user_agent};
 use plan::plan;
 use session::run_session;
 
 fn main() {
+    if std::env::var_os(USER_AGENT_VARIABLE).is_none_or(|user_agent| user_agent.is_empty()) {
+        unsafe { std::env::set_var(USER_AGENT_VARIABLE, describe_user_agent()) };
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
     let exit_code = match args.first().map(String::as_str) {
         Some("check") if args.len() == 2 => report(check(&args[1])),

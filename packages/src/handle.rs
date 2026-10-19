@@ -5,20 +5,66 @@ use alpm::{
 use proscenio_protocol::{Event, Stage};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ffi::{CStr, c_char, c_int};
+use std::mem::MaybeUninit;
 use std::rc::Rc;
 
 use crate::errors::format_error;
 use crate::output::emit;
 
 pub const ALPM_LOCK: &str = "db.lck";
+pub const USER_AGENT_VARIABLE: &str = "HTTP_USER_AGENT";
 const DOWNLOAD_STEPS: u64 = 200;
 const SYSTEM_HOOK_DIR: &str = "/usr/share/libalpm/hooks/";
+const UTS_FIELD_LENGTH: usize = 65;
+
+#[repr(C)]
+struct Utsname {
+    sysname: [c_char; UTS_FIELD_LENGTH],
+    _nodename: [c_char; UTS_FIELD_LENGTH],
+    _release: [c_char; UTS_FIELD_LENGTH],
+    _version: [c_char; UTS_FIELD_LENGTH],
+    machine: [c_char; UTS_FIELD_LENGTH],
+    _domainname: [c_char; UTS_FIELD_LENGTH],
+}
+
+unsafe extern "C" {
+    fn uname(name: *mut Utsname) -> c_int;
+}
 
 #[derive(Default)]
 struct Downloads {
     files: HashMap<String, (u64, u64)>,
     expected_bytes: u64,
     reported_bytes: u64,
+}
+
+pub fn describe_user_agent() -> String {
+    let mut name = MaybeUninit::<Utsname>::zeroed();
+    let name = unsafe {
+        uname(name.as_mut_ptr());
+        name.assume_init()
+    };
+    format_user_agent(
+        &read_uts_field(&name.sysname),
+        &read_uts_field(&name.machine),
+        alpm::version(),
+    )
+}
+
+fn read_uts_field(field: &[c_char; UTS_FIELD_LENGTH]) -> String {
+    let bytes = field.map(|character| character as u8);
+    CStr::from_bytes_until_nul(&bytes)
+        .map(|text| text.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+fn format_user_agent(system: &str, machine: &str, alpm_version: &str) -> String {
+    format!(
+        "{}/{} ({system} {machine}) libalpm/{alpm_version}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 pub fn open_alpm(db_path: Option<&str>) -> Result<Alpm, String> {
@@ -157,6 +203,31 @@ mod tests {
 
     fn strings(items: &[&str]) -> Vec<String> {
         items.iter().map(|item| item.to_string()).collect()
+    }
+
+    #[test]
+    fn the_user_agent_has_the_shape_of_pacmans() {
+        assert_eq!(
+            format_user_agent("Linux", "x86_64", "16.0.1"),
+            format!(
+                "proscenio-packages/{} (Linux x86_64) libalpm/16.0.1",
+                env!("CARGO_PKG_VERSION")
+            )
+        );
+    }
+
+    #[test]
+    fn the_user_agent_names_the_running_system_as_uname_does() {
+        let output = std::process::Command::new("uname")
+            .args(["-s", "-m"])
+            .output()
+            .unwrap();
+        let system_and_machine = String::from_utf8(output.stdout).unwrap();
+        let (system, machine) = system_and_machine.trim_end().split_once(' ').unwrap();
+        assert_eq!(
+            describe_user_agent(),
+            format_user_agent(system, machine, alpm::version())
+        );
     }
 
     #[test]

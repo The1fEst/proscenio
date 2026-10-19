@@ -293,6 +293,11 @@ output below reads **Up to date**. When the AUR listing fails, the update stops 
 output reads **Could not check for updates**; so it does when the plan fails, such as with no
 network, and the log names the error. Either message stays until the next check or update.
 
+Every request `proscenio-packages` sends to a mirror, in the check, the refresh and the root session,
+and every request of the `pacman` the session runs, carries the User-Agent
+`proscenio-packages/<version> (<system> <machine>) libalpm/<version>`, the form `pacman` uses,
+unless `HTTP_USER_AGENT` is already set and not empty.
+
 A package reads **Needs a reboot** beside its versions, and a line above the list counts those
 packages, when it is installed and any of these holds:
 
