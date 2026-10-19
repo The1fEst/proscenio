@@ -31,8 +31,21 @@ pub fn own_session<S: AsRef<OsStr>>(line: &[S]) -> Command {
 const SCOPE: [&str; 5] = ["systemd-run", "--user", "--scope", "--quiet", "--collect"];
 
 pub fn own_scope<S: AsRef<OsStr>>(unit: Option<&str>, line: &[S]) -> Command {
-    let mut command = own_session(&SCOPE);
+    build_scope_command(&["setsid"], unit, line)
+}
+
+pub fn build_app_command<S: AsRef<OsStr>>(unit: Option<&str>, line: &[S]) -> Command {
+    build_scope_command(&["setsid", "-f"], unit, line)
+}
+
+fn build_scope_command<S: AsRef<OsStr>>(
+    launcher: &[&str],
+    unit: Option<&str>,
+    line: &[S],
+) -> Command {
+    let mut command = quiet(launcher);
     command
+        .args(SCOPE)
         .args(unit.map(|unit| format!("--unit={unit}")))
         .arg("--")
         .args(line);
@@ -67,7 +80,7 @@ pub fn detach(line: &[&str]) {
 }
 
 pub fn launch(line: &[&str]) {
-    start(own_scope(None, line));
+    start(build_app_command(None, line));
 }
 
 pub async fn finish(mut command: Command) -> Option<bool> {
@@ -229,6 +242,28 @@ pub fn output<S: AsRef<OsStr>>(command: &[S]) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_app_forks_away_from_the_shell_into_its_own_scope() {
+        let command = build_app_command(Some("app-x.scope"), &["firefox", "--new-window"]);
+        assert_eq!(command.get_program(), "setsid");
+        let arguments: Vec<_> = command.get_args().collect();
+        assert_eq!(
+            arguments,
+            [
+                "-f",
+                "systemd-run",
+                "--user",
+                "--scope",
+                "--quiet",
+                "--collect",
+                "--unit=app-x.scope",
+                "--",
+                "firefox",
+                "--new-window"
+            ]
+        );
+    }
 
     #[test]
     fn the_parent_follows_a_command_name_with_spaces_and_parentheses() {

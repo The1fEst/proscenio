@@ -303,7 +303,7 @@ fn bash(line: &str) -> [String; 3] {
 
 fn spawn(command: &[String], directory: Option<&str>, app: Option<&str>) {
     let unit = app.map(|id| unit_name(id, &glib::uuid_string_random()));
-    let mut scope_command = process::own_scope(unit.as_deref(), command);
+    let mut scope_command = process::build_app_command(unit.as_deref(), command);
     if let Some(directory) = directory {
         scope_command.current_dir(directory);
     }
