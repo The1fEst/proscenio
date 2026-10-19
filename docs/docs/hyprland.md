@@ -231,6 +231,12 @@ last of several in a row, and reloads Hyprland only when a text changed. It writ
 Hyprland does not answer the `monitors all` request. The block is rewritten in place. Only lines of
 exactly the shape above belong to it; a workspace rule with other keys is left alone.
 
+Hyprland does not switch a display to its `default` workspace on reload. After the reload that
+follows a changed block, the shell switches every display that is on and not mirroring, and whose
+active workspace lies outside its own group, to the first workspace of that group, then focuses the
+display that had focus. Special workspaces are not touched, and a plain `configreloaded` moves
+nothing.
+
 A display keeps the group its rules already give it, read back from the block, also while it is
 unplugged, off or mirroring. Displays without one get the next groups: the main display
 (`WAYLANDDRV_PRIMARY_MONITOR` in `displays.lua`, when it is on) first, then the others by connector

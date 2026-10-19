@@ -50,6 +50,7 @@ pub struct Monitor {
     pub color_preset: String,
     pub available_modes: Vec<String>,
     pub is_disabled: bool,
+    pub active_workspace_id: i64,
 }
 
 impl Monitor {
@@ -100,6 +101,11 @@ impl Monitor {
                 .get("disabled")
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
+            active_workspace_id: value
+                .get("activeWorkspace")
+                .and_then(|workspace| workspace.get("id"))
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
         })
     }
 }
@@ -743,6 +749,7 @@ mod tests {
             color_preset: "srgb".to_owned(),
             available_modes: modes.iter().map(|mode| (*mode).to_owned()).collect(),
             is_disabled: false,
+            active_workspace_id: 0,
         }
     }
 

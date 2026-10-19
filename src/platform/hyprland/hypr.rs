@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
+use crate::platform::hyprland::hyprconfig::lua_string;
 
 pub fn socket_dir() -> Option<PathBuf> {
     let runtime = env::var_os("XDG_RUNTIME_DIR")?;
@@ -43,6 +44,13 @@ pub fn close_window(address: &str) {
 
 pub fn focus_workspace(id: i32) {
     request(&format!("dispatch hl.dsp.focus({{ workspace = {id} }})"));
+}
+
+pub fn focus_monitor(name: &str) {
+    request(&format!(
+        "dispatch hl.dsp.focus({{ monitor = {} }})",
+        lua_string(name)
+    ));
 }
 
 pub fn move_to_workspace(address: &str, workspace: i32) {

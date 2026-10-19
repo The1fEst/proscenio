@@ -72,6 +72,27 @@ pub fn with_groups(text: &str, size: i32, outputs: &[String]) -> String {
     new_text
 }
 
+pub fn find_misplaced_outputs(
+    text: &str,
+    active_workspaces: &[(String, i64)],
+) -> Vec<(String, i32)> {
+    let rules: Vec<(i32, String)> = text.lines().filter_map(parse_rule).collect();
+    active_workspaces
+        .iter()
+        .filter_map(|(output, active)| {
+            let block = || {
+                rules
+                    .iter()
+                    .filter(|(_, rule_output)| rule_output == output)
+                    .map(|(workspace, _)| *workspace)
+            };
+            let (first, last) = (block().min()?, block().max()?);
+            let is_inside = (i64::from(first)..=i64::from(last)).contains(active);
+            (!is_inside).then(|| (output.clone(), first))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,6 +148,41 @@ mod tests {
         assert_eq!(
             with_groups(&grown_text, 2, &to_names(&["DP-1"])),
             grown_text
+        );
+    }
+
+    #[test]
+    fn only_displays_whose_active_workspace_left_their_block_are_sent_to_its_first_workspace() {
+        let text = format!(
+            "{OTHER_RULES}\n{}",
+            with_groups("", 5, &to_names(&["DP-1", "DP-2", "HDMI-A-1"]))
+        );
+        let to_active_workspaces = |list: &[(&str, i64)]| -> Vec<(String, i64)> {
+            list.iter()
+                .map(|(output, workspace)| ((*output).to_owned(), *workspace))
+                .collect()
+        };
+        assert_eq!(
+            find_misplaced_outputs(
+                &text,
+                &to_active_workspaces(&[("DP-1", 3), ("DP-2", 11), ("HDMI-A-1", 11), ("DP-3", 42)])
+            ),
+            vec![("DP-2".to_owned(), 6)]
+        );
+        assert_eq!(
+            find_misplaced_outputs(
+                &text,
+                &to_active_workspaces(&[("DP-1", 5), ("DP-2", 6), ("HDMI-A-1", 15)])
+            ),
+            Vec::<(String, i32)>::new()
+        );
+        assert_eq!(
+            find_misplaced_outputs(&text, &to_active_workspaces(&[("DP-1", 0), ("DP-2", -1)])),
+            vec![("DP-1".to_owned(), 1), ("DP-2".to_owned(), 6)]
+        );
+        assert_eq!(
+            find_misplaced_outputs("", &to_active_workspaces(&[("DP-1", 11)])),
+            Vec::new()
         );
     }
 

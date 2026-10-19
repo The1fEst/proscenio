@@ -50,6 +50,7 @@ mod tests {
             color_preset: String::new(),
             available_modes: Vec::new(),
             is_disabled,
+            active_workspace_id: 0,
         }
     }
 

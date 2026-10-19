@@ -17,6 +17,7 @@ const WRITE_DELAY: Duration = Duration::from_secs(1);
 
 pub struct WorkspaceGroupWriter {
     write_timer: Cell<Option<glib::SourceId>>,
+    is_refocus_pending: Cell<bool>,
     size_watch: RefCell<Option<Watch>>,
     monitor_subscription: RefCell<Option<Subscription>>,
 }
@@ -25,6 +26,7 @@ impl WorkspaceGroupWriter {
     pub fn new(events: &Events) -> Rc<Self> {
         let writer = Rc::new(WorkspaceGroupWriter {
             write_timer: Cell::new(None),
+            is_refocus_pending: Cell::new(false),
             size_watch: RefCell::new(None),
             monitor_subscription: RefCell::new(None),
         });
@@ -40,11 +42,16 @@ impl WorkspaceGroupWriter {
         writer
             .monitor_subscription
             .replace(Some(events.subscribe(move |event, _| {
-                if MONITOR_EVENTS.contains(&event)
-                    && let Some(writer) = weak.upgrade()
-                {
-                    writer.schedule();
+                if !MONITOR_EVENTS.contains(&event) {
+                    return;
                 }
+                let Some(writer) = weak.upgrade() else {
+                    return;
+                };
+                if event == "configreloaded" && writer.is_refocus_pending.take() {
+                    refocus_displays();
+                }
+                writer.schedule();
             })));
         writer.schedule();
         writer
@@ -59,7 +66,9 @@ impl WorkspaceGroupWriter {
             .set(Some(glib::timeout_add_local_once(WRITE_DELAY, move || {
                 if let Some(writer) = weak.upgrade() {
                     writer.write_timer.set(None);
-                    write_groups();
+                    if write_groups() {
+                        writer.is_refocus_pending.set(true);
+                    }
                 }
             })));
     }
@@ -73,9 +82,9 @@ impl Drop for WorkspaceGroupWriter {
     }
 }
 
-fn write_groups() {
+fn write_groups() -> bool {
     let Some(monitors) = read_monitors() else {
-        return;
+        return false;
     };
     let outputs = order_main_first(&monitors, &monitorrules::read().primary);
     let size = config::current().workspaces_shown.max(1);
@@ -84,13 +93,40 @@ fn write_groups() {
             workspacegroups::with_groups(text, size, &outputs)
         })
     else {
-        return;
+        return false;
     };
     let size_path = hyprconfig::settings_path(workspacegroups::SIZE_FILE);
     let is_size_written =
         write_if_changed(&size_path, |_| workspacegroups::render_size_file(size)).unwrap_or(false);
     if are_rules_written || is_size_written {
         hypr::request("reload");
+    }
+    are_rules_written
+}
+
+fn refocus_displays() {
+    let Some(monitors) = read_monitors() else {
+        return;
+    };
+    let Ok(text) = hyprconfig::read_file_for_edit(&hyprconfig::path(workspacegroups::AREA)) else {
+        return;
+    };
+    let active_workspaces: Vec<(String, i64)> = monitors
+        .iter()
+        .filter(|monitor| !monitor.is_disabled && monitor.mirror_of == "none")
+        .map(|monitor| (monitor.name.clone(), monitor.active_workspace_id))
+        .collect();
+    let misplaced = workspacegroups::find_misplaced_outputs(&text, &active_workspaces);
+    if misplaced.is_empty() {
+        return;
+    }
+    let focused = hypr::focused_monitor();
+    for (output, workspace) in misplaced {
+        hypr::focus_monitor(&output);
+        hypr::focus_workspace(workspace);
+    }
+    if let Some(name) = focused {
+        hypr::focus_monitor(&name);
     }
 }
 
