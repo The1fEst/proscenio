@@ -124,6 +124,10 @@ if settings then
 end
 ```
 
+`binds.lua` also holds the Super + number, Super + Alt + number and Ctrl + Super + arrow binds of the
+[workspace groups](hyprland.md#workspace-groups), so the config binds none of those keys. The
+changed-shortcut lines in that file call a `shortcut` function that the config has to define.
+
 Idle timeouts go to `~/.config/hypr/hypridle.conf`, the file `hypridle` reads.
 
 ## Fonts

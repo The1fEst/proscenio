@@ -30,9 +30,10 @@ The same number sets Hyprland's workspace groups: each display keeps one block o
 displays, the main display holds workspaces 1 to 10 and starts on 1, the other display 11 to 20 and
 starts on 11.
 
-The shell writes the group size to `~/.config/hypr/settings/workspaces.lua` and the rules that pin
-each block to its display to `~/.config/hypr/settings/appearance.lua` when it starts, when the number
-changes, and when Hyprland adds a display or reloads its config.
+The shell writes the rules that pin each block to its display to
+`~/.config/hypr/settings/appearance.lua`, and the Super + number, Super + Alt + number and
+Ctrl + Super + arrow binds, which follow the block of the focused display, to
+`~/.config/hypr/settings/binds.lua`, when it starts, when the number changes, and when Hyprland adds a display or reloads its config.
 [Hyprland](hyprland.md#workspace-groups) shows the lines.
 
 The blocks are handed out in this order:

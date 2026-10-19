@@ -138,9 +138,8 @@ files at start writes nothing while any of them cannot be read.
 | `mouse.lua` | Pointer and touchpad options, and gestures |
 | `devices.lua` | Per-device input settings |
 | `apps.lua` | Window rules |
-| `binds.lua` | Changed shortcuts |
+| `binds.lua` | The workspace number and arrow binds, then the changed shortcuts; see [Workspace groups](#workspace-groups) |
 | `other.lua` | Anything that belongs to no page |
-| `workspaces.lua` | Only the workspace group size; see [Workspace groups](#workspace-groups) |
 
 ### Options
 
@@ -200,19 +199,10 @@ Until the line exists, the settings window shows `20`, the alpha of the dotfiles
 ### Workspace groups
 
 Each display gets its own group of `bar.workspaces.shown` workspaces, the number of cells the bar's
-[workspace row](workspaces.md) shows. The size goes into a file of its own,
-`~/.config/hypr/settings/workspaces.lua`, which holds nothing else:
+[workspace row](workspaces.md) shows. The shell writes the rules that pin each group to its display
+and the number and arrow binds that follow the groups.
 
-```lua
-workspaceGroupSize = 5
-```
-
-`workspaceGroupSize` is a global Lua variable for the Hyprland config's own binds that count
-workspaces in groups. A config that binds keys by the size has to load this file before those binds;
-loading it again in the pass over `settings/` is harmless.
-
-The rules that pin each group to its display are a block in `appearance.lua`. With 5 and two
-displays:
+The rules are a block in `appearance.lua`. With 5 and two displays:
 
 ```lua
 hl.workspace_rule({ workspace = "1", monitor = "DP-1", persistent = true, default = true })
@@ -225,11 +215,44 @@ hl.workspace_rule({ workspace = "6", monitor = "DP-2", persistent = true, defaul
 `default` makes the group's first workspace the one the display starts on. Hyprland skips the rules
 of a display that is not connected.
 
-The shell rewrites both one second after it starts, after `bar.workspaces.shown` changes, and after
-Hyprland's `monitoradded`, `monitoraddedv2` and `configreloaded` events, counting the second from the
-last of several in a row, and reloads Hyprland only when a text changed. It writes nothing while
-Hyprland does not answer the `monitors all` request. The block is rewritten in place. Only lines of
-exactly the shape above belong to it; a workspace rule with other keys is left alone.
+The binds are a block at the top of `binds.lua`, between the lines `-- proscenio workspace keys` and
+`-- end proscenio workspace keys`; the `shortcut` lines of the Shortcuts page follow it. With 5 and
+two displays it holds the group size, a table of each display's first workspace, and the binds:
+
+```lua
+do
+    local size = 5
+    local starts = { ["DP-1"] = 1, ["DP-2"] = 6 }
+    -- … find_group_start, find_workspace_in_group, find_adjacent_workspace, send and focus,
+    -- … then four loops of five binds, one loop of the arrow binds and the Up and Down binds
+end
+```
+
+The number binds are Super with the keys 1 to 5 and with the matching keypad key codes, described
+`Workspace: Focus <n>`, and the same with Super and Alt, described `Window: Send to workspace <n>`,
+which moves the focused window without following it. Group sizes above 10 get ten keys, 1 to 9 and
+0. The arrow binds are Ctrl + Super with Left, H, Right and L, described
+`Workspace: Focus left adjacent` and `Workspace: Focus right adjacent`, and the same with Alt,
+described `Window: Send to left adjacent workspace and follow` and `Window: Send to right adjacent
+workspace and follow`, which moves the focused window and follows it. Ctrl + Super + Up and
+Ctrl + Super + Down go to the group's first and last workspace, described
+`Workspace: Focus first in group` and `Workspace: Focus last in group`.
+
+When a key is pressed, the group is the one of the focused display: `starts[<focused display>]` up
+to that plus the size minus 1. Number key n goes to the nth workspace of the group, so Super + 3 on
+DP-2 goes to workspace 8 whichever workspace DP-2 shows. Left, H, Right and L go to the previous
+or next workspace of the group and wraps at its ends. When the display shows a workspace outside its group,
+Right and L go to the group's first workspace and Left and H to its last. A display without an entry
+uses the group of the focused workspace, `floor((id - 1) / size) * size + 1`. A config that loads
+`settings/` and defines `shortcut` gets the binds without anything else.
+
+The shell rewrites the rules and the binds one second after it starts, after `bar.workspaces.shown`
+changes, and after Hyprland's `monitoradded`, `monitoraddedv2` and `configreloaded` events, counting
+the second from the last of several in a row, and reloads Hyprland only when a text changed. It
+writes nothing while Hyprland does not answer the `monitors all` request. The rules are written
+first, the binds after them. Both blocks are rewritten in place; the binds block returns to the top
+of `binds.lua` if it was moved. Only lines of exactly the shape above belong to the rules; a
+workspace rule with other keys is left alone. A leftover `settings/workspaces.lua` is deleted.
 
 Hyprland does not switch a display to its `default` workspace on reload. After the reload that
 follows a changed block, the shell switches every display that is on and not mirroring, and whose
@@ -241,8 +264,8 @@ A display keeps the group its rules already give it, read back from the block, a
 unplugged, off or mirroring. Displays without one get the next groups: the main display
 (`WAYLANDDRV_PRIMARY_MONITOR` in `displays.lua`, when it is on) first, then the others by connector
 type and number, the order the Displays page uses to pick a main display. A display that is off or
-mirrors another one gets no new group. The code is in `src/platform/hyprland/workspacegroups.rs` and
-`src/services/hyprland/workspacegroups.rs`.
+mirrors another one gets no new group. The code is in `src/platform/hyprland/workspacegroups.rs`,
+`src/platform/hyprland/workspacekeys.rs` and `src/services/hyprland/workspacegroups.rs`.
 
 ### Monitor rules
 

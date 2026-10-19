@@ -10,3 +10,4 @@ pub mod keybinds;
 pub mod monitorrules;
 pub mod windowrules;
 pub mod workspacegroups;
+pub mod workspacekeys;

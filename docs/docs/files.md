@@ -134,7 +134,7 @@ wallpaper files when it runs.
 
 | Path | What proscenio does with it |
 |---|---|
-| `~/.config/hypr/settings/<area>.lua` | Writes Hyprland options, monitor, window and workspace rules and shortcuts, one file per area, and the workspace group size in `workspaces.lua`; see [Hyprland](hyprland.md) |
+| `~/.config/hypr/settings/<area>.lua` | Writes Hyprland options, monitor, window and workspace rules, the workspace number and arrow binds and shortcuts, one file per area; see [Hyprland](hyprland.md) |
 | `~/.config/hypr/settings.lua` | If present at start, moves its statements into the area files and renames it `settings.lua.bak` |
 | `~/.config/hypr/hyprland/general.lua` | Reads the gestures defined there, to list them as defaults |
 | `~/.config/hypr/hyprland/scripts/fuzzel-emoji.sh` | Reads the launcher's emoji list, the lines after `### DATA ###` |

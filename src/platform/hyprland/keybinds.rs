@@ -203,6 +203,25 @@ pub fn store(changes: &[(String, Option<[Option<String>; 2]>)]) -> std::io::Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::platform::hyprland::workspacekeys::{self, BEGIN_LINE, END_LINE};
+
+    #[test]
+    fn editing_a_shortcut_keeps_the_workspace_keys_on_top_and_does_not_list_them_as_changed() {
+        let keys_text = workspacekeys::with_keys("", 5, &[("DP-1".to_owned(), 1)]);
+        let keys = [Some("SUPER + Z".to_owned()), None];
+        let text = with_shortcut(&keys_text, "Workspace: Focus 1", Some(&keys));
+        assert_eq!(
+            text,
+            format!("{keys_text}shortcut(\"Workspace: Focus 1\", \"SUPER + Z\", false)\n")
+        );
+        assert!(text.starts_with(BEGIN_LINE) && text.contains(&format!("\n{END_LINE}\n")));
+        assert_eq!(names(&text), vec!["Workspace: Focus 1".to_owned()]);
+        assert_eq!(
+            workspacekeys::with_keys(&text, 5, &[("DP-1".to_owned(), 1)]),
+            text
+        );
+        assert_eq!(with_shortcut(&text, "Workspace: Focus 1", None), keys_text);
+    }
 
     #[test]
     fn combinations_match_whatever_the_modifier_order_and_key_case() {

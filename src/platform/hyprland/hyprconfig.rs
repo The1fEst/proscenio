@@ -980,4 +980,28 @@ mod tests {
             unchanged_files
         );
     }
+
+    #[test]
+    fn the_workspace_keys_block_stays_where_it_is_when_misplaced_options_move() {
+        let keys_text =
+            crate::platform::hyprland::workspacekeys::with_keys("", 5, &[("DP-1".to_owned(), 1)]);
+        let binds_text = format!(
+            "{keys_text}hl.config({{ general = {{ gaps_in = 2 }} }})\nshortcut(\"Window: Close\", \"SUPER + Q\", false)\n"
+        );
+        let option_area =
+            |option: &str| (option == "general:gaps_in").then_some(Area::Multitasking);
+        assert_eq!(
+            move_lines(vec![(Area::Binds, binds_text)], &option_area),
+            vec![
+                (
+                    Area::Binds,
+                    format!("{keys_text}shortcut(\"Window: Close\", \"SUPER + Q\", false)\n")
+                ),
+                (
+                    Area::Multitasking,
+                    "hl.config({ general = { gaps_in = 2 } })\n".to_owned()
+                ),
+            ]
+        );
+    }
 }

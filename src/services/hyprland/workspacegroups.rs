@@ -8,7 +8,8 @@ use crate::core::config;
 use crate::core::listeners::Subscription;
 use crate::core::watch::{self, Watch};
 use crate::platform::hyprland::hypr::{self, Events};
-use crate::platform::hyprland::{hyprconfig, monitorrules, workspacegroups};
+use crate::platform::hyprland::hyprconfig::{self, Area};
+use crate::platform::hyprland::{monitorrules, workspacegroups, workspacekeys};
 use crate::services::hardware::displays::{order_main_first, read_monitors};
 
 const SIZE_POINTER: &str = "/bar/workspaces/shown";
@@ -88,20 +89,38 @@ fn write_groups() -> bool {
     };
     let outputs = order_main_first(&monitors, &monitorrules::read().primary);
     let size = config::current().workspaces_shown.max(1);
+    let mut starts = Vec::new();
     let Some(are_rules_written) =
         write_if_changed(&hyprconfig::path(workspacegroups::AREA), |text| {
-            workspacegroups::with_groups(text, size, &outputs)
+            let new_text = workspacegroups::with_groups(text, size, &outputs);
+            starts = workspacegroups::find_group_starts(&new_text);
+            new_text
         })
     else {
         return false;
     };
-    let size_path = hyprconfig::settings_path(workspacegroups::SIZE_FILE);
-    let is_size_written =
-        write_if_changed(&size_path, |_| workspacegroups::render_size_file(size)).unwrap_or(false);
-    if are_rules_written || is_size_written {
+    let are_keys_written = write_if_changed(&hyprconfig::path(Area::Binds), |text| {
+        workspacekeys::with_keys(text, size, &starts)
+    });
+    if are_keys_written.is_some() {
+        remove_obsolete_size_file();
+    }
+    if are_rules_written || are_keys_written == Some(true) {
         hypr::request("reload");
     }
     are_rules_written
+}
+
+fn remove_obsolete_size_file() {
+    let path = hyprconfig::settings_path(workspacegroups::OBSOLETE_SIZE_FILE);
+    if let Err(error) = std::fs::remove_file(&path)
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        eprintln!(
+            "workspace groups: {} could not be removed: {error}",
+            path.display()
+        );
+    }
 }
 
 fn refocus_displays() {

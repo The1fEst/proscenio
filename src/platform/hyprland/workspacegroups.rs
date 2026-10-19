@@ -1,16 +1,12 @@
 use crate::platform::hyprland::hyprconfig::{Area, lua_string, read_lua_string};
 
 pub const AREA: Area = Area::Appearance;
-pub const SIZE_FILE: &str = "workspaces.lua";
+pub const OBSOLETE_SIZE_FILE: &str = "workspaces.lua";
 const RULE_PREFIX: &str = "hl.workspace_rule({ workspace = \"";
 const MONITOR_KEY: &str = ", monitor = ";
 const PERSISTENT_KEY: &str = ", persistent = true";
 const DEFAULT_KEY: &str = ", default = true";
 const RULE_END: &str = " })";
-
-pub fn render_size_file(size: i32) -> String {
-    format!("workspaceGroupSize = {size}\n")
-}
 
 fn parse_rule(line: &str) -> Option<(i32, String)> {
     let (workspace, rest) = line.strip_prefix(RULE_PREFIX)?.split_once('"')?;
@@ -20,16 +16,23 @@ fn parse_rule(line: &str) -> Option<(i32, String)> {
     is_generated.then_some((workspace.parse().ok()?, output))
 }
 
-fn find_grouped_outputs(text: &str) -> Vec<String> {
+pub fn find_group_starts(text: &str) -> Vec<(String, i32)> {
     let mut rules: Vec<(i32, String)> = text.lines().filter_map(parse_rule).collect();
     rules.sort_by_key(|(workspace, _)| *workspace);
-    let mut outputs: Vec<String> = Vec::new();
-    for (_, output) in rules {
-        if !outputs.contains(&output) {
-            outputs.push(output);
+    let mut starts: Vec<(String, i32)> = Vec::new();
+    for (workspace, output) in rules {
+        if !starts.iter().any(|(known, _)| *known == output) {
+            starts.push((output, workspace));
         }
     }
-    outputs
+    starts
+}
+
+fn find_grouped_outputs(text: &str) -> Vec<String> {
+    find_group_starts(text)
+        .into_iter()
+        .map(|(output, _)| output)
+        .collect()
 }
 
 fn build_group_lines(size: i32, outputs: &[String]) -> Vec<String> {
@@ -104,8 +107,20 @@ mod tests {
     const OTHER_RULES: &str = "hl.workspace_rule({ workspace = \"w[tv1]\", gaps_out = 0, gaps_in = 0 })\nhl.workspace_rule({ workspace = \"42\", monitor = \"DP-3\", persistent = true, gaps_out = 0 })";
 
     #[test]
-    fn the_group_size_file_sets_only_the_size() {
-        assert_eq!(render_size_file(5), "workspaceGroupSize = 5\n");
+    fn the_start_of_each_group_is_read_back_in_group_order() {
+        let text = format!(
+            "{OTHER_RULES}\n{}",
+            with_groups("", 5, &to_names(&["DP-2", "odd \"name\"", "DP-1"]))
+        );
+        assert_eq!(
+            find_group_starts(&text),
+            vec![
+                ("DP-2".to_owned(), 1),
+                ("odd \"name\"".to_owned(), 6),
+                ("DP-1".to_owned(), 11)
+            ]
+        );
+        assert_eq!(find_group_starts(OTHER_RULES), Vec::new());
     }
 
     #[test]
