@@ -130,7 +130,7 @@ files at start writes nothing while any of them cannot be read.
 
 | File | Holds |
 |---|---|
-| `appearance.lua` | Window options (borders, rounding, blur, shadows, dimming, opacity), the border color lines, the fullscreen window rules, the cursor and icon theme variables |
+| `appearance.lua` | Window options (borders, rounding, blur, shadows, dimming, opacity), the border color lines, the shadow color line, the fullscreen window rules, the cursor and icon theme variables |
 | `displays.lua` | HDR, VRR, tearing and XWayland scaling, the monitor rules and the primary display |
 | `multitasking.lua` | Layout, gap, snapping, focus, workspace and workspace swipe options, and smart gaps |
 | `keyboard.lua` | Layouts, variants, XKB options, Num Lock at start, binds resolved by symbol |
@@ -184,6 +184,17 @@ guard leaves the border alone when the table or the key is missing. The settings
 (`active` or `inactive` by default, or `outline`, `outline_variant`, `primary`, `secondary` or
 `tertiary`) and the two-digit alpha after it. Until a line exists, it starts from `active` at `77`
 for the focused window's border and `inactive` at `33` for the others.
+
+### Shadow color
+
+The shadow color is one plain line in `appearance.lua`; the settings window stores only the two-digit
+alpha, and the color is always black:
+
+```lua
+hl.config({ decoration = { shadow = { color = "rgba(00000080)" } } })
+```
+
+Until the line exists, the settings window shows `20`, the alpha of the dotfiles' shadow color.
 
 ### Monitor rules
 

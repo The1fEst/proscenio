@@ -271,6 +271,23 @@ pub fn build(context: &Context) -> Rc<Page> {
             0,
         ),
     );
+    let shadow_opacity_spin = SpinBox::new(&page.theme, 0, 100, 5, 0);
+    shadow_opacity_spin
+        .set_value((f64::from(hyprconfig::shadow_alpha()) * 100.0 / 255.0).round() as i64);
+    shadow_opacity_spin.connect_changed(move |percent| {
+        let alpha = (percent as f64 * 255.0 / 100.0).round() as u8;
+        if hyprconfig::shadow_alpha() == alpha {
+            return;
+        }
+        let _ = hyprconfig::set_shadow_alpha(alpha);
+        hypr::request("reload");
+    });
+    let shadow_opacity_row = page.spin_row(
+        &shadows_section,
+        "opacity",
+        &tr("Opacity (%)"),
+        &shadow_opacity_spin,
+    );
     let sharp_edge_switch = hyprrows::switch(
         &page,
         &shadows_section,
@@ -337,6 +354,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             let is_shadow_on = options.flag("decoration:shadow:enabled");
             Page::set_spin_row_enabled(&shadow_size_row, &shadow_size_spin, is_shadow_on);
             Page::set_spin_row_enabled(&shadow_falloff_row, &shadow_falloff_spin, is_shadow_on);
+            Page::set_spin_row_enabled(&shadow_opacity_row, &shadow_opacity_spin, is_shadow_on);
             sharp_edge_switch.set_enabled(is_shadow_on);
             let is_dim_on = options.flag("decoration:dim_inactive");
             Page::set_spin_row_enabled(&dim_strength_row, &dim_strength_spin, is_dim_on);

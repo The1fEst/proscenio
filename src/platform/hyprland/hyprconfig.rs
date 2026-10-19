@@ -358,6 +358,33 @@ pub struct BorderColor {
 }
 
 const BORDER_GUARD: &str = "if border_colors";
+const SHADOW_MARKER: &str = "hl.config({ decoration = { shadow = { color = \"rgba(000000";
+const SHADOW_DEFAULT_ALPHA: u8 = 0x20;
+
+fn parse_alpha(text: &str) -> Option<u8> {
+    proscenio_protocol::unhex(text.get(..2)?)?.first().copied()
+}
+
+fn with_line(text: &str, is_target: impl Fn(&str) -> bool, line: &str) -> String {
+    let mut has_target_line = false;
+    let mut lines: Vec<String> = text
+        .lines()
+        .map(|current_line| {
+            if is_target(current_line) {
+                has_target_line = true;
+                line.to_owned()
+            } else {
+                current_line.to_owned()
+            }
+        })
+        .collect();
+    if !has_target_line {
+        lines.push(line.to_owned());
+    }
+    let mut new_text = lines.join("\n");
+    new_text.push('\n');
+    new_text
+}
 
 fn border_marker(border: &Border) -> String {
     format!("col = {{ {} = \"rgba(\" .. border_colors.", border.field)
@@ -373,7 +400,7 @@ fn border_color_in(text: &str, border: &Border) -> BorderColor {
         .filter(|line| is_border_line(line, &marker))
         .find_map(|line| {
             let (key, rest) = line.split_once(&marker)?.1.split_once(" .. \"")?;
-            let alpha = *proscenio_protocol::unhex(rest.get(..2)?)?.first()?;
+            let alpha = parse_alpha(rest)?;
             Some(BorderColor {
                 key: key.to_owned(),
                 alpha,
@@ -392,24 +419,11 @@ fn with_border_color(text: &str, border: &Border, color: &BorderColor) -> String
         "{BORDER_GUARD} and border_colors.{key} then hl.config({{ general = {{ {marker}{key} .. \"{:02X})\" }} }} }}) end",
         color.alpha
     );
-    let mut has_border_line = false;
-    let mut lines: Vec<String> = text
-        .lines()
-        .map(|existing| {
-            if is_border_line(existing, &marker) {
-                has_border_line = true;
-                line.clone()
-            } else {
-                existing.to_owned()
-            }
-        })
-        .collect();
-    if !has_border_line {
-        lines.push(line);
-    }
-    let mut new_text = lines.join("\n");
-    new_text.push('\n');
-    new_text
+    with_line(
+        text,
+        |current_line| is_border_line(current_line, &marker),
+        &line,
+    )
 }
 
 pub fn border_color(border: &Border) -> BorderColor {
@@ -420,6 +434,32 @@ pub fn set_border_color(border: &Border, color: &BorderColor) -> std::io::Result
     write(
         Area::Appearance,
         &with_border_color(&read_for_edit(Area::Appearance)?, border, color),
+    )
+}
+
+fn shadow_alpha_in(text: &str) -> u8 {
+    text.lines()
+        .find_map(|line| parse_alpha(line.strip_prefix(SHADOW_MARKER)?))
+        .unwrap_or(SHADOW_DEFAULT_ALPHA)
+}
+
+fn with_shadow_alpha(text: &str, alpha: u8) -> String {
+    let line = format!("{SHADOW_MARKER}{alpha:02X})\" }} }} }})");
+    with_line(
+        text,
+        |current_line| current_line.starts_with(SHADOW_MARKER),
+        &line,
+    )
+}
+
+pub fn shadow_alpha() -> u8 {
+    shadow_alpha_in(&read(Area::Appearance))
+}
+
+pub fn set_shadow_alpha(alpha: u8) -> std::io::Result<()> {
+    write(
+        Area::Appearance,
+        &with_shadow_alpha(&read_for_edit(Area::Appearance)?, alpha),
     )
 }
 
@@ -678,6 +718,30 @@ mod tests {
         assert_eq!(with_lines(&text_with_lines, lines, true), text_with_lines);
         assert_eq!(with_lines(&text_with_lines, lines, false), text);
         assert!(!has_lines(&format!("{text}{}\n", lines[0]), lines));
+    }
+
+    #[test]
+    fn a_shadow_color_is_one_black_line_that_stores_only_its_alpha() {
+        let text = "hl.config({ general = { gaps_in = 4 } })\n";
+        assert_eq!(shadow_alpha_in(text), SHADOW_DEFAULT_ALPHA);
+        let colored_text = with_shadow_alpha(text, 0x80);
+        assert_eq!(
+            colored_text,
+            "hl.config({ general = { gaps_in = 4 } })\nhl.config({ decoration = { shadow = { color = \"rgba(00000080)\" } } })\n"
+        );
+        assert_eq!(shadow_alpha_in(&colored_text), 0x80);
+        let recolored_text = with_shadow_alpha(&colored_text, 0x05);
+        assert_eq!(
+            recolored_text,
+            "hl.config({ general = { gaps_in = 4 } })\nhl.config({ decoration = { shadow = { color = \"rgba(00000005)\" } } })\n"
+        );
+        assert_eq!(shadow_alpha_in(&recolored_text), 0x05);
+        assert_eq!(
+            shadow_alpha_in(
+                "hl.config({ decoration = { shadow = { color = \"rgba(000000ff)\" } } })\n"
+            ),
+            0xFF
+        );
     }
 
     #[test]

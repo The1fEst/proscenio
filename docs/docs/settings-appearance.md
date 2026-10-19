@@ -183,13 +183,15 @@ Every control here is a Hyprland option or line in `appearance.lua`.
 | Shadows | Drop shadows under windows | `decoration:shadow:enabled` | on or off |
 | Shadows | Size (px) | `decoration:shadow:range` | 0–100 px |
 | Shadows | Falloff | `decoration:shadow:render_power` | 1–4 |
+| Shadows | Opacity (%) | `decoration:shadow:color` | 0–100 %; the alpha of a black shadow color line in `appearance.lua`, 13 % until the line exists |
 | Shadows | Sharp edge | `decoration:shadow:sharp` | on or off |
 | Dimming | Dim windows out of focus | `decoration:dim_inactive` | on or off |
 | Dimming | Dim by (%) | `decoration:dim_strength` | 0–100 % |
 | Dimming | Dim around the special workspace by (%) | `decoration:dim_special` | 0–100 % |
 
-Radius, passes and X-ray are disabled while blur is off; size, falloff and the sharp edge while
-shadows are off; and **Dim by** and **Keep fullscreen windows undimmed** while dimming is off.
+Radius, passes and X-ray are disabled while blur is off; size, falloff, opacity and the sharp
+edge while shadows are off; and **Dim by** and **Keep fullscreen windows undimmed** while dimming
+is off.
 
 ### Fullscreen windows
 
