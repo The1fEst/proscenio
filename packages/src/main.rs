@@ -4,6 +4,7 @@ mod errors;
 mod forwarding;
 mod handle;
 mod output;
+mod package_cache;
 mod pacman;
 mod plan;
 mod private_database;

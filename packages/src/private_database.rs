@@ -11,14 +11,14 @@ pub const MAX_TOTAL_DATABASE_BYTES: u64 = 512 << 20;
 pub const MAX_DATABASE_FILE_COUNT: usize = 128;
 const PASSWD: &str = "/etc/passwd";
 const DATABASE_MODE: u32 = 0o644;
-const O_NONBLOCK: i32 = 0o4000;
+pub const O_NONBLOCK: i32 = 0o4000;
 #[cfg(any(
     target_arch = "arm",
     target_arch = "aarch64",
     target_arch = "powerpc",
     target_arch = "powerpc64"
 ))]
-const O_NOFOLLOW: i32 = 0o100000;
+pub const O_NOFOLLOW: i32 = 0o100000;
 #[cfg(any(
     target_arch = "x86",
     target_arch = "x86_64",
@@ -27,7 +27,7 @@ const O_NOFOLLOW: i32 = 0o100000;
     target_arch = "loongarch64",
     target_arch = "s390x"
 ))]
-const O_NOFOLLOW: i32 = 0o400000;
+pub const O_NOFOLLOW: i32 = 0o400000;
 #[cfg(not(any(
     target_arch = "arm",
     target_arch = "aarch64",

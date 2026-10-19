@@ -1,4 +1,4 @@
-use alpm::{Alpm, TransFlag};
+use alpm::{Alpm, CommitData, CommitError, Error, TransFlag};
 use proscenio_protocol::{Change, Event, Stage};
 use std::path::Path;
 
@@ -6,6 +6,9 @@ use crate::changes::{collect_changes, compare_changes};
 use crate::errors::format_error;
 use crate::handle::{open_alpm, watch};
 use crate::output::emit;
+use crate::package_cache::{
+    clean_cache, count_download_bytes, find_uncached, list_cache_dirs, list_package_files,
+};
 use crate::private_database::{copy_databases, find_home};
 use crate::stage::{
     SYNC_DIR, find_repository_names, find_system_database_path, install_staged_databases,
@@ -48,10 +51,25 @@ pub fn upgrade(confirmed: &[Change], private_path: &Path, uid: u32) -> Result<()
             verify_stage(&stage, confirmed)?;
             install_staged_databases(&staged_sync, &system_sync)
         })
-        .and_then(|()| alpm.sync_sysupgrade(false).map_err(format_error))
-        .and_then(|()| commit(&mut alpm, Some(confirmed)));
+        .and_then(|()| upgrade_packages(&mut alpm, confirmed));
     let _ = alpm.trans_release();
     result
+}
+
+fn upgrade_packages(alpm: &mut Alpm, confirmed: &[Change]) -> Result<(), String> {
+    alpm.sync_sysupgrade(false).map_err(format_error)?;
+    let error = match commit(alpm, Some(confirmed))? {
+        Err(error) if is_download_error(&error) => error,
+        result => return result.map_err(|error| describe_commit_error(alpm, &error)),
+    };
+    emit(&Event::Line(format!(
+        "{}, downloading the packages again",
+        describe_commit_error(alpm, &error)
+    )));
+    alpm.trans_release().map_err(format_error)?;
+    alpm.trans_init(TransFlag::NONE).map_err(format_error)?;
+    alpm.sync_sysupgrade(false).map_err(format_error)?;
+    commit(alpm, Some(confirmed))?.map_err(|error| describe_commit_error(alpm, &error))
 }
 
 fn verify_stage(stage: &Path, confirmed: &[Change]) -> Result<(), String> {
@@ -60,27 +78,53 @@ fn verify_stage(stage: &Path, confirmed: &[Change]) -> Result<(), String> {
     compare_changes(confirmed, &plan_changes(&mut staged)?)
 }
 
-fn commit(alpm: &mut Alpm, confirmed: Option<&[Change]>) -> Result<(), String> {
+fn commit(
+    alpm: &mut Alpm,
+    confirmed: Option<&[Change]>,
+) -> Result<Result<(), CommitError>, String> {
     alpm.trans_prepare()
         .map_err(|error| format!("{error}: {:?}", error.data()))?;
     if let Some(confirmed) = confirmed {
         compare_changes(confirmed, &collect_changes(alpm))?;
     }
+    let cache_dirs = list_cache_dirs(alpm);
+    let package_files = list_package_files(alpm);
+    clean_cache(&cache_dirs, &package_files);
     let package_count = alpm.trans_add().len() as u32;
-    let download_bytes = alpm
-        .trans_add()
-        .iter()
-        .map(|package| package.download_size().max(0) as u64)
-        .sum();
     emit(&Event::Transaction {
         package_count,
-        download_bytes,
+        download_bytes: count_download_bytes(&cache_dirs, &package_files),
     });
     if package_count == 0 && alpm.trans_remove().is_empty() {
-        return Ok(());
+        return Ok(Ok(()));
     }
-    alpm.trans_commit()
-        .map_err(|error| format!("{error}: {:?}", error.data()))
+    Ok(alpm.trans_commit())
+}
+
+fn is_download_error(error: &CommitError) -> bool {
+    matches!(
+        error.error(),
+        Error::PkgNotFound | Error::PkgInvalid | Error::PkgInvalidChecksum | Error::PkgInvalidSig
+    )
+}
+
+fn describe_commit_error(alpm: &Alpm, error: &CommitError) -> String {
+    let mut files: Vec<String> = match error.data() {
+        Some(CommitData::PkgInvalid(files)) => files.iter().map(str::to_owned).collect(),
+        Some(data) => return format!("{error}: {data:?}"),
+        None => Vec::new(),
+    };
+    if files.is_empty() && is_download_error(error) {
+        let package_files = list_package_files(alpm);
+        files = find_uncached(&list_cache_dirs(alpm), &package_files)
+            .into_iter()
+            .map(|package_file| package_file.filename.clone())
+            .collect();
+    }
+    if files.is_empty() {
+        return error.to_string();
+    }
+    format!("{error}: {}", files.join(", "))
 }
 
 pub fn install(files: &[&str], flags: TransFlag) -> Result<(), String> {
@@ -101,7 +145,9 @@ pub fn install(files: &[&str], flags: TransFlag) -> Result<(), String> {
             break;
         }
     }
-    let result = result.and_then(|()| commit(&mut alpm, None));
+    let result = result
+        .and_then(|()| commit(&mut alpm, None))
+        .and_then(|result| result.map_err(|error| describe_commit_error(&alpm, &error)));
     let _ = alpm.trans_release();
     result
 }

@@ -341,6 +341,19 @@ list, without a synchronization. When the AUR listing fails, the update stops be
 anything. The AUR step installs the listed AUR packages by name, with the version AUR has when it
 builds them. The staged copy is removed when the session ends and replaced by the next update's.
 
+Before it downloads, the session removes partial downloads that cannot complete. For each package of
+the transaction that no `CacheDir` of `pacman.conf` holds yet, it removes `<file>.part` from every
+cache folder when the file is at least as large as the package, or when it does not start the way a
+`.zst`, `.xz` or `.gz` package starts, such as an error page a mirror sent; `<file>.sig.part` goes
+with it. libalpm would take a file of the package's size as downloaded and stop with **could not
+find or read package**, and would append to any other such file a download that cannot complete a
+valid package. The log names each file removed. A `.part` that is a symbolic link, is not a regular file
+or does not belong to root stays in place, and the log names it. When the commit fails because a
+package file is missing or corrupted, the log names the error, and the session starts the transaction
+once more, no more than once: it plans the upgrade again, checks it against the list, removes such
+files again, downloads and commits. When a package file is still missing or corrupted, the error
+names it.
+
 **Update** under Shell also refreshes first, without a password: it asks the GitHub API for the
 commits again, which updates the count and the list on this page and in the
 [sidebar](sidebar.md#updates). A dialog then lists the commits, each with its subject and the
