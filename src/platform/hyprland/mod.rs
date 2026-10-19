@@ -4,6 +4,7 @@ pub mod gestures;
 pub mod hypr;
 pub mod hyprconfig;
 pub mod hypridle;
+pub mod hyprlockclock;
 pub mod inputdevices;
 pub mod keybinds;
 pub mod monitorrules;

@@ -429,11 +429,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         ],
         "/time/format",
         Value::from(config::TIME_FORMAT),
-        |value| {
-            let is_twelve_hour = value.as_str() != Some(TWENTY_FOUR_HOUR);
-            switch_hyprlock_clock(is_twelve_hour);
-            config::store_value("/time/format", value);
-        },
+        |value| config::store_value("/time/format", value),
     );
 
     let clock_section = page.section("nest_clock_farsight_analog", &tr("Clock & Calendar"));
@@ -521,22 +517,6 @@ pub fn build(context: &Context) -> Rc<Page> {
     page
 }
 
-fn switch_hyprlock_clock(is_twelve_hour: bool) {
-    let path = glib::user_config_dir().join("hypr/hyprlock.conf");
-    let Ok(text) = std::fs::read_to_string(&path) else {
-        return;
-    };
-    let (from, to) = if is_twelve_hour {
-        ("TIME", "TIME12")
-    } else {
-        ("TIME12", "TIME")
-    };
-    let new_text = replace_word_ends(&text, from, to);
-    if new_text != text {
-        let _ = std::fs::write(&path, new_text);
-    }
-}
-
 fn format_moment(moment: &glib::DateTime, pattern: &str) -> String {
     moment
         .format(pattern)
@@ -558,25 +538,6 @@ fn refresh_untouched(
         }
     }
     texts
-}
-
-/// The first `from` on each line that ends at a word boundary becomes `to`, the substitution the QML shell runs.
-fn replace_word_ends(text: &str, from: &str, to: &str) -> String {
-    let is_word_char = |c: char| c.is_alphanumeric() || c == '_';
-    text.split_inclusive('\n')
-        .map(|line| {
-            let word_end_match = line.match_indices(from).find(|(at, _)| {
-                !line[at + from.len()..]
-                    .chars()
-                    .next()
-                    .is_some_and(is_word_char)
-            });
-            match word_end_match {
-                Some((at, _)) => format!("{}{to}{}", &line[..at], &line[at + from.len()..]),
-                None => line.to_owned(),
-            }
-        })
-        .collect()
 }
 
 #[cfg(test)]
@@ -604,24 +565,5 @@ mod tests {
             ),
             ["2026-10-14", "08:00"]
         );
-    }
-
-    #[test]
-    fn hyprlock_clock_words_switch_like_sed() {
-        let cases = [
-            ("text = $TIME\n", "TIME", "TIME12", "text = $TIME12\n"),
-            ("text = $TIME12\n", "TIME", "TIME12", "text = $TIME12\n"),
-            ("text = $TIME12\n", "TIME12", "TIME", "text = $TIME\n"),
-            (
-                "$TIME $TIME\n$TIME",
-                "TIME",
-                "TIME12",
-                "$TIME12 $TIME\n$TIME12",
-            ),
-            ("TIMES TIME", "TIME", "TIME12", "TIMES TIME12"),
-        ];
-        for (text, from, to, expected) in cases {
-            assert_eq!(replace_word_ends(text, from, to), expected, "{text:?}");
-        }
     }
 }

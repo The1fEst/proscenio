@@ -157,12 +157,15 @@ The error of the last call shows under them. Each call lets polkit ask for a pas
 | Pomodoro | Long break (min) | `time.pomodoro.longBreak` | 15 min, stored as 900 s | 1–120 min, in steps of 5 |
 | Pomodoro | Cycles before long break | `time.pomodoro.cyclesBeforeLongBreak` | 4 | 1–12 |
 
-Choosing a time format also switches the clock of `hyprlock`: in `~/.config/hypr/hyprlock.conf`,
-the first whole word `TIME` on each line becomes `TIME12` for a 12-hour format, and the first whole
-word `TIME12` becomes `TIME` for 24 hours. **Seconds** makes the shell's clocks show seconds. The time
-and date formats use Qt's date and time notation, where `ddd` is the short weekday, `dd` the day,
-`MMM` the short month name, `yyyy` the year, `hh` and `mm` the hour and minute, and `AP` or `ap` the
-AM/PM marker.
+The time format also sets the clock of `hyprlock`. The shell keeps
+`~/.config/hypr/settings/hyprlock.conf` holding only `$clock_text = $TIME12` for a 12-hour format,
+one with `AP`, `ap` or `A` in it, or `$clock_text = $TIME` otherwise. It writes the file when it
+starts and whenever `time.format` changes, from this page or by hand in `config.toml`, and only when
+the text differs. A `hyprlock.conf` that sources this file and shows `$clock_text` in its clock
+label follows the setting. **Seconds** makes the shell's clocks show
+seconds. The time and date formats use Qt's date and time notation, where `ddd` is the short weekday,
+`dd` the day, `MMM` the short month name, `yyyy` the year, `hh` and `mm` the hour and minute, and
+`AP` or `ap` the AM/PM marker.
 
 ### Users
 

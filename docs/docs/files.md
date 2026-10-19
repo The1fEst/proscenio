@@ -139,7 +139,7 @@ wallpaper files when it runs.
 | `~/.config/hypr/hyprland/general.lua` | Reads the gestures defined there, to list them as defaults |
 | `~/.config/hypr/hyprland/scripts/fuzzel-emoji.sh` | Reads the launcher's emoji list, the lines after `### DATA ###` |
 | `~/.config/hypr/hypridle.conf` | Writes the idle timeouts |
-| `~/.config/hypr/hyprlock.conf` | Switches the clock between `TIME` and `TIME12` with the 12-hour setting |
+| `~/.config/hypr/settings/hyprlock.conf` | Writes `$clock_text` as `$TIME12` or `$TIME` from `time.format`, at start and whenever it changes, for `hyprlock.conf` to source |
 | `~/.config/hypr/custom/scripts/__restore_video_wallpaper.sh` | Writes a script that replays a video wallpaper |
 | `~/.config/hypr/custom/scripts/mpvpaper_thumbnails/` | Stores the first frame of each video wallpaper |
 | `~/.config/kdeglobals` | Writes Qt colors, fonts, the icon theme and the widget style; the shell takes its own icon theme from `[Icons]` `Theme` and follows it |

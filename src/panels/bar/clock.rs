@@ -289,7 +289,7 @@ fn pending_tasks() -> String {
 }
 
 pub fn strftime_from_qt(pattern: &str) -> String {
-    let is_twelve_hour = pattern.contains("AP") || pattern.contains("ap") || pattern.contains('A');
+    let is_twelve_hour = config::is_twelve_hour(pattern);
     let mut strftime_pattern = String::with_capacity(pattern.len() * 2);
     let chars: Vec<char> = pattern.chars().collect();
     let mut index = 0;

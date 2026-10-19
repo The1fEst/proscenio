@@ -1,4 +1,5 @@
 pub mod fullscreen;
+pub mod hyprlockclock;
 pub mod hyproptions;
 pub mod hyprstate;
 pub mod idleoptions;

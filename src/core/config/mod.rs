@@ -577,10 +577,24 @@ pub fn current() -> Rc<Config> {
     config
 }
 
+pub fn is_twelve_hour(time_format: &str) -> bool {
+    time_format.contains("AP") || time_format.contains("ap") || time_format.contains('A')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn a_time_format_with_an_am_pm_marker_is_twelve_hour() {
+        for time_format in ["h:mm ap", "h:mm AP", "hh:mm A"] {
+            assert!(is_twelve_hour(time_format), "{time_format}");
+        }
+        for time_format in [TIME_FORMAT, "HH:mm:ss"] {
+            assert!(!is_twelve_hour(time_format), "{time_format}");
+        }
+    }
 
     #[test]
     fn a_write_keeps_the_rest_of_the_file_as_the_user_left_it() {

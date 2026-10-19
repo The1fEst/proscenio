@@ -19,6 +19,7 @@ use crate::services::hardware::power::Power;
 use crate::services::hardware::sysinfo::Resources;
 use crate::services::hardware::xkb::Xkb;
 use crate::services::hyprland::fullscreen::Fullscreen;
+use crate::services::hyprland::hyprlockclock::HyprlockClockWriter;
 use crate::services::hyprland::hyprstate::HyprState;
 use crate::services::hyprland::screencolor::ScreenColor;
 use crate::services::hyprland::workspacegroups::WorkspaceGroupWriter;
@@ -70,6 +71,7 @@ pub struct Services {
     pub polkit: std::rc::Rc<Polkit>,
     pub prompter: std::rc::Rc<Prompter>,
     _workspace_group_writer: std::rc::Rc<WorkspaceGroupWriter>,
+    _hyprlock_clock_writer: HyprlockClockWriter,
 }
 
 impl Services {
@@ -89,6 +91,7 @@ impl Services {
             fullscreen: Fullscreen::new(&hypr),
             hypr,
             _workspace_group_writer: WorkspaceGroupWriter::new(&events),
+            _hyprlock_clock_writer: HyprlockClockWriter::start(),
             recording: Recording::new(),
             prompter: Prompter::new(session.clone(), &states),
             states,
