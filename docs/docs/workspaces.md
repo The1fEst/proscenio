@@ -23,6 +23,28 @@ to 20 while workspace 13 is. Moving into another block brings in the whole next 
 Each cell is 26 px wide, so the default row is 260 px. On a [vertical bar](bar.md) the cells stack
 into a column.
 
+## A block of workspaces per display
+
+The same number sets Hyprland's workspace groups: each display keeps one block of
+`bar.workspaces.shown` workspaces, so its bar shows its own block. With the default of 10 and two
+displays, the main display holds workspaces 1 to 10 and starts on 1, the other display 11 to 20 and
+starts on 11.
+
+The shell writes the group size to `~/.config/hypr/settings/workspaces.lua` and the rules that pin
+each block to its display to `~/.config/hypr/settings/appearance.lua` when it starts, when the number
+changes, and when Hyprland adds a display or reloads its config.
+[Hyprland](hyprland.md#workspace-groups) shows the lines.
+
+The blocks are handed out in this order:
+
+1. A display that already has a block keeps it, also while it is unplugged, off or mirroring.
+2. The main display, as set on the [Displays page](settings-displays.md), takes the first free block.
+3. The other displays take the next blocks by connector type, `DP`, `HDMI`, `DVI`, `eDP`, `LVDS`,
+   `VGA` and then any other, and by the number at the end of the name within a type.
+
+A display that is off or mirrors another one gets no new block until it shows its own workspaces.
+Choosing another main display later moves no block.
+
 ## Occupied workspaces
 
 A workspace counts as occupied while Hyprland reports at least one window on it.

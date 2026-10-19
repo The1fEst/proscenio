@@ -130,7 +130,7 @@ files at start writes nothing while any of them cannot be read.
 
 | File | Holds |
 |---|---|
-| `appearance.lua` | Window options (borders, rounding, blur, shadows, dimming, opacity), the border color lines, the shadow color line, the fullscreen window rules, the cursor and icon theme variables |
+| `appearance.lua` | Window options (borders, rounding, blur, shadows, dimming, opacity), the border color lines, the shadow color line, the fullscreen window rules, the cursor and icon theme variables, the workspace group rules |
 | `displays.lua` | HDR, VRR, tearing and XWayland scaling, the monitor rules and the primary display |
 | `multitasking.lua` | Layout, gap, snapping, focus, workspace and workspace swipe options, and smart gaps |
 | `keyboard.lua` | Layouts, variants, XKB options, Num Lock at start, binds resolved by symbol |
@@ -140,6 +140,7 @@ files at start writes nothing while any of them cannot be read.
 | `apps.lua` | Window rules |
 | `binds.lua` | Changed shortcuts |
 | `other.lua` | Anything that belongs to no page |
+| `workspaces.lua` | Only the workspace group size; see [Workspace groups](#workspace-groups) |
 
 ### Options
 
@@ -195,6 +196,47 @@ hl.config({ decoration = { shadow = { color = "rgba(00000080)" } } })
 ```
 
 Until the line exists, the settings window shows `20`, the alpha of the dotfiles' shadow color.
+
+### Workspace groups
+
+Each display gets its own group of `bar.workspaces.shown` workspaces, the number of cells the bar's
+[workspace row](workspaces.md) shows. The size goes into a file of its own,
+`~/.config/hypr/settings/workspaces.lua`, which holds nothing else:
+
+```lua
+workspaceGroupSize = 5
+```
+
+`workspaceGroupSize` is a global Lua variable for the Hyprland config's own binds that count
+workspaces in groups. A config that binds keys by the size has to load this file before those binds;
+loading it again in the pass over `settings/` is harmless.
+
+The rules that pin each group to its display are a block in `appearance.lua`. With 5 and two
+displays:
+
+```lua
+hl.workspace_rule({ workspace = "1", monitor = "DP-1", persistent = true, default = true })
+hl.workspace_rule({ workspace = "2", monitor = "DP-1", persistent = true })
+-- … 3 to 5 on DP-1
+hl.workspace_rule({ workspace = "6", monitor = "DP-2", persistent = true, default = true })
+-- … 7 to 10 on DP-2
+```
+
+`default` makes the group's first workspace the one the display starts on. Hyprland skips the rules
+of a display that is not connected.
+
+The shell rewrites both one second after it starts, after `bar.workspaces.shown` changes, and after
+Hyprland's `monitoradded`, `monitoraddedv2` and `configreloaded` events, counting the second from the
+last of several in a row, and reloads Hyprland only when a text changed. It writes nothing while
+Hyprland does not answer the `monitors all` request. The block is rewritten in place. Only lines of
+exactly the shape above belong to it; a workspace rule with other keys is left alone.
+
+A display keeps the group its rules already give it, read back from the block, also while it is
+unplugged, off or mirroring. Displays without one get the next groups: the main display
+(`WAYLANDDRV_PRIMARY_MONITOR` in `displays.lua`, when it is on) first, then the others by connector
+type and number, the order the Displays page uses to pick a main display. A display that is off or
+mirrors another one gets no new group. The code is in `src/platform/hyprland/workspacegroups.rs` and
+`src/services/hyprland/workspacegroups.rs`.
 
 ### Monitor rules
 

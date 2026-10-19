@@ -66,9 +66,11 @@ fn config_dir() -> PathBuf {
 }
 
 pub fn path(area: Area) -> PathBuf {
-    config_dir()
-        .join("settings")
-        .join(format!("{}.lua", area.name()))
+    settings_path(&format!("{}.lua", area.name()))
+}
+
+pub fn settings_path(name: &str) -> PathBuf {
+    config_dir().join("settings").join(name)
 }
 
 pub fn read(area: Area) -> String {
@@ -79,7 +81,7 @@ pub fn read_for_edit(area: Area) -> std::io::Result<String> {
     read_file_for_edit(&path(area))
 }
 
-fn read_file_for_edit(path: &Path) -> std::io::Result<String> {
+pub fn read_file_for_edit(path: &Path) -> std::io::Result<String> {
     match std::fs::read_to_string(path) {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
         result => result,

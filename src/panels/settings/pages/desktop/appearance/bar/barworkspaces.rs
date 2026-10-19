@@ -52,7 +52,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         &nerd_font_switch.button,
         &tr("Renders workspace numbers with your Nerd Font instead of the main one"),
     );
-    page.config_spin(
+    let (shown_row, _) = page.config_spin(
         &workspaces_section,
         "view_column",
         &tr("Workspaces shown"),
@@ -60,6 +60,10 @@ pub fn build(context: &Context) -> Rc<Page> {
         10,
         (1, 30),
         1,
+    );
+    page.tip(
+        &shown_row,
+        &tr("Each display gets this many workspaces of its own"),
     );
     let numbers_section = page.subsection(&workspaces_section, &tr("Number style"), "");
     page.selection_of(

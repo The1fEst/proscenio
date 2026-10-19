@@ -1,5 +1,6 @@
 use serde_json::Value;
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::platform::hyprland::hypr;
@@ -263,16 +264,42 @@ fn primary_of(monitors: &[Monitor], preferred: &str) -> String {
         return preferred.to_owned();
     }
     let mut names: Vec<&String> = enabled_monitors().map(|monitor| &monitor.name).collect();
-    names.sort_by(|a, b| {
-        connector_rank(a)
-            .cmp(&connector_rank(b))
-            .then(connector_number(a).cmp(&connector_number(b)))
-            .then(a.cmp(b))
-    });
+    names.sort_by(|a, b| compare_connectors(a, b));
     names
         .first()
         .map(|name| (*name).clone())
         .unwrap_or_default()
+}
+
+fn compare_connectors(a: &str, b: &str) -> Ordering {
+    connector_rank(a)
+        .cmp(&connector_rank(b))
+        .then(connector_number(a).cmp(&connector_number(b)))
+        .then(a.cmp(b))
+}
+
+pub fn read_monitors() -> Option<Vec<Monitor>> {
+    Some(
+        hypr::json("monitors all")?
+            .as_array()?
+            .iter()
+            .filter_map(Monitor::from_json)
+            .collect(),
+    )
+}
+
+pub fn order_main_first(monitors: &[Monitor], preferred: &str) -> Vec<String> {
+    let mut names: Vec<String> = monitors
+        .iter()
+        .filter(|monitor| !monitor.is_disabled && monitor.mirror_of == "none")
+        .map(|monitor| monitor.name.clone())
+        .collect();
+    names.sort_by(|a, b| {
+        (a != preferred)
+            .cmp(&(b != preferred))
+            .then(compare_connectors(a, b))
+    });
+    names
 }
 
 pub fn format_number(value: f64) -> String {
@@ -305,13 +332,7 @@ impl Displays {
     }
 
     pub fn reload(&self) {
-        let monitors = hypr::json("monitors all")
-            .and_then(|value| value.as_array().cloned())
-            .unwrap_or_default()
-            .iter()
-            .filter_map(Monitor::from_json)
-            .collect();
-        self.monitors.replace(monitors);
+        self.monitors.replace(read_monitors().unwrap_or_default());
         self.requested.replace(monitorrules::read());
         self.emit_changed();
     }
@@ -857,6 +878,32 @@ mod tests {
         assert_eq!(
             primary_of(&[screen("DP-1", false), screen("DP-2", false)], ""),
             "DP-1"
+        );
+    }
+
+    #[test]
+    fn workspace_groups_go_to_the_main_display_first_then_by_connector() {
+        let screen = |name: &str, is_disabled: bool, mirror_of: &str| Monitor {
+            name: name.to_owned(),
+            is_disabled,
+            mirror_of: mirror_of.to_owned(),
+            ..monitor(&[], 1920, 1080)
+        };
+        let monitors = [
+            screen("HDMI-A-1", false, "none"),
+            screen("DP-10", false, "none"),
+            screen("eDP-1", false, "none"),
+            screen("DP-2", false, "none"),
+            screen("DP-1", true, "none"),
+            screen("DP-3", false, "0"),
+        ];
+        assert_eq!(
+            order_main_first(&monitors, "eDP-1"),
+            ["eDP-1", "DP-2", "DP-10", "HDMI-A-1"]
+        );
+        assert_eq!(
+            order_main_first(&monitors, "DP-1"),
+            ["DP-2", "DP-10", "HDMI-A-1", "eDP-1"]
         );
     }
 }

@@ -21,6 +21,7 @@ use crate::services::hardware::xkb::Xkb;
 use crate::services::hyprland::fullscreen::Fullscreen;
 use crate::services::hyprland::hyprstate::HyprState;
 use crate::services::hyprland::screencolor::ScreenColor;
+use crate::services::hyprland::workspacegroups::WorkspaceGroupWriter;
 use crate::services::media::audio::Audio;
 use crate::services::media::easyeffects::EasyEffects;
 use crate::services::media::mpris::Mpris;
@@ -68,6 +69,7 @@ pub struct Services {
     pub wallpapers: std::rc::Rc<Wallpapers>,
     pub polkit: std::rc::Rc<Polkit>,
     pub prompter: std::rc::Rc<Prompter>,
+    _workspace_group_writer: std::rc::Rc<WorkspaceGroupWriter>,
 }
 
 impl Services {
@@ -86,6 +88,7 @@ impl Services {
             xkb: Xkb::new(&events),
             fullscreen: Fullscreen::new(&hypr),
             hypr,
+            _workspace_group_writer: WorkspaceGroupWriter::new(&events),
             recording: Recording::new(),
             prompter: Prompter::new(session.clone(), &states),
             states,

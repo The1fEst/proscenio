@@ -275,6 +275,7 @@
   "e.g. ~/Videos/Recordings": "例: ~/Videos/Recordings",
   "e.g. 󰘴  for Ctrl, 󰘵  for Alt, 󰘶  for Shift, etc": "例: Ctrl は 󰘴、Alt は 󰘵、Shift は 󰘶 など",
   "e.g. 󱊫 for F1, 󱊶  for F12": "例: F1 は 󱊫、F12 は 󱊶",
+  "Each display gets this many workspaces of its own": "各ディスプレイにこの数の専用ワークスペースを割り当てます",
   "Earbang protection": "聴覚保護（急な大音量防止）",
   "EasyEffects": "EasyEffects",
   "EasyEffects | Right-click to configure": "EasyEffects | 右クリックで設定",
