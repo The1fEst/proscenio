@@ -756,6 +756,7 @@ fn open_bar(
     media: &Rc<mediacontrols::MediaControls>,
     volume_mixer: &Option<Rc<mixer::VolumeMixer>>,
     overview: &Rc<overview::Overview>,
+    settings: &Rc<settings::Settings>,
     monitor: &gdk::Monitor,
     scope: &Scope,
 ) -> gtk4::ApplicationWindow {
@@ -773,6 +774,7 @@ fn open_bar(
             media,
             volume_mixer,
             overview,
+            settings,
             screen,
             scope,
         )
@@ -786,6 +788,7 @@ fn open_bar(
             media,
             volume_mixer,
             overview,
+            settings,
             screen,
             scope,
         )

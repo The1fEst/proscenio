@@ -66,6 +66,14 @@ impl Xkb {
     }
 
     pub fn cycle_layout(&self) {
+        self.switch_to_neighbor(true);
+    }
+
+    pub fn cycle_layout_backward(&self) {
+        self.switch_to_neighbor(false);
+    }
+
+    fn switch_to_neighbor(&self, is_forward: bool) {
         let codes = self.layout_codes.borrow().clone();
         if codes.len() <= 1 {
             return;
@@ -73,7 +81,7 @@ impl Xkb {
         let current_index = codes
             .iter()
             .position(|code| *code == *self.current_code.borrow());
-        self.apply_layout_index(current_index.map_or(0, |index| (index + 1) % codes.len()) as i32);
+        self.apply_layout_index(find_neighbor_index(codes.len(), current_index, is_forward) as i32);
     }
 
     fn apply_layout_index(&self, index: i32) {
@@ -197,4 +205,43 @@ fn lookup_code(description: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn find_neighbor_index(count: usize, current_index: Option<usize>, is_forward: bool) -> usize {
+    match (current_index, is_forward) {
+        (Some(index), true) => (index + 1) % count,
+        (Some(index), false) => (index + count - 1) % count,
+        (None, true) => 0,
+        (None, false) => count - 1,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_neighbor_wraps_around_both_ends() {
+        let cases = [
+            (3, Some(0), true, 1),
+            (3, Some(2), true, 0),
+            (3, Some(0), false, 2),
+            (3, Some(2), false, 1),
+            (2, Some(1), true, 0),
+            (2, Some(0), false, 1),
+        ];
+        for (count, current_index, is_forward, expected) in cases {
+            assert_eq!(
+                find_neighbor_index(count, current_index, is_forward),
+                expected,
+                "count {count}, from {current_index:?}, forward {is_forward}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_unknown_current_layout_starts_from_the_matching_end() {
+        assert_eq!(find_neighbor_index(3, None, true), 0);
+        assert_eq!(find_neighbor_index(3, None, false), 2);
+    }
 }

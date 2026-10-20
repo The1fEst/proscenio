@@ -429,6 +429,7 @@ impl Screens {
                     &screen_surfaces.media,
                     &screen_surfaces.volume_mixer,
                     &screen_surfaces.overview,
+                    &shared.settings,
                     monitor,
                     &scope,
                 )];

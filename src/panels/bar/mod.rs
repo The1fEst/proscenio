@@ -56,6 +56,7 @@ pub fn build(
     media: &Rc<crate::panels::mediacontrols::MediaControls>,
     volume_mixer: &Option<Rc<crate::panels::mixer::VolumeMixer>>,
     overview: &Rc<crate::panels::overview::Overview>,
+    settings: &Rc<crate::panels::settings::Settings>,
     screen: Screen<'_>,
     scope: &Scope,
 ) -> gtk4::Widget {
@@ -75,7 +76,7 @@ pub fn build(
             &screen,
             scope,
         ),
-        &right_section(config, theme, services, sidebar, &screen, scope),
+        &right_section(config, theme, services, sidebar, settings, &screen, scope),
     );
     let background = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     if config.show_background {
@@ -345,6 +346,7 @@ fn right_section(
     theme: &SharedTheme,
     services: &Services,
     sidebar: &Rc<crate::panels::sidebar::Sidebar>,
+    settings: &Rc<crate::panels::settings::Settings>,
     screen: &Screen<'_>,
     scope: &Scope,
 ) -> gtk4::Widget {
@@ -438,9 +440,6 @@ fn right_section(
         indicators.append(&sink);
         indicators.append(&source);
     }
-    let layout = keyboard::build(&services.xkb, scope);
-    layout.set_margin_end(INDICATOR_SPACING);
-    indicators.append(&layout);
     indicators.append(&indicator::build(
         &services.notifications,
         theme,
@@ -469,6 +468,13 @@ fn right_section(
             is_collapsed,
         ));
     }
+    row.append(&keyboard::build(
+        &services.xkb,
+        theme,
+        settings,
+        false,
+        scope,
+    ));
     let slot = Centered::new(&button);
     slot.set_margin_end(rounding::SCREEN_ROUNDING);
     row.append(&slot);

@@ -9,11 +9,11 @@ description: The bar on each screen, how it reserves space, hides and styles its
 Each screen gets a bar, along its top edge unless set otherwise. Its middle holds three groups: media
 and resource meters, the [workspaces](workspaces.md), and the clock with the utility buttons and the
 battery. The space on either side is not empty: scrolling over the left half changes the brightness,
-scrolling over the right half changes the volume, and the right end carries the [tray](tray.md) and
-the button that opens the [sidebar](sidebar.md).
+scrolling over the right half changes the volume, and the right end carries the [tray](tray.md), the
+keyboard layout button and the button that opens the [sidebar](sidebar.md).
 
 ```text
-⇕ brightness     [weather] (media mixer · RAM swap CPU) (workspaces) (clock · buttons · battery)     tray •  (indicators)
+⇕ brightness     [weather] (media mixer · RAM swap CPU) (workspaces) (clock · buttons · battery)     tray •  (layout)  (indicators)
 ```
 
 | Part | Wheel | Left click |
@@ -365,12 +365,29 @@ fetches overlap, only the report of the newest one is shown.
 ## The right region
 
 The right region runs from the center groups to the screen edge. It holds, from the edge inward, the
-sidebar button, the [tray](tray.md) and empty space.
+sidebar button, the keyboard layout button, the [tray](tray.md) and empty space.
 
 - Scrolling over it changes the volume of the default output: 1 % per step below 10 %, 2 % per step
   above, up to 100 %. A hint with a `volume_up` icon at the screen edge reads "Scroll to change
   volume".
 - A left click anywhere in it that is not a button or a tray icon toggles the sidebar.
+
+### The keyboard layout button
+
+A pill between the tray and the sidebar button, shown when Hyprland has more than one layout and
+left out, with no gap, otherwise. It shows the current layout's code, cut to four letters before any
+`-` and upper-cased; a two-part code stacks on two lines. When the layout changes, the code slides
+out and the new one slides in.
+
+| Input | Action |
+|---|---|
+| Left click | switches every keyboard to the next layout, as the `xkbLayoutNext` shortcut does |
+| Wheel down | next layout |
+| Wheel up | previous layout |
+| Right click | opens the Keyboard page of the [settings window](settings-input.md) |
+
+Both directions wrap around the list. Hovering the button shows the current layout's full name.
+Scrolling over it switches layouts instead of changing the volume.
 
 ### The sidebar button
 
@@ -387,7 +404,6 @@ From left to right; the ones that come and go slide in and out:
 | Updates | while the shell is behind its GitHub repository or the package count reaches `updates.adviseUpdateThreshold`; see [Updates](sidebar.md#updates) | `deployed_code_update`, red from `updates.stronglyAdviseUpdateThreshold` packages |
 | Speaker muted | while the default output is muted | `volume_off` |
 | Microphone muted | while the default input is muted | `mic_off` |
-| Keyboard layout | when Hyprland has more than one layout | the layout code, cut to four letters before any `-` and upper-cased; a two-part code stacks on two lines |
 | Notifications | while Do Not Disturb is on, or unread notifications wait | a bell with a dot for unread ones, or `notifications_paused` under Do Not Disturb |
 | Network | always | `lan` on a wired connection; Wi-Fi bars in six steps of signal strength; `wifi_find` when not connected; `signal_wifi_off` with Wi-Fi off |
 | WireGuard | while a NetworkManager connection named `WireGuard` is active | the WireGuard logo |
@@ -421,8 +437,9 @@ From top to bottom:
     (`time.shortDateFormat`), then a line and the battery: an upright capsule that fills from the
     bottom, with a check when full, a bolt while charging, or a level icon, and the number under
     100 %.
-- **The bottom part**: the tray as a column and the sidebar button with the indicators stacked. Scroll
-  here for volume; a click toggles the sidebar.
+- **The bottom part**: the tray as a column, the keyboard layout button and the sidebar button with
+  the indicators stacked. Scroll here for volume, except over the layout button; a click toggles the
+  sidebar.
 
 The vertical bar has no weather, utility buttons, recording indicator, WireGuard indicator or scroll
 hints. Screen width does not shorten it, and its tray never folds into the overflow menu. Hug corners

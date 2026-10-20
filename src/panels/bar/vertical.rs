@@ -39,6 +39,7 @@ pub fn build(
     media: &Rc<MediaControls>,
     volume_mixer: &Option<Rc<VolumeMixer>>,
     overview: &Rc<crate::panels::overview::Overview>,
+    settings: &Rc<crate::panels::settings::Settings>,
     screen: Screen<'_>,
     scope: &Scope,
 ) -> gtk4::Widget {
@@ -73,7 +74,9 @@ pub fn build(
     let content = gtk4::Overlay::new();
     content.set_child(Some(&background));
     content.add_overlay(&sections);
-    content.add_overlay(&bottom_section(config, theme, services, sidebar, scope));
+    content.add_overlay(&bottom_section(
+        config, theme, services, sidebar, settings, scope,
+    ));
     content.set_size_request(config.vertical_bar_width(), -1);
 
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -288,6 +291,7 @@ fn bottom_section(
     theme: &SharedTheme,
     services: &Services,
     sidebar: &Rc<crate::panels::sidebar::Sidebar>,
+    settings: &Rc<crate::panels::settings::Settings>,
     scope: &Scope,
 ) -> gtk4::Widget {
     let area = gtk4::Box::new(gtk4::Orientation::Vertical, BOTTOM_SPACING);
@@ -296,6 +300,13 @@ fn bottom_section(
     if let Some(bus) = &services.session_bus {
         area.append(&tray::build(bus, config, theme, scope, None, true, false));
     }
+    area.append(&keyboard::build(
+        &services.xkb,
+        theme,
+        settings,
+        true,
+        scope,
+    ));
 
     let indicators = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     indicators.set_halign(gtk4::Align::Center);
@@ -306,10 +317,6 @@ fn bottom_section(
         indicators.append(&sink);
         indicators.append(&source);
     }
-    let layout = keyboard::build(&services.xkb, scope);
-    layout.set_halign(gtk4::Align::Center);
-    layout.set_margin_bottom(VERTICAL_INDICATOR_SPACING);
-    indicators.append(&layout);
     indicators.append(&indicator::build(
         &services.notifications,
         theme,
