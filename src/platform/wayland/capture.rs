@@ -346,7 +346,7 @@ pub struct Capture {
     shared: Rc<Shared>,
     owner: u64,
     anchor: glib::WeakRef<gtk4::Widget>,
-    last_request_times: RefCell<HashMap<String, Instant>>,
+    request_slots: RefCell<HashMap<String, Instant>>,
     generation: Cell<u64>,
 }
 
@@ -525,7 +525,7 @@ impl Capture {
             shared,
             owner,
             anchor: anchor.upcast_ref::<gtk4::Widget>().downgrade(),
-            last_request_times: RefCell::new(HashMap::new()),
+            request_slots: RefCell::new(HashMap::new()),
             generation: Cell::new(0),
         }))
     }
@@ -565,7 +565,7 @@ impl Capture {
         for mut pending in pending {
             release(&mut pending);
         }
-        self.last_request_times.borrow_mut().clear();
+        self.request_slots.borrow_mut().clear();
         self.generation.set(self.generation.get() + 1);
         let _ = self.shared.connection.flush();
     }
@@ -582,27 +582,25 @@ impl Capture {
             return;
         };
         let window = handle as u32;
-        let delay = self
-            .last_request_times
-            .borrow()
-            .get(address)
-            .filter(|_| !ignores_damage)
-            .map(|last| FRAME.saturating_sub(last.elapsed()))
-            .unwrap_or_default();
+        let now = Instant::now();
+        let previous_slot = self.request_slots.borrow().get(address).copied();
+        let delay = calculate_delay(previous_slot, now, FRAME);
         if !delay.is_zero() {
             let capture = self.clone();
             let address = address.to_owned();
             let generation = self.generation.get();
-            glib::timeout_add_local_once(delay, move || {
+            let delay_millis = delay.as_nanos().div_ceil(1_000_000) as u64;
+            glib::timeout_add_local_once(Duration::from_millis(delay_millis), move || {
                 if capture.generation.get() == generation {
                     capture.request(&address, limit, ignores_damage, on_done);
                 }
             });
             return;
         }
-        self.last_request_times
-            .borrow_mut()
-            .insert(address.to_owned(), Instant::now());
+        self.request_slots.borrow_mut().insert(
+            address.to_owned(),
+            calculate_next_slot(previous_slot, now, FRAME),
+        );
         let shared = &self.shared;
         let id = shared.next_id.get();
         shared.next_id.set(id + 1);
@@ -649,6 +647,23 @@ fn ids_owned_by(entries: impl Iterator<Item = (u64, u64)>, owner: u64) -> Vec<u6
         .filter(|(_, entry_owner)| *entry_owner == owner)
         .map(|(id, _)| id)
         .collect()
+}
+
+fn calculate_delay(previous_slot: Option<Instant>, now: Instant, interval: Duration) -> Duration {
+    previous_slot.map_or(Duration::ZERO, |slot| {
+        (slot + interval).saturating_duration_since(now)
+    })
+}
+
+fn calculate_next_slot(
+    previous_slot: Option<Instant>,
+    now: Instant,
+    interval: Duration,
+) -> Instant {
+    match previous_slot {
+        Some(slot) if now.saturating_duration_since(slot + interval) < interval => slot + interval,
+        _ => now,
+    }
 }
 
 fn count_dmabuf_failure(failures: &mut HashMap<u32, u32>, window: u32) -> bool {
@@ -858,6 +873,36 @@ mod tests {
         assert!(!count_dmabuf_failure(&mut failures, 1));
         assert!(!count_dmabuf_failure(&mut failures, 2));
         assert!(count_dmabuf_failure(&mut failures, 1));
+    }
+
+    #[test]
+    fn requests_follow_the_interval_without_drifting_when_a_timer_fires_late() {
+        let start = Instant::now();
+        let interval = Duration::from_millis(33);
+        let lateness = Duration::from_millis(2);
+        assert_eq!(calculate_delay(None, start, interval), Duration::ZERO);
+        assert_eq!(
+            calculate_delay(Some(start), start + Duration::from_millis(10), interval),
+            Duration::from_millis(23)
+        );
+        assert_eq!(
+            calculate_delay(Some(start), start + interval + lateness, interval),
+            Duration::ZERO
+        );
+        let mut slot = start;
+        for step in 1..=10u32 {
+            slot = calculate_next_slot(Some(slot), start + interval * step + lateness, interval);
+        }
+        assert_eq!(slot, start + interval * 10);
+    }
+
+    #[test]
+    fn a_request_that_comes_much_too_late_starts_a_new_cadence() {
+        let start = Instant::now();
+        let interval = Duration::from_millis(33);
+        let now = start + interval * 3;
+        assert_eq!(calculate_next_slot(Some(start), now, interval), now);
+        assert_eq!(calculate_next_slot(None, now, interval), now);
     }
 
     #[test]

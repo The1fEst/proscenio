@@ -97,8 +97,8 @@ leaves both.
 
 The popup waits until every card has its first picture. A window whose capture fails three times
 gets a card without a picture, so it never holds the popup back. After the first picture, each card
-asks for the next frame in which the window changed, at most 30 times a second per window. Capturing
-stops when the popup has faded out.
+asks for the window's next frame, at the rate described under
+[How windows are captured](#how-windows-are-captured). Capturing stops when the popup has faded out.
 
 ## How windows are captured
 
@@ -124,8 +124,10 @@ a dock preview is set up, which gives the GPU path another try.
 **A window with no positive size gets no capture.** Hyprland reports a negative width or height as a
 huge unsigned number; such a frame gets no buffer at all, and its capture counts as failed.
 
-The first frame of a picture is taken at once. Every later request waits for the window to change,
-and for a thirtieth of a second to have passed since the previous request for the same window.
+**The rate** is the same for the previews and the overview. The first frame of a picture is taken
+at once, and Hyprland copies it without waiting. Every later request is answered when Hyprland next
+presents a frame on the window's monitor. The capturer sends requests for one window at fixed
+intervals of a thirtieth of a second. A late timer does not push the following requests back.
 
 ## Settings
 

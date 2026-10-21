@@ -160,9 +160,10 @@ holds the focused workspace. With ten to a group, workspace 13 shows workspaces 
 the bottom. With `overview.enable` off, the overview is the search field alone.
 
 The grid follows Hyprland's events while it is shown. Its pictures come from the same capturer as
-the dock's previews, described in [The dock](dock.md): the GPU path with a `wl_shm` fallback, at most
-30 frames a second per window, never the cursor. A window whose capture fails three times in a row
-keeps its last picture, or none. The capturer starts when the grid shows and stops when it hides.
+the dock's previews, described in [The dock](dock.md): the GPU path with a `wl_shm` fallback, at the
+same rate (at most 30 frames a second per window), never the cursor. A window whose capture fails
+three times in a row keeps its last picture, or none. The capturer starts when the grid shows and
+stops when it hides.
 
 ## Settings
 
