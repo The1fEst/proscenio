@@ -4,6 +4,8 @@ pub mod autostart;
 pub mod defaultapps;
 pub mod desktop;
 pub mod locale;
+pub mod loginshell;
+pub mod terminals;
 pub mod udev;
 pub mod xkbregistry;
 pub mod ydotool;

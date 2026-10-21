@@ -1,14 +1,14 @@
 ---
 title: Apps settings
 sidebar_label: Apps
-description: The Apps page and its File types and Window rules subpages, covering default applications, which app opens each file type, per-application Hyprland window rules and the commands the shell runs.
+description: The Apps page and its File types and Window rules subpages, covering default applications, which app opens each file type, per-application Hyprland window rules, the terminal emulator and the login shell.
 ---
 
 # Apps settings
 
-The **Apps** page chooses the application for each kind of file and link, gives single
-applications their own window behavior, and sets the commands the shell's own buttons run. Two
-subpages hang off it: **File types**, for every file type one at a time, and **Window rules**.
+The **Apps** page chooses the application for each kind of file and link, the terminal emulator and
+the login shell, and gives single applications their own window behavior. Two subpages hang off it:
+**File types**, for every file type one at a time, and **Window rules**.
 
 ## Default Apps
 
@@ -53,6 +53,35 @@ were.
 
 The page reads off the main thread, again after each choice, and again a second after the set of
 installed applications changes.
+
+### Terminal
+
+The **Terminal** box lists the installed terminal emulators: the shown desktop entries whose
+`Categories` include `TerminalEmulator`, sorted by name, each by the name its desktop file gives. It
+reads and writes `apps.terminal` in `~/.config/proscenio/config.toml` (`kitty -1` when the key is
+missing or empty), the command the launcher runs, with `-e` and the app's command, for applications
+whose desktop entry asks for a terminal, and that the shell's own buttons and
+`launch_first_available.sh --terminal` use.
+
+The selected terminal is the entry whose program, compared by file name, is the first word of the
+stored command, not counting leading `NAME=value` words. When no entry matches, the stored command
+itself is shown as the selected item.
+
+Choosing a terminal stores its `Exec` line with the field codes, such as `%U` and `%F`, removed.
+When the stored command already starts with the same program, it stays as it is, so `kitty -1`
+stays `kitty -1` when kitty is chosen. The box follows changes to the key and to the set of
+installed applications.
+
+### Shell
+
+**Shell** is the user's login shell, read from the user's passwd entry. The list holds the shells
+in `/etc/shells` that are installed, each named by its program: entries that name the same program
+under `/bin` and `/usr/bin` appear once, with the `/usr/bin` path, and `rbash`, `git-shell`,
+`systemd-home-fallback-shell` and `nologin` are left out. A login shell that is not in
+`/etc/shells` is still shown as the selected item. Choosing another shell asks for the password in
+the shell's own polkit prompt, then runs `pkexec /usr/bin/chsh -s <path> <user>`. The change
+applies to new terminals and new logins. When the change fails or the prompt is canceled, the row
+shows the current login shell again, with the error under it.
 
 ## File types
 
@@ -122,14 +151,3 @@ same rule, so **Takes focus when it asks** and **Never takes focus when it asks*
 other. Adding or removing a rule reloads Hyprland. The two focus rules make an exception for one
 application to the **Let apps take focus when they ask for it** switch on
 [Multitasking settings](settings-multitasking.md).
-
-## Commands
-
-**What the shell's own buttons open**:
-
-| Field | Key | Default | Used by |
-|---|---|---|---|
-| Terminal | `apps.terminal` | `kitty -1` | the launcher, for applications whose desktop entry asks for a terminal |
-
-The keys are in `~/.config/proscenio/config.toml`. When a command's program is not installed, a
-notice names the program and its field, and it updates as the fields change.

@@ -1,5 +1,6 @@
 use crate::core::i18n::tr;
 use crate::core::process;
+use std::process::Command;
 
 pub async fn request(
     command: &str,
@@ -7,7 +8,12 @@ pub async fn request(
     fallback_error: String,
 ) -> Result<(), String> {
     let mut pkexec = process::command(&["pkexec", &process::executable(), command]);
-    pkexec.args(&words).env("LANG", "C");
+    pkexec.args(&words);
+    execute(pkexec, fallback_error).await
+}
+
+pub async fn execute(mut pkexec: Command, fallback_error: String) -> Result<(), String> {
+    pkexec.env("LANG", "C");
     let Some(output) = process::capture(pkexec).await else {
         return Err(tr("Could not run pkexec"));
     };

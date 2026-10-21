@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "IDs de elementos de la bandeja separados por comas",
   "Comma-separated. Work safety kicks in when one of these shows up.": "Separados por comas. El modo discreto se activa en cuanto aparece uno de ellos.",
   "Command": "Comando",
-  "Commands": "Comandos",
   "Compose key": "Tecla Compose",
   "Config file": "Archivo de\nconfiguración",
   "Configuration": "Configuración",
@@ -934,7 +933,6 @@
   "What language the interface is in": "En qué idioma está la interfaz",
   "What the bar shows and where it sits": "Qué muestra la barra y dónde se coloca",
   "What the lock screen looks like and what it lets through": "Qué aspecto tiene la pantalla de bloqueo y qué deja pasar",
-  "What the shell's own buttons open": "Qué abren los botones propios del shell",
   "What this machine is and what it runs": "Qué es esta máquina y qué ejecuta",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "Cuando está activado, mantiene el contenido de la barra lateral derecha cargado para reducir el retraso al abrir,\na costa de un uso constante de RAM de aproximadamente 15 MB. La importancia del retraso depende del rendimiento de tu sistema.\nUsar un kernel personalizado como linux-cachyos podría ayudar",
   "When not fullscreen": "Cuando no está en pantalla completa",
@@ -1082,7 +1080,6 @@
   "No region specified for --region": "No se especificó ninguna región para --region",
   "No settings found": "No se encontraron ajustes",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "No hay ningún tema de sonido instalado en /usr/share/sounds, así que los sonidos de alerta no suenan. El predeterminado viene con el paquete sound-theme-freedesktop.",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "No instalado: %1. Los botones que los ejecutan no hacen nada hasta que el comando nombre un programa instalado.",
   "Not set": "Sin definir",
   "Now": "Ahora",
   "Open Upscayl": "Abrir Upscayl",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "Ocultar las ventanas emergentes al compartir la pantalla",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Mientras una app comparte la pantalla, las notificaciones van a la barra lateral sin aparecer",
   "Transition (min)": "Transición (min)",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Cuánto dura el cambio programado: termina a la hora de inicio y empieza a la hora de fin; 0 cambia de inmediato"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Cuánto dura el cambio programado: termina a la hora de inicio y empieza a la hora de fin; 0 cambia de inmediato",
+  "Applies to new terminals and new logins": "Se aplica a las terminales nuevas y a los inicios de sesión nuevos"
 }

@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "ID item baki dipisah koma",
   "Comma-separated. Work safety kicks in when one of these shows up.": "Dipisah koma. Mode aman kerja aktif begitu salah satunya muncul.",
   "Command": "Perintah",
-  "Commands": "Perintah",
   "Compose key": "Tombol Compose",
   "Config file": "File konfigurasi",
   "Configuration": "Konfigurasi",
@@ -934,7 +933,6 @@
   "What language the interface is in": "Bahasa antarmuka",
   "What the bar shows and where it sits": "Apa yang ditampilkan bilah dan di mana letaknya",
   "What the lock screen looks like and what it lets through": "Rupa layar kunci dan apa yang dibiarkannya lewat",
-  "What the shell's own buttons open": "Apa yang dibuka oleh tombol shell sendiri",
   "What this machine is and what it runs": "Mesin ini apa dan menjalankan apa",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "Ketika diaktifkan membuat konten sidebar kanan tetap dimuat untuk mengurangi keterlambatan saat membuka,\ndengan penambahan penggunaan RAM konsisten sebanyak 15 MB. Signifikansi keterlambatan tergantung pada kinerja sistem Anda.\nMenggunakan kernel kustom seperti linux-cachyos mungkin dapat membantu",
   "When not fullscreen": "Ketika tidak layar penuh",
@@ -1082,7 +1080,6 @@
   "No region specified for --region": "Tidak ada area yang ditentukan untuk --region",
   "No settings found": "Tidak ada pengaturan yang ditemukan",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "Tidak ada tema suara yang terpasang di /usr/share/sounds, jadi suara peringatan tetap senyap. Tema bawaannya ada di paket sound-theme-freedesktop.",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "Belum terpasang: %1. Tombol yang menjalankannya tidak berfungsi sampai perintahnya menyebut program yang terpasang.",
   "Not set": "Belum diatur",
   "Now": "Sekarang",
   "Open Upscayl": "Buka Upscayl",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "Sembunyikan popup saat berbagi layar",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Saat aplikasi berbagi layar, notifikasi masuk ke sidebar tanpa muncul",
   "Transition (min)": "Transisi (mnt)",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Berapa lama perubahan terjadwal berlangsung: selesai pada waktu mulai dan dimulai pada waktu selesai; 0 langsung beralih"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Berapa lama perubahan terjadwal berlangsung: selesai pada waktu mulai dan dimulai pada waktu selesai; 0 langsung beralih",
+  "Applies to new terminals and new logins": "Berlaku untuk terminal baru dan login baru"
 }

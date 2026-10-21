@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "Идентификаторы элементов трея через запятую",
   "Comma-separated. Work safety kicks in when one of these shows up.": "Через запятую. Режим безопасной работы включается, когда появляется одно из них.",
   "Command": "Команда",
-  "Commands": "Команды",
   "Compose key": "Клавиша Compose",
   "Config file": "Конфиг",
   "Configuration": "Конфиг",
@@ -941,7 +940,6 @@
   "What language the interface is in": "На каком языке интерфейс",
   "What the bar shows and where it sits": "Что показывает панель и где она стоит",
   "What the lock screen looks like and what it lets through": "Как выглядит экран блокировки и что он пропускает",
-  "What the shell's own buttons open": "Что открывают собственные кнопки оболочки",
   "What this machine is and what it runs": "Что это за машина и что на ней работает",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "Держит правую панель в памяти для быстрого открытия\n(~15 МБ ОЗУ постоянно). Задержка зависит от произв. системы.\nКастомное ядро (linux-cachyos) может помочь",
   "When not fullscreen": "Не в фулл-скрине",
@@ -1087,7 +1085,6 @@
   "No region specified for --region": "Не указана область для --region",
   "No settings found": "Настройки не найдены",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "В /usr/share/sounds не установлена звуковая тема, поэтому звуки оповещений молчат. Тема по умолчанию входит в пакет sound-theme-freedesktop.",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "Не установлены: %1. Кнопки, которые их запускают, ничего не делают, пока в команде не указана установленная программа.",
   "Not set": "Не задано",
   "Now": "Сейчас",
   "Open Upscayl": "Открыть Upscayl",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "Скрывать всплывающие уведомления при демонстрации экрана",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Пока приложение показывает экран, уведомления уходят в боковую панель, не всплывая",
   "Transition (min)": "Переход (мин)",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Сколько длится смена по расписанию: к времени начала она завершена, со времени окончания начинается; 0 переключает сразу"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Сколько длится смена по расписанию: к времени начала она завершена, со времени окончания начинается; 0 переключает сразу",
+  "Applies to new terminals and new logins": "Применяется к новым терминалам и новым входам в систему"
 }

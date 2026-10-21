@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "מזהי פריטי מגש מופרדים בפסיקים",
   "Comma-separated. Work safety kicks in when one of these shows up.": "מופרדים בפסיקים. מצב עבודה נכנס לפעולה ברגע שאחד מהם מופיע.",
   "Command": "פקודה",
-  "Commands": "פקודות",
   "Compose key": "מקש Compose",
   "Config file": "קובץ הגדרות",
   "Configuration": "הגדרות",
@@ -941,7 +940,6 @@
   "What language the interface is in": "באיזו שפה הממשק",
   "What the bar shows and where it sits": "מה הסרגל מציג והיכן הוא יושב",
   "What the lock screen looks like and what it lets through": "כיצד נראה מסך הנעילה ומה הוא מעביר",
-  "What the shell's own buttons open": "מה פותחים הכפתורים של המעטפת עצמה",
   "What this machine is and what it runs": "מהו המחשב הזה ומה רץ עליו",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "כאשר מופעל, שומר את תוכן הסרגל הצדדי הימני טעון כדי להפחית את ההשהיה בפתיחה, במחיר של כ-15MB זיכרון RAM קבוע. משמעות ההשהיה תלויה בביצועי המערכת שלך. שימוש בליבה מותאמת אישית כמו linux-cachyos עשוי לעזור",
   "When not fullscreen": "כשלא במסך מלא",
@@ -1087,7 +1085,6 @@
   "No region specified for --region": "לא צוין אזור עבור ‎--region",
   "No settings found": "לא נמצאו הגדרות",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "אין ערכת צלילים מותקנת ב־/usr/share/sounds, ולכן צלילי ההתראה שותקים. ערכת ברירת המחדל מגיעה עם החבילה sound-theme-freedesktop.",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "לא מותקנים: %1. הכפתורים שמפעילים אותם לא יעשו דבר עד שהפקודה תציין תוכנה מותקנת.",
   "Not set": "לא הוגדר",
   "Now": "עכשיו",
   "Open Upscayl": "פתיחת Upscayl",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "הסתר חלונות קופצים בזמן שיתוף המסך",
   "While an app shares the screen, notifications go to the sidebar without popping up": "בזמן שאפליקציה משתפת את המסך, ההתראות עוברות לסרגל הצדדי בלי לקפוץ",
   "Transition (min)": "מעבר (דק׳)",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "כמה זמן נמשך השינוי המתוזמן: הוא מסתיים עד שעת ההתחלה ומתחיל בשעת הסיום; 0 מחליף מיד"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "כמה זמן נמשך השינוי המתוזמן: הוא מסתיים עד שעת ההתחלה ומתחיל בשעת הסיום; 0 מחליף מיד",
+  "Applies to new terminals and new logins": "חל על מסופים חדשים ועל כניסות חדשות"
 }

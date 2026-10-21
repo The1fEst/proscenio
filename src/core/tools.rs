@@ -48,10 +48,6 @@ pub fn command_program(command: &str) -> Option<&str> {
     command.split_whitespace().find(|word| !word.contains('='))
 }
 
-pub fn find_missing_program(command: &str) -> Option<&str> {
-    command_program(command).filter(|program| !process::exists(program))
-}
-
 fn join_names(names: &[&str]) -> String {
     match names {
         [] => String::new(),

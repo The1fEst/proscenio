@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "Comma-separated tray item IDs",
   "Comma-separated. Work safety kicks in when one of these shows up.": "Comma-separated. Work safety kicks in when one of these shows up.",
   "Command": "Command",
-  "Commands": "Commands",
   "Compose key": "Compose key",
   "Config file": "Config file",
   "Configuration": "Configuration",
@@ -934,7 +933,6 @@
   "What language the interface is in": "What language the interface is in",
   "What the bar shows and where it sits": "What the bar shows and where it sits",
   "What the lock screen looks like and what it lets through": "What the lock screen looks like and what it lets through",
-  "What the shell's own buttons open": "What the shell's own buttons open",
   "What this machine is and what it runs": "What this machine is and what it runs",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help",
   "When not fullscreen": "When not fullscreen",
@@ -1082,7 +1080,6 @@
   "No region specified for --region": "No region specified for --region",
   "No settings found": "No settings found",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "Not installed: %1. The buttons that run these do nothing until the command names an installed program.",
   "Not set": "Not set",
   "Now": "Now",
   "Open Upscayl": "Open Upscayl",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "Hide popups while sharing the screen",
   "While an app shares the screen, notifications go to the sidebar without popping up": "While an app shares the screen, notifications go to the sidebar without popping up",
   "Transition (min)": "Transition (min)",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once",
+  "Applies to new terminals and new logins": "Applies to new terminals and new logins"
 }

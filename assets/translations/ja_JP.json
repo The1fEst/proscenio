@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "カンマ区切りのトレイ項目 ID",
   "Comma-separated. Work safety kicks in when one of these shows up.": "カンマ区切り。いずれかが現れると仕事モードが働きます。",
   "Command": "コマンド",
-  "Commands": "コマンド",
   "Compose key": "Compose キー",
   "Config file": "設定ファイル",
   "Configuration": "設定",
@@ -941,7 +940,6 @@
   "What language the interface is in": "インターフェースの言語",
   "What the bar shows and where it sits": "バーに表示する内容と置き場所",
   "What the lock screen looks like and what it lets through": "ロック画面の見た目と、そこを通すもの",
-  "What the shell's own buttons open": "シェル自身のボタンが開くもの",
   "What this machine is and what it runs": "この機械が何で、何を動かしているか",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "有効にすると右サイドバーのコンテンツを常に読み込んでおくことで、表示遅延を短縮します。\n代償として約15MBのメモリを継続的に使用します。遅延の度合いはシステム性能に依存します。\nlinux-cachyosのようなカスタムカーネルの使用が効果的な場合があります。",
   "When not fullscreen": "フルスクリーンでない時",
@@ -1087,7 +1085,6 @@
   "No region specified for --region": "--region に範囲が指定されていません",
   "No settings found": "設定が見つかりません",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "/usr/share/sounds にサウンドテーマが入っていないため、通知音は鳴りません。既定のテーマは sound-theme-freedesktop パッケージに含まれています。",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "未インストール: %1。コマンドがインストール済みのプログラムを指すまで、これらを実行するボタンは何もしません。",
   "Not set": "未設定",
   "Now": "たった今",
   "Open Upscayl": "Upscayl を開く",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "画面共有中はポップアップを表示しない",
   "While an app shares the screen, notifications go to the sidebar without popping up": "アプリが画面を共有している間、通知はポップアップせずサイドバーに入ります",
   "Transition (min)": "切り替え時間（分）",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "予定の切り替えにかける時間。開始時刻までに完了し、終了時刻に始まります。0 で即座に切り替えます"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "予定の切り替えにかける時間。開始時刻までに完了し、終了時刻に始まります。0 で即座に切り替えます",
+  "Applies to new terminals and new logins": "新しいターミナルと新しいログインに適用されます"
 }

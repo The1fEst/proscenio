@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "Virgülle ayrılmış tepsi ögesi kimlikleri",
   "Comma-separated. Work safety kicks in when one of these shows up.": "Virgülle ayrılmış. Bunlardan biri göründüğünde çalışma güvenliği devreye girer.",
   "Command": "Komut",
-  "Commands": "Komutlar",
   "Compose key": "Compose tuşu",
   "Config file": "config dosyası",
   "Configuration": "Yapılandırma",
@@ -934,7 +933,6 @@
   "What language the interface is in": "Arayüzün hangi dilde olduğu",
   "What the bar shows and where it sits": "Çubuğun ne gösterdiği ve nerede durduğu",
   "What the lock screen looks like and what it lets through": "Kilit ekranının görünümü ve neleri geçirdiği",
-  "What the shell's own buttons open": "Kabuğun kendi düğmelerinin ne açtığı",
   "What this machine is and what it runs": "Bu makinenin ne olduğu ve neler çalıştırdığı",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "Etkinleştirildiğinde açarken gecikmeyi azaltmak için sağ kenar çubuğunun içeriğini yüklü tutar,\nyaklaşık 15MB tutarlı RAM kullanımı pahasına. Gecikme önemi sisteminizin performansına bağlıdır.\nlinux-cachyos gibi özel bir çekirdek kullanmak yardımcı olabilir",
   "When not fullscreen": "Tam ekran değilken",
@@ -1082,7 +1080,6 @@
   "No region specified for --region": "--region için bölge belirtilmedi",
   "No settings found": "Ayar bulunamadı",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "/usr/share/sounds içinde kurulu ses teması yok, bu yüzden uyarı sesleri sessiz kalır. Varsayılan tema sound-theme-freedesktop paketiyle gelir.",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "Kurulu değil: %1. Bunları çalıştıran düğmeler, komut kurulu bir programı gösterene kadar hiçbir şey yapmaz.",
   "Not set": "Ayarlanmadı",
   "Now": "Şimdi",
   "Open Upscayl": "Upscayl'ı aç",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "Ekran paylaşılırken açılır pencereleri gizle",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Bir uygulama ekranı paylaşırken bildirimler açılmadan kenar çubuğuna gider",
   "Transition (min)": "Geçiş (dk)",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Zamanlanmış değişimin ne kadar süreceği: başlangıç saatinde tamamlanır, bitiş saatinde başlar; 0 hemen geçer"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Zamanlanmış değişimin ne kadar süreceği: başlangıç saatinde tamamlanır, bitiş saatinde başlar; 0 hemen geçer",
+  "Applies to new terminals and new logins": "Yeni terminallere ve yeni oturum açmalara uygulanır"
 }

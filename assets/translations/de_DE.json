@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "Kommagetrennte IDs von Tray-Symbolen",
   "Comma-separated. Work safety kicks in when one of these shows up.": "Kommagetrennt. Der Arbeitsschutz greift, sobald eines davon auftaucht.",
   "Command": "Befehl",
-  "Commands": "Befehle",
   "Compose key": "Compose-Taste",
   "Config file": "Konfigurationsdatei",
   "Configuration": "Konfiguration",
@@ -934,7 +933,6 @@
   "What language the interface is in": "In welcher Sprache die Oberfläche ist",
   "What the bar shows and where it sits": "Was die Leiste zeigt und wo sie sitzt",
   "What the lock screen looks like and what it lets through": "Wie der Sperrbildschirm aussieht und was er durchlässt",
-  "What the shell's own buttons open": "Was die eigenen Schaltflächen der Shell öffnen",
   "What this machine is and what it runs": "Was dieser Rechner ist und was darauf läuft",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "Wenn aktiviert, hält den Inhalt der rechten Seitenleiste geladen, um die Verzögerung beim Öffnen zu reduzieren,\nzum Preis von etwa 15 MB konstantem RAM-Verbrauch. Die Bedeutung der Verzögerung hängt von der Leistung deines Systems ab.\nEin benutzerdefiniertes Kernel wie linux-cachyos könnte helfen",
   "When not fullscreen": "Wenn nicht Vollbild",
@@ -1082,7 +1080,6 @@
   "No region specified for --region": "Kein Bereich für --region angegeben",
   "No settings found": "Keine Einstellungen gefunden",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "In /usr/share/sounds ist kein Klangschema installiert, daher bleiben Hinweistöne stumm. Das Standardschema steckt im Paket sound-theme-freedesktop.",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "Nicht installiert: %1. Die Schaltflächen, die diese starten, bewirken nichts, bis der Befehl ein installiertes Programm nennt.",
   "Not set": "Nicht festgelegt",
   "Now": "Jetzt",
   "Open Upscayl": "Upscayl öffnen",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "Popups beim Teilen des Bildschirms ausblenden",
   "While an app shares the screen, notifications go to the sidebar without popping up": "Während eine App den Bildschirm teilt, landen Benachrichtigungen in der Seitenleiste, ohne aufzupoppen",
   "Transition (min)": "Übergang (min)",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Wie lange der geplante Wechsel dauert: zur Startzeit ist er abgeschlossen, zur Endzeit beginnt er; 0 schaltet sofort um"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Wie lange der geplante Wechsel dauert: zur Startzeit ist er abgeschlossen, zur Endzeit beginnt er; 0 schaltet sofort um",
+  "Applies to new terminals and new logins": "Gilt für neue Terminals und neue Anmeldungen"
 }

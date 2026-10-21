@@ -302,7 +302,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     page
 }
 
-fn note(color: &str) -> gtk4::Label {
+pub fn note(color: &str) -> gtk4::Label {
     let label = text::styled("");
     text::set_color(&label, color);
     label.set_xalign(0.0);
@@ -312,7 +312,7 @@ fn note(color: &str) -> gtk4::Label {
     label
 }
 
-fn show_result(label: &glib::WeakRef<gtk4::Label>, result: Result<(), String>) {
+pub fn show_result(label: &glib::WeakRef<gtk4::Label>, result: Result<(), String>) {
     if let Some(label) = label.upgrade() {
         let message = result.err().unwrap_or_default();
         label.set_visible(!message.is_empty());

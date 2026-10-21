@@ -180,7 +180,6 @@
   "Comma-separated tray item IDs": "以逗号分隔的托盘项 ID",
   "Comma-separated. Work safety kicks in when one of these shows up.": "以逗号分隔。其中任一出现时启用工作安全模式。",
   "Command": "命令",
-  "Commands": "命令",
   "Compose key": "Compose 键",
   "Config file": "配置文件",
   "Configuration": "配置",
@@ -941,7 +940,6 @@
   "What language the interface is in": "界面使用的语言",
   "What the bar shows and where it sits": "状态栏显示什么、位于何处",
   "What the lock screen looks like and what it lets through": "锁屏的外观以及它允许通过的内容",
-  "What the shell's own buttons open": "外壳自身按钮打开的内容",
   "What this machine is and what it runs": "这台机器是什么、运行着什么",
   "When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help": "启用后会保持右侧边栏内容常驻，以减少打开时的延迟，代价是大约 15MB 的持续内存使用。延迟的影响程度取决于系统性能。使用像 linux-cachyos 这样的自定义内核可能会有所帮助",
   "When not fullscreen": "非全屏时",
@@ -1087,7 +1085,6 @@
   "No region specified for --region": "未为 --region 指定区域",
   "No settings found": "未找到设置",
   "No sound theme is installed in /usr/share/sounds, so alert sounds stay silent. The default one comes with the sound-theme-freedesktop package.": "/usr/share/sounds 中未安装声音主题，因此提示音不会响起。默认主题包含在 sound-theme-freedesktop 软件包中。",
-  "Not installed: %1. The buttons that run these do nothing until the command names an installed program.": "未安装：%1。在命令指向已安装的程序之前，运行它们的按钮不会起作用。",
   "Not set": "未设置",
   "Now": "刚刚",
   "Open Upscayl": "打开 Upscayl",
@@ -1554,5 +1551,6 @@
   "Hide popups while sharing the screen": "共享屏幕时隐藏弹出通知",
   "While an app shares the screen, notifications go to the sidebar without popping up": "当应用正在共享屏幕时，通知会进入侧边栏而不弹出",
   "Transition (min)": "过渡时长（分钟）",
-  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "定时切换的时长：在开始时间前完成，在结束时间开始；0 表示立即切换"
+  "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "定时切换的时长：在开始时间前完成，在结束时间开始；0 表示立即切换",
+  "Applies to new terminals and new logins": "适用于新终端和新登录"
 }

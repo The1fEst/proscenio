@@ -4,13 +4,18 @@ pub mod windowrules;
 use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
+use serde_json::Value;
 use std::cell::{Cell, RefCell};
+use std::path::Path;
 use std::rc::{Rc, Weak};
 
-use crate::core::i18n::{tr, trf};
-use crate::core::{config, tools};
+use crate::core::config;
+use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, Style};
+use crate::panels::settings::pages::desktop::power;
 use crate::platform::system::defaultapps::{self, Role};
+use crate::platform::system::loginshell;
+use crate::platform::system::terminals::{self, Terminal};
 use crate::ui::theme::SharedTheme;
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::controls::ComboBox;
@@ -28,8 +33,6 @@ const DIALOG_HEIGHT: f64 = 600.0;
 const DIALOG_ICON: i32 = 24;
 const DIALOG_ITEM_VERTICAL: i32 = 12;
 const RESCAN_DELAY: std::time::Duration = std::time::Duration::from_secs(1);
-
-const COMMANDS: [(&str, &str, &str); 1] = [("Terminal", "/apps/terminal", "kitty -1")];
 
 fn role_prompt(key: &str) -> &'static str {
     match key {
@@ -277,23 +280,80 @@ pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
 
     let defaults_section = page.section("apps", &tr("Default Apps"));
+    let roles_section = gtk4::Box::new(gtk4::Orientation::Vertical, defaults_section.spacing());
+    defaults_section.append(&roles_section);
     let roles = Rc::new(Roles {
         page: Rc::downgrade(&page),
-        section: defaults_section.clone(),
+        section: roles_section,
         combos: RefCell::new(Vec::new()),
         present: Rc::new(context.dialog_presenter()),
     });
     roles.reload();
+
+    let terminal_section = page.subsection(&defaults_section, &tr("Terminal"), "");
+    let default_terminal = Rc::new(DefaultTerminal {
+        combo: page.combo(&terminal_section, "terminal"),
+        terminals: RefCell::new(Vec::new()),
+        current_index: Cell::new(0),
+    });
+    page.track(
+        terminals::POINTER,
+        Value::from(terminals::DEFAULT_COMMAND),
+        &default_terminal.combo.button,
+    );
+    default_terminal.combo.connect_activated({
+        let default_terminal = Rc::downgrade(&default_terminal);
+        move |index| {
+            if let Some(default_terminal) = default_terminal.upgrade() {
+                default_terminal.choose(index);
+            }
+        }
+    });
+    page.watch(terminals::POINTER, {
+        let default_terminal = Rc::downgrade(&default_terminal);
+        move || {
+            if let Some(default_terminal) = default_terminal.upgrade() {
+                default_terminal.refresh();
+            }
+        }
+    });
+    default_terminal.refresh();
+
+    let shell_section = page.subsection(
+        &defaults_section,
+        &tr("Shell"),
+        &tr("Applies to new terminals and new logins"),
+    );
+    let login_shell = Rc::new(LoginShell {
+        combo: page.combo(&shell_section, "terminal"),
+        problem_label: power::note("colError"),
+        paths: RefCell::new(Vec::new()),
+        current_index: Cell::new(0),
+    });
+    shell_section.append(&login_shell.problem_label);
+    login_shell.combo.connect_activated({
+        let login_shell = Rc::downgrade(&login_shell);
+        move |index| {
+            if let Some(login_shell) = login_shell.upgrade() {
+                login_shell.choose(index);
+            }
+        }
+    });
+    login_shell.refresh();
+    page.keep(login_shell);
+
     let rescan_timer = Rc::new(Cell::new(None::<glib::SourceId>));
     let monitor = gio::AppInfoMonitor::get();
     let handler_id = monitor.connect_changed({
         let roles = Rc::downgrade(&roles);
+        let default_terminal = Rc::downgrade(&default_terminal);
         let rescan_timer = rescan_timer.clone();
         move |_| {
             if let Some(source) = rescan_timer.take() {
                 source.remove();
             }
             let roles = roles.clone();
+            let default_terminal = default_terminal.clone();
             let timer_slot = rescan_timer.clone();
             rescan_timer.set(Some(glib::timeout_add_local_once(
                 RESCAN_DELAY,
@@ -302,11 +362,15 @@ pub fn build(context: &Context) -> Rc<Page> {
                     if let Some(roles) = roles.upgrade() {
                         roles.reload();
                     }
+                    if let Some(default_terminal) = default_terminal.upgrade() {
+                        default_terminal.refresh();
+                    }
                 },
             )));
         }
     });
     page.keep(roles);
+    page.keep(default_terminal);
     page.keep(Disconnect(monitor, Some(handler_id), rescan_timer));
 
     let types_section = page.section("description", &tr("File types"));
@@ -326,62 +390,108 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr("What each application's windows do"),
         context.subpage_opener("windowrules"),
     );
-
-    let commands_section = page.section("terminal", &tr("Commands"));
-    let button_commands_section = page.subsection(
-        &commands_section,
-        &tr("What the shell's own buttons open"),
-        "",
-    );
-    for (title, pointer, default) in COMMANDS {
-        page.config_text(
-            &button_commands_section,
-            Style::Outlined,
-            &tr(title),
-            pointer,
-            default,
-        );
-    }
-    let current_notice: Rc<RefCell<Option<gtk4::Box>>> = Rc::new(RefCell::new(None));
-    let update_notice = {
-        let page = Rc::downgrade(&page);
-        move || {
-            let Some(page) = page.upgrade() else {
-                return;
-            };
-            if let Some(notice) = current_notice.take() {
-                button_commands_section.remove(&notice);
-            }
-            let missing_programs = missing_commands();
-            if !missing_programs.is_empty() {
-                let message = trf(
-                    "Not installed: %1. The buttons that run these do nothing until the command names an installed program.",
-                    &[&missing_programs.join(", ")],
-                );
-                current_notice.replace(Some(page.notice(
-                    &button_commands_section,
-                    "info",
-                    &message,
-                )));
-            }
-        }
-    };
-    update_notice();
-    for (_, pointer, _) in COMMANDS {
-        page.watch(pointer, update_notice.clone());
-    }
     page
 }
 
-fn missing_commands() -> Vec<String> {
-    COMMANDS
-        .iter()
-        .filter_map(|(title, pointer, default)| {
-            let command = config::value_str(pointer).unwrap_or_else(|| (*default).to_owned());
-            let program = tools::find_missing_program(&command)?;
-            Some(format!("{program} ({})", tr(title)))
-        })
-        .collect()
+struct DefaultTerminal {
+    combo: Rc<ComboBox>,
+    terminals: RefCell<Vec<Terminal>>,
+    current_index: Cell<usize>,
+}
+
+impl DefaultTerminal {
+    fn refresh(self: &Rc<Self>) {
+        let default_terminal = Rc::downgrade(self);
+        glib::spawn_future_local(async move {
+            let Ok(installed_terminals) = gio::spawn_blocking(terminals::list_installed).await
+            else {
+                return;
+            };
+            if let Some(default_terminal) = default_terminal.upgrade() {
+                default_terminal.show(installed_terminals);
+            }
+        });
+    }
+
+    fn show(&self, installed_terminals: Vec<Terminal>) {
+        let choices = terminals::with_current(installed_terminals, &terminals::read_command());
+        let names: Vec<String> = choices
+            .terminals
+            .iter()
+            .map(|terminal| terminal.name.clone())
+            .collect();
+        self.terminals.replace(choices.terminals);
+        self.current_index.set(choices.current_index);
+        self.combo.set_items(&names, choices.current_index as i32);
+    }
+
+    fn choose(&self, index: usize) {
+        if index == self.current_index.get() {
+            return;
+        }
+        let Some(command) = self
+            .terminals
+            .borrow()
+            .get(index)
+            .map(|terminal| terminals::resolve_command(terminal, &terminals::read_command()))
+        else {
+            return;
+        };
+        config::store_value(terminals::POINTER, Value::from(command));
+    }
+}
+
+struct LoginShell {
+    combo: Rc<ComboBox>,
+    problem_label: gtk4::Label,
+    paths: RefCell<Vec<String>>,
+    current_index: Cell<usize>,
+}
+
+impl LoginShell {
+    fn refresh(self: &Rc<Self>) {
+        let login_shell = Rc::downgrade(self);
+        glib::spawn_future_local(async move {
+            let current = loginshell::read_current().await;
+            let Some(login_shell) = login_shell.upgrade() else {
+                return;
+            };
+            if let Some(current) = current {
+                login_shell.show(&current);
+            }
+            login_shell.combo.set_enabled(true);
+        });
+    }
+
+    fn show(&self, current: &str) {
+        let choices =
+            loginshell::with_current(loginshell::list_installed(), current, Path::new("/"));
+        let names: Vec<String> = choices
+            .shells
+            .iter()
+            .map(|shell| shell.name.clone())
+            .collect();
+        self.paths
+            .replace(choices.shells.into_iter().map(|shell| shell.path).collect());
+        self.current_index.set(choices.current_index);
+        self.combo.set_items(&names, choices.current_index as i32);
+    }
+
+    fn choose(self: &Rc<Self>, index: usize) {
+        if index == self.current_index.get() {
+            return;
+        }
+        let Some(path) = self.paths.borrow().get(index).cloned() else {
+            return;
+        };
+        self.combo.set_enabled(false);
+        let login_shell = self.clone();
+        glib::spawn_future_local(async move {
+            let result = loginshell::set(&path).await;
+            power::show_result(&login_shell.problem_label.downgrade(), result);
+            login_shell.refresh();
+        });
+    }
 }
 
 struct Disconnect(
