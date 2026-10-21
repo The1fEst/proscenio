@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::core::i18n::tr;
 use crate::core::process;
 use crate::platform::security::privileged;
+use crate::platform::system::sessionenvironment;
 
 const SHELLS: &str = "/etc/shells";
 const NOT_INTERACTIVE: [&str; 4] = [
@@ -115,7 +116,9 @@ pub async fn set(path: &str) -> Result<(), String> {
         process::command(&["pkexec", "/usr/bin/chsh", "-s", path, &user]),
         fallback_error,
     )
-    .await
+    .await?;
+    sessionenvironment::apply(&[("SHELL", path.to_owned())]);
+    Ok(())
 }
 
 #[cfg(test)]

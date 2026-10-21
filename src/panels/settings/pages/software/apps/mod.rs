@@ -322,7 +322,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     let shell_section = page.subsection(
         &defaults_section,
         &tr("Shell"),
-        &tr("Applies to new terminals and new logins"),
+        &tr("Applies to new logins and to terminals opened from now on; a terminal that is already running keeps its shell until it is closed"),
     );
     let login_shell = Rc::new(LoginShell {
         combo: page.combo(&shell_section, "terminal"),

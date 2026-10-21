@@ -5,9 +5,8 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use crate::core::{gsettings, process};
-use crate::platform::hyprland::hypr;
-use crate::platform::hyprland::hyprconfig::lua_string;
 use crate::platform::system::appearance::with_ini_value;
+use crate::platform::system::sessionenvironment;
 
 const SCHEMA: &str = "org.gnome.system.proxy";
 const KIO_SECTION: &str = "[Proxy Settings]";
@@ -284,33 +283,8 @@ fn write_gsettings(proxy: &Proxy) {
     gio::Settings::sync();
 }
 
-fn activation_update_command(environment: &[(&str, String)]) -> Command {
-    let mut command = process::quiet(&["dbus-update-activation-environment", "--systemd"]);
-    for (name, value) in environment {
-        command.arg(name).env(name, value);
-    }
-    command
-}
-
 pub fn apply_environment(proxy: &Proxy) {
-    let environment = proxy.environment();
-    let mut lua = String::new();
-    for (name, value) in &environment {
-        lua.push_str(&format!(
-            "hl.env({}, {})\n",
-            lua_string(name),
-            lua_string(value)
-        ));
-        unsafe {
-            if value.is_empty() {
-                std::env::remove_var(name);
-            } else {
-                std::env::set_var(name, value);
-            }
-        }
-    }
-    hypr::request(&format!("eval {lua}"));
-    process::start(activation_update_command(&environment));
+    sessionenvironment::apply(&proxy.environment());
 }
 
 pub fn write(proxy: &Proxy, previous: &Proxy) {
@@ -351,6 +325,7 @@ pub fn apply_at_start() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::platform::hyprland::hyprconfig::lua_string;
 
     fn endpoint(host: &str, port: u16) -> Endpoint {
         Endpoint {
@@ -418,29 +393,6 @@ mod tests {
         );
         assert_eq!(lua_string("a\"b\\c"), "\"a\\\"b\\\\c\"");
         assert_eq!(lua_string("a\nb"), "\"a\\nb\"");
-    }
-
-    #[test]
-    fn the_activation_update_takes_the_values_from_its_environment_not_its_arguments() {
-        let environment = [
-            ("http_proxy", "http://fest:secret@proxy.lan:3128".to_owned()),
-            ("no_proxy", String::new()),
-        ];
-        let command = activation_update_command(&environment);
-        assert_eq!(
-            command.get_args().collect::<Vec<_>>(),
-            ["--systemd", "http_proxy", "no_proxy"]
-        );
-        let variables: std::collections::BTreeMap<_, _> = command
-            .get_envs()
-            .map(|(name, value)| (name.to_owned(), value.map(ToOwned::to_owned)))
-            .collect();
-        assert_eq!(
-            variables,
-            environment
-                .map(|(name, value)| (name.into(), Some(value.into())))
-                .into()
-        );
     }
 
     #[test]

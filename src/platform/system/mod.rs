@@ -5,6 +5,7 @@ pub mod defaultapps;
 pub mod desktop;
 pub mod locale;
 pub mod loginshell;
+pub mod sessionenvironment;
 pub mod terminals;
 pub mod udev;
 pub mod xkbregistry;

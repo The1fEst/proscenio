@@ -1552,5 +1552,5 @@
   "While an app shares the screen, notifications go to the sidebar without popping up": "Mientras una app comparte la pantalla, las notificaciones van a la barra lateral sin aparecer",
   "Transition (min)": "Transición (min)",
   "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Cuánto dura el cambio programado: termina a la hora de inicio y empieza a la hora de fin; 0 cambia de inmediato",
-  "Applies to new terminals and new logins": "Se aplica a las terminales nuevas y a los inicios de sesión nuevos"
+  "Applies to new logins and to terminals opened from now on; a terminal that is already running keeps its shell until it is closed": "Se aplica a los inicios de sesión nuevos y a las terminales que se abran a partir de ahora; una terminal que ya está en ejecución conserva su shell hasta que se cierre"
 }

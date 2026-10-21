@@ -1552,5 +1552,5 @@
   "While an app shares the screen, notifications go to the sidebar without popping up": "Bir uygulama ekranı paylaşırken bildirimler açılmadan kenar çubuğuna gider",
   "Transition (min)": "Geçiş (dk)",
   "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Zamanlanmış değişimin ne kadar süreceği: başlangıç saatinde tamamlanır, bitiş saatinde başlar; 0 hemen geçer",
-  "Applies to new terminals and new logins": "Yeni terminallere ve yeni oturum açmalara uygulanır"
+  "Applies to new logins and to terminals opened from now on; a terminal that is already running keeps its shell until it is closed": "Yeni oturum açmalara ve bundan sonra açılan terminallere uygulanır; zaten çalışan bir terminal kapatılana kadar kabuğunu korur"
 }

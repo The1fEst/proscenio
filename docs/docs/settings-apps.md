@@ -79,9 +79,13 @@ in `/etc/shells` that are installed, each named by its program: entries that nam
 under `/bin` and `/usr/bin` appear once, with the `/usr/bin` path, and `rbash`, `git-shell`,
 `systemd-home-fallback-shell` and `nologin` are left out. A login shell that is not in
 `/etc/shells` is still shown as the selected item. Choosing another shell asks for the password in
-the shell's own polkit prompt, then runs `pkexec /usr/bin/chsh -s <path> <user>`. The change
-applies to new terminals and new logins. When the change fails or the prompt is canceled, the row
-shows the current login shell again, with the error under it.
+the shell's own polkit prompt, then runs `pkexec /usr/bin/chsh -s <path> <user>`. When `chsh`
+succeeds, the shell sets `SHELL` to the new path in its own environment, in Hyprland's environment
+and in the systemd user manager's environment, so apps started afterward, terminals included, get
+the new shell. The change applies to new logins and to terminals opened from now on; a terminal
+that is already running, such as a single-instance kitty, keeps its shell until it is closed. When
+the change fails or the prompt is canceled, the row shows the current login shell again, with the
+error under it, and `SHELL` stays as it was.
 
 ## File types
 
