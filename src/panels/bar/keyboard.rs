@@ -13,8 +13,8 @@ use crate::ui::widgets::overlay::tooltip;
 const SETTINGS_PAGE: &str = "keyboard";
 const HORIZONTAL_BAR_PADDING: (i32, i32) = (10, 5);
 const VERTICAL_BAR_PADDING: (i32, i32) = (6, 4);
-const SPACING: i32 = 15;
-const VERTICAL_SPACING: i32 = 8;
+const SPACING: i32 = 5;
+const VERTICAL_SPACING: i32 = 4;
 
 pub fn build(
     xkb: &Xkb,
