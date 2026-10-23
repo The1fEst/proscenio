@@ -60,6 +60,10 @@ want; with it on, the pointer speeds up as the mouse moves faster. A link row op
 | Hide while typing | `cursor:hide_on_key_press` | on or off |
 | Who draws the pointer | `cursor:no_hardware_cursors` | the screen, except while tearing (`2`); always the screen (`0`); drawn with the rest of the screen (`1`) |
 
+While a fullscreen window has focus, the shell turns **Hide while typing** off in the running
+Hyprland, so games that use the keyboard and the mouse together keep the pointer. The setting
+applies again when focus leaves the window or it leaves fullscreen.
+
 A pointer the screen draws itself stays smooth whatever the rest of the screen is doing. The last
 choice is the one to pick when the pointer disappears or is drawn in the wrong place.
 

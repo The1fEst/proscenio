@@ -20,6 +20,7 @@ use crate::core::config::{self, Config};
 use crate::core::i18n::tr;
 use crate::core::process;
 use crate::platform::hyprland::hypr;
+use crate::services::hyprland::cursorhider::CursorHider;
 use crate::services::media::recording::Recording;
 use crate::ui::anim::{EXPRESSIVE_DEFAULT, EXPRESSIVE_EFFECTS, Tween};
 use crate::ui::theme::{SharedTheme, rounding};
@@ -199,17 +200,24 @@ pub struct RegionSelector {
     app: gtk4::Application,
     theme: SharedTheme,
     recording: Recording,
+    cursor_hider: CursorHider,
     mode: Cell<Mode>,
     recording_screen: RefCell<String>,
     selections: RefCell<Vec<Rc<Selection>>>,
 }
 
 impl RegionSelector {
-    pub fn new(app: &gtk4::Application, theme: &SharedTheme, recording: &Recording) -> Rc<Self> {
+    pub fn new(
+        app: &gtk4::Application,
+        theme: &SharedTheme,
+        recording: &Recording,
+        cursor_hider: &CursorHider,
+    ) -> Rc<Self> {
         let selector = Rc::new(RegionSelector {
             app: app.clone(),
             theme: theme.clone(),
             recording: recording.clone(),
+            cursor_hider: cursor_hider.clone(),
             mode: Cell::new(Mode::Region),
             recording_screen: RefCell::new(String::new()),
             selections: RefCell::new(Vec::new()),
@@ -309,11 +317,7 @@ impl RegionSelector {
 
     fn prepare(&self, selection: &Rc<Selection>) {
         let shows_pointer = selection.config.region.show_pointer.get();
-        let should_restore_hiding =
-            shows_pointer && hypr::option_bool("cursor:hide_on_key_press") == Some(true);
-        if should_restore_hiding {
-            hypr::set_cursor_hides_on_key(false);
-        }
+        let cursor_guard = shows_pointer.then(|| self.cursor_hider.keep_cursor_visible());
         if shows_pointer {
             hypr::show_cursor();
         }
@@ -322,9 +326,7 @@ impl RegionSelector {
         let selection = Rc::downgrade(selection);
         glib::spawn_future_local(async move {
             let _ = run(&["bash", "-c", &screenshot_command]).await;
-            if should_restore_hiding {
-                hypr::set_cursor_hides_on_key(true);
-            }
+            drop(cursor_guard);
             let Some(path) = selection.upgrade().map(|selection| selection.path.clone()) else {
                 return;
             };

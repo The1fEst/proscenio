@@ -18,6 +18,7 @@ use crate::services::hardware::brightness::Light;
 use crate::services::hardware::power::Power;
 use crate::services::hardware::sysinfo::Resources;
 use crate::services::hardware::xkb::Xkb;
+use crate::services::hyprland::cursorhider::CursorHider;
 use crate::services::hyprland::fullscreen::Fullscreen;
 use crate::services::hyprland::hyprlockclock::HyprlockClockWriter;
 use crate::services::hyprland::hyprstate::HyprState;
@@ -47,6 +48,7 @@ pub struct Services {
     pub events: Events,
     pub hypr: HyprState,
     pub fullscreen: Fullscreen,
+    pub cursor_hider: CursorHider,
     pub session_bus: Option<gio::DBusConnection>,
     pub audio: Option<Audio>,
     pub light: Light,
@@ -89,6 +91,7 @@ impl Services {
             resources: std::rc::Rc::new(Resources::default()),
             xkb: Xkb::new(&events),
             fullscreen: Fullscreen::new(&hypr),
+            cursor_hider: CursorHider::new(&events, &hypr),
             hypr,
             _workspace_group_writer: WorkspaceGroupWriter::new(&events),
             _hyprlock_clock_writer: HyprlockClockWriter::start(),

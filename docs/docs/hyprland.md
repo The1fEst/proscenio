@@ -45,8 +45,8 @@ dispatch hl.dsp.force_renderer_reload()
 
 `eval` changes the running Hyprland without touching its config. The proxy settings use it to set
 the proxy variables with `hl.env`, at startup and whenever they change, so programs Hyprland starts
-later inherit them. A screenshot that includes the pointer uses it to turn
-`cursor:hide_on_key_press` off while the screenshot is taken.
+later inherit them. A screenshot that includes the pointer, and a focused fullscreen
+window, use it to turn `cursor:hide_on_key_press` off for as long as they last.
 
 A few features run `hyprctl` instead: switching every keyboard's layout
 (`hyprctl switchxkblayout all <index>`), applying the cursor theme (`hyprctl setcursor`), and the

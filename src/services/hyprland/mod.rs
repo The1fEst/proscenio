@@ -1,3 +1,4 @@
+pub mod cursorhider;
 pub mod fullscreen;
 pub mod hyprlockclock;
 pub mod hyproptions;
