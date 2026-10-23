@@ -83,7 +83,7 @@ mod imp {
                 _ => offset(room, child_width),
             };
             let y = match label {
-                Some(label) if self.is_optical.get() => {
+                Some(label) if self.is_optical.get() && label.layout().line_count() == 1 => {
                     let figure = label.create_pango_layout(Some("0"));
                     figure.set_attributes(label.attributes().as_ref());
                     let (ink, _) = figure.extents();

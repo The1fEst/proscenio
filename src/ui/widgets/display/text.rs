@@ -286,6 +286,10 @@ pub fn animate_change(label: &gtk4::Label) -> Changing {
     animate_change_in(label, Shift::new(label))
 }
 
+pub fn animate_change_optically_centered(label: &gtk4::Label) -> Changing {
+    animate_change_in(label, Shift::new(&Centered::optical(label)))
+}
+
 pub fn animate_change_sideways(label: &gtk4::Label) -> Changing {
     let holder = Shift::new(&Centered::filling_width(label));
     {

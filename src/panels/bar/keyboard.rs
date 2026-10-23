@@ -33,8 +33,11 @@ pub fn build(
         };
         text::set_font(label, text::Family::Main, size as f64, "wght=450");
     });
-    let (holder, change) = text::animate_change(&label);
+    let (holder, change) = text::animate_change_optically_centered(&label);
     holder.set_valign(gtk4::Align::Center);
+    let (_, icon_height, _, _) =
+        text::symbol("", pixel_size::LARGER as f64).measure(gtk4::Orientation::Vertical, -1);
+    holder.set_size_request(-1, icon_height + icon_height % 2);
 
     let button = RippleButton::new(theme);
     button.add_css_class("bar-indicators");
