@@ -63,7 +63,8 @@ hides, the bar gives back its surface and buffers. Its widgets stay, so it comes
 ## The window
 
 The bar is a layer-shell surface on the `top` layer, anchored to its edge and stretched along it. It
-takes keyboard focus only on demand.
+never takes keyboard focus, so hovering it does not interrupt typing in another window. A
+[tray](tray.md) menu gets its keys from its popup grab.
 
 | Namespace | Surface |
 |---|---|

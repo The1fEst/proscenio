@@ -12,7 +12,7 @@ use std::rc::Rc;
 use gtk4::gdk;
 use gtk4::glib;
 use gtk4::prelude::*;
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
 
 use crate::core::actions;
 use crate::core::config::Config;
@@ -840,7 +840,6 @@ fn open_bar(
         }
     }
     window.set_exclusive_zone(config.exclusive_zone());
-    focus_on_demand_once_shown(&window);
 
     let offset = anim::Motion::new(&content, 0.0, 200.0, anim::EXPRESSIVE_EFFECTS);
     let is_hovered = Rc::new(Cell::new(false));
@@ -1004,22 +1003,6 @@ fn open_bar(
 
     show();
     window
-}
-
-fn focus_on_demand_once_shown(window: &gtk4::ApplicationWindow) {
-    window.set_keyboard_mode(KeyboardMode::None);
-    window.connect_realize(|window| {
-        let Some(surface) = window.surface() else {
-            return;
-        };
-        let window = window.downgrade();
-        surface.connect_enter_monitor(move |_, _| {
-            if let Some(window) = window.upgrade() {
-                window.set_keyboard_mode(KeyboardMode::OnDemand);
-            }
-        });
-    });
-    window.connect_unmap(|window| window.set_keyboard_mode(KeyboardMode::None));
 }
 
 fn connector(monitor: &gdk::Monitor) -> String {
