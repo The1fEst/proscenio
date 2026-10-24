@@ -60,6 +60,10 @@ window under it. The candidates are:
 - the monitor's surfaces on the top layer, except the bar and the dock. A window that overlaps one
   of them is not a candidate.
 
+A floating window with a title bar from the `hyprbars` plugin is taken together with its bar. The
+bar counts unless the window is fullscreen, has neither a class nor a title, or is one of
+proscenio's own windows.
+
 In the two modes that take a window or a rectangle, the selector outlines the candidates: windows
 with `regionSelector.targetRegions.windows` on (the default), surfaces with
 `regionSelector.targetRegions.layers` on. The outlines are drawn at

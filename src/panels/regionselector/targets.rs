@@ -24,7 +24,44 @@ fn intersection_over_union(a: &[f64; 4], b: &[f64; 4]) -> f64 {
     }
 }
 
-pub(super) fn targets(name: &str, offset: (f64, f64)) -> (Vec<Target>, Vec<Target>) {
+fn pair(value: &Value, key: &str) -> (f64, f64) {
+    let list = value.get(key).and_then(Value::as_array);
+    let read_number = |index: usize| {
+        list.and_then(|list| list.get(index))
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0)
+    };
+    (read_number(0), read_number(1))
+}
+
+fn has_title_bar(client: &Value) -> bool {
+    let text = |key: &str| client.get(key).and_then(Value::as_str).unwrap_or_default();
+    let fullscreen = client
+        .get("fullscreen")
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    client.get("floating").and_then(Value::as_bool) == Some(true)
+        && fullscreen < 2
+        && (!text("class").is_empty() || !text("title").is_empty())
+        && text("class") != crate::APP_ID
+}
+
+fn window_area(client: &Value, title_bar_height: Option<i32>) -> ((f64, f64), (f64, f64)) {
+    let (position, size) = (pair(client, "at"), pair(client, "size"));
+    match title_bar_height {
+        Some(height) if has_title_bar(client) => {
+            let height = height as f64;
+            ((position.0, position.1 - height), (size.0, size.1 + height))
+        }
+        _ => (position, size),
+    }
+}
+
+pub(super) fn targets(
+    name: &str,
+    offset: (f64, f64),
+    title_bar_height: Option<i32>,
+) -> (Vec<Target>, Vec<Target>) {
     let monitor = hypr::json("monitors")
         .and_then(|value| value.as_array().cloned())
         .unwrap_or_default()
@@ -61,15 +98,6 @@ pub(super) fn targets(name: &str, offset: (f64, f64)) -> (Vec<Target>, Vec<Targe
             })
         })
         .collect();
-    let pair = |value: &Value, key: &str| {
-        let list = value.get(key).and_then(Value::as_array);
-        let read_number = |index: usize| {
-            list.and_then(|list| list.get(index))
-                .and_then(Value::as_f64)
-                .unwrap_or(0.0)
-        };
-        (read_number(0), read_number(1))
-    };
     let mut clients: Vec<Value> = hypr::json("clients")
         .and_then(|value| value.as_array().cloned())
         .unwrap_or_default()
@@ -107,7 +135,10 @@ pub(super) fn targets(name: &str, offset: (f64, f64)) -> (Vec<Target>, Vec<Targe
     let windows = clients
         .iter()
         .map(|client| Target {
-            bounds: bounds(pair(client, "at"), pair(client, "size")),
+            bounds: {
+                let (position, size) = window_area(client, title_bar_height);
+                bounds(position, size)
+            },
             label: client
                 .get("class")
                 .and_then(Value::as_str)
@@ -122,4 +153,82 @@ pub(super) fn targets(name: &str, offset: (f64, f64)) -> (Vec<Target>, Vec<Targe
         })
         .collect();
     (windows, layers)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    fn build_client(floating: bool, fullscreen: i64, class: &str, title: &str) -> Value {
+        json!({
+            "at": [100, 200],
+            "size": [800, 600],
+            "floating": floating,
+            "fullscreen": fullscreen,
+            "class": class,
+            "title": title,
+        })
+    }
+
+    #[test]
+    fn title_bar_extends_a_window_upward_only_when_it_is_drawn() {
+        let bare = ((100.0, 200.0), (800.0, 600.0));
+        let with_bar = ((100.0, 160.0), (800.0, 640.0));
+        let cases = [
+            (
+                "floating",
+                build_client(true, 0, "foot", "shell"),
+                Some(40),
+                with_bar,
+            ),
+            (
+                "tiled",
+                build_client(false, 0, "foot", "shell"),
+                Some(40),
+                bare,
+            ),
+            (
+                "fullscreen",
+                build_client(true, 2, "foot", "shell"),
+                Some(40),
+                bare,
+            ),
+            (
+                "maximized",
+                build_client(true, 1, "foot", "shell"),
+                Some(40),
+                with_bar,
+            ),
+            (
+                "class only",
+                build_client(true, 0, "foot", ""),
+                Some(40),
+                with_bar,
+            ),
+            (
+                "title only",
+                build_client(true, 0, "", "shell"),
+                Some(40),
+                with_bar,
+            ),
+            ("popup", build_client(true, 0, "", ""), Some(40), bare),
+            (
+                "own window",
+                build_client(true, 0, crate::APP_ID, "settings"),
+                Some(40),
+                bare,
+            ),
+            (
+                "no plugin",
+                build_client(true, 0, "foot", "shell"),
+                None,
+                bare,
+            ),
+        ];
+        for (name, client, title_bar_height, expected) in cases {
+            assert_eq!(window_area(&client, title_bar_height), expected, "{name}");
+        }
+    }
 }
