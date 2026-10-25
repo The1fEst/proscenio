@@ -60,19 +60,45 @@ pub fn check(db_path: &str) -> Result<(), String> {
         }
         writeln!(
             stdout,
-            "{} {} -> {}",
-            package.name(),
-            package.version().as_str(),
-            sync_package.version().as_str()
+            "{}",
+            format_check_line(
+                package.name(),
+                package.version().as_str(),
+                sync_package.version().as_str(),
+                sync_package.url()
+            )
         )
         .map_err(format_error)?;
     }
     Ok(())
 }
 
+fn format_check_line(name: &str, from: &str, to: &str, url: Option<&str>) -> String {
+    match url.filter(|url| !url.is_empty()) {
+        Some(url) => format!("{name} {from} -> {to}\t{url}"),
+        None => format!("{name} {from} -> {to}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_check_line_ends_with_the_upstream_url_after_a_tab_when_there_is_one() {
+        assert_eq!(
+            format_check_line("linux", "7.2.9-1", "7.2.10-1", Some("https://kernel.org")),
+            "linux 7.2.9-1 -> 7.2.10-1\thttps://kernel.org"
+        );
+        assert_eq!(
+            format_check_line("linux", "7.2.9-1", "7.2.10-1", None),
+            "linux 7.2.9-1 -> 7.2.10-1"
+        );
+        assert_eq!(
+            format_check_line("linux", "7.2.9-1", "7.2.10-1", Some("")),
+            "linux 7.2.9-1 -> 7.2.10-1"
+        );
+    }
 
     #[test]
     fn a_check_holds_its_database_and_clears_a_lock_a_stopped_check_left() {

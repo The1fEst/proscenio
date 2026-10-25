@@ -251,7 +251,11 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 **Packages** opens a page with every pending package, each with its installed and its new
 version: under **Repositories** those the [check](sidebar.md#updates) finds in the repositories,
 under **AUR** those `paru -Qua` or `yay -Qua` reports. A package's name can be selected, and the
-copy button at the end of its row copies the name; the button shows a check for a moment.
+copy button at the end of its row copies the name; the button shows a check for a moment. Left of
+the copy button, an open-in-new button opens the package's web page in the default browser, and its
+tooltip shows the address. A repository package links to the `%URL%` of its entry in the sync
+database, an AUR package to `https://aur.archlinux.org/packages/<name>`. A package without an
+`http` or `https` address has no such button.
 **Commits** opens a page with every new commit: its subject and, below it, the first seven
 characters of its hash, which can be selected; the copy button at the end of the row copies the
 full hash. Each of the two pages has an **Update** button beside the title of its first list
@@ -284,7 +288,8 @@ this page and of the [sidebar](sidebar.md#updates) show the refreshed result, an
 what the update would install, the same list the update installs. Under **Repositories** each
 package of the transaction has its installed and its new version; a package that comes in as a
 dependency has its new version alone, and a package the transaction removes reads **removed** in
-place of a new version. Under **AUR** come the packages `paru -Qua` or `yay -Qua` lists.
+place of a new version. Under **AUR** come the packages `paru -Qua` or `yay -Qua` lists. The rows
+have the same copy and open-in-new buttons as the Packages page.
 **Update N packages** asks for the password and installs the list; N counts the dependencies and
 removals as well, so it can be more than the count on the **Packages** row. **Cancel**, Escape, a
 click outside the dialog and closing the Settings window end the update before any password is

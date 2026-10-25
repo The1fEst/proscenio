@@ -1,9 +1,9 @@
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 pub const TOKEN_LENGTH: usize = 32;
 pub const SOCKET_VARIABLE: &str = "PROSCENIO_PACKAGES_SOCKET";
 pub const TOKEN_VARIABLE: &str = "PROSCENIO_PACKAGES_TOKEN";
 const MAX_FRAME_LENGTH: usize = 1 << 20;
-const MIN_CHANGE_BYTES: usize = 12;
+const MIN_CHANGE_BYTES: usize = 16;
 
 pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
@@ -40,6 +40,7 @@ pub struct Change {
     pub name: String,
     pub from: String,
     pub to: String,
+    pub url: Option<String>,
 }
 
 impl Change {
@@ -48,7 +49,13 @@ impl Change {
             name: name.to_owned(),
             from: from.to_owned(),
             to: to.to_owned(),
+            url: None,
         }
+    }
+
+    pub fn with_url(mut self, url: Option<&str>) -> Self {
+        self.url = url.filter(|url| !url.is_empty()).map(str::to_owned);
+        self
     }
 }
 
@@ -161,6 +168,7 @@ impl Writer {
             self.write_text(&change.name);
             self.write_text(&change.from);
             self.write_text(&change.to);
+            self.write_text(change.url.as_deref().unwrap_or_default());
         }
     }
 }
@@ -214,6 +222,7 @@ impl Reader<'_> {
                     name: self.read_text()?,
                     from: self.read_text()?,
                     to: self.read_text()?,
+                    url: Some(self.read_text()?).filter(|url| !url.is_empty()),
                 })
             })
             .collect()
@@ -506,6 +515,50 @@ mod tests {
         });
         round_trip(Event::Planned(changes));
         round_trip(Event::Planned(Vec::new()));
+    }
+
+    #[test]
+    fn a_change_keeps_its_upstream_url_or_the_lack_of_one() {
+        let changes = vec![
+            Change::new("linux-cachyos", "7.2.9-1", "7.2.10-1")
+                .with_url(Some("https://github.com/CachyOS/linux-cachyos")),
+            Change::new("libfoo", "", "1.0-1"),
+            Change::new("oldlib", "2.0-1", "").with_url(Some("")),
+        ];
+        assert_eq!(changes[1].url, None);
+        assert_eq!(changes[2].url, None);
+        round_trip(Event::Planned(changes.clone()));
+        round_trip(Request::Upgrade {
+            changes,
+            private_path: String::new(),
+        });
+
+        let mut decoder = Decoder::default();
+        decoder.push(
+            &Event::Planned(vec![
+                Change::new("a", "1", "2").with_url(Some("https://a.org")),
+            ])
+            .encode(),
+        );
+        let Some(Ok(Event::Planned(planned))) = decoder.next_message::<Event>() else {
+            panic!("the plan did not decode");
+        };
+        assert_eq!(planned[0].url.as_deref(), Some("https://a.org"));
+    }
+
+    #[test]
+    fn a_plan_from_a_helper_of_another_protocol_version_is_an_error() {
+        let mut body = vec![8];
+        body.extend(1u32.to_le_bytes());
+        for text in ["linux", "7.2.9-1", "7.2.10-1"] {
+            body.extend((text.len() as u32).to_le_bytes());
+            body.extend(text.as_bytes());
+        }
+        let mut frame = (body.len() as u32).to_le_bytes().to_vec();
+        frame.extend(body);
+        let mut decoder = Decoder::default();
+        decoder.push(&frame);
+        assert_eq!(decoder.next_message::<Event>(), Some(Err(Error::Truncated)));
     }
 
     #[test]

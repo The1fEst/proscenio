@@ -5,7 +5,7 @@ use std::rc::Rc;
 use super::shellcommits::commit_row;
 use super::updatepackages::package_row;
 use crate::core::i18n::{tr, trn};
-use crate::services::updates::packages::version_change;
+use crate::services::updates::packages::{build_aur_page_url, version_change};
 use crate::services::updates::{Commit, Job, Review, Updates};
 use crate::ui::theme::SharedTheme;
 use crate::ui::widgets::display::text;
@@ -126,6 +126,7 @@ fn fill_packages(list: &gtk4::Box, theme: &SharedTheme, review: &Review) {
             &change.from,
             &to,
             needs_reboot(&change.name),
+            change.url.as_deref(),
         ));
     }
     if !review.aur_packages.is_empty() {
@@ -133,7 +134,14 @@ fn fill_packages(list: &gtk4::Box, theme: &SharedTheme, review: &Review) {
     }
     for line in &review.aur_packages {
         let (name, from, to) = version_change(line).unwrap_or((line, "", ""));
-        list.append(&package_row(theme, name, from, to, needs_reboot(name)));
+        list.append(&package_row(
+            theme,
+            name,
+            from,
+            to,
+            needs_reboot(name),
+            build_aur_page_url(name).as_deref(),
+        ));
     }
 }
 

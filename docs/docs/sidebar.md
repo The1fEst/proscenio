@@ -145,7 +145,9 @@ While `updates.enableCheck` is on, the shell checks at start and then every
   warnings, `::` and `==>` progress lines ending in `...`, and yay's notices about missing, orphaned, flagged or
   debug AUR packages, packages not in AUR, ignored upgrades and local versions newer than AUR; a
   line whose message starts with the word `error` always counts. Both run with `LC_ALL=C` and without `LANGUAGE`, only their
-  `name old -> new` lines count as packages, and a failed command lists no packages.
+  `name old -> new` lines count as packages, and a failed command lists no packages. A line of
+  `proscenio-packages check` can end with a tab and the package's upstream address, which the
+  [Packages page](settings-system.md#updates) links to.
   The row and the indicator appear
   once the count reaches `updates.adviseUpdateThreshold` (1).
 - **The shell**: the build's version, `r<commits>.<hash>`, names the commit it was built from. The

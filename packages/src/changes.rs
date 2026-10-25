@@ -68,13 +68,12 @@ pub fn collect_changes(alpm: &Alpm) -> Vec<Change> {
                 &installed_version(package.name()),
                 package.version().as_str(),
             )
+            .with_url(package.url())
         })
         .collect();
-    changes.extend(
-        alpm.trans_remove()
-            .iter()
-            .map(|package| Change::new(package.name(), package.version().as_str(), "")),
-    );
+    changes.extend(alpm.trans_remove().iter().map(|package| {
+        Change::new(package.name(), package.version().as_str(), "").with_url(package.url())
+    }));
     changes.sort_by(|left, right| left.name.cmp(&right.name));
     changes
 }
@@ -120,6 +119,20 @@ mod tests {
 
         let removal = [confirmed.to_vec(), vec![Change::new("oldlib", "2.0-1", "")]].concat();
         assert!(compare_changes(&confirmed, &removal).is_err());
+    }
+
+    #[test]
+    fn a_changed_upstream_url_does_not_stop_an_install() {
+        let confirmed =
+            [Change::new("linux", "7.2.9-1", "7.2.10-1").with_url(Some("https://kernel.org"))];
+        let actual = [
+            Change::new("linux", "7.2.9-1", "7.2.10-1").with_url(Some("https://www.kernel.org"))
+        ];
+        assert_eq!(compare_changes(&confirmed, &actual), Ok(()));
+        assert_eq!(
+            compare_changes(&confirmed, &[Change::new("linux", "7.2.9-1", "7.2.10-1")]),
+            Ok(())
+        );
     }
 
     #[test]

@@ -9,6 +9,7 @@ pub mod updateprogress;
 
 use gtk4::glib;
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -34,6 +35,7 @@ pub enum Job {
 pub struct Updates {
     pub repository_packages: Rc<RefCell<Vec<String>>>,
     pub aur_packages: Rc<RefCell<Vec<String>>>,
+    pub package_urls: Rc<RefCell<HashMap<String, String>>>,
     pub has_package_manager: Rc<Cell<bool>>,
     pub has_package_check_failed: Rc<Cell<bool>>,
     pub commits_behind: Rc<Cell<i32>>,
@@ -62,6 +64,7 @@ impl Updates {
         let updates = Updates {
             repository_packages: Rc::default(),
             aur_packages: Rc::default(),
+            package_urls: Rc::default(),
             has_package_manager: Rc::new(Cell::new(false)),
             has_package_check_failed: Rc::new(Cell::new(false)),
             commits_behind: Rc::new(Cell::new(0)),

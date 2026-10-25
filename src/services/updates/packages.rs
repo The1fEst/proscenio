@@ -1,5 +1,6 @@
 use gtk4::glib;
 use proscenio_protocol::{Change, Decoder, Event};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Output;
 
@@ -46,12 +47,16 @@ impl Updates {
             self.has_package_check_failed.set(manager.is_some());
             self.repository_packages.replace(Vec::new());
             self.aur_packages.replace(Vec::new());
+            self.package_urls.replace(HashMap::new());
             self.listeners.notify();
             return;
         };
         let database = database.to_string_lossy().into_owned();
-        let repository_packages =
-            query_pending_packages(&repository_query(&database), has_repository_check_failed).await;
+        let (repository_packages, package_urls) =
+            query_pending_packages(&repository_query(&database), has_repository_check_failed)
+                .await
+                .map(split_package_urls)
+                .unzip();
         let aur_packages = query_aur_packages(manager).await;
         self.has_package_manager.set(true);
         self.has_package_check_failed
@@ -59,6 +64,7 @@ impl Updates {
         self.repository_packages
             .replace(repository_packages.unwrap_or_default());
         self.aur_packages.replace(aur_packages.unwrap_or_default());
+        self.package_urls.replace(package_urls.unwrap_or_default());
         if let Some(notice) = self.notice.get()
             && contradicts_notice(notice, self.count(), self.has_package_check_failed.get())
         {
@@ -104,6 +110,7 @@ impl Updates {
         self.repository_packages
             .replace(list_upgrade_lines(changes));
         self.aur_packages.replace(aur_packages);
+        self.package_urls.replace(list_package_urls(changes));
         self.listeners.notify();
     }
 }
@@ -224,6 +231,49 @@ pub fn version_change(line: &str) -> Option<(&str, &str, &str)> {
     let (name, versions) = line.split_once(' ')?;
     let (from, to) = versions.split_once(" -> ")?;
     Some((name, from, to))
+}
+
+pub fn parse_web_url(url: &str) -> Option<&str> {
+    let (scheme, rest) = url.split_once("://")?;
+    let is_web = scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https");
+    let has_blank = url
+        .chars()
+        .any(|character| character.is_whitespace() || character.is_control());
+    (is_web && !rest.is_empty() && !has_blank).then_some(url)
+}
+
+pub fn build_aur_page_url(name: &str) -> Option<String> {
+    let is_name = !name.is_empty()
+        && name
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || "@._+-".contains(character));
+    is_name.then(|| format!("https://aur.archlinux.org/packages/{name}"))
+}
+
+fn split_package_urls(lines: Vec<String>) -> (Vec<String>, HashMap<String, String>) {
+    let mut urls = HashMap::new();
+    let lines = lines
+        .into_iter()
+        .map(|line| {
+            let Some((text, url)) = line.split_once('\t') else {
+                return line;
+            };
+            if let Some((name, _, _)) = version_change(text)
+                && !url.is_empty()
+            {
+                urls.insert(name.to_owned(), url.to_owned());
+            }
+            text.to_owned()
+        })
+        .collect();
+    (lines, urls)
+}
+
+fn list_package_urls(changes: &[Change]) -> HashMap<String, String> {
+    changes
+        .iter()
+        .filter_map(|change| Some((change.name.clone(), change.url.clone()?)))
+        .collect()
 }
 
 #[cfg(test)]
@@ -374,6 +424,94 @@ mod tests {
         assert!(contradicts_notice(Notice::CheckFailed, 0, false));
         assert!(contradicts_notice(Notice::CheckFailed, 3, false));
         assert!(!contradicts_notice(Notice::CheckFailed, 0, true));
+    }
+
+    #[test]
+    fn only_web_addresses_get_a_link() {
+        for url in [
+            "http://example.org",
+            "https://github.com/CachyOS/linux-cachyos",
+        ] {
+            assert_eq!(parse_web_url(url), Some(url));
+        }
+        assert_eq!(
+            parse_web_url("HTTPS://Example.org/a"),
+            Some("HTTPS://Example.org/a")
+        );
+        for url in [
+            "",
+            "https://",
+            "ftp://example.org",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "example.org",
+            "mailto:a@example.org",
+            "https://example.org/a b",
+            "https://example.org/\n",
+            "https://example.org/\t",
+            " https://example.org",
+        ] {
+            assert_eq!(parse_web_url(url), None, "{url:?}");
+        }
+    }
+
+    #[test]
+    fn an_aur_package_links_to_its_page_on_the_aur() {
+        assert_eq!(
+            build_aur_page_url("zen-browser-bin").as_deref(),
+            Some("https://aur.archlinux.org/packages/zen-browser-bin")
+        );
+        assert_eq!(
+            build_aur_page_url("libc++-git@2.0_1").as_deref(),
+            Some("https://aur.archlinux.org/packages/libc++-git@2.0_1")
+        );
+        for name in ["", "a b", "a/b", "a?b", "a#b", "a%20b", "ü"] {
+            assert_eq!(build_aur_page_url(name), None, "{name:?}");
+        }
+    }
+
+    #[test]
+    fn a_check_line_gives_up_its_url_to_a_map_by_package_name() {
+        let lines = [
+            "linux-cachyos 7.2.9-1 -> 7.2.10-1\thttps://github.com/CachyOS/linux-cachyos",
+            "libfoo 1.0-1 -> 1.1-1",
+            "libbar 1.0-1 -> 1.1-1\t",
+        ]
+        .map(str::to_owned)
+        .to_vec();
+        let (lines, urls) = split_package_urls(lines);
+        assert_eq!(
+            lines,
+            [
+                "linux-cachyos 7.2.9-1 -> 7.2.10-1",
+                "libfoo 1.0-1 -> 1.1-1",
+                "libbar 1.0-1 -> 1.1-1"
+            ]
+        );
+        assert_eq!(
+            urls,
+            HashMap::from([(
+                "linux-cachyos".to_owned(),
+                "https://github.com/CachyOS/linux-cachyos".to_owned()
+            )])
+        );
+        assert_eq!(split_package_urls(Vec::new()), (Vec::new(), HashMap::new()));
+    }
+
+    #[test]
+    fn a_plan_gives_its_urls_to_a_map_by_package_name() {
+        let changes = [
+            Change::new("linux", "7.2.9-1", "7.2.10-1").with_url(Some("https://kernel.org")),
+            Change::new("libnew", "", "1.0-1").with_url(Some("https://new.org")),
+            Change::new("libfoo", "1.0-1", "1.1-1"),
+        ];
+        assert_eq!(
+            list_package_urls(&changes),
+            HashMap::from([
+                ("linux".to_owned(), "https://kernel.org".to_owned()),
+                ("libnew".to_owned(), "https://new.org".to_owned())
+            ])
+        );
     }
 
     #[test]

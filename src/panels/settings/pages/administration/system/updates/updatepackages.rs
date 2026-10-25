@@ -1,5 +1,5 @@
-use gtk4::glib;
 use gtk4::prelude::*;
+use gtk4::{gio, glib};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -8,13 +8,14 @@ use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::administration::system::updates::{
     add_update_button, go_back_on_install,
 };
-use crate::services::updates::packages::version_change;
+use crate::services::updates::packages::{build_aur_page_url, parse_web_url, version_change};
 use crate::services::updates::{Job, Updates};
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::ripple::RippleButton;
 use crate::ui::widgets::layout::centered::Centered;
 use crate::ui::widgets::layout::row::Row;
+use crate::ui::widgets::overlay::tooltip;
 
 const ROW_HEIGHT: i32 = 56;
 const ROW_START: i32 = 12;
@@ -22,8 +23,8 @@ const ROW_END: i32 = 12;
 const ROW_SPACING: i32 = 12;
 const VERSION_SPACING: i32 = 4;
 const REBOOT_START: i32 = 8;
-const COPY_SIZE: i32 = 32;
-const COPY_ICON: f64 = 20.0;
+const ROW_BUTTON_SIZE: i32 = 32;
+const ROW_BUTTON_ICON: f64 = 20.0;
 const COPY_RESET: Duration = Duration::from_millis(1500);
 
 pub fn build(context: &Context) -> Rc<Page> {
@@ -45,12 +46,29 @@ pub fn build(context: &Context) -> Rc<Page> {
         move || {
             let repository_packages = updates.repository_packages.borrow();
             let aur_packages = updates.aur_packages.borrow();
-            let build_row = |line: &String| {
+            let package_urls = updates.package_urls.borrow();
+            let build_repository_row = |line: &String| {
                 let (name, from, to) = version_change(line).unwrap_or((line, "", ""));
-                package_row(&theme, name, from, to, false)
+                let url = package_urls.get(name).map(String::as_str);
+                package_row(&theme, name, from, to, false, url)
             };
-            fill(&repository_section, &repository_packages, build_row);
-            fill(&aur_section, &aur_packages, build_row);
+            let build_aur_row = |line: &String| {
+                let (name, from, to) = version_change(line).unwrap_or((line, "", ""));
+                package_row(
+                    &theme,
+                    name,
+                    from,
+                    to,
+                    false,
+                    build_aur_page_url(name).as_deref(),
+                )
+            };
+            fill(
+                &repository_section,
+                &repository_packages,
+                build_repository_row,
+            );
+            fill(&aur_section, &aur_packages, build_aur_row);
             let can_start = updates.can_start(Job::System);
             repository_update_button.set_sensitive(can_start);
             aur_update_button.set_sensitive(can_start);
@@ -96,15 +114,30 @@ pub fn fill<T>(content: &gtk4::Box, items: &[T], build_row: impl Fn(&T) -> gtk4:
     }
 }
 
-pub fn copy_button(theme: &SharedTheme, copied_text: &str) -> RippleButton {
+fn build_row_button(theme: &SharedTheme, icon: &str) -> (RippleButton, gtk4::Label) {
     let button = RippleButton::new(theme);
-    button.set_radius(COPY_SIZE as f64 / 2.0);
-    button.set_size_request(COPY_SIZE, COPY_SIZE);
+    button.set_radius(ROW_BUTTON_SIZE as f64 / 2.0);
+    button.set_size_request(ROW_BUTTON_SIZE, ROW_BUTTON_SIZE);
     button.set_valign(gtk4::Align::Center);
     button.set_margin_end(ROW_END);
-    let symbol = text::symbol("content_copy", COPY_ICON);
+    let symbol = text::symbol(icon, ROW_BUTTON_ICON);
     text::set_color(&symbol, "colOnLayer2");
     button.set_content(&Centered::integral(&symbol), 0, 0);
+    (button, symbol)
+}
+
+fn build_link_button(theme: &SharedTheme, url: &str) -> RippleButton {
+    let (button, _) = build_row_button(theme, "open_in_new");
+    tooltip::attach_hover_tip(&button, theme, url);
+    let url = url.to_owned();
+    button.connect_clicked(move |_| {
+        let _ = gio::AppInfo::launch_default_for_uri(&url, gio::AppLaunchContext::NONE);
+    });
+    button
+}
+
+pub fn copy_button(theme: &SharedTheme, copied_text: &str) -> RippleButton {
+    let (button, symbol) = build_row_button(theme, "content_copy");
     let copied_text = copied_text.to_owned();
     button.connect_clicked(move |button| {
         button.display().clipboard().set_text(&copied_text);
@@ -155,6 +188,7 @@ pub fn package_row(
     from: &str,
     to: &str,
     needs_reboot: bool,
+    url: Option<&str>,
 ) -> gtk4::Box {
     let (card, lines) = card("deployed_code", name, true);
     let versions = gtk4::Box::new(gtk4::Orientation::Horizontal, VERSION_SPACING);
@@ -184,6 +218,9 @@ pub fn package_row(
     }
     versions.set_visible(versions.first_child().is_some());
     lines.append(&versions);
+    if let Some(url) = url.and_then(parse_web_url) {
+        card.append(&build_link_button(theme, url));
+    }
     card.append(&copy_button(theme, name));
     card
 }
