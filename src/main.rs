@@ -70,6 +70,7 @@ fn main() -> glib::ExitCode {
         _ => {}
     }
     let sets_renderer_variable = crate::core::config::choose_renderer();
+    widgets::display::text::disable_symbol_hinting();
     let app = gtk4::Application::builder().application_id(APP_ID).build();
     let ipc = Rc::new(ipc::Ipc::default());
     let is_activated = Cell::new(false);

@@ -1,6 +1,7 @@
 use gtk4::pango;
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
+use std::ffi::{CString, c_char, c_int, c_void};
 use std::rc::Rc;
 
 use crate::core::config::Config;
@@ -420,4 +421,90 @@ pub fn symbol_filled(name: &str, size: f64, fill: f64) -> gtk4::Label {
     set_symbol_font(&label, size, fill);
     set_color(&label, "m3onBackground");
     label
+}
+
+#[link(name = "fontconfig")]
+unsafe extern "C" {
+    fn FcConfigGetCurrent() -> *mut c_void;
+    fn FcConfigParseAndLoadFromMemory(
+        config: *mut c_void,
+        buffer: *const c_char,
+        should_complain: c_int,
+    ) -> c_int;
+}
+
+// GSK's GPU glyph cache crops each glyph to its unhinted extents (gsk/gpu/gskgpucachedglyph.c).
+pub fn disable_symbol_hinting() {
+    let rule = format!(
+        "<fontconfig><match target=\"font\"><test name=\"family\"><string>{}</string></test>\
+         <edit name=\"hinting\" mode=\"assign\"><bool>false</bool></edit></match></fontconfig>",
+        family(Family::Material)
+    );
+    let rule = CString::new(rule).expect("the family name has no NUL");
+    unsafe { FcConfigParseAndLoadFromMemory(FcConfigGetCurrent(), rule.as_ptr(), 1) };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pangocairo::cairo;
+
+    const MARGIN_PIXELS: i32 = 8;
+
+    fn count_drawn_rows_outside_ink(name: &str, size: f64, fill: f64) -> usize {
+        let mut options = cairo::FontOptions::new().unwrap();
+        options.set_antialias(cairo::Antialias::Gray);
+        options.set_hint_metrics(cairo::HintMetrics::Off);
+        options.set_hint_style(cairo::HintStyle::Slight);
+        let context = pangocairo::FontMap::default().create_context();
+        pangocairo::functions::context_set_font_options(&context, Some(&options));
+        let layout = pango::Layout::new(&context);
+        layout.set_font_description(Some(&symbol_font(size, fill, 400.0 + 200.0 * fill)));
+        layout.set_text(name);
+        let run = layout.iter().run_readonly().unwrap();
+        let font = run.item().analysis().font();
+        let mut glyphs = run.glyph_string();
+        assert_eq!(
+            glyphs.num_glyphs(),
+            1,
+            "{name} is not a single symbol glyph"
+        );
+        let (ink, _) = font.glyph_extents(glyphs.glyph_info()[0].glyph());
+        let scale = pango::SCALE as f64;
+        let top = (ink.y() as f64 / scale).floor() as i32;
+        let height = ((ink.y() + ink.height()) as f64 / scale).ceil() as i32 - top;
+        let width = size as i32 * 2;
+        let mut surface =
+            cairo::ImageSurface::create(cairo::Format::A8, width, height + 2 * MARGIN_PIXELS)
+                .unwrap();
+        {
+            let cr = cairo::Context::new(&surface).unwrap();
+            cr.translate(MARGIN_PIXELS as f64, (MARGIN_PIXELS - top) as f64);
+            pangocairo::functions::show_glyph_string(&cr, &font, &mut glyphs);
+        }
+        surface.flush();
+        let stride = surface.stride() as usize;
+        let data = surface.data().unwrap();
+        data.chunks(stride)
+            .enumerate()
+            .filter(|&(y, row)| {
+                let y = y as i32;
+                (y < MARGIN_PIXELS || y >= MARGIN_PIXELS + height)
+                    && row.iter().any(|&alpha| alpha > 0)
+            })
+            .count()
+    }
+
+    #[test]
+    fn symbols_draw_inside_their_ink_extents() {
+        disable_symbol_hinting();
+        for name in ["palette", "select_window_2", "dashboard", "settings"] {
+            for size in [16.0, 20.0, 24.0, 32.0] {
+                for fill in [0.0, 1.0] {
+                    let row_count = count_drawn_rows_outside_ink(name, size, fill);
+                    assert_eq!(row_count, 0, "{name} at {size} px, fill {fill}");
+                }
+            }
+        }
+    }
 }

@@ -205,7 +205,8 @@ Icons are glyphs of Material Symbols Rounded, written as their ligature names (`
 and shaped through three variable axes: `opsz` follows the pixel size, `FILL` runs from 0 (outlined)
 to 1 (filled), and the weight follows the fill as `400 + 200·FILL`. A change of fill animates over
 200 ms, and the fill is rounded to a tenth on every frame, so an animation passes through at most
-eleven steps.
+eleven steps. Icons are drawn without font hinting, since the GL and Vulkan renderers cut a hinted
+glyph to its unhinted extents.
 
 Application icons come from the icon theme named by `Theme=` in the `[Icons]` group of
 `~/.config/kdeglobals`, or `breeze` when it names none. The shell follows that file and rebuilds the
