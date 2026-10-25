@@ -41,6 +41,7 @@ impl Ring {
 
     pub fn shaped(theme: SharedTheme, icon: &str, shape: Shape) -> Self {
         let area = gtk4::DrawingArea::new();
+        area.add_css_class("halo");
         area.set_content_width(shape.size);
         area.set_content_height(shape.size);
         area.set_valign(gtk4::Align::Center);

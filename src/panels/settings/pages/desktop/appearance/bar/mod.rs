@@ -129,18 +129,6 @@ pub fn build(context: &Context) -> Rc<Page> {
     let styles_row = page.row(&positioning_section);
     let corners_section = page.subsection(&styles_row, &tr("Bar style"), "");
     corner_style(&page, &corners_section);
-    let group_style_section = page.subsection(&styles_row, &tr("Group style"), "");
-    page.selection(
-        &group_style_section,
-        vec![
-            choice(&tr("Pills"), "location_chip", Value::Bool(false)),
-            choice(&tr("Line-separated"), "split_scene", Value::Bool(true)),
-        ],
-        "/bar/borderless",
-        Value::Bool(false),
-        |value| config::store_value("/bar/borderless", value),
-    );
-    Page::subsection_root(&group_style_section).set_hexpand(false);
     let screen_row = page.row(&positioning_section);
     let rounding_section = page.subsection(&screen_row, &tr("Screen round corner"), "");
     add_screen_rounding(&page, &rounding_section);

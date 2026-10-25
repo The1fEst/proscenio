@@ -97,6 +97,7 @@ pub fn build(
     let is_vertical = look.vertical;
 
     let area = Paint::new(|_, _, _| {});
+    area.add_css_class("halo");
     if is_vertical {
         area.set_size_request(BUTTON as i32, (BUTTON * shown as f64) as i32);
     } else {

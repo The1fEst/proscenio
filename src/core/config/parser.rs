@@ -60,7 +60,6 @@ impl Config {
             },
             bottom: flag(&bar, "bottom", false),
             vertical: flag(&bar, "vertical", false),
-            borderless: flag(&bar, "borderless", false),
             show_background: flag(&bar, "showBackground", true),
             float_shadow: flag(&bar, "floatStyleShadow", true),
             dock_enable: flag(&dock, "enable", false),

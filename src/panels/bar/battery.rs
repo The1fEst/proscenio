@@ -31,6 +31,7 @@ pub fn build(
 ) -> gtk4::Widget {
     let is_vertical = config.vertical;
     let area = gtk4::DrawingArea::new();
+    area.add_css_class("halo");
     let holder = Centered::new(&area);
     if is_vertical {
         area.set_content_width(VERTICAL_WIDTH);

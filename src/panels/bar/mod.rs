@@ -61,6 +61,9 @@ pub fn build(
     scope: &Scope,
 ) -> gtk4::Widget {
     let column = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    if !config.show_background {
+        column.add_css_class("bare-bar");
+    }
 
     let strip = Strip::new(
         &left_section(config, services, theme, scope),
@@ -330,13 +333,7 @@ fn middle_section(
 
     let (left, center, right) = (left.holder, center.holder, right.holder);
     row.append(&left);
-    if config.borderless {
-        row.append(&separator());
-    }
     row.append(&center);
-    if config.borderless {
-        row.append(&separator());
-    }
     row.append(&right);
     row.upcast()
 }
@@ -521,7 +518,7 @@ impl Group {
         let background = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
         background.set_margin_top(GROUP_INSET);
         background.set_margin_bottom(GROUP_INSET);
-        if !config.borderless {
+        if config.show_background {
             background.add_css_class("group");
         }
 
@@ -544,7 +541,7 @@ impl Group {
         let background = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         background.set_margin_start(GROUP_INSET);
         background.set_margin_end(GROUP_INSET);
-        if !config.borderless {
+        if config.show_background {
             background.add_css_class("group");
         }
 
@@ -564,15 +561,6 @@ impl Group {
     fn append(&self, child: &impl IsA<gtk4::Widget>) {
         self.row.append(child);
     }
-}
-
-fn separator() -> gtk4::Widget {
-    let line = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    line.add_css_class("separator");
-    line.set_size_request(1, -1);
-    line.set_margin_top(crate::core::config::BASE_BAR_HEIGHT / 3);
-    line.set_margin_bottom(crate::core::config::BASE_BAR_HEIGHT / 3);
-    line.upcast()
 }
 
 fn horizontal_separator() -> gtk4::Widget {

@@ -108,7 +108,6 @@ pointer.
 |---|---|---|
 | Bar position | `bar.bottom`, `bar.vertical` | Top, Bottom, Left, Right; Left and Right are the vertical bar |
 | Bar style | `bar.cornerStyle` | `0` Hug (default), `1` Float, `2` Rect |
-| Group style | `bar.borderless` | Pills (`false`, default) or Line-separated (`true`) |
 | Show background | `bar.showBackground` | `true` by default |
 | Shadow when floating | `bar.floatStyleShadow` | `true` by default; Float only |
 
@@ -116,10 +115,9 @@ pointer.
 - **Float** draws the bar as a rounded rectangle (18 px radius, 1 px border) inset by 5 px, with a
   soft shadow unless **Shadow when floating** is off.
 - **Rect** fills the strip edge to edge with square ends and no corners.
-- With **Show background** off the bar itself is transparent and only the groups show. Hug draws no
-  corners then.
-- **Line-separated** drops the pill behind each group and puts a thin vertical line between the
-  three center groups instead.
+- With **Show background** off the bar is transparent and the pill behind each group is hidden. Text
+  and icons, the resource rings, the battery and the workspace indicator sit on the wallpaper with a
+  soft halo in `colLayer0`. Hug draws no corners then.
 
 Bar position and Bar style also appear on the **Quick** page of the settings window.
 
@@ -455,7 +453,6 @@ Every key lives in `~/.config/proscenio/config.toml`. A dotted key is a TOML tab
 |---|---|---|
 | `bar.bottom`, `bar.vertical` | `false`, `false` | Appearance → Bar → Bar position |
 | `bar.cornerStyle` | `0` (Hug) | Appearance → Bar → Bar style |
-| `bar.borderless` | `false` | Appearance → Bar → Group style |
 | `bar.showBackground` | `true` | Appearance → Bar → Show background |
 | `bar.floatStyleShadow` | `true` | Appearance → Bar → Shadow when floating |
 | `bar.verbose` | `true` | Appearance → Bar → Verbose |

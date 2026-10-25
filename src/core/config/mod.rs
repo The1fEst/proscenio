@@ -77,7 +77,6 @@ pub struct Config {
     pub corner_style: CornerStyle,
     pub bottom: bool,
     pub vertical: bool,
-    pub borderless: bool,
     pub show_background: bool,
     pub float_shadow: bool,
     pub dock_enable: bool,

@@ -339,7 +339,6 @@ See [Bar](bar.md) for the bar itself.
 | Push windows away | `bar.autoHide.pushWindows` | off | |
 | Hover region thickness (px) | `bar.autoHide.hoverRegionWidth` | 2 | 1–50 |
 | Bar style | `bar.cornerStyle` | Hug (`0`) | Hug `0`, Float `1`, Rect `2` |
-| Group style | `bar.borderless` | Pills (`false`) | Pills or Line-separated (`true`) |
 | Screen round corner | `appearance.fakeScreenRounding` | When not fullscreen (`2`) | No `0`, Yes `1`, When not fullscreen `2` |
 
 The position sets two keys: Left is `vertical`, Bottom is `bottom`, and Right is both.

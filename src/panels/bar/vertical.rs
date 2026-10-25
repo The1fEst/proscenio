@@ -80,6 +80,9 @@ pub fn build(
     content.set_size_request(config.vertical_bar_width(), -1);
 
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    if !config.show_background {
+        row.add_css_class("bare-bar");
+    }
     let corners = hug_corners(config, theme);
     if config.bottom {
         row.append(&corners);
@@ -191,13 +194,7 @@ fn middle_section(
     bottom.append(&battery);
 
     column.append(&top.holder);
-    if config.borderless {
-        column.append(&horizontal_separator());
-    }
     column.append(&center.holder);
-    if config.borderless {
-        column.append(&horizontal_separator());
-    }
     column.append(&bottom.holder);
     column.upcast()
 }
