@@ -42,8 +42,9 @@ Hyprland takes it away after the machine wakes up.
 proscenio holds a logind `delay` inhibitor for sleep. When the machine is about to sleep, it keeps
 the sleep waiting until the lock screen has finished appearing and the compositor has shown that
 frame, for at most 2 seconds, or 500 ms when no lock starts. After waking, it replaces the lock
-surfaces with new ones, because a frame sent just before sleep may never be confirmed, and GTK draws
-nothing more until it is.
+surfaces of the monitors still connected with new ones, because a frame sent just before sleep may
+never be confirmed, and GTK draws nothing more until it is. Every connected monitor without a lock
+surface then gets one.
 
 ## What the lock screen shows
 
@@ -159,7 +160,14 @@ fprintd's `net.reactivated.Fprint` interface.
 1. proscenio asks Hyprland for the lock first and only then moves the workspaces, so that another
    locker cannot get in between.
 2. For every monitor the library reports, proscenio assigns a lock surface and gives its password
-   field the keyboard.
+   field the keyboard. Each monitor has one lock surface, also when it is connected while the
+   screen is locked. A monitor that is disconnected loses its lock surfaces. For 2 seconds
+   after Hyprland confirms the lock, and after each lock surface that appears later, proscenio
+   keeps each window's frame clock running. A window whose frame clock has not run for a second at
+   the end is replaced with a new lock surface. Each display connector gets at most two
+   replacements, counted afresh at each lock, each wake and each time the display reconnects. Each
+   replacement writes a line starting with `lock:` to the journal, and so does a stalled window
+   once both are used up.
 3. If Hyprland has not confirmed the lock within six seconds, proscenio puts the desktop back and
    stops the fingerprint reader, but keeps the request, because the library cannot withdraw a lock
    that is still pending. When Hyprland confirms it later, the workspaces are moved away again, the

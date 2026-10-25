@@ -6,6 +6,7 @@ use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -28,6 +29,9 @@ const RESTORE_DELAY: Duration = Duration::from_millis(150);
 const GRANT_TIMEOUT: Duration = Duration::from_secs(6);
 const LOCK_WAIT: Duration = Duration::from_millis(500);
 const SLEEP_DELAY_LIMIT: Duration = Duration::from_secs(2);
+const DRAW_TIMEOUT: Duration = Duration::from_secs(2);
+const MAX_REPLACEMENTS: u32 = 2;
+const STALL_LIMIT: Duration = Duration::from_secs(1);
 const HIDDEN_WORKSPACE: i64 = 2_147_483_647;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -113,6 +117,7 @@ pub struct Lock {
     context: Rc<Context>,
     surfaces: RefCell<Vec<Rc<Surface>>>,
     retired_surfaces: RefCell<Vec<Rc<Surface>>>,
+    replacement_counts: RefCell<HashMap<String, u32>>,
     workspaces_to_restore: RefCell<Vec<(String, i64)>>,
     notifier: RefCell<Option<Rc<LockNotifier>>>,
     reader: RefCell<Option<Rc<Reader>>>,
@@ -122,6 +127,23 @@ pub struct Lock {
     grant_timer: RefCell<Option<glib::SourceId>>,
     sleep_watcher: RefCell<Option<Rc<SleepWatcher>>>,
     sleep_timer: RefCell<Option<glib::SourceId>>,
+}
+
+#[derive(Debug, PartialEq)]
+enum StallAction {
+    Keep,
+    Replace,
+    GiveUp,
+}
+
+fn choose_stall_action(stall: Duration, replacement_count: u32) -> StallAction {
+    if stall < STALL_LIMIT {
+        return StallAction::Keep;
+    }
+    if replacement_count >= MAX_REPLACEMENTS {
+        return StallAction::GiveUp;
+    }
+    StallAction::Replace
 }
 
 fn is_ready_for_sleep(is_granted: bool, settled_flags: &[bool]) -> bool {
@@ -137,6 +159,7 @@ impl Lock {
             context: Rc::new(Context::default()),
             surfaces: RefCell::new(Vec::new()),
             retired_surfaces: RefCell::new(Vec::new()),
+            replacement_counts: RefCell::new(HashMap::new()),
             workspaces_to_restore: RefCell::new(Vec::new()),
             notifier: RefCell::new(None),
             reader: RefCell::new(None),
@@ -248,12 +271,110 @@ impl Lock {
         if !self.is_granted.get() {
             return;
         }
-        for surface in self.surfaces.take() {
+        self.replacement_counts.borrow_mut().clear();
+        let surfaces = self.surfaces.take();
+        for surface in &surfaces {
             surface.window.destroy();
-            if surface.monitor.is_valid() {
-                self.cover(&surface.monitor);
+        }
+        self.retired_surfaces.borrow_mut().extend(surfaces);
+        let monitors: Vec<gdk::Monitor> = gdk::Display::default()
+            .map(|display| {
+                display
+                    .monitors()
+                    .iter::<gdk::Monitor>()
+                    .flatten()
+                    .collect()
+            })
+            .unwrap_or_default();
+        for monitor in monitors {
+            self.cover(&monitor);
+        }
+    }
+
+    fn retire(&self, surface: &Rc<Surface>) {
+        self.surfaces
+            .borrow_mut()
+            .retain(|tracked_surface| !Rc::ptr_eq(tracked_surface, surface));
+        surface.window.destroy();
+        self.retired_surfaces.borrow_mut().push(surface.clone());
+    }
+
+    fn release_surface(&self, surface: &Rc<Surface>) {
+        let mut released_surfaces = Vec::new();
+        for surfaces in [&self.surfaces, &self.retired_surfaces] {
+            released_surfaces.extend(
+                surfaces
+                    .borrow_mut()
+                    .extract_if(.., |listed_surface| Rc::ptr_eq(listed_surface, surface)),
+            );
+        }
+        if released_surfaces.is_empty() {
+            return;
+        }
+        self.replacement_counts
+            .borrow_mut()
+            .remove(&crate::connector(&surface.monitor));
+        self.check_sleep();
+    }
+
+    fn is_tracked(&self, surface: &Rc<Surface>) -> bool {
+        self.surfaces
+            .borrow()
+            .iter()
+            .any(|tracked_surface| Rc::ptr_eq(tracked_surface, surface))
+    }
+
+    fn watch_frames(self: &Rc<Self>, surface: &Rc<Surface>) {
+        let last_frame_time = Rc::new(Cell::new(glib::monotonic_time()));
+        let tick_callback = surface.window.add_tick_callback({
+            let last_frame_time = last_frame_time.clone();
+            move |_, _| {
+                last_frame_time.set(glib::monotonic_time());
+                glib::ControlFlow::Continue
             }
-            self.retired_surfaces.borrow_mut().push(surface);
+        });
+        let lock = Rc::downgrade(self);
+        let weak_surface = Rc::downgrade(surface);
+        glib::timeout_add_local_once(DRAW_TIMEOUT, move || {
+            tick_callback.remove();
+            let stall_micros = glib::monotonic_time() - last_frame_time.get();
+            let stall = Duration::from_micros(stall_micros.max(0) as u64);
+            if let (Some(lock), Some(surface)) = (lock.upgrade(), weak_surface.upgrade()) {
+                lock.replace_if_stalled(&surface, stall);
+            }
+        });
+    }
+
+    fn replace_if_stalled(self: &Rc<Self>, surface: &Rc<Surface>, stall: Duration) {
+        if !self.is_granted.get() || !self.is_tracked(surface) {
+            return;
+        }
+        let connector = crate::connector(&surface.monitor);
+        let replacement_count = self
+            .replacement_counts
+            .borrow()
+            .get(&connector)
+            .copied()
+            .unwrap_or(0);
+        match choose_stall_action(stall, replacement_count) {
+            StallAction::Keep => {}
+            StallAction::GiveUp => eprintln!(
+                "lock: the lock surface on {connector} has had no frame for {} ms, and its {MAX_REPLACEMENTS} replacements are used up",
+                stall.as_millis()
+            ),
+            StallAction::Replace => {
+                eprintln!(
+                    "lock: the lock surface on {connector} has had no frame for {} ms, replacing it ({} of {MAX_REPLACEMENTS})",
+                    stall.as_millis(),
+                    replacement_count + 1
+                );
+                self.replacement_counts
+                    .borrow_mut()
+                    .insert(connector, replacement_count + 1);
+                self.retire(surface);
+                self.cover(&surface.monitor);
+                self.check_sleep();
+            }
         }
     }
 
@@ -373,6 +494,10 @@ impl Lock {
             self.hide_windows();
             self.watch_finger();
         }
+        let surfaces = self.surfaces.borrow().clone();
+        for surface in &surfaces {
+            self.watch_frames(surface);
+        }
         self.check_sleep();
     }
 
@@ -453,6 +578,7 @@ impl Lock {
         self.instance.replace(None);
         self.stop_finger();
         self.surfaces.borrow_mut().clear();
+        self.replacement_counts.borrow_mut().clear();
         let retired_surfaces = self.retired_surfaces.take();
         glib::idle_add_local_once(move || drop(retired_surfaces));
         self.restore_desktop();
@@ -544,12 +670,45 @@ impl Lock {
         let Some(instance) = self.instance.borrow().clone() else {
             return;
         };
+        let is_covered = self
+            .surfaces
+            .borrow()
+            .iter()
+            .any(|surface| surface.monitor == *monitor);
+        if is_covered || !monitor.is_valid() {
+            return;
+        }
         let surface = self.surface(monitor);
+        self.surfaces.borrow_mut().push(surface.clone());
+        let was_granted = self.is_granted.get();
         instance.assign(&surface.window, monitor);
+        if !monitor.is_valid() {
+            self.release_surface(&surface);
+            return;
+        }
+        if !self.is_tracked(&surface) {
+            return;
+        }
+        let invalidate_handler = monitor.connect_local("invalidate", true, {
+            let lock = Rc::downgrade(self);
+            let weak_surface = Rc::downgrade(&surface);
+            move |_| {
+                if let (Some(lock), Some(surface)) = (lock.upgrade(), weak_surface.upgrade()) {
+                    lock.release_surface(&surface);
+                }
+                None
+            }
+        });
+        surface.scope.defer({
+            let monitor = monitor.clone();
+            move || monitor.disconnect(invalidate_handler)
+        });
         surface.window.present();
         surface.field.grab_focus();
         self.watch_settled(&surface);
-        self.surfaces.borrow_mut().push(surface);
+        if was_granted {
+            self.watch_frames(&surface);
+        }
     }
 
     fn watch_settled(self: &Rc<Self>, surface: &Rc<Surface>) {
@@ -594,6 +753,26 @@ mod tests {
                 is_ready_for_sleep(is_granted, settled_flags),
                 is_ready,
                 "{is_granted} {settled_flags:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_stalled_surface_is_replaced_at_most_twice() {
+        let from_millis = Duration::from_millis;
+        let cases = [
+            (from_millis(16), 0, StallAction::Keep),
+            (from_millis(999), 0, StallAction::Keep),
+            (from_millis(1000), 0, StallAction::Replace),
+            (from_millis(2000), 1, StallAction::Replace),
+            (from_millis(2000), 2, StallAction::GiveUp),
+            (from_millis(16), 2, StallAction::Keep),
+        ];
+        for (stall, replacement_count, stall_action) in cases {
+            assert_eq!(
+                choose_stall_action(stall, replacement_count),
+                stall_action,
+                "{stall:?} {replacement_count}"
             );
         }
     }

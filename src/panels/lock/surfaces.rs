@@ -238,7 +238,7 @@ pub(super) struct Surface {
     shake_start: Cell<i64>,
     theme: SharedTheme,
     subscriptions: RefCell<Vec<Subscription>>,
-    _scope: Scope,
+    pub(super) scope: Scope,
     is_syncing: Cell<bool>,
 }
 
@@ -481,7 +481,7 @@ impl Lock {
             shake_start: Cell::new(-1),
             theme: theme.clone(),
             subscriptions: RefCell::new(Vec::new()),
-            _scope: scope,
+            scope,
             is_syncing: Cell::new(false),
         });
 
