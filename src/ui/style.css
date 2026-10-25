@@ -39,8 +39,8 @@ popover.tooltip-popover > contents {
     border-radius: 12px;
 }
 .separator { background-color: var(--colOutlineVariant); }
-.bare-bar label { text-shadow: 0 0 1px var(--colLayer0), 0 0 1px var(--colLayer0), 0 0 2px var(--colLayer0), 0 0 3px var(--colLayer0), 0 0 5px var(--colLayer0); }
-.bare-bar image { -gtk-icon-shadow: 0 0 1px var(--colLayer0), 0 0 1px var(--colLayer0), 0 0 2px var(--colLayer0), 0 0 3px var(--colLayer0), 0 0 5px var(--colLayer0); }
+.bare-bar label { text-shadow: 0 0 1px var(--colLayer0), 0 0 1px var(--colLayer0), 0 0 2px var(--colLayer0), 0 0 2px var(--colLayer0), 0 0 4px var(--colLayer0), 0 0 6px var(--colLayer0), 0 0 10px var(--colLayer0); }
+.bare-bar image { -gtk-icon-shadow: 0 0 1px var(--colLayer0), 0 0 1px var(--colLayer0), 0 0 2px var(--colLayer0), 0 0 2px var(--colLayer0), 0 0 4px var(--colLayer0), 0 0 6px var(--colLayer0), 0 0 10px var(--colLayer0); }
 .bare-bar .halo,
 .bare-bar .notify-icon,
 .bare-bar .custom-icon { filter: drop-shadow(0 0 1px var(--colLayer0)) drop-shadow(0 0 2px var(--colLayer0)) drop-shadow(0 0 3px var(--colLayer0)); }
