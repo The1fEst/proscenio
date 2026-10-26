@@ -4,23 +4,18 @@ pub mod lock;
 use gtk4::prelude::*;
 use serde_json::Value;
 use std::rc::Rc;
-use std::time::Duration;
 
 use crate::core::config::{self, Config};
 use crate::core::i18n::tr;
-use crate::core::tools;
 use crate::panels::settings::content::{Context, Page, Style};
-use crate::services::media::privacy;
 use crate::ui::theme::pixel_size;
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::layout::centered::Centered;
 
 const TILE_HEIGHT: i32 = 52;
 const TILE_SPACING: i32 = 10;
-const POLL: Duration = Duration::from_secs(2);
 
 pub struct Tile {
-    pub icon: gtk4::Label,
     pub label: gtk4::Label,
 }
 
@@ -42,34 +37,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr("Where captures go and how the region selector behaves"),
         context.subpage_opener("capture"),
     );
-
-    let devices_section = page.section("sensors", &tr("Devices"));
-    page.tools_notice(
-        &devices_section,
-        &[&tools::PW_DUMP],
-        &tr("the microphone and screen always read as unused"),
-    );
-    let row = page.uniform_row(&devices_section);
-    let microphone_tile = tile(&row, "mic", &tr("Microphone idle"));
-    let screen_tile = tile(&row, "screen_share", &tr("Screen not shared"));
-    page.every(POLL, move || {
-        let microphone_labels = (microphone_tile.icon.clone(), microphone_tile.label.clone());
-        let screen_labels = (screen_tile.icon.clone(), screen_tile.label.clone());
-        privacy::read(move |activity| {
-            show(
-                &microphone_labels,
-                activity.is_microphone_in_use,
-                &tr("Microphone in use"),
-                &tr("Microphone idle"),
-            );
-            show(
-                &screen_labels,
-                activity.is_screen_shared,
-                &tr("Screen being shared"),
-                &tr("Screen not shared"),
-            );
-        });
-    });
 
     let safety_section = page.section("work_alert", &tr("Work safety"));
     page.config_switch(
@@ -130,22 +97,7 @@ pub fn tile(row: &gtk4::Box, symbol: &str, caption: &str) -> Tile {
     label_box.set_hexpand(true);
     tile.append(&label_box);
     row.append(&tile);
-    Tile { icon, label }
-}
-
-fn show(
-    tile_labels: &(gtk4::Label, gtk4::Label),
-    is_active: bool,
-    busy_text: &str,
-    idle_text: &str,
-) {
-    text::set_color(
-        &tile_labels.0,
-        if is_active { "colError" } else { "colSubtext" },
-    );
-    tile_labels
-        .1
-        .set_text(if is_active { busy_text } else { idle_text });
+    Tile { label }
 }
 
 fn keyword_field(

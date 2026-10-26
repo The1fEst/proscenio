@@ -25,7 +25,6 @@ pub const KDIALOG: Tool = tool("kdialog", "kdialog");
 pub const MAGICK: Tool = tool("magick", "imagemagick");
 pub const MATUGEN: Tool = tool("matugen", "matugen");
 pub const NMCLI: Tool = tool("nmcli", "networkmanager");
-pub const PW_DUMP: Tool = tool("pw-dump", "pipewire");
 pub const QALC: Tool = tool("qalc", "libqalculate");
 pub const SATTY: Tool = tool("satty", "satty");
 pub const SLURP: Tool = tool("slurp", "slurp");
@@ -130,7 +129,10 @@ mod tests {
             "grim, slurp and wl-copy are not installed, so capture fails. They come with the grim, slurp and wl-clipboard packages."
         );
         assert_eq!(
-            missing_message(&[&PW_DUMP, &tool("pw-play", "pipewire")], "nothing plays"),
+            missing_message(
+                &[&tool("pw-dump", "pipewire"), &tool("pw-play", "pipewire")],
+                "nothing plays"
+            ),
             "pw-dump and pw-play are not installed, so nothing plays. They come with the pipewire package."
         );
     }

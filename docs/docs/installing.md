@@ -183,7 +183,7 @@ settings page it belongs to names it along with the package it comes in.
 | `nmcli` | networkmanager | connections are not listed or switched |
 | `pactl` | libpulse | `proscenio record --sound` finds no output to record |
 | `paru` or `yay` | paru or yay (AUR) | the update count leaves out AUR packages, since `pacman` counts the repositories only |
-| `pw-dump` | pipewire | the microphone and screen always read as unused |
+| `pw-dump` | pipewire | the bar's privacy popup does not name the apps that share the screen or use a camera through PipeWire |
 | `qalc` | libqalculate | the launcher shows no math results |
 | `slurp`, `wf-recorder` | slurp, wf-recorder | screen recording fails |
 | `ufw` | ufw | the firewall cannot be set up |

@@ -57,18 +57,6 @@ With both off, the app's notifications are not kept at all.
 **System** holds two link rows: **Screen Lock**, the settings of the [lock screen](lock.md),
 described on [Power and screen lock](settings-power.md), and **Screenshots & Recording**.
 
-### Devices
-
-Two tiles show whether the microphone is in use and whether the screen is being shared; a tile's
-symbol turns to the error color while it is. While the page is open, they are read from `pw-dump`
-every 2 seconds. Only links in the `active` state count: one out of a `Video/Source` node that is
-not a camera means the screen is shared, and one from an `Audio/Source`, `Audio/Source/Internal`,
-`Audio/Source/Virtual` or `Audio/Duplex` node into a `Stream/Input/Audio` node means the
-microphone is in use. A link out of an `Audio/Duplex` node's monitor port does not count, nor does
-one into a level meter's stream (`stream.monitor`). A virtual or duplex node counts even when an
-app feeds it instead of a microphone. A camera is a node with the `media.role` `Camera` or the
-`device.api` `v4l2` or `libcamera`. Without `pw-dump` a notice says both always read as unused.
-
 ### Work safety
 
 | Control | Key | Default |

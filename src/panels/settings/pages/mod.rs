@@ -276,8 +276,6 @@ pub const PAGES: &[Entry] = &[
             "screen",
             "screenshot",
             "recording",
-            "camera",
-            "microphone",
             "clipboard",
             "safety",
         ],
