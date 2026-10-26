@@ -86,10 +86,10 @@ impl Services {
         let events = Events::default();
         let hypr = HyprState::new(&events);
         let states = States::new();
-        let notifications = Notifications::new(config, session.clone(), &events);
-        let color = ScreenColor::new(&events);
         let audio = Audio::new();
         let device_usage = DeviceUsage::new(&events, &hypr, audio.clone());
+        let notifications = Notifications::new(config, session.clone(), &device_usage);
+        let color = ScreenColor::new(&events);
         let services = Services {
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),

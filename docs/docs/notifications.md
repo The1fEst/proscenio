@@ -108,11 +108,11 @@ is shared with `notifications.hideWhileSharing` on, or when its app has popups t
 goes to the sidebar's list, unless it is transient: then it is dropped, and the notification it
 replaces is removed with reason 1.
 
-The screen counts as shared while Hyprland reports a screencast, its `screencast` event: an app
-capturing the screen through the desktop portal, as meeting apps, browsers and OBS do, or a
-recorder such as `wf-recorder`, the shell's own recordings included. When sharing starts, every
-popup ends at once, as when a sidebar opens. Hyprland reports a screencast off between frames, so
-sharing counts as over only once it has been off for 3 s.
+The screen counts as shared while the screen-sharing state of the [bar's privacy
+indicator](bar.md#privacy-indicator) is on: an app capturing the screen through the desktop portal,
+as meeting apps, browsers and OBS do, or a recorder such as `wf-recorder`, the shell's own
+recordings included. The shell's own dock and overview previews and one-frame screenshots do not
+count. When sharing starts, every popup ends at once, as when a sidebar opens.
 
 ```toml
 [notifications]

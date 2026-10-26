@@ -15,8 +15,7 @@ use self::images::{named_icon, remove_discarded_images};
 use self::store::{read_store, write_store};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, persistent};
-use crate::platform::hyprland::hypr::Events;
-use crate::services::hyprland::screencast::{self, SHARING_GRACE};
+use crate::services::media::deviceusage::DeviceUsage;
 
 pub const QUIET_APPS: &str = "/notifications/quietApps";
 pub const FORGOTTEN_APPS: &str = "/notifications/forgottenApps";
@@ -126,7 +125,6 @@ pub struct Notifications {
     next_id: Rc<Cell<u32>>,
     is_inhibited: Rc<Cell<bool>>,
     is_sharing: Rc<Cell<bool>>,
-    sharing_grace_timer: Rc<RefCell<Option<glib::SourceId>>>,
     connection: Option<gio::DBusConnection>,
     listeners: Rc<Listeners>,
     timers: Rc<RefCell<HashMap<u32, glib::SourceId>>>,
@@ -139,7 +137,7 @@ impl Notifications {
     pub fn new(
         config: &crate::core::config::Config,
         session: Option<gio::DBusConnection>,
-        events: &Events,
+        device_usage: &DeviceUsage,
     ) -> Self {
         let list = read_store();
         let highest_id = list.iter().map(|entry| entry.id).max().unwrap_or(0);
@@ -150,8 +148,7 @@ impl Notifications {
             unread_ids: Rc::default(),
             next_id: Rc::new(Cell::new(highest_id + 1)),
             is_inhibited: Rc::new(Cell::new(false)),
-            is_sharing: Rc::new(Cell::new(false)),
-            sharing_grace_timer: Rc::new(RefCell::new(None)),
+            is_sharing: Rc::new(Cell::new(!device_usage.usage().screens.is_empty())),
             connection: session,
             listeners: Rc::default(),
             timers: Rc::new(RefCell::new(HashMap::new())),
@@ -161,30 +158,18 @@ impl Notifications {
         };
         notifications.serve();
         let watcher = notifications.clone();
-        events
-            .subscribe(move |event, data| {
-                if event == "screencast" {
-                    watcher.set_sharing(screencast::is_active(data));
-                }
-            })
+        let usage = device_usage.clone();
+        device_usage
+            .subscribe(move || watcher.set_sharing(!usage.usage().screens.is_empty()))
             .detach();
         notifications
     }
 
     fn set_sharing(&self, is_sharing: bool) {
-        if let Some(source) = self.sharing_grace_timer.borrow_mut().take() {
-            source.remove();
-        }
-        if !is_sharing {
-            let notifications = self.clone();
-            let source = glib::timeout_add_local_once(SHARING_GRACE, move || {
-                notifications.sharing_grace_timer.borrow_mut().take();
-                notifications.is_sharing.set(false);
-            });
-            self.sharing_grace_timer.replace(Some(source));
-            return;
-        }
-        if !self.is_sharing.replace(true) && self.is_hidden_by_sharing() {
+        if self.is_sharing.replace(is_sharing) != is_sharing
+            && is_sharing
+            && self.is_hidden_by_sharing()
+        {
             self.timeout_all();
         }
     }
@@ -555,7 +540,6 @@ mod tests {
             next_id: Rc::new(Cell::new(1)),
             is_inhibited: Rc::default(),
             is_sharing: Rc::default(),
-            sharing_grace_timer: Rc::default(),
             connection: None,
             listeners: Rc::default(),
             timers: Rc::default(),
@@ -563,6 +547,15 @@ mod tests {
             applied_image_requests: Rc::default(),
             next_image_request: Rc::default(),
         }
+    }
+
+    #[test]
+    fn sharing_follows_the_screen_state_at_once() {
+        let notifications = new_detached();
+        notifications.set_sharing(true);
+        assert!(notifications.is_sharing.get());
+        notifications.set_sharing(false);
+        assert!(!notifications.is_sharing.get());
     }
 
     #[test]

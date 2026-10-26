@@ -23,10 +23,6 @@ pub struct Session {
     pub target: Target,
 }
 
-pub fn is_active(data: &str) -> bool {
-    data.split(',').next() == Some("1")
-}
-
 pub fn parse_session(data: &str) -> Option<Session> {
     let mut fields = data.splitn(3, ',');
     let is_active = match fields.next()? {
@@ -160,14 +156,6 @@ mod tests {
 
     fn external_targets(sessions: &Sessions) -> Vec<Target> {
         sessions.confirmed_targets(Instant::now(), Duration::ZERO, &[])
-    }
-
-    #[test]
-    fn a_screencast_event_reads_its_state() {
-        assert!(is_active("1,0"));
-        assert!(is_active("1,region"));
-        assert!(!is_active("0,region"));
-        assert!(!is_active(""));
     }
 
     #[test]
