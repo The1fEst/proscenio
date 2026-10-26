@@ -1549,5 +1549,10 @@
   "While an app shares the screen, notifications go to the sidebar without popping up": "Khi một ứng dụng đang chia sẻ màn hình, thông báo sẽ vào thanh bên mà không bật lên",
   "Transition (min)": "Chuyển tiếp (phút)",
   "How long the scheduled change takes: it is done by the start time and begins at the end time; 0 switches at once": "Thời gian thay đổi theo lịch: hoàn tất trước giờ bắt đầu và bắt đầu vào giờ kết thúc; 0 sẽ chuyển ngay",
-  "Applies to new logins and to terminals opened from now on; a terminal that is already running keeps its shell until it is closed": "Áp dụng cho các lần đăng nhập mới và các terminal mở từ bây giờ; terminal đang chạy giữ nguyên shell cho đến khi đóng"
+  "Applies to new logins and to terminals opened from now on; a terminal that is already running keeps its shell until it is closed": "Áp dụng cho các lần đăng nhập mới và các terminal mở từ bây giờ; terminal đang chạy giữ nguyên shell cho đến khi đóng",
+  "Screen sharing": "Chia sẻ màn hình",
+  "Camera": "Camera",
+  "Monitor: %1": "Màn hình: %1",
+  "Window: %1": "Cửa sổ: %1",
+  "Region: %1": "Vùng: %1"
 }

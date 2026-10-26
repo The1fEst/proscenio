@@ -1,11 +1,12 @@
 use gtk4::glib;
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::introspect::Introspector;
-use libpulse_binding::context::subscribe::InterestMaskSet;
+use libpulse_binding::context::subscribe::{Facility, InterestMaskSet};
 use libpulse_binding::context::{Context, FlagSet, State};
 use libpulse_binding::volume::{ChannelVolumes, Volume};
 use libpulse_glib_binding::Mainloop;
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -42,6 +43,13 @@ pub struct Device {
     pub nick: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Recorder {
+    pub name: String,
+    pub icon: String,
+    pub source: String,
+}
+
 #[derive(Clone)]
 pub struct Audio {
     pub is_sink_muted: Rc<Cell<bool>>,
@@ -54,6 +62,8 @@ pub struct Audio {
     watchers: Rc<Listeners>,
     sink_listeners: Rc<Listeners>,
     protection_listeners: Rc<Listeners<String>>,
+    recorders: Rc<RefCell<Vec<Recorder>>>,
+    recorder_listeners: Rc<Listeners>,
     last_sink_name: Rc<RefCell<String>>,
     last_volume: Rc<Cell<f64>>,
     is_settled: Rc<Cell<bool>>,
@@ -78,6 +88,8 @@ impl Audio {
             watchers: Rc::default(),
             sink_listeners: Rc::default(),
             protection_listeners: Rc::default(),
+            recorders: Rc::default(),
+            recorder_listeners: Rc::default(),
             last_sink_name: Rc::new(RefCell::new(String::new())),
             last_volume: Rc::new(Cell::new(0.0)),
             is_settled: Rc::new(Cell::new(false)),
@@ -109,6 +121,14 @@ impl Audio {
             .add_with(move |reason: &String| listener(reason))
     }
 
+    pub fn recorders(&self) -> Vec<Recorder> {
+        self.recorders.borrow().clone()
+    }
+
+    pub fn on_recorders_change(&self, listener: impl Fn() + 'static) -> Subscription {
+        self.recorder_listeners.add(listener)
+    }
+
     fn follow(&self) {
         let audio = self.clone();
         self.context
@@ -130,10 +150,17 @@ impl Audio {
 
     fn listen(&self) {
         self.refresh();
+        self.refresh_recorders();
         let audio = self.clone();
         let mut context = self.context.borrow_mut();
-        context.set_subscribe_callback(Some(Box::new(move |_, _, _| {
+        context.set_subscribe_callback(Some(Box::new(move |facility, _, _| {
             audio.refresh();
+            if matches!(
+                facility,
+                Some(Facility::SourceOutput | Facility::Source | Facility::Server)
+            ) {
+                audio.refresh_recorders();
+            }
             audio.watchers.notify();
         })));
         context.subscribe(
@@ -151,6 +178,7 @@ impl Audio {
             return;
         }
         let audio = self.clone();
+        self.store_recorders(Vec::new());
         glib::timeout_add_local_once(RECONNECT_DELAY, move || {
             audio.is_reconnecting.set(false);
             match open(&audio.mainloop) {
@@ -218,6 +246,70 @@ impl Audio {
                 audio.watchers.notify();
             }
         });
+    }
+
+    fn refresh_recorders(&self) {
+        let Some(introspect) = self.introspector() else {
+            return;
+        };
+        let audio = self.clone();
+        let sources: Rc<RefCell<HashMap<u32, (String, bool)>>> = Rc::default();
+        introspect.get_source_info_list(move |result| match result {
+            ListResult::Item(info) => {
+                let description = info.description.as_deref().unwrap_or_default();
+                sources.borrow_mut().insert(
+                    info.index,
+                    (description.to_owned(), info.monitor_of_sink.is_some()),
+                );
+            }
+            ListResult::End => audio.read_recorders(sources.take()),
+            ListResult::Error => {}
+        });
+    }
+
+    fn read_recorders(&self, sources: HashMap<u32, (String, bool)>) {
+        let Some(introspect) = self.introspector() else {
+            return;
+        };
+        let audio = self.clone();
+        let recorders = Rc::new(RefCell::new(Vec::new()));
+        introspect.get_source_output_info_list(move |result| match result {
+            ListResult::Item(info) => {
+                let Some((source, is_monitor)) = sources.get(&info.source).cloned() else {
+                    return;
+                };
+                if !is_microphone_recorder(info.corked, is_monitor) {
+                    return;
+                }
+                let name = info
+                    .proplist
+                    .get_str("application.name")
+                    .or_else(|| info.proplist.get_str("application.process.binary"))
+                    .or_else(|| info.proplist.get_str("node.name"))
+                    .or_else(|| info.name.as_ref().map(|name| name.to_string()))
+                    .unwrap_or_default();
+                let icon = info
+                    .proplist
+                    .get_str("application.icon-name")
+                    .or_else(|| info.proplist.get_str("application.process.binary"))
+                    .unwrap_or_default();
+                let recorder = Recorder { name, icon, source };
+                let mut recorders = recorders.borrow_mut();
+                if !recorders.contains(&recorder) {
+                    recorders.push(recorder);
+                }
+            }
+            ListResult::End => audio.store_recorders(recorders.take()),
+            ListResult::Error => {}
+        });
+    }
+
+    fn store_recorders(&self, recorders: Vec<Recorder>) {
+        if *self.recorders.borrow() == recorders {
+            return;
+        }
+        self.recorders.replace(recorders);
+        self.recorder_listeners.notify();
     }
 
     pub fn set_sink_volume(&self, part: f64) {
@@ -610,6 +702,10 @@ pub fn play_system_sound(theme: &str, name: &str) {
     }
 }
 
+fn is_microphone_recorder(is_corked: bool, is_monitor: bool) -> bool {
+    !is_corked && !is_monitor
+}
+
 fn part(volume: ChannelVolumes) -> f64 {
     volume.avg().0 as f64 / Volume::NORMAL.0 as f64
 }
@@ -626,6 +722,23 @@ fn channels(part: f64) -> ChannelVolumes {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_a_running_stream_on_a_real_source_is_a_microphone_recorder() {
+        let cases = [
+            (false, false, true),
+            (true, false, false),
+            (false, true, false),
+            (true, true, false),
+        ];
+        for (is_corked, is_monitor, expected) in cases {
+            assert_eq!(
+                is_microphone_recorder(is_corked, is_monitor),
+                expected,
+                "{is_corked} {is_monitor}"
+            );
+        }
+    }
 
     #[test]
     fn cards_keep_their_available_profiles_in_pactl_order() {

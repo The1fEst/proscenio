@@ -13,12 +13,12 @@ scrolling over the right half changes the volume, and the right end carries the 
 keyboard layout button and the button that opens the [sidebar](sidebar.md).
 
 ```text
-⇕ brightness     [weather] (media mixer · RAM swap CPU) (workspaces) (clock · buttons · battery)     tray •  (layout)  (indicators)
+⇕ brightness  (privacy)   [weather] (media mixer · RAM swap CPU) (workspaces) (clock · buttons · battery)     tray •  (layout)  (indicators)
 ```
 
 | Part | Wheel | Left click |
 |---|---|---|
-| Left region, from the screen edge to the center groups | brightness | nothing |
+| Left region, from the screen edge to the center groups | brightness | nothing; the [privacy indicator](#privacy-indicator) opens its popup |
 | Media and resources group | nothing | the media ring opens the media controls, the mixer ring the volume mixer |
 | Workspaces group | previous or next workspace | focuses the workspace |
 | Clock group | nothing | the clock opens the calendar; anywhere else toggles the sidebar |
@@ -333,6 +333,69 @@ gamma, `wb_twilight` below it), with the tooltip "Scroll to change brightness" a
 After a scroll, moving the pointer more than 20 px or leaving the region closes the on-screen display
 at once instead of waiting for it to time out. The right region does the same for volume.
 
+### Privacy indicator
+
+Pill-shaped chips 23 px from the screen edge, 27 px tall and wider than tall, one per kind in use,
+in this order: microphone (`mic`), screen sharing (`screen_share`), camera (`videocam`). Nothing is
+shown while nothing is in use. Each icon is centered by the pixel rows its glyph inks. In the
+vertical bar they are the same pills, stacked. The chips have fixed colors, whatever the palette or the dark or light mode, with white icons (about
+3.5:1 contrast on each fill at rest; hovering darkens the fill):
+
+| Kind | Fill |
+|---|---|
+| Microphone | `#D46A00` |
+| Screen sharing | `#6D7CFD` |
+| Camera | `#1F9D44` |
+
+A left click on a chip opens a popup with a section for each active kind, marked with a badge in the
+kind's color, listing the applications with their icons and what they use. A click elsewhere closes
+the popup, and it closes by itself when nothing is in use any more. It refreshes while open.
+
+While a fullscreen window covers the bar of a screen, a dot in each active kind's color shows in the
+corner where the chips sit: top left for a horizontal bar at the top, bottom left for one at the
+bottom, top left or top right for a vertical bar on the left or right. The dots are a layer surface
+on the `overlay` layer (namespace `proscenio:privacyDots`) with no input region and an exclusive
+zone of -1, which places them against the screen edges whatever the bar still reserves. They take
+no clicks or focus. They show only on screens whose bar is covered, and appear
+and disappear with the chips.
+
+| Kind | Detected by | Popup rows |
+|---|---|---|
+| Microphone | the sound server's recording streams, followed through PulseAudio events | each application with the source it records from |
+| Screen sharing | Hyprland's `screencastv2` event | each application reading the share, with what is shared: `Monitor: DP-2`, `Window: <title>` or `Region: DP-2` |
+| Camera | a process holding `/dev/video<N>` open, found by scanning `/proc/*/fd` | each application with the camera's name from `/sys/class/video4linux/video<N>/name` |
+
+- A recording stream does not count while it is corked or when it records from a monitor source,
+  which the shell's own audio visualizer and the audio of its screen recordings do.
+- The shell's own window captures for the dock and overview previews do not count as sharing: a
+  window session whose title belongs to a window the shell requested a capture of within the last
+  2 s is the shell's own. Monitor and region sessions never are. A session counts as sharing only
+  after it has lasted 1 s, so a screenshot, which opens a capture for a frame, never shows; a
+  session restarting under a target already shown counts at once. Hyprland ends a session when no
+  frame was copied for half a second, which a static screen causes, so a session going off does not
+  end the sharing at once. After 3 s the sharing continues while one of these holds, checked once
+  at that point and then on each tick of the shared background loop, only while a share is shown
+  and static:
+  - PipeWire still has a screen `Video/Source` node linked into a `Stream/Input/Video` node,
+    which is the case for a portal share (xdg-desktop-portal-hyprland) for its whole session;
+  - a process named `wf-recorder` or `wl-screenrec` is running. Hyprland gives no sign when a
+    screencopy client stops, so the name is the only signal, and a client not in this list is
+    dropped 3 s after its last frame on a static screen. While such a process runs, a finished
+    share of another kind stays shown too.
+
+  The applications come from `pw-dump`: the active links from a screen `Video/Source` node into a
+  `Stream/Input/Video` node. A screen recorder that does not go through PipeWire, such as
+  `wf-recorder`, has no application row, only one row per share; so does a system without
+  `pw-dump`.
+- The camera scan runs on a worker thread with each tick of the shared background loop (3 s by
+  default, see `resources.updateInterval`), and is skipped when `/sys/class/video4linux` is empty.
+  A virtual camera made by v4l2loopback is in use only while a producer feeds it (its `state` file
+  reads `capture`), and the holder that started first is taken for the producer and left out. PipeWire
+  and WirePlumber holding a camera for an application are not listed; the applications streaming
+  that camera are, from `pw-dump`. It runs when the shared targets or the cameras PipeWire holds
+  change and when the popup opens, and up to three more times on later ticks while no reader has
+  shown up.
+
 ### Weather
 
 With **Weather → Enable** on the Bar page (`bar.weather.enable`, off by default), a pill with the
@@ -417,7 +480,7 @@ turns the dot into a badge with the number. Opening the sidebar marks every noti
 The resources, clock, battery and weather popups open when the pointer enters their widget and close
 when it leaves, with no delay and no animation. Each one opens just past the bar's inner edge, lined
 up with its widget, on a `m3surfaceContainer` card with a 12 px radius. They are GTK popovers on the
-bar's own surface and refresh while open.
+bar's own surface and refresh while open. The privacy popup opens on a click instead.
 
 ## The vertical bar
 
@@ -426,7 +489,8 @@ bar's own surface and refresh while open.
 
 From top to bottom:
 
-- **The top part**, above the groups: scroll for brightness.
+- **The top part**, above the groups: the [privacy indicator](#privacy-indicator) with its icons
+  stacked, and scroll for brightness.
 - **Three groups**, centered on the screen's height:
   - the three resource rings without numbers, a line, the media ring and the mixer ring. Hovering
     the media ring shows the track title and artist, or "No media", unless the media controls are
@@ -486,6 +550,8 @@ Every key lives in `~/.config/proscenio/config.toml`. A dotted key is a TOML tab
 | `src/panels/bar/mod.rs` | the horizontal layout, the groups, the left and right regions, the corners |
 | `src/panels/bar/strip.rs` | the three-part layout that keeps the center groups centered |
 | `src/panels/bar/vertical.rs` | the vertical bar |
-| `src/panels/bar/*.rs` | one file per widget: `media`, `mixer`, `resources`, `clock`, `recording`, `utilbuttons`, `battery`, `weather`, `keyboard`, `mute`, `network`, `wireguard`, `bluetooth`, `workspaces`, `tray`, `traymenu` |
+| `src/panels/bar/*.rs` | one file per widget: `media`, `mixer`, `resources`, `clock`, `recording`, `utilbuttons`, `battery`, `weather`, `privacy`, `keyboard`, `mute`, `network`, `wireguard`, `bluetooth`, `workspaces`, `tray`, `traymenu` |
+| `src/services/media/deviceusage.rs`, `cameras.rs`, `privacy.rs` | what the privacy indicator lists |
+| `src/panels/bar/privacydots.rs` | the dots over a fullscreen window |
 | `src/ui/widgets/overlay/popup.rs` | the hover popups |
 | `src/ui/reserve.rs` | the placeholder that holds the space while the bar hides for a fullscreen window |

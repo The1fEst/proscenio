@@ -4,5 +4,6 @@ pub mod hyprlockclock;
 pub mod hyproptions;
 pub mod hyprstate;
 pub mod idleoptions;
+pub mod screencast;
 pub mod screencolor;
 pub mod workspacegroups;

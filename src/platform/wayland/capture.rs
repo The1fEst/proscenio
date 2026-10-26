@@ -56,6 +56,7 @@ use protocol::hyprland_toplevel_export_frame_v1::{self, HyprlandToplevelExportFr
 use protocol::hyprland_toplevel_export_manager_v1::HyprlandToplevelExportManagerV1;
 
 const FRAME: Duration = Duration::from_micros(1_000_000 / 30);
+const REQUEST_RETENTION: Duration = Duration::from_secs(10);
 const DMABUF_FAILURE_LIMIT: u32 = 2;
 
 type DoneCallback = Box<dyn FnOnce(Option<gdk::Texture>)>;
@@ -329,6 +330,23 @@ impl Dispatch<WlRegistry, GlobalListContents> for State {
 
 thread_local! {
     static SHARED: RefCell<Option<Option<Rc<Shared>>>> = const { RefCell::new(None) };
+    static REQUESTS: RefCell<HashMap<u32, Instant>> = RefCell::new(HashMap::new());
+}
+
+pub fn list_requested_windows(period: Duration) -> Vec<u32> {
+    REQUESTS.with_borrow(|requests| list_recent_windows(requests, Instant::now(), period))
+}
+
+fn list_recent_windows(
+    requests: &HashMap<u32, Instant>,
+    now: Instant,
+    period: Duration,
+) -> Vec<u32> {
+    requests
+        .iter()
+        .filter(|(_, moment)| now.saturating_duration_since(**moment) <= period)
+        .map(|(window, _)| *window)
+        .collect()
 }
 
 struct Shared {
@@ -601,6 +619,11 @@ impl Capture {
             address.to_owned(),
             calculate_next_slot(previous_slot, now, FRAME),
         );
+        REQUESTS.with_borrow_mut(|requests| {
+            requests
+                .retain(|_, moment| now.saturating_duration_since(*moment) <= REQUEST_RETENTION);
+            requests.insert(window, now);
+        });
         let shared = &self.shared;
         let id = shared.next_id.get();
         shared.next_id.set(id + 1);
@@ -912,5 +935,20 @@ mod tests {
         ids.sort();
         assert_eq!(ids, [10, 12]);
         assert!(ids_owned_by(entries.into_iter(), 5).is_empty());
+    }
+
+    #[test]
+    fn a_request_counts_only_for_the_period_after_it() {
+        let now = Instant::now();
+        let period = Duration::from_secs(2);
+        let requests = HashMap::from([
+            (1, now),
+            (2, now - period),
+            (3, now - period - Duration::from_millis(1)),
+        ]);
+        let mut windows = list_recent_windows(&requests, now, period);
+        windows.sort();
+        assert_eq!(windows, [1, 2]);
+        assert!(list_recent_windows(&HashMap::new(), now, period).is_empty());
     }
 }

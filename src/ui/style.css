@@ -49,6 +49,7 @@ popover.tooltip-popover > contents {
 .bare-bar popover .halo,
 .bare-bar popover .notify-icon,
 .bare-bar popover .custom-icon { filter: none; }
+label.material-symbol.privacy-icon { color: #ffffff; text-shadow: none; }
 label {
     font-family: var(--fontMain);
     font-size: 15px;

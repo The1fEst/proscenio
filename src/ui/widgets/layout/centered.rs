@@ -11,6 +11,7 @@ mod imp {
         pub fills_width: std::cell::Cell<bool>,
         pub is_integral: std::cell::Cell<bool>,
         pub is_optical: std::cell::Cell<bool>,
+        pub is_ink_centered: std::cell::Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -83,6 +84,15 @@ mod imp {
                 _ => offset(room, child_width),
             };
             let y = match label {
+                Some(label)
+                    if self.is_ink_centered.get()
+                        && label.layout().line_count() == 1
+                        && label.layout().extents().0.height() > 0 =>
+                {
+                    let (ink, _) = label.layout().extents();
+                    let (ink_top, ink_bottom) = pixel_ink_rows(ink.y(), ink.height());
+                    offset_to_center_ink(height, ink_top, ink_bottom) as f32
+                }
                 Some(label) if self.is_optical.get() && label.layout().line_count() == 1 => {
                     let figure = label.create_pango_layout(Some("0"));
                     figure.set_attributes(label.attributes().as_ref());
@@ -133,6 +143,18 @@ fn ink_overshoot(label: &gtk4::Label) -> i32 {
     ink_right_and_logical_right(label).map_or(0, |(ink, logical)| {
         (ink.ceil() - logical.ceil()).max(0.0) as i32
     })
+}
+
+fn pixel_ink_rows(ink_y: i32, ink_height: i32) -> (i32, i32) {
+    let scale = gtk4::pango::SCALE;
+    (
+        ink_y.div_euclid(scale),
+        (ink_y + ink_height + scale - 1).div_euclid(scale),
+    )
+}
+
+fn offset_to_center_ink(outer: i32, ink_top: i32, ink_bottom: i32) -> i32 {
+    (outer - (ink_bottom - ink_top)).div_euclid(2) - ink_top
 }
 
 fn round_half(size: i32) -> f32 {
@@ -193,6 +215,12 @@ impl Centered {
         centered
     }
 
+    pub fn by_ink(label: &gtk4::Label) -> Self {
+        let centered = Self::new(label);
+        centered.imp().is_ink_centered.set(true);
+        centered
+    }
+
     pub fn exact_width(&self) -> Option<f64> {
         let label = self.first_child()?.downcast::<gtk4::Label>().ok()?;
         let (ink, logical) = ink_right_and_logical_right(&label)?;
@@ -227,5 +255,28 @@ impl Centered {
             }
             glib::ControlFlow::Break
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ink_rows_cover_every_pixel_the_ink_touches() {
+        let scale = gtk4::pango::SCALE;
+        assert_eq!(pixel_ink_rows(3 * scale, 14 * scale), (3, 17));
+        assert_eq!(pixel_ink_rows(3 * scale + 1, 13 * scale), (3, 17));
+        assert_eq!(pixel_ink_rows(3 * scale - 1, 13 * scale), (2, 16));
+        assert_eq!(pixel_ink_rows(0, 0), (0, 0));
+    }
+
+    #[test]
+    fn ink_is_centered_on_whole_pixels_with_the_odd_pixel_below() {
+        assert_eq!(offset_to_center_ink(27, 3, 17), 3);
+        assert_eq!(offset_to_center_ink(27, 3, 16), 4);
+        assert_eq!(offset_to_center_ink(26, 3, 16), 3);
+        assert_eq!(offset_to_center_ink(26, 0, 14), 6);
+        assert_eq!(offset_to_center_ink(10, 2, 14), -3);
     }
 }

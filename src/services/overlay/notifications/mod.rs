@@ -16,11 +16,11 @@ use self::store::{read_store, write_store};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, persistent};
 use crate::platform::hyprland::hypr::Events;
+use crate::services::hyprland::screencast::{self, SHARING_GRACE};
 
 pub const QUIET_APPS: &str = "/notifications/quietApps";
 pub const FORGOTTEN_APPS: &str = "/notifications/forgottenApps";
 pub const HIDE_WHILE_SHARING: &str = "/notifications/hideWhileSharing";
-const SHARING_GRACE: Duration = Duration::from_secs(3);
 const KNOWN_APPS: &str = "notificationApps";
 const NAME: &str = "org.freedesktop.Notifications";
 const PATH: &str = "/org/freedesktop/Notifications";
@@ -164,7 +164,7 @@ impl Notifications {
         events
             .subscribe(move |event, data| {
                 if event == "screencast" {
-                    watcher.set_sharing(is_screencast_active(data));
+                    watcher.set_sharing(screencast::is_active(data));
                 }
             })
             .detach();
@@ -506,10 +506,6 @@ fn hint(hints: &Variant, key: &str) -> Option<Variant> {
         .and_then(|pair| pair.child_value(1).as_variant())
 }
 
-fn is_screencast_active(screencast: &str) -> bool {
-    screencast.split(',').next() == Some("1")
-}
-
 fn hint_string(hints: &Variant, key: &str) -> Option<String> {
     hint(hints, key)?.str().map(str::to_owned)
 }
@@ -685,13 +681,5 @@ mod tests {
         assert_eq!(notifications.draft(42), None);
         assert_eq!(notifications.unread_count.get(), 0);
         assert!(notifications.applied_image_requests.borrow().is_empty());
-    }
-
-    #[test]
-    fn a_screencast_event_reads_its_state() {
-        assert!(is_screencast_active("1,0"));
-        assert!(is_screencast_active("1,region"));
-        assert!(!is_screencast_active("0,region"));
-        assert!(!is_screencast_active(""));
     }
 }

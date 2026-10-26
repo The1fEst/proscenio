@@ -18,7 +18,7 @@ use crate::ui::widgets::overlay::popup;
 
 use super::{
     Group, Screen, VERTICAL_INDICATOR_SPACING, battery, bluetooth, clock, horizontal_separator,
-    indicator_look, is_over_button, keyboard, media, mixer, mute, network, resources,
+    indicator_look, is_over_button, keyboard, media, mixer, mute, network, privacy, resources,
     scroll_volume, tray, updates, watch_moved_away, workspaces,
 };
 
@@ -55,7 +55,7 @@ pub fn build(
     }
 
     let sections = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    sections.append(&top_section(services));
+    sections.append(&top_section(config, theme, services, scope));
     sections.append(&middle_section(
         config,
         theme,
@@ -94,9 +94,21 @@ pub fn build(
     row.upcast()
 }
 
-fn top_section(services: &Services) -> gtk4::Widget {
+fn top_section(
+    config: &Rc<Config>,
+    theme: &SharedTheme,
+    services: &Services,
+    scope: &Scope,
+) -> gtk4::Widget {
     let area = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     area.set_vexpand(true);
+    area.append(&privacy::build(
+        &services.device_usage,
+        theme,
+        config,
+        true,
+        scope,
+    ));
     watch_moved_away(&area, &services.states, Osd::Brightness);
 
     let light = services.light.clone();

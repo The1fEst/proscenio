@@ -6,6 +6,8 @@ pub mod media;
 pub mod mixer;
 pub mod mute;
 pub mod network;
+pub mod privacy;
+pub mod privacydots;
 pub mod recording;
 pub mod resources;
 pub mod strip;
@@ -170,6 +172,13 @@ fn left_section(
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     row.set_hexpand(true);
     row.set_halign(gtk4::Align::Fill);
+    row.append(&privacy::build(
+        &services.device_usage,
+        theme,
+        config,
+        false,
+        scope,
+    ));
     if config.weather_enable {
         let spacer = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
         spacer.set_hexpand(true);

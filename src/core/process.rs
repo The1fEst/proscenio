@@ -218,11 +218,17 @@ pub fn run<S: AsRef<OsStr>>(command: &[S]) -> bool {
 }
 
 pub fn read(line: &[&str], handler: impl FnOnce(String) + 'static) {
-    let command = command(line);
-    glib::spawn_future_local(async move {
-        if let Some(output) = capture_text(command).await {
+    read_optional(line, |output| {
+        if let Some(output) = output {
             handler(output);
         }
+    });
+}
+
+pub fn read_optional(line: &[&str], handler: impl FnOnce(Option<String>) + 'static) {
+    let command = command(line);
+    glib::spawn_future_local(async move {
+        handler(capture_text(command).await);
     });
 }
 

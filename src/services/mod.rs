@@ -25,6 +25,7 @@ use crate::services::hyprland::hyprstate::HyprState;
 use crate::services::hyprland::screencolor::ScreenColor;
 use crate::services::hyprland::workspacegroups::WorkspaceGroupWriter;
 use crate::services::media::audio::Audio;
+use crate::services::media::deviceusage::DeviceUsage;
 use crate::services::media::easyeffects::EasyEffects;
 use crate::services::media::mpris::Mpris;
 use crate::services::media::recording::Recording;
@@ -51,6 +52,7 @@ pub struct Services {
     pub cursor_hider: CursorHider,
     pub session_bus: Option<gio::DBusConnection>,
     pub audio: Option<Audio>,
+    pub device_usage: DeviceUsage,
     pub light: Light,
     pub cliphist: Cliphist,
     pub net: Net,
@@ -86,6 +88,8 @@ impl Services {
         let states = States::new();
         let notifications = Notifications::new(config, session.clone(), &events);
         let color = ScreenColor::new(&events);
+        let audio = Audio::new();
+        let device_usage = DeviceUsage::new(&events, &hypr, audio.clone());
         let services = Services {
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),
@@ -102,7 +106,8 @@ impl Services {
             events,
             notifications,
             session_bus: session,
-            audio: Audio::new(),
+            audio,
+            device_usage,
             light: Light::new(&color),
             cliphist: Cliphist::new(),
             net: Net::new(system.clone()),
@@ -140,6 +145,13 @@ impl Services {
             let recording = self.recording.clone();
             move || {
                 recording.check_idle();
+                Ok(())
+            }
+        });
+        background.add("camera usage", {
+            let device_usage = self.device_usage.clone();
+            move || {
+                device_usage.scan_cameras();
                 Ok(())
             }
         });
