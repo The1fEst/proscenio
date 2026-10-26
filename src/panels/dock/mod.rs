@@ -10,6 +10,7 @@ use gtk4_layer_shell::{Edge, Layer, LayerShell};
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::time::Duration;
 
 use crate::core::actions;
 use crate::core::config::{self, Config};
@@ -38,6 +39,7 @@ const ICON_PADDING: i32 = 15;
 const BUTTON_INSET: i32 = GAPS_OUT + ROW_PADDING;
 const DRAGGED_OPACITY: f64 = 0.85;
 const MOVE_MILLIS: f64 = 200.0;
+const HOVER_CHECK_DELAY: Duration = Duration::from_millis(250);
 
 thread_local! {
     static PINNED: RefCell<Option<Rc<Cell<bool>>>> = const { RefCell::new(None) };
@@ -64,6 +66,22 @@ impl Metrics {
     }
 }
 
+struct PointerControllers {
+    hover: gtk4::EventControllerMotion,
+    drag_over: gtk4::DropControllerMotion,
+    approach: gtk4::EventControllerMotion,
+    drag_approach: gtk4::DropControllerMotion,
+}
+
+impl PointerControllers {
+    fn contains_pointer(&self) -> bool {
+        self.hover.contains_pointer()
+            || self.drag_over.contains_pointer()
+            || self.approach.contains_pointer()
+            || self.drag_approach.contains_pointer()
+    }
+}
+
 struct Dock {
     config: Rc<Config>,
     theme: SharedTheme,
@@ -74,6 +92,8 @@ struct Dock {
     screen_width: i32,
     is_pinned: Rc<Cell<bool>>,
     is_hovered: Cell<bool>,
+    hover_check: Cell<Option<glib::SourceId>>,
+    pointer_controllers: PointerControllers,
     is_idle: Cell<bool>,
     area: gtk4::Box,
     shift: Shift,
@@ -178,6 +198,11 @@ pub fn open(
     trigger.set_layer(Layer::Top);
     trigger.set_anchor(Edge::Bottom, true);
 
+    let hover = gtk4::EventControllerMotion::new();
+    let drag_over = gtk4::DropControllerMotion::new();
+    let approach_controller = gtk4::EventControllerMotion::new();
+    let drag_approach = gtk4::DropControllerMotion::new();
+
     let dock = Rc::new(Dock {
         config: config.clone(),
         theme: theme.clone(),
@@ -188,6 +213,13 @@ pub fn open(
         screen_width: monitor.geometry().width(),
         is_pinned,
         is_hovered: Cell::new(false),
+        hover_check: Cell::new(None),
+        pointer_controllers: PointerControllers {
+            hover: hover.clone(),
+            drag_over: drag_over.clone(),
+            approach: approach_controller.clone(),
+            drag_approach: drag_approach.clone(),
+        },
         is_idle: Cell::new(true),
         area: area.clone(),
         shift,
@@ -270,6 +302,11 @@ pub fn open(
         let dock = Rc::downgrade(&dock);
         let trigger = trigger.clone();
         move || {
+            if let Some(dock) = dock.upgrade()
+                && let Some(timer) = dock.hover_check.take()
+            {
+                timer.remove();
+            }
             trigger.destroy();
             DOCKS.with(|docks| {
                 docks
@@ -281,7 +318,6 @@ pub fn open(
 
     overview.connect_clicked(|_| actions::run("overviewWorkspacesToggle"));
 
-    let hover = gtk4::EventControllerMotion::new();
     hover.connect_enter({
         let dock = Rc::downgrade(&dock);
         move |_, _, _| {
@@ -301,7 +337,6 @@ pub fn open(
         }
     });
     area.add_controller(hover);
-    let drag_over = gtk4::DropControllerMotion::new();
     drag_over.connect_enter({
         let dock = Rc::downgrade(&dock);
         move |_, _, _| {
@@ -322,7 +357,6 @@ pub fn open(
     });
     area.add_controller(drag_over);
 
-    let approach_controller = gtk4::EventControllerMotion::new();
     approach_controller.connect_motion({
         let dock = Rc::downgrade(&dock);
         move |_, _, _| {
@@ -333,8 +367,15 @@ pub fn open(
             }
         }
     });
+    approach_controller.connect_leave({
+        let dock = Rc::downgrade(&dock);
+        move |_| {
+            if let Some(dock) = dock.upgrade() {
+                dock.schedule_hover_check();
+            }
+        }
+    });
     trigger.add_controller(approach_controller);
-    let drag_approach = gtk4::DropControllerMotion::new();
     drag_approach.connect_enter({
         let dock = Rc::downgrade(&dock);
         move |_, _, _| {
@@ -342,6 +383,14 @@ pub fn open(
                 && !dock.is_hovered.replace(true)
             {
                 dock.place(true);
+            }
+        }
+    });
+    drag_approach.connect_leave({
+        let dock = Rc::downgrade(&dock);
+        move |_| {
+            if let Some(dock) = dock.upgrade() {
+                dock.schedule_hover_check();
             }
         }
     });
@@ -373,6 +422,23 @@ impl Dock {
             || (self.config.dock_hover_to_reveal && self.is_hovered.get())
             || self.preview.is_requested()
             || self.is_idle.get()
+    }
+
+    fn schedule_hover_check(self: &Rc<Self>) {
+        if let Some(timer) = self.hover_check.take() {
+            timer.remove();
+        }
+        let dock = Rc::downgrade(self);
+        let source = glib::timeout_add_local_once(HOVER_CHECK_DELAY, move || {
+            let Some(dock) = dock.upgrade() else {
+                return;
+            };
+            dock.hover_check.take();
+            if !dock.pointer_controllers.contains_pointer() && dock.is_hovered.replace(false) {
+                dock.place(true);
+            }
+        });
+        self.hover_check.set(Some(source));
     }
 
     fn place(self: &Rc<Self>, should_animate: bool) {
