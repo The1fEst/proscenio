@@ -291,6 +291,7 @@ fn describe_target(target: &Target) -> String {
         Kind::Monitor => "Monitor: %1",
         Kind::Window => "Window: %1",
         Kind::Region => "Region: %1",
+        Kind::Workspace => "Workspace: %1",
     };
     trf(text, &[&target.name]).trim_end().to_owned()
 }

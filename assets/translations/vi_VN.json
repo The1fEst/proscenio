@@ -1549,5 +1549,6 @@
   "Camera": "Camera",
   "Monitor: %1": "Màn hình: %1",
   "Window: %1": "Cửa sổ: %1",
-  "Region: %1": "Vùng: %1"
+  "Region: %1": "Vùng: %1",
+  "Workspace: %1": "Vùng làm việc: %1"
 }

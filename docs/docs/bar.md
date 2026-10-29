@@ -362,7 +362,7 @@ and disappear with the chips.
 | Kind | Detected by | Popup rows |
 |---|---|---|
 | Microphone | the sound server's recording streams, followed through PulseAudio events | each application with the source it records from |
-| Screen sharing | Hyprland's `screencastv2` event | each application reading the share, with what is shared: `Monitor: DP-2`, `Window: <title>` or `Region: DP-2` |
+| Screen sharing | Hyprland's `screencastv2` event | each application reading the share, with what is shared: `Monitor: DP-2`, `Window: <title>`, `Region: DP-2` or `Workspace: <name>` |
 | Camera | a process holding `/dev/video<N>` open, found by scanning `/proc/*/fd` | each application with the camera's name from `/sys/class/video4linux/video<N>/name` |
 
 - A recording stream does not count while it is corked or when it records from a monitor source,

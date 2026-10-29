@@ -1549,5 +1549,6 @@
   "Camera": "Cámara",
   "Monitor: %1": "Monitor: %1",
   "Window: %1": "Ventana: %1",
-  "Region: %1": "Región: %1"
+  "Region: %1": "Región: %1",
+  "Workspace: %1": "Espacio de trabajo: %1"
 }

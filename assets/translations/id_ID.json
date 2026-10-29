@@ -1549,5 +1549,6 @@
   "Camera": "Kamera",
   "Monitor: %1": "Monitor: %1",
   "Window: %1": "Jendela: %1",
-  "Region: %1": "Wilayah: %1"
+  "Region: %1": "Wilayah: %1",
+  "Workspace: %1": "Ruang kerja: %1"
 }

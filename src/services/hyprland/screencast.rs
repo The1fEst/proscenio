@@ -9,6 +9,7 @@ pub enum Kind {
     Monitor,
     Window,
     Region,
+    Workspace,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -34,6 +35,7 @@ pub fn parse_session(data: &str) -> Option<Session> {
         "monitor" => Kind::Monitor,
         "window" => Kind::Window,
         "region" => Kind::Region,
+        "workspace" => Kind::Workspace,
         _ => return None,
     };
     let name = fields.next().unwrap_or_default().to_owned();
@@ -167,6 +169,7 @@ mod tests {
                 Some((false, Kind::Window, "Title, with commas")),
             ),
             ("1,region,HDMI-A-1", Some((true, Kind::Region, "HDMI-A-1"))),
+            ("0,workspace,3", Some((false, Kind::Workspace, "3"))),
             ("1,window", Some((true, Kind::Window, ""))),
             ("1,0,DP-2", None),
             ("2,monitor,DP-2", None),
@@ -219,6 +222,20 @@ mod tests {
         assert_eq!(external_targets(&sessions), [monitor.clone()]);
         sessions.stop(&target(Kind::Window, "Tab B"));
         assert_eq!(external_targets(&sessions), [monitor]);
+    }
+
+    #[test]
+    fn a_workspace_session_ends_only_under_its_own_name() {
+        let workspace = target(Kind::Workspace, "3");
+        let mut sessions = Sessions::default();
+        sessions.start(workspace.clone(), false, Instant::now());
+        sessions.stop(&target(Kind::Workspace, "4"));
+        assert_eq!(
+            external_targets(&sessions),
+            std::slice::from_ref(&workspace)
+        );
+        sessions.stop(&workspace);
+        assert_eq!(external_targets(&sessions), []);
     }
 
     #[test]
