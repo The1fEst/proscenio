@@ -5,7 +5,8 @@ use std::rc::Rc;
 use super::primary::can_turn_off;
 use super::rules::{DEPTHS, EOTFS, FORCE_MODES};
 use super::{
-    AUTO_HDR, AUTO_HDR_MODES, ColorWidgets, MainWidgets, ROTATIONS, State, VRR, color_profiles,
+    AUTO_HDR, AUTO_HDR_MODES, ColorWidgets, GLOBAL_VRR, MainWidgets, ROTATIONS, State, VRR,
+    can_change_global_vrr, color_profiles,
 };
 use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::Choice;
@@ -186,6 +187,23 @@ impl State {
             position(&ROTATIONS.map(|(_, value)| value), &monitor.transform),
         );
         let rule_number = |key: &str| self.displays.number_of(&name, key) as i64;
+        let enabled_monitors = || monitors.iter().filter(|other| !other.is_disabled);
+        let is_vrr_enabled = self.allows_vrr(monitor);
+        widgets.vrr_combo.set_enabled(is_vrr_enabled);
+        widgets.vrr_notice.set_visible(!is_vrr_enabled);
+        let can_change_displays: Vec<bool> = enabled_monitors()
+            .map(|other| self.allows_vrr(other))
+            .collect();
+        let is_global_vrr_enabled =
+            can_change_global_vrr(self.options.number(GLOBAL_VRR) as i64, &can_change_displays);
+        widgets.global_vrr_combo.set_enabled(is_global_vrr_enabled);
+        widgets
+            .global_vrr_notice
+            .set_visible(!is_global_vrr_enabled);
+        let is_auto_hdr_changed = self.options.number_or(AUTO_HDR, 1.0) as i64 != 1;
+        widgets.auto_hdr_root.set_visible(
+            is_auto_hdr_changed || enabled_monitors().any(|other| self.offers_hdr(other)),
+        );
         widgets.vrr_combo.set_items(
             &labels(&VRR),
             position(&VRR.map(|(_, value)| value), &rule_number("vrr")),
@@ -202,7 +220,11 @@ impl State {
     fn refresh_color(&self, widgets: &ColorWidgets, monitor: &Monitor) {
         let name = monitor.name.clone();
         let rule_number = |key: &str| self.displays.number_of(&name, key) as i64;
-        let profiles = color_profiles(monitor);
+        let offers_hdr = self.offers_hdr(monitor);
+        if let Some(root) = &widgets.luminance_root {
+            root.set_visible(offers_hdr);
+        }
+        let profiles = color_profiles(monitor, offers_hdr);
         let profile_labels: Vec<String> = profiles.iter().map(|(label, _)| label.clone()).collect();
         let profile_values: Vec<&str> = profiles.iter().map(|(_, value)| *value).collect();
         let current_profile = self.displays.color_profile_of(monitor);

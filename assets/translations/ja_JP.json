@@ -910,6 +910,8 @@
   "UV Index": "UV指数",
   "Value scroll": "スクロールで音量・明るさを調整",
   "Variable refresh rate": "可変リフレッシュレート",
+  "This display doesn't support variable refresh rate.": "このディスプレイは可変リフレッシュレートに対応していません。",
+  "No display that is on supports variable refresh rate.":"オンのディスプレイはどれも可変リフレッシュレートに対応していません。",
   "Verbose": "詳細",
   "Vertical": "垂直",
   "Vertical for tall wallpapers": "縦長の壁紙では上下に",

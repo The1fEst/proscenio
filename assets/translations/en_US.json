@@ -904,6 +904,8 @@
   "UV Index": "UV Index",
   "Value scroll": "Value scroll",
   "Variable refresh rate": "Variable refresh rate",
+  "This display doesn't support variable refresh rate.": "This display doesn't support variable refresh rate.",
+  "No display that is on supports variable refresh rate.": "No display that is on supports variable refresh rate.",
   "Verbose": "Verbose",
   "Vertical": "Vertical",
   "Vertical for tall wallpapers": "Vertical for tall wallpapers",

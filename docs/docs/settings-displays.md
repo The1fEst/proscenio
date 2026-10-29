@@ -68,7 +68,10 @@ it. The controls below apply to the chosen display.
 | Variable refresh rate | Follow the global setting, Off, On, Fullscreen only, Fullscreen games and video | `vrr`: −1, 0, 1, 2, 3 |
 | Color | — | opens the Color subpage for this display |
 
-**Use as** shows only while there is another display.
+**Use as** shows only while there is another display. **Variable refresh rate** is disabled, with the
+note "This display doesn't support variable refresh rate.", for a display that does not report it
+can do it (`hardwareDetails.vrrCapable` in `hyprctl monitors`), unless its `vrr` is not −1: then it
+stays enabled so the value can be reset.
 
 - **Main display** names this display in `WAYLANDDRV_PRIMARY_MONITOR` and moves every display so that
   this one sits at 0 × 0. Without a choice, or when the chosen display is off, the main display is
@@ -109,6 +112,16 @@ rate show as chosen.
 | Allow tearing | lets a game draw a frame before the display is ready for it, trading a torn line for latency | `general:allow_tearing` |
 | Keep X11 apps sharp on scaled displays | draws X11 apps unscaled instead of stretched; they look sharp, and small unless they scale themselves (`GDK_SCALE`, `QT_SCALE_FACTOR`) | `xwayland:force_zero_scaling` |
 
+**Auto HDR** shows only while a display that is on shows the HDR rows described under Color, or
+while its option is set to something other than its default.
+
+The global **Variable refresh rate** is disabled, with the note "No display that is on supports
+variable refresh rate.", while no display that is on has its own Variable refresh rate
+enabled, unless `misc:vrr` is not 0.
+
+A display reports no capability when Hyprland does not send `hardwareDetails`; the rows then show
+and stay enabled.
+
 The page ends with a link row to Night light.
 
 ## Color
@@ -132,6 +145,11 @@ search, it shows the first display.
 Forcing HDR on a display that does not report it can leave the screen black.
 
 :::
+
+A display can do HDR when `hardwareDetails` in `hyprctl monitors` reports both `hdr` (the display's
+HDR metadata) and `bt2020`. The two HDR profiles and the **Luminance** section show only for such a
+display, or one with **Force HDR** on or an HDR profile set. The other rows always show; **Force
+HDR** and **Force wide color** are how a display that does not report its capability is overridden.
 
 The ICC profiles offered are the files found under `~/.local/share/icc`, `~/.color/icc`,
 `/usr/local/share/color/icc` and `/usr/share/color/icc`, subfolders included.

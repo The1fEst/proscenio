@@ -1,3 +1,4 @@
+use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::i18n::tr;
@@ -35,7 +36,9 @@ pub fn build(context: &Context) -> Rc<Page> {
             let Some(monitor) = state.monitor() else {
                 return;
             };
-            if let Some((_, value)) = color_profiles(&monitor).get(index) {
+            if let Some((_, value)) =
+                color_profiles(&monitor, state.offers_hdr(&monitor)).get(index)
+            {
                 state.displays.set_color_profile(&monitor, value);
             }
         }
@@ -128,6 +131,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             hdr_combo,
             eotf_combo,
             icc_combo,
+            luminance_root: luminance_section.parent(),
         }),
         spins,
     }));

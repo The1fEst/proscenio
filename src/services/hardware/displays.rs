@@ -33,7 +33,7 @@ pub const RULE_DEFAULTS: [(&str, &str); 14] = [
     ("reserved_area", "0"),
 ];
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Monitor {
     pub id: i64,
     pub name: String,
@@ -51,6 +51,8 @@ pub struct Monitor {
     pub available_modes: Vec<String>,
     pub is_disabled: bool,
     pub active_workspace_id: i64,
+    pub is_hdr_capable: Option<bool>,
+    pub is_vrr_capable: Option<bool>,
 }
 
 impl Monitor {
@@ -63,6 +65,12 @@ impl Monitor {
                 .to_owned()
         };
         let int = |key: &str| value.get(key).and_then(Value::as_i64).unwrap_or(0);
+        let hardware_flag = |key: &str| {
+            value
+                .get("hardwareDetails")
+                .and_then(|details| details.get(key))
+                .and_then(Value::as_bool)
+        };
         Some(Monitor {
             id: int("id"),
             name: value.get("name")?.as_str()?.to_owned(),
@@ -106,6 +114,10 @@ impl Monitor {
                 .and_then(|workspace| workspace.get("id"))
                 .and_then(Value::as_i64)
                 .unwrap_or(0),
+            is_hdr_capable: hardware_flag("hdr")
+                .zip(hardware_flag("bt2020"))
+                .map(|(has_hdr, has_bt2020)| has_hdr && has_bt2020),
+            is_vrr_capable: hardware_flag("vrrCapable"),
         })
     }
 }
@@ -750,6 +762,8 @@ mod tests {
             available_modes: modes.iter().map(|mode| (*mode).to_owned()).collect(),
             is_disabled: false,
             active_workspace_id: 0,
+            is_hdr_capable: None,
+            is_vrr_capable: None,
         }
     }
 
@@ -886,6 +900,32 @@ mod tests {
             primary_of(&[screen("DP-1", false), screen("DP-2", false)], ""),
             "DP-1"
         );
+    }
+
+    #[test]
+    fn a_monitor_reports_what_its_hardware_can_do() {
+        let parse = |details: &str| {
+            let reply = format!(r#"{{"name": "DP-1"{details}}}"#);
+            let value: Value = serde_json::from_str(&reply).unwrap();
+            let monitor = Monitor::from_json(&value).unwrap();
+            (monitor.is_hdr_capable, monitor.is_vrr_capable)
+        };
+        let details = |hdr: bool, bt2020: bool, vrr: bool| {
+            format!(
+                r#", "hardwareDetails": {{"hdr": {hdr}, "bt2020": {bt2020}, "vrrCapable": {vrr}}}"#
+            )
+        };
+        assert_eq!(parse(&details(true, true, true)), (Some(true), Some(true)));
+        assert_eq!(
+            parse(&details(true, false, false)),
+            (Some(false), Some(false))
+        );
+        assert_eq!(
+            parse(&details(false, true, false)),
+            (Some(false), Some(false))
+        );
+        assert_eq!(parse(r#", "hardwareDetails": {}"#), (None, None));
+        assert_eq!(parse(""), (None, None));
     }
 
     #[test]

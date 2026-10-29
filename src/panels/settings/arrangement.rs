@@ -416,6 +416,8 @@ mod tests {
             available_modes: Vec::new(),
             is_disabled: false,
             active_workspace_id: 0,
+            is_hdr_capable: None,
+            is_vrr_capable: None,
         }
     }
 

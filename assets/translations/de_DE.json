@@ -904,6 +904,8 @@
   "UV Index": "UV-Index",
   "Value scroll": "Wert-Scrollen",
   "Variable refresh rate": "Variable Bildwiederholrate",
+  "This display doesn't support variable refresh rate.": "Dieser Bildschirm unterstützt keine variable Bildwiederholrate.",
+  "No display that is on supports variable refresh rate.":"Keiner der eingeschalteten Bildschirme unterstützt eine variable Bildwiederholrate.",
   "Verbose": "Ausführlich",
   "Vertical": "Vertikal",
   "Vertical for tall wallpapers": "Senkrecht bei hohen Hintergrundbildern",

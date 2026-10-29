@@ -910,6 +910,8 @@
   "UV Index": "紫外线指数",
   "Value scroll": "滚动调整数值",
   "Variable refresh rate": "可变刷新率",
+  "This display doesn't support variable refresh rate.": "此显示器不支持可变刷新率。",
+  "No display that is on supports variable refresh rate.":"已开启的显示器均不支持可变刷新率。",
   "Verbose": "详细",
   "Vertical": "垂直",
   "Vertical for tall wallpapers": "高幅壁纸使用垂直方向",

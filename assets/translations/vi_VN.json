@@ -910,6 +910,8 @@
   "UV Index": "Chỉ số UV",
   "Value scroll": "Cuộn để đổi giá trị",
   "Variable refresh rate": "Tần số quét thay đổi",
+  "This display doesn't support variable refresh rate.": "Màn hình này không hỗ trợ tần số quét thay đổi.",
+  "No display that is on supports variable refresh rate.":"Không có màn hình nào đang bật hỗ trợ tần số quét thay đổi.",
   "Verbose": "Chi tiết",
   "Vertical": "Dọc",
   "Vertical for tall wallpapers": "Theo chiều dọc với ảnh nền cao",

@@ -904,6 +904,8 @@
   "UV Index": "Índice UV",
   "Value scroll": "Scroll de valor",
   "Variable refresh rate": "Taxa de atualização variável",
+  "This display doesn't support variable refresh rate.": "Esta tela não oferece suporte à taxa de atualização variável.",
+  "No display that is on supports variable refresh rate.":"Nenhuma das telas ligadas oferece suporte à taxa de atualização variável.",
   "Verbose": "Detalhado",
   "Vertical": "Vertical",
   "Vertical for tall wallpapers": "Vertical para papéis de parede altos",

@@ -904,6 +904,8 @@
   "UV Index": "Indice UV",
   "Value scroll": "Scorrimento dei valori",
   "Variable refresh rate": "Frequenza di aggiornamento variabile",
+  "This display doesn't support variable refresh rate.": "Questo schermo non supporta la frequenza di aggiornamento variabile.",
+  "No display that is on supports variable refresh rate.":"Nessuno degli schermi accesi supporta la frequenza di aggiornamento variabile.",
   "Verbose": "Dettagliato",
   "Vertical": "Verticale",
   "Vertical for tall wallpapers": "Verticale per sfondi alti",

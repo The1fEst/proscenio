@@ -910,6 +910,8 @@
   "UV Index": "УФ-индекс",
   "Value scroll": "Скролл значений",
   "Variable refresh rate": "Переменная частота обновления",
+  "This display doesn't support variable refresh rate.": "Этот дисплей не поддерживает переменную частоту обновления.",
+  "No display that is on supports variable refresh rate.":"Ни один из включённых дисплеев не поддерживает переменную частоту обновления.",
   "Verbose": "Подробно",
   "Vertical": "Вертикальный",
   "Vertical for tall wallpapers": "Вертикально для высоких обоев",

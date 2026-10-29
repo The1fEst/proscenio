@@ -910,6 +910,8 @@
   "UV Index": "מדד קרינת UV",
   "Value scroll": "ערך גלילה",
   "Variable refresh rate": "קצב רענון משתנה",
+  "This display doesn't support variable refresh rate.": "הצג הזה אינו תומך בקצב רענון משתנה.",
+  "No display that is on supports variable refresh rate.":"אף אחד מהצגים הפועלים אינו תומך בקצב רענון משתנה.",
   "Verbose": "מפורט",
   "Vertical": "אנכי",
   "Vertical for tall wallpapers": "אנכית לרקעים גבוהים",

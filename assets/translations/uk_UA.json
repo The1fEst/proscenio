@@ -910,6 +910,8 @@
   "UV Index": "Індекс UV",
   "Value scroll": "Прокручування значень",
   "Variable refresh rate": "Змінна частота оновлення",
+  "This display doesn't support variable refresh rate.": "Цей дисплей не підтримує змінну частоту оновлення.",
+  "No display that is on supports variable refresh rate.":"Жоден із увімкнених дисплеїв не підтримує змінну частоту оновлення.",
   "Verbose": "Докладно",
   "Vertical": "Вертикально",
   "Vertical for tall wallpapers": "Вертикально для високих шпалер",

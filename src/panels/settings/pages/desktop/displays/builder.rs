@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::primary::{can_turn_off, find_primary_for_mirror, next_primary};
-use super::rules::{keyed_combo, option_spin};
+use super::rules::{keyed_combo, keyed_combo_in, option_spin};
 use super::{
     AUTO_HDR, AUTO_HDR_MODES, GLOBAL_VRR, GLOBAL_VRR_MODES, MainWidgets, ROTATIONS, State, TEARING,
     VRR, Widgets, ZERO_SCALING, show_write_errors,
@@ -235,14 +235,14 @@ pub fn build(context: &Context) -> Rc<Page> {
         "screen_rotation",
         move |index| ("transform", ROTATIONS[index].1.to_string()),
     );
-    let vrr_combo = keyed_combo(
-        &page,
-        &state,
-        &main_section,
-        &tr("Variable refresh rate"),
-        "",
-        "sync",
-        move |index| ("vrr", VRR[index].1.to_string()),
+    let vrr_group = page.subsection(&main_section, &tr("Variable refresh rate"), "");
+    let vrr_combo = keyed_combo_in(&page, &state, &vrr_group, "sync", move |index| {
+        ("vrr", VRR[index].1.to_string())
+    });
+    let vrr_notice = page.notice(
+        &vrr_group,
+        "info",
+        &tr("This display doesn't support variable refresh rate."),
     );
     let open_color = context.subpage_opener_with("displaycolor");
     page.link_row(
@@ -302,18 +302,23 @@ pub fn build(context: &Context) -> Rc<Page> {
             }
         }
     });
-    let vrr_section = page.subsection(
+    let global_vrr_section = page.subsection(
         &all_displays_section,
         &tr("Variable refresh rate"),
         &tr("What a display set to follow the global setting does."),
     );
-    hyprrows::combo(
+    let global_vrr_combo = hyprrows::combo(
         &page,
-        &vrr_section,
+        &global_vrr_section,
         &state.options,
         "sync",
         (GLOBAL_VRR, "0"),
         &GLOBAL_VRR_MODES,
+    );
+    let global_vrr_notice = page.notice(
+        &global_vrr_section,
+        "info",
+        &tr("No display that is on supports variable refresh rate."),
     );
     let tearing_switch = hyprrows::switch(
         &page,
@@ -362,7 +367,11 @@ pub fn build(context: &Context) -> Rc<Page> {
             rate_combo,
             rotation_combo,
             vrr_combo,
+            vrr_notice,
+            auto_hdr_root: Page::subsection_root(&auto_hdr_section),
             auto_hdr_combo,
+            global_vrr_combo,
+            global_vrr_notice,
         }),
         color: None,
         spins,

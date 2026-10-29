@@ -904,6 +904,8 @@
   "UV Index": "UV İndeksi",
   "Value scroll": "Değer kaydırma",
   "Variable refresh rate": "Değişken yenileme hızı",
+  "This display doesn't support variable refresh rate.": "Bu ekran değişken yenileme hızını desteklemiyor.",
+  "No display that is on supports variable refresh rate.":"Açık ekranların hiçbiri değişken yenileme hızını desteklemiyor.",
   "Verbose": "Ayrıntılı",
   "Vertical": "Dikey",
   "Vertical for tall wallpapers": "Uzun duvar kâğıtlarında dikey",

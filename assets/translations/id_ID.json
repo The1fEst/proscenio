@@ -904,6 +904,8 @@
   "UV Index": "Indeks UV",
   "Value scroll": "Gulir nilai",
   "Variable refresh rate": "Laju penyegaran variabel",
+  "This display doesn't support variable refresh rate.": "Layar ini tidak mendukung laju penyegaran variabel.",
+  "No display that is on supports variable refresh rate.":"Tidak ada layar yang menyala yang mendukung laju penyegaran variabel.",
   "Verbose": "Rinci",
   "Vertical": "Vertikal",
   "Vertical for tall wallpapers": "Vertikal untuk gambar latar yang tinggi",

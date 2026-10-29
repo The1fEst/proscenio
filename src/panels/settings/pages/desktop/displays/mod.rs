@@ -50,7 +50,11 @@ pub(super) struct MainWidgets {
     rate_combo: Rc<ComboBox>,
     rotation_combo: Rc<ComboBox>,
     vrr_combo: Rc<ComboBox>,
+    vrr_notice: gtk4::Box,
+    auto_hdr_root: gtk4::Widget,
     auto_hdr_combo: Rc<ComboBox>,
+    global_vrr_combo: Rc<ComboBox>,
+    global_vrr_notice: gtk4::Box,
 }
 
 pub(super) struct ColorWidgets {
@@ -60,6 +64,7 @@ pub(super) struct ColorWidgets {
     pub(super) hdr_combo: Rc<ComboBox>,
     pub(super) eotf_combo: Rc<ComboBox>,
     pub(super) icc_combo: Rc<ComboBox>,
+    pub(super) luminance_root: Option<gtk4::Widget>,
 }
 
 pub(super) struct Widgets {
@@ -96,7 +101,7 @@ const VRR: [(&str, i64); 5] = [
 ];
 const AUTO_HDR_MODES: [(&str, i64); 3] = [("Off", 0), ("HDR", 1), ("HDR (display profile)", 2)];
 
-pub(super) fn color_profiles(monitor: &Monitor) -> Vec<(String, &'static str)> {
+pub(super) fn color_profiles(monitor: &Monitor, includes_hdr: bool) -> Vec<(String, &'static str)> {
     let model_or_else = |fallback: String| {
         if monitor.model.is_empty() {
             fallback
@@ -104,7 +109,7 @@ pub(super) fn color_profiles(monitor: &Monitor) -> Vec<(String, &'static str)> {
             monitor.model.clone()
         }
     };
-    vec![
+    let mut profiles = vec![
         (tr("Automatic"), "auto"),
         (tr("sRGB"), "srgb"),
         (tr("DCI P3"), "dcip3"),
@@ -112,12 +117,27 @@ pub(super) fn color_profiles(monitor: &Monitor) -> Vec<(String, &'static str)> {
         (tr("Adobe RGB"), "adobe"),
         (tr("Wide color"), "wide"),
         (model_or_else(tr("Display profile")), "edid"),
-        (tr("HDR"), "hdr"),
-        (
+    ];
+    if includes_hdr {
+        profiles.push((tr("HDR"), "hdr"));
+        profiles.push((
             trf("HDR (%1)", &[&model_or_else(tr("display profile"))]),
             "hdredid",
-        ),
-    ]
+        ));
+    }
+    profiles
+}
+
+fn can_show_hdr(is_capable: Option<bool>, force_mode: i64, profile: &str) -> bool {
+    is_capable.unwrap_or(true) || force_mode == 1 || profile.starts_with("hdr")
+}
+
+fn can_change_vrr(is_capable: Option<bool>, mode: i64) -> bool {
+    is_capable.unwrap_or(true) || mode != -1
+}
+
+fn can_change_global_vrr(global_mode: i64, can_change_displays: &[bool]) -> bool {
+    global_mode != 0 || can_change_displays.contains(&true)
 }
 
 impl State {
@@ -161,6 +181,21 @@ impl State {
             .find(|monitor| monitor.name == selected_name)
             .or(monitors.first())
             .cloned()
+    }
+
+    fn offers_hdr(&self, monitor: &Monitor) -> bool {
+        can_show_hdr(
+            monitor.is_hdr_capable,
+            self.displays.number_of(&monitor.name, "supports_hdr") as i64,
+            &self.displays.color_profile_of(monitor),
+        )
+    }
+
+    fn allows_vrr(&self, monitor: &Monitor) -> bool {
+        can_change_vrr(
+            monitor.is_vrr_capable,
+            self.displays.number_of(&monitor.name, "vrr") as i64,
+        )
     }
 
     fn others(&self, monitor: &Monitor) -> Vec<Monitor> {
@@ -218,4 +253,81 @@ pub fn show_write_errors(displays: &Rc<Displays>, parent: &gtk4::Box) {
             write_status.set_visible(write_error.is_some());
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hdr_rows_show_for_a_display_that_can_do_hdr_or_is_set_to() {
+        for (is_capable, force_mode, profile, expected) in [
+            (Some(true), 0, "srgb", true),
+            (Some(false), 0, "srgb", false),
+            (Some(false), -1, "auto", false),
+            (Some(false), 1, "srgb", true),
+            (Some(false), 0, "hdr", true),
+            (Some(false), 0, "hdredid", true),
+            (None, 0, "srgb", true),
+        ] {
+            assert_eq!(
+                can_show_hdr(is_capable, force_mode, profile),
+                expected,
+                "{is_capable:?} {force_mode} {profile}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_vrr_choices_are_enabled_for_a_display_that_can_do_vrr_or_is_set_to() {
+        for (is_capable, mode, expected) in [
+            (Some(true), -1, true),
+            (Some(false), -1, false),
+            (Some(false), 0, true),
+            (Some(false), 3, true),
+            (None, -1, true),
+        ] {
+            assert_eq!(
+                can_change_vrr(is_capable, mode),
+                expected,
+                "{is_capable:?} {mode}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_global_vrr_choices_are_enabled_while_a_display_can_use_them_or_they_are_set() {
+        for (global_mode, displays, expected) in [
+            (0, &[true, false][..], true),
+            (0, &[false, false][..], false),
+            (0, &[][..], false),
+            (2, &[false][..], true),
+        ] {
+            assert_eq!(
+                can_change_global_vrr(global_mode, displays),
+                expected,
+                "{global_mode} {displays:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_hdr_color_profiles_are_listed_only_where_hdr_shows() {
+        let values = |includes_hdr: bool| -> Vec<&str> {
+            color_profiles(&Monitor::default(), includes_hdr)
+                .into_iter()
+                .map(|(_, value)| value)
+                .collect()
+        };
+        assert_eq!(
+            values(false),
+            ["auto", "srgb", "dcip3", "dp3", "adobe", "wide", "edid"]
+        );
+        assert_eq!(
+            values(true),
+            [
+                "auto", "srgb", "dcip3", "dp3", "adobe", "wide", "edid", "hdr", "hdredid"
+            ]
+        );
+    }
 }

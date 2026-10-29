@@ -107,7 +107,17 @@ pub(in super::super) fn keyed_combo(
     rule_for: impl Fn(usize) -> (&'static str, String) + 'static,
 ) -> Rc<ComboBox> {
     let group = page.subsection(parent, title, tip);
-    let combo = page.combo(&group, icon);
+    keyed_combo_in(page, state, &group, icon, rule_for)
+}
+
+pub(in super::super) fn keyed_combo_in(
+    page: &Page,
+    state: &Rc<State>,
+    group: &gtk4::Box,
+    icon: &str,
+    rule_for: impl Fn(usize) -> (&'static str, String) + 'static,
+) -> Rc<ComboBox> {
+    let combo = page.combo(group, icon);
     combo.connect_activated({
         let state = Rc::downgrade(state);
         move |index| {
