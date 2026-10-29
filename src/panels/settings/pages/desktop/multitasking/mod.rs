@@ -494,7 +494,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             "Gap (px)",
             "general:gaps_workspaces",
             1.0,
-            (0, 500),
+            (0, 100),
             10,
         ),
     );

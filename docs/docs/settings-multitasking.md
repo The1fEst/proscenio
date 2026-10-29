@@ -131,7 +131,7 @@ After Focus, a link row opens the Overview subpage.
 switch writes `true` or `false`, which Hyprland reads as `1` or `0`, and shows `2` as on; toggling replaces `2` with `1` or `0`.
 
 A link row opens the Swiping between workspaces subpage. Under **Distance between workspaces**,
-**Gap (px)** sets `general:gaps_workspaces`, from 0 to 500 px in steps of 10: how far apart two
+**Gap (px)** sets `general:gaps_workspaces`, from 0 to 100 px in steps of 10: how far apart two
 workspaces sit while the switch between them animates.
 
 ## Overview

@@ -198,7 +198,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             "Hide when still for (s)",
             "cursor:inactive_timeout",
             1.0,
-            (0, 120),
+            (0, 20),
             1,
         ),
     );

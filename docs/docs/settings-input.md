@@ -56,7 +56,7 @@ want; with it on, the pointer speeds up as the mouse moves faster. A link row op
 
 | Control | Hyprland option | Values |
 |---|---|---|
-| Hide when still for (s) | `cursor:inactive_timeout` | 0–120 s; 0 keeps the pointer on screen |
+| Hide when still for (s) | `cursor:inactive_timeout` | 0–20 s; 0 keeps the pointer on screen |
 | Hide while typing | `cursor:hide_on_key_press` | on or off |
 | Who draws the pointer | `cursor:no_hardware_cursors` | the screen, except while tearing (`2`); always the screen (`0`); drawn with the rest of the screen (`1`) |
 
