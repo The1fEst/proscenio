@@ -60,6 +60,7 @@ main loop and hands each line to whoever subscribed to `Events`.
 | Events | What follows |
 |---|---|
 | `workspace`, `focusedmon`, `createworkspace`, `destroyworkspace`, `moveworkspace`, `changeworkspaceid`, `renameworkspace`, `activespecial`, `openwindow`, `closewindow`, `movewindow`, `activewindow`, `fullscreen`, `monitoradded`, `monitorremoved`, `configreloaded`, with their `v2` forms where they have one | The state snapshot is read again |
+| `urgent` | `src/services/hyprland/urgentwindows.rs` marks the window as wanting attention, and the [dock](dock.md) marks its app; `activewindowv2` for that window, or `closewindow`, clears the mark |
 | `activelayout` | The keyboard layout button changes |
 | `configreloaded` | The screen rounding is read again, and the shortcut editors read the binds again |
 | `bell` | The screen flashes, when `accessibility.flashOnBell` is on |

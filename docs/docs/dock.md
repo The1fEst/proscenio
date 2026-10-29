@@ -32,6 +32,11 @@ The list comes from `dock.pinnedApps` and from Hyprland's list of windows:
   keeping the last of the three places when there are more windows than places, and its preview card
   is half transparent. The accent color follows the windows that are not minimized. Focusing the
   window, from the button or from its card, shows the special workspace again.
+- A window that asks for attention, through Hyprland's `urgent` event (a Wayland activation request,
+  or an XWayland window's `_NET_WM_STATE_DEMANDS_ATTENTION`), gets a dot in the error color. Such
+  dots come first, before the accent and outline ones, also for a minimized window, and stay until
+  the window is focused or closed. Hyprland does not report a window's urgency again to a shell that
+  starts later, so a restart forgets it.
 - With `dock.monochromeIcons` on, the default, icons are mostly desaturated and tinted toward the
   accent color.
 - `dock.iconSize` sets the icon size, 35 px by default. The buttons and the dock grow with it: a
@@ -74,7 +79,9 @@ The dock is shown while any of these is true:
 - it is pinned;
 - the pointer, or a drag from another app, is over it, with `dock.hoverToReveal` on (the default);
 - a window preview is open;
-- none of its apps has the focused window, as on an empty workspace.
+- none of its apps has the focused window, as on an empty workspace;
+- a window listed in it asked for attention less than 2 s ago and was still unfocused 150 ms after
+  asking, which a window that Hyprland focuses at once (`misc:focus_on_activate`) never is.
 
 Otherwise, it slides off the bottom edge. With hover to reveal on, a strip `dock.hoverRegionHeight`
 pixels tall (2 by default) and as wide as the dock stays at the edge, and moving the pointer or a

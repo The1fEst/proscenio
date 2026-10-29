@@ -23,6 +23,7 @@ use crate::services::hyprland::fullscreen::Fullscreen;
 use crate::services::hyprland::hyprlockclock::HyprlockClockWriter;
 use crate::services::hyprland::hyprstate::HyprState;
 use crate::services::hyprland::screencolor::ScreenColor;
+use crate::services::hyprland::urgentwindows::UrgentWindows;
 use crate::services::hyprland::workspacegroups::WorkspaceGroupWriter;
 use crate::services::media::audio::Audio;
 use crate::services::media::deviceusage::DeviceUsage;
@@ -49,6 +50,7 @@ pub struct Services {
     pub events: Events,
     pub hypr: HyprState,
     pub fullscreen: Fullscreen,
+    pub urgent_windows: UrgentWindows,
     pub cursor_hider: CursorHider,
     pub session_bus: Option<gio::DBusConnection>,
     pub audio: Option<Audio>,
@@ -95,6 +97,7 @@ impl Services {
             resources: std::rc::Rc::new(Resources::default()),
             xkb: Xkb::new(&events),
             fullscreen: Fullscreen::new(&hypr),
+            urgent_windows: UrgentWindows::new(&events),
             cursor_hider: CursorHider::new(&events, &hypr),
             hypr,
             _workspace_group_writer: WorkspaceGroupWriter::new(&events),

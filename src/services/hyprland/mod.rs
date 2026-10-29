@@ -6,4 +6,5 @@ pub mod hyprstate;
 pub mod idleoptions;
 pub mod screencast;
 pub mod screencolor;
+pub mod urgentwindows;
 pub mod workspacegroups;

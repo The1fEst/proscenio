@@ -14,6 +14,7 @@ pub(super) struct Window {
     title: String,
     pub(super) is_active: bool,
     pub(super) is_minimized: bool,
+    pub(super) is_urgent: bool,
 }
 
 pub(super) struct Entry {
@@ -70,6 +71,7 @@ pub(super) fn collect_entries(
     pinned_ids: &[String],
     ignore_patterns: &[glib::Regex],
     windows: &WindowList,
+    is_urgent_address: impl Fn(&str) -> bool,
 ) -> Vec<Entry> {
     let mut entries: Vec<Entry> = Vec::new();
     for id in pinned_ids {
@@ -129,6 +131,7 @@ pub(super) fn collect_entries(
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_owned();
+        let is_urgent = is_urgent_address(&address);
         entries[place].windows.push(Window {
             address,
             class,
@@ -138,6 +141,7 @@ pub(super) fn collect_entries(
                 .shown_special_workspaces
                 .as_deref()
                 .is_some_and(|shown| is_minimized(client, shown)),
+            is_urgent,
         });
     }
     entries
@@ -145,26 +149,32 @@ pub(super) fn collect_entries(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DotStyle {
+    Urgent,
     Active,
     Idle,
     Minimized,
 }
 
 pub(super) fn choose_dot_styles(windows: &[Window], max_count: usize) -> Vec<DotStyle> {
-    let shown_count = windows.iter().filter(|window| !window.is_minimized).count();
-    let minimized_count = windows.len() - shown_count;
-    let shown_style = if windows
-        .iter()
-        .any(|window| window.is_active && !window.is_minimized)
+    let urgent_count = windows.iter().filter(|window| window.is_urgent).count();
+    let non_urgent_windows = || windows.iter().filter(|window| !window.is_urgent);
+    let shown_count = non_urgent_windows()
+        .filter(|window| !window.is_minimized)
+        .count();
+    let minimized_count = non_urgent_windows().count() - shown_count;
+    let shown_style = if non_urgent_windows().any(|window| window.is_active && !window.is_minimized)
     {
         DotStyle::Active
     } else {
         DotStyle::Idle
     };
+    let urgent_dots = urgent_count.min(max_count);
+    let free_slots = max_count - urgent_dots;
     let hollow_slots = usize::from(minimized_count > 0);
-    let shown_dots = shown_count.min(max_count.saturating_sub(hollow_slots));
-    let minimized_dots = minimized_count.min(max_count.saturating_sub(shown_dots));
-    std::iter::repeat_n(shown_style, shown_dots)
+    let shown_dots = shown_count.min(free_slots.saturating_sub(hollow_slots));
+    let minimized_dots = minimized_count.min(free_slots - shown_dots);
+    std::iter::repeat_n(DotStyle::Urgent, urgent_dots)
+        .chain(std::iter::repeat_n(shown_style, shown_dots))
         .chain(std::iter::repeat_n(DotStyle::Minimized, minimized_dots))
         .collect()
 }
@@ -214,6 +224,7 @@ mod tests {
                 ],
                 shown_special_workspaces: None,
             },
+            |_| false,
         );
         let summary: Vec<(&str, Vec<(&str, bool)>)> = entries
             .iter()
@@ -261,6 +272,7 @@ mod tests {
                     ],
                     shown_special_workspaces,
                 },
+                |_| false,
             );
             entries[0]
                 .windows
@@ -291,6 +303,7 @@ mod tests {
             title: String::new(),
             is_active,
             is_minimized,
+            is_urgent: false,
         };
         let styles = |windows: &[Window]| choose_dot_styles(windows, 3);
         assert_eq!(styles(&[]), []);
@@ -320,6 +333,59 @@ mod tests {
         assert_eq!(
             styles(&[window(true, true), window(false, false)]),
             [DotStyle::Idle, DotStyle::Minimized]
+        );
+    }
+
+    #[test]
+    fn urgent_windows_are_marked_and_take_the_first_dots() {
+        let client = |address: &str| serde_json::json!({"address": address, "class": "kitty", "mapped": true});
+        let entries = collect_entries(
+            &[],
+            &[],
+            &WindowList {
+                focused_address: String::new(),
+                clients: vec![client("0x1"), client("0x2")],
+                shown_special_workspaces: None,
+            },
+            |address| address == "0x2",
+        );
+        let urgent: Vec<bool> = entries[0]
+            .windows
+            .iter()
+            .map(|window| window.is_urgent)
+            .collect();
+        assert_eq!(urgent, [false, true]);
+
+        let window = |is_minimized: bool, is_urgent: bool| Window {
+            address: String::new(),
+            class: String::new(),
+            title: String::new(),
+            is_active: false,
+            is_minimized,
+            is_urgent,
+        };
+        let styles = |windows: &[Window]| choose_dot_styles(windows, 3);
+        assert_eq!(
+            styles(&[window(false, false), window(true, true)]),
+            [DotStyle::Urgent, DotStyle::Idle]
+        );
+        assert_eq!(
+            styles(&[
+                window(false, false),
+                window(false, false),
+                window(false, false),
+                window(false, true),
+            ]),
+            [DotStyle::Urgent, DotStyle::Idle, DotStyle::Idle]
+        );
+        assert_eq!(
+            styles(&[
+                window(false, true),
+                window(false, true),
+                window(false, true),
+                window(false, true),
+            ]),
+            [DotStyle::Urgent; 3]
         );
     }
 }

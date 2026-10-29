@@ -17,6 +17,7 @@ use crate::core::scope::Scope;
 use crate::core::watch;
 use crate::panels::dock::preview::Preview;
 use crate::services::Services;
+use crate::services::hyprland::urgentwindows::UrgentWindows;
 use crate::ui::anim::{EXPRESSIVE_EFFECTS, Tween};
 use crate::ui::reserve::Reserve;
 use crate::ui::theme::{SharedTheme, rounding};
@@ -39,6 +40,7 @@ const BUTTON_INSET: i32 = GAPS_OUT + ROW_PADDING;
 const DRAGGED_OPACITY: f64 = 0.85;
 const MOVE_MILLIS: f64 = 200.0;
 const HOVER_CHECK_DELAY: Duration = Duration::from_millis(250);
+const ATTENTION_DURATION: Duration = Duration::from_secs(2);
 
 thread_local! {
     static PINNED: RefCell<Option<Rc<Cell<bool>>>> = const { RefCell::new(None) };
@@ -108,6 +110,9 @@ struct Dock {
     is_locked: Rc<Cell<bool>>,
     is_covered: Cell<bool>,
     reserve: Reserve,
+    urgent_windows: UrgentWindows,
+    is_attention_shown: Cell<bool>,
+    attention_timer: Cell<Option<glib::SourceId>>,
 }
 
 pub fn open(
@@ -246,7 +251,18 @@ pub fn open(
         is_locked: services.states.is_screen_locked.clone(),
         is_covered: Cell::new(services.fullscreen.covers(&connector)),
         reserve: Reserve::new(app, monitor, Edge::Bottom, RESERVE_NAMESPACE),
+        urgent_windows: services.urgent_windows.clone(),
+        is_attention_shown: Cell::new(false),
+        attention_timer: Cell::new(None),
     });
+    scope.keep(services.urgent_windows.subscribe({
+        let dock = Rc::downgrade(&dock);
+        move |address| {
+            if let Some(dock) = dock.upgrade() {
+                dock.show_for_attention(address);
+            }
+        }
+    }));
     scope.keep(services.states.subscribe({
         let dock = Rc::downgrade(&dock);
         move || {
@@ -301,10 +317,13 @@ pub fn open(
         let dock = Rc::downgrade(&dock);
         let trigger = trigger.clone();
         move || {
-            if let Some(dock) = dock.upgrade()
-                && let Some(timer) = dock.hover_check.take()
-            {
-                timer.remove();
+            if let Some(dock) = dock.upgrade() {
+                if let Some(timer) = dock.hover_check.take() {
+                    timer.remove();
+                }
+                if let Some(timer) = dock.attention_timer.take() {
+                    timer.remove();
+                }
             }
             trigger.destroy();
             DOCKS.with(|docks| {
@@ -421,6 +440,35 @@ impl Dock {
             || (self.config.dock_hover_to_reveal && self.is_hovered.get())
             || self.preview.is_requested()
             || self.is_idle.get()
+            || self.is_attention_shown.get()
+    }
+
+    fn show_for_attention(self: &Rc<Self>, address: &str) {
+        let has_window = self.buttons.borrow().iter().any(|button| {
+            button
+                .windows
+                .borrow()
+                .iter()
+                .any(|window| window.address == address)
+        });
+        if !has_window {
+            return;
+        }
+        if let Some(timer) = self.attention_timer.take() {
+            timer.remove();
+        }
+        self.is_attention_shown.set(true);
+        self.place(true);
+        let dock = Rc::downgrade(self);
+        let source = glib::timeout_add_local_once(ATTENTION_DURATION, move || {
+            let Some(dock) = dock.upgrade() else {
+                return;
+            };
+            dock.attention_timer.take();
+            dock.is_attention_shown.set(false);
+            dock.place(true);
+        });
+        self.attention_timer.set(Some(source));
     }
 
     fn schedule_hover_check(self: &Rc<Self>) {
@@ -476,6 +524,7 @@ impl Dock {
             &self.config.dock_pinned.borrow(),
             &self.ignore_patterns,
             windows,
+            |address| self.urgent_windows.contains(address),
         );
         self.is_idle.set(
             !entries

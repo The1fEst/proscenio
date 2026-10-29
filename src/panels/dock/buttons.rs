@@ -309,6 +309,7 @@ impl Dock {
         for style in choose_dot_styles(&windows, MAX_DOTS) {
             let dot = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
             dot.add_css_class(match style {
+                DotStyle::Urgent => "dock-dot-urgent",
                 DotStyle::Active => "dock-dot-active",
                 DotStyle::Idle => "dock-dot",
                 DotStyle::Minimized => "dock-dot-minimized",
