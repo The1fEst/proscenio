@@ -134,6 +134,17 @@ pub fn spin(
     (row, spin)
 }
 
+fn find_index(list: &[(&str, &str)], current: &str, fallback: &str) -> usize {
+    let current = if current.is_empty() {
+        fallback
+    } else {
+        current
+    };
+    list.iter()
+        .position(|(_, value)| *value == current)
+        .unwrap_or(0)
+}
+
 pub fn combo(
     page: &Page,
     parent: &gtk4::Box,
@@ -151,14 +162,7 @@ pub fn combo(
             let (Some(combo), Some(options)) = (combo.upgrade(), options.upgrade()) else {
                 return;
             };
-            let mut current_value = options.text(option);
-            if current_value.is_empty() {
-                current_value = fallback.to_owned();
-            }
-            let index = list
-                .iter()
-                .position(|(_, value)| *value == current_value)
-                .unwrap_or(0);
+            let index = find_index(list, &options.text(option), fallback);
             combo.set_items(&labels, index as i32);
         }
     };
@@ -204,4 +208,28 @@ pub fn selection(
     parent.append(&selection.root);
     page.keep(selection.clone());
     selection
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_combo_selects_the_current_value_or_else_the_default() {
+        let list = [("Off", "0"), ("Everywhere", "1"), ("Per display", "2")];
+        for (current, fallback, expected) in [
+            ("2", "0", 2),
+            ("1", "0", 1),
+            ("", "1", 1),
+            ("", "0", 0),
+            ("7", "1", 0),
+            ("", "7", 0),
+        ] {
+            assert_eq!(
+                find_index(&list, current, fallback),
+                expected,
+                "{current:?} with default {fallback:?}"
+            );
+        }
+    }
 }

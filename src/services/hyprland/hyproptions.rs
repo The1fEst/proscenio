@@ -69,11 +69,7 @@ impl HyprOptions {
     }
 
     pub fn flag(&self, name: &str) -> bool {
-        match self.raw(name) {
-            Some(Value::Bool(flag)) => flag,
-            Some(Value::Number(number)) => number.as_f64().is_some_and(|value| value != 0.0),
-            _ => false,
-        }
+        self.raw(name) == Some(Value::Bool(true))
     }
 
     pub fn text(&self, name: &str) -> String {
@@ -162,25 +158,5 @@ mod tests {
         assert_eq!(leading_number("4 4 4 4"), 4.0);
         assert_eq!(leading_number("-1.5px"), -1.5);
         assert!(leading_number("none").is_nan());
-    }
-
-    #[test]
-    fn a_switch_reads_a_flag_and_a_number_that_is_not_zero_as_on() {
-        let options = HyprOptions::new(hyprconfig::Area::Other, &[]);
-        for (value, expected) in [
-            (Value::Bool(true), true),
-            (Value::Bool(false), false),
-            (Value::from(0), false),
-            (Value::from(1), true),
-            (Value::from(2), true),
-            (Value::from("1"), false),
-        ] {
-            options
-                .options
-                .borrow_mut()
-                .insert("option".to_owned(), value.clone());
-            assert_eq!(options.flag("option"), expected, "{value}");
-        }
-        assert!(!options.flag("missing"));
     }
 }

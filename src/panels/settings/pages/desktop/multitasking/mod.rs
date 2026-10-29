@@ -90,6 +90,28 @@ const FOLLOW_MOUSE: [(&str, &str); 4] = [
         "3",
     ),
 ];
+const FOLLOW_FOCUS: [(&str, &str); 3] = [
+    ("Don't scroll when the focus moves", "0"),
+    (
+        "Scroll to the focused window and to any window you click",
+        "1",
+    ),
+    (
+        "Scroll to the focused window, but only to a clicked window that is partly in view",
+        "2",
+    ),
+];
+const BACK_AND_FORTH: [(&str, &str); 3] = [
+    ("Switching to the current workspace does nothing", "0"),
+    (
+        "Switching to the current workspace goes back to the last one on any display",
+        "1",
+    ),
+    (
+        "Switching to the current workspace goes back to the last one on this display",
+        "2",
+    ),
+];
 const FOCUS_ON_CLOSE: [(&str, &str); 3] = [
     ("After a close, focus the next window", "0"),
     ("After a close, focus the window under the pointer", "1"),
@@ -299,13 +321,13 @@ pub fn build(context: &Context) -> Rc<Page> {
         ("scrolling:focus_fit_method", "1"),
         &FIT_METHODS,
     );
-    hyprrows::switch(
+    hyprrows::combo(
         &page,
         &scrolling_section,
         &options,
         "center_focus_strong",
-        &tr("Scroll to the focused window"),
-        "scrolling:follow_focus",
+        ("scrolling:follow_focus", "1"),
+        &FOLLOW_FOCUS,
     );
     hyprrows::switch(
         &page,
@@ -436,12 +458,15 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
 
     let workspaces_section = page.section("select_window_2", &tr("Workspaces"));
+    hyprrows::combo(
+        &page,
+        &workspaces_section,
+        &options,
+        "history",
+        ("binds:workspace_back_and_forth", "0"),
+        &BACK_AND_FORTH,
+    );
     for (icon, label, option) in [
-        (
-            "history",
-            "Switching to the current workspace goes back to the last one",
-            "binds:workspace_back_and_forth",
-        ),
         (
             "repeat",
             "Moving past the last workspace wraps around",
