@@ -471,7 +471,7 @@ impl RegionSelector {
             window.set_anchor(edge, true);
         }
         window.set_exclusive_zone(-1);
-        window.set_keyboard_mode(KeyboardMode::OnDemand);
+        window.set_keyboard_mode(KeyboardMode::Exclusive);
 
         let fill_count = windows.len() + layers.len();
         let target_opacity = current_config.region.target_opacity;
