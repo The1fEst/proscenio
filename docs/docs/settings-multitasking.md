@@ -80,7 +80,7 @@ hl.window_rule({ name = "no-gaps-f1", match = { float = false, workspace = "f[1]
 | Column width (%) | `scrolling:column_width` | 10–100 %, stored as 0.1–1.0 |
 | Where new windows open | `scrolling:direction` | right, left, below (`down`) or above (`up`) |
 | How the focused column comes into view | `scrolling:focus_fit_method` | centered (`0`), or scrolled just enough to show it (`1`) |
-| Scroll to the focused window | `scrolling:follow_focus` | on or off |
+| Scroll to the focused window | `scrolling:follow_focus` | a number (`0` off, `1` or `2` on); the switch writes `true` or `false` and shows `2` as on; toggling replaces `2` with `1` or `0` |
 | A single column fills the screen | `scrolling:fullscreen_on_one_column` | on or off |
 
 ### Snapping
@@ -126,6 +126,9 @@ After Focus, a link row opens the Overview subpage.
 | Animate the wrap around | `animations:workspace_wraparound` |
 | Hide the special workspace when switching | `binds:hide_special_on_workspace_change` |
 | Close the special workspace once it is empty | `misc:close_special_on_empty` |
+
+`binds:workspace_back_and_forth` is a number (`0` off, `1` across all displays, `2` per display); the
+switch writes `true` or `false`, which Hyprland reads as `1` or `0`, and shows `2` as on; toggling replaces `2` with `1` or `0`.
 
 A link row opens the Swiping between workspaces subpage. Under **Distance between workspaces**,
 **Gap (px)** sets `general:gaps_workspaces`, from 0 to 500 px in steps of 10: how far apart two
