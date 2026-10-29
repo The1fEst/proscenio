@@ -7,7 +7,6 @@ use gtk4::gdk;
 use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
-use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
@@ -25,7 +24,7 @@ use crate::ui::widgets::coalesce;
 use crate::ui::widgets::display::text::Shift;
 use arrangement::{Drag, IDLE_DRAG, follow_drag};
 use buttons::{AppButton, overview_button, separator};
-use taskbar::{collect_entries, fetch_windows, targets};
+use taskbar::{WindowList, collect_entries, fetch_windows, targets};
 
 const NAMESPACE: &str = "proscenio:dock";
 const TRIGGER_NAMESPACE: &str = "proscenio:dockTrigger";
@@ -469,16 +468,14 @@ impl Dock {
     }
 
     fn refresh(self: &Rc<Self>) {
-        let (focused_address, clients) = fetch_windows();
-        self.refresh_with(&focused_address, &clients);
+        self.refresh_with(&fetch_windows());
     }
 
-    fn refresh_with(self: &Rc<Self>, focused_address: &str, clients: &[Value]) {
+    fn refresh_with(self: &Rc<Self>, windows: &WindowList) {
         let entries = collect_entries(
             &self.config.dock_pinned.borrow(),
             &self.ignore_patterns,
-            focused_address,
-            clients,
+            windows,
         );
         self.is_idle.set(
             !entries
@@ -658,9 +655,9 @@ fn refresh_docks() {
     if docks.is_empty() {
         return;
     }
-    let (focused_address, clients) = fetch_windows();
+    let windows = fetch_windows();
     for dock in docks {
-        dock.refresh_with(&focused_address, &clients);
+        dock.refresh_with(&windows);
     }
 }
 

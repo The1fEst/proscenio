@@ -26,6 +26,12 @@ The list comes from `dock.pinnedApps` and from Hyprland's list of windows:
   regular expressions in `dock.ignoredAppRegexes` gets no button; the match ignores case.
 - Up to three dots under an icon count the app's windows: short bars for one to three windows, small
   squares for more. They take the accent color while one of the app's windows has the focus.
+- Hyprland keeps no minimized state, so the dock calls a window minimized while it sits on a special
+  workspace that no monitor shows, such as a window moved to `special:minimized` or the hidden
+  scratchpad. Its dot is a 1 px outline instead of a filled bar, drawn after the filled ones and
+  keeping the last of the three places when there are more windows than places, and its preview card
+  is half transparent. The accent color follows the windows that are not minimized. Focusing the
+  window, from the button or from its card, shows the special workspace again.
 - With `dock.monochromeIcons` on, the default, icons are mostly desaturated and tinted toward the
   accent color.
 - `dock.iconSize` sets the icon size, 35 px by default. The buttons and the dock grow with it: a

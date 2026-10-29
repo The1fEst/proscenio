@@ -507,6 +507,10 @@ entry.search-input > text > selection {
     background-color: var(--colPrimary);
     border-radius: 9999px;
 }
+.dock-dot-minimized {
+    border: 1px solid alpha(var(--colOnLayer0), 0.6);
+    border-radius: 9999px;
+}
 /* GTK commits no buffer for a fully transparent surface, and an unmapped layer gets no pointer */
 .dock-trigger { background-color: rgba(0, 0, 0, 0.004); }
 .dock-preview {

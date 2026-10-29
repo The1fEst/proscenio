@@ -5,7 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
-use super::taskbar::{SEPARATOR, Window, targets};
+use super::taskbar::{DotStyle, SEPARATOR, Window, choose_dot_styles, targets};
 use super::{Dock, ELEVATION, GAPS_OUT, MOVE_MILLIS, Metrics, ROW_PADDING, refresh_docks};
 use crate::platform::hyprland::hypr;
 use crate::platform::system::desktop;
@@ -306,13 +306,12 @@ impl Dock {
             entry.dots.remove(&child);
         }
         let windows = entry.windows.borrow();
-        let has_active_window = windows.iter().any(|window| window.is_active);
-        for _ in 0..windows.len().min(MAX_DOTS) {
+        for style in choose_dot_styles(&windows, MAX_DOTS) {
             let dot = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
-            dot.add_css_class(if has_active_window {
-                "dock-dot-active"
-            } else {
-                "dock-dot"
+            dot.add_css_class(match style {
+                DotStyle::Active => "dock-dot-active",
+                DotStyle::Idle => "dock-dot",
+                DotStyle::Minimized => "dock-dot-minimized",
             });
             dot.set_size_request(
                 if windows.len() <= MAX_DOTS {

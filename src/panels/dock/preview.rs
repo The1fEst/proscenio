@@ -27,6 +27,7 @@ const CARD_SPACING: i32 = 5;
 const TITLE_MARGIN: i32 = 5;
 const CONTROLS_SPACING: i32 = 5;
 const BUTTON_SIDE_PADDING: i32 = 2;
+const MINIMIZED_OPACITY: f64 = 0.5;
 const PREVIEW_RADIUS: f32 = rounding::SMALL as f32;
 const SETTLE: Duration = Duration::from_millis(100);
 const FADE_MILLIS: f64 = 200.0;
@@ -36,6 +37,7 @@ const GIVE_UP: u32 = 3;
 pub struct Target {
     pub address: String,
     pub title: String,
+    pub is_minimized: bool,
 }
 
 struct Card {
@@ -304,6 +306,7 @@ impl Preview {
             let card = match old.iter().find(|card| card.address == target.address) {
                 Some(card) => {
                     card.title.set_text(&target.title);
+                    card.widget.set_opacity(choose_card_opacity(target));
                     card.clone()
                 }
                 None => {
@@ -386,6 +389,7 @@ impl Preview {
         let button = RippleButton::new(&self.theme);
         button.set_content(&column, BUTTON_SIDE_PADDING, 0);
         button.set_valign(gtk4::Align::Fill);
+        button.set_opacity(choose_card_opacity(target));
         button.connect_clicked({
             let address = target.address.clone();
             move |_| hypr::focus_window(&address)
@@ -462,6 +466,14 @@ fn follow(capture: &Rc<Capture>, card: Rc<Card>, preview: std::rc::Weak<Preview>
         capture.next_frame(&address, limit, on_capture);
     } else {
         capture.grab(&address, limit, on_capture);
+    }
+}
+
+fn choose_card_opacity(target: &Target) -> f64 {
+    if target.is_minimized {
+        MINIMIZED_OPACITY
+    } else {
+        1.0
     }
 }
 
