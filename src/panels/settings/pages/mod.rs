@@ -209,6 +209,7 @@ pub const PAGES: &[Entry] = &[
             "button",
             "scroll",
             "cursor",
+            "warp",
             "sensitivity",
         ],
     },
@@ -691,6 +692,7 @@ mod tests {
         assert_eq!(area_of("general:gaps_in"), Some(Area::Multitasking));
         assert_eq!(area_of("general:allow_tearing"), Some(Area::Displays));
         assert_eq!(area_of("cursor:enable_hyprcursor"), Some(Area::Appearance));
+        assert_eq!(area_of("cursor:warp_on_monitor_change"), Some(Area::Mouse));
         for option in [
             "misc:animate_manual_resizes",
             "misc:animate_mouse_windowdragging",

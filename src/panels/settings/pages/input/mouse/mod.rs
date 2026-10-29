@@ -12,7 +12,7 @@ use crate::platform::hyprland::hyprconfig::Area;
 use crate::services::hyprland::hyproptions::HyprOptions;
 use crate::ui::widgets::input::slider::Slider;
 
-pub const OPTIONS: [&str; 17] = [
+pub const OPTIONS: [&str; 18] = [
     "input:left_handed",
     "input:sensitivity",
     "input:accel_profile",
@@ -22,6 +22,7 @@ pub const OPTIONS: [&str; 17] = [
     "cursor:inactive_timeout",
     "cursor:hide_on_key_press",
     "cursor:no_hardware_cursors",
+    "cursor:warp_on_monitor_change",
     "input:touchpad:disable_while_typing",
     "input:touchpad:tap_to_click",
     "input:touchpad:tap_and_drag",
@@ -41,6 +42,12 @@ const HARDWARE_CURSORS: [(&str, &str); 3] = [
     ("The screen draws the pointer, except while tearing", "2"),
     ("The screen always draws the pointer", "0"),
     ("The pointer is drawn with the rest of the screen", "1"),
+];
+const WARP_ON_MONITOR_CHANGE: [(&str, &str); 4] = [
+    ("Same as for a workspace on the same display", "-1"),
+    ("Leave the pointer where it is", "0"),
+    ("Move the pointer to the last focused window", "1"),
+    ("Always move the pointer to the last focused window", "2"),
 ];
 pub(super) const SPEED: (f64, f64) = (-100.0, 100.0);
 
@@ -226,6 +233,19 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.tip(
         &hardware_combo.button,
         &tr("A pointer the screen draws itself stays smooth whatever the rest of the screen is doing.\nPick the last choice if the pointer disappears or is drawn in the wrong place."),
+    );
+    let warp_section = page.subsection(&pointer_section, &tr("Between displays"), "");
+    let warp_combo = hyprrows::combo(
+        &page,
+        &warp_section,
+        &options,
+        "ads_click",
+        ("cursor:warp_on_monitor_change", "-1"),
+        &WARP_ON_MONITOR_CHANGE,
+    );
+    page.tip(
+        &warp_combo.button,
+        &tr("Applies when a workspace on another display takes the focus.\nThe first choice follows cursor:warp_on_change_workspace, which is off unless the config sets it. The last choice also moves the pointer while cursor:no_warps is on."),
     );
 
     let touchpad_section = page.section("", "");

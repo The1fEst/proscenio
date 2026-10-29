@@ -59,6 +59,7 @@ want; with it on, the pointer speeds up as the mouse moves faster. A link row op
 | Hide when still for (s) | `cursor:inactive_timeout` | 0–20 s; 0 keeps the pointer on screen |
 | Hide while typing | `cursor:hide_on_key_press` | on or off |
 | Who draws the pointer | `cursor:no_hardware_cursors` | the screen, except while tearing (`2`); always the screen (`0`); drawn with the rest of the screen (`1`) |
+| Between displays | `cursor:warp_on_monitor_change` | as for a workspace on the same display (`-1`); leave the pointer (`0`); move it to the last focused window (`1`); move it there even while `cursor:no_warps` is on (`2`) |
 
 While a fullscreen window has focus, the shell turns **Hide while typing** off in the running
 Hyprland, so games that use the keyboard and the mouse together keep the pointer. The setting
@@ -66,6 +67,9 @@ applies again when focus leaves the window or it leaves fullscreen.
 
 A pointer the screen draws itself stays smooth whatever the rest of the screen is doing. The last
 choice is the one to pick when the pointer disappears or is drawn in the wrong place.
+
+**Between displays** applies when a workspace on another display takes the focus. The first choice
+follows `cursor:warp_on_change_workspace`, which Hyprland leaves off unless the config sets it.
 
 A link row after this section opens **Touchpad**.
 
