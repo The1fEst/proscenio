@@ -57,6 +57,41 @@ fn window_area(client: &Value, title_bar_height: Option<i32>) -> ((f64, f64), (f
     }
 }
 
+fn order_by_stacking(mut clients: Vec<Value>) -> Vec<Value> {
+    let is_floating =
+        |client: &Value| client.get("floating").and_then(Value::as_bool) == Some(true);
+    let is_fullscreen = |client: &Value| {
+        client
+            .get("fullscreen")
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+            > 0
+    };
+    let is_over_fullscreen = |client: &Value| {
+        is_floating(client)
+            && client.get("allowedOverFullscreen").and_then(Value::as_bool) == Some(true)
+    };
+    if clients.iter().any(is_fullscreen) {
+        clients.retain(|client| is_fullscreen(client) || is_over_fullscreen(client));
+    }
+    clients.sort_by_key(|client| {
+        let focus_history_id = client
+            .get("focusHistoryID")
+            .and_then(Value::as_i64)
+            .unwrap_or(i64::MAX);
+        (
+            is_fullscreen(client),
+            !is_floating(client),
+            if is_floating(client) {
+                focus_history_id
+            } else {
+                0
+            },
+        )
+    });
+    clients
+}
+
 pub(super) fn targets(
     name: &str,
     offset: (f64, f64),
@@ -98,23 +133,17 @@ pub(super) fn targets(
             })
         })
         .collect();
-    let mut clients: Vec<Value> = hypr::json("clients")
-        .and_then(|value| value.as_array().cloned())
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|client| {
-            client.pointer("/workspace/id").and_then(Value::as_i64)
-                == Some(active_workspace_id as i64)
-        })
-        .collect();
-    clients.sort_by_key(|client| {
-        let is_floating = client.get("floating").and_then(Value::as_bool) == Some(true);
-        let focus_history_id = client
-            .get("focusHistoryID")
-            .and_then(Value::as_i64)
-            .unwrap_or(i64::MAX);
-        (!is_floating, if is_floating { focus_history_id } else { 0 })
-    });
+    let clients = order_by_stacking(
+        hypr::json("clients")
+            .and_then(|value| value.as_array().cloned())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|client| {
+                client.pointer("/workspace/id").and_then(Value::as_i64)
+                    == Some(active_workspace_id as i64)
+            })
+            .collect(),
+    );
     let default_rounding = hypr::option_int("decoration:rounding").unwrap_or(0) as f64;
     let window_rounding = |client: &Value| {
         if client
@@ -170,6 +199,80 @@ mod tests {
             "class": class,
             "title": title,
         })
+    }
+
+    fn build_stacked_client(
+        class: &str,
+        floating: bool,
+        fullscreen: i64,
+        allowed_over_fullscreen: bool,
+        focus_history_id: i64,
+    ) -> Value {
+        json!({
+            "class": class,
+            "floating": floating,
+            "fullscreen": fullscreen,
+            "allowedOverFullscreen": allowed_over_fullscreen,
+            "focusHistoryID": focus_history_id,
+        })
+    }
+
+    #[test]
+    fn fullscreen_window_hides_what_is_not_allowed_over_it() {
+        let cases = [
+            (
+                "no fullscreen",
+                vec![
+                    build_stacked_client("tiled", false, 0, false, 3),
+                    build_stacked_client("back", true, 0, false, 2),
+                    build_stacked_client("front", true, 0, false, 0),
+                ],
+                vec!["front", "back", "tiled"],
+            ),
+            (
+                "tiled fullscreen",
+                vec![
+                    build_stacked_client("sibling", false, 0, false, 2),
+                    build_stacked_client("full", false, 2, false, 0),
+                    build_stacked_client("hidden", true, 0, false, 1),
+                ],
+                vec!["full"],
+            ),
+            (
+                "allowed over fullscreen",
+                vec![
+                    build_stacked_client("full", false, 2, false, 0),
+                    build_stacked_client("pinned", true, 0, true, 1),
+                    build_stacked_client("hidden", true, 0, false, 2),
+                ],
+                vec!["pinned", "full"],
+            ),
+            (
+                "floating fullscreen",
+                vec![
+                    build_stacked_client("full", true, 2, false, 0),
+                    build_stacked_client("pinned", true, 0, true, 1),
+                    build_stacked_client("tiled", false, 0, false, 2),
+                ],
+                vec!["pinned", "full"],
+            ),
+            (
+                "maximized",
+                vec![
+                    build_stacked_client("full", false, 1, false, 1),
+                    build_stacked_client("sibling", false, 0, false, 0),
+                ],
+                vec!["full"],
+            ),
+        ];
+        for (name, clients, expected) in cases {
+            let ordered = order_by_stacking(clients);
+            let classes: Vec<&str> = ordered
+                .iter()
+                .map(|client| client["class"].as_str().unwrap())
+                .collect();
+            assert_eq!(classes, expected, "{name}");
+        }
     }
 
     #[test]
