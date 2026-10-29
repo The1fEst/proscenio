@@ -59,7 +59,7 @@ main loop and hands each line to whoever subscribed to `Events`.
 
 | Events | What follows |
 |---|---|
-| `workspace`, `focusedmon`, `createworkspace`, `destroyworkspace`, `moveworkspace`, `activespecial`, `openwindow`, `closewindow`, `movewindow`, `activewindow`, `fullscreen`, `monitoradded`, `monitorremoved`, `configreloaded`, with their `v2` forms | The state snapshot is read again |
+| `workspace`, `focusedmon`, `createworkspace`, `destroyworkspace`, `moveworkspace`, `changeworkspaceid`, `renameworkspace`, `activespecial`, `openwindow`, `closewindow`, `movewindow`, `activewindow`, `fullscreen`, `monitoradded`, `monitorremoved`, `configreloaded`, with their `v2` forms where they have one | The state snapshot is read again |
 | `activelayout` | The keyboard layout button changes |
 | `configreloaded` | The screen rounding is read again, and the shortcut editors read the binds again |
 | `bell` | The screen flashes, when `accessibility.flashOnBell` is on |

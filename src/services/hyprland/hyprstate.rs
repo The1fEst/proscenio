@@ -6,9 +6,11 @@ use std::rc::Rc;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::platform::hyprland::hypr::{self, Events};
 
-const EVENTS: [&str; 24] = [
+const EVENTS: [&str; 26] = [
     "workspace",
     "workspacev2",
+    "changeworkspaceid",
+    "renameworkspace",
     "focusedmon",
     "focusedmonv2",
     "createworkspace",
@@ -113,5 +115,16 @@ impl HyprState {
                 state.refresh();
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_workspace_that_changes_its_id_or_name_refreshes_the_snapshot() {
+        assert!(EVENTS.contains(&"changeworkspaceid"));
+        assert!(EVENTS.contains(&"renameworkspace"));
     }
 }
