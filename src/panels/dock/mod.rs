@@ -25,7 +25,7 @@ use crate::ui::widgets::coalesce;
 use crate::ui::widgets::display::text::Shift;
 use arrangement::{Drag, IDLE_DRAG, follow_drag};
 use buttons::{AppButton, overview_button, separator};
-use taskbar::{WindowList, collect_entries, fetch_windows, targets};
+use taskbar::{WindowList, collect_entries, fetch_windows, is_monitor_idle, targets};
 
 const NAMESPACE: &str = "proscenio:dock";
 const TRIGGER_NAMESPACE: &str = "proscenio:dockTrigger";
@@ -95,6 +95,7 @@ struct Dock {
     is_hovered: Cell<bool>,
     hover_check: Cell<Option<glib::SourceId>>,
     pointer_controllers: PointerControllers,
+    connector: String,
     is_idle: Cell<bool>,
     area: gtk4::Box,
     shift: Shift,
@@ -224,6 +225,7 @@ pub fn open(
             approach: approach_controller.clone(),
             drag_approach: drag_approach.clone(),
         },
+        connector: connector.clone(),
         is_idle: Cell::new(true),
         area: area.clone(),
         shift,
@@ -526,11 +528,7 @@ impl Dock {
             windows,
             |address| self.urgent_windows.contains(address),
         );
-        self.is_idle.set(
-            !entries
-                .iter()
-                .any(|entry| entry.windows.iter().any(|window| window.is_active)),
-        );
+        self.is_idle.set(is_monitor_idle(windows, &self.connector));
         let mut old = self.buttons.take();
         let dragged_id = usize::try_from(self.drag.get().index)
             .ok()

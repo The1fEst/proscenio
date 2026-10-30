@@ -1,6 +1,7 @@
 use gtk4::glib;
 use gtk4::glib::IntoGStr;
 use serde_json::Value;
+use std::collections::HashMap;
 
 use crate::panels::dock::preview::Target;
 use crate::platform::hyprland::hypr;
@@ -26,6 +27,7 @@ pub(super) struct WindowList {
     pub(super) focused_address: String,
     pub(super) clients: Vec<Value>,
     pub(super) shown_special_workspaces: Option<Vec<String>>,
+    pub(super) visible_workspace_ids: HashMap<String, Vec<i64>>,
 }
 
 pub(super) fn fetch_windows() -> WindowList {
@@ -41,22 +43,50 @@ pub(super) fn fetch_windows() -> WindowList {
         Some(Value::Array(clients)) => clients,
         _ => Vec::new(),
     };
-    let shown_special_workspaces = match hypr::json("monitors") {
-        Some(Value::Array(monitors)) => Some(
-            monitors
-                .iter()
-                .filter_map(|monitor| monitor.pointer("/specialWorkspace/name")?.as_str())
-                .filter(|name| !name.is_empty())
-                .map(str::to_owned)
-                .collect(),
-        ),
+    let monitors = match hypr::json("monitors") {
+        Some(Value::Array(monitors)) => Some(monitors),
         _ => None,
     };
+    let shown_special_workspaces = monitors.as_ref().map(|monitors| {
+        monitors
+            .iter()
+            .filter_map(|monitor| monitor.pointer("/specialWorkspace/name")?.as_str())
+            .filter(|name| !name.is_empty())
+            .map(str::to_owned)
+            .collect()
+    });
+    let visible_workspace_ids = monitors
+        .iter()
+        .flatten()
+        .filter_map(|monitor| {
+            let name = monitor.get("name")?.as_str()?.to_owned();
+            let ids = ["/activeWorkspace/id", "/specialWorkspace/id"]
+                .iter()
+                .filter_map(|pointer| monitor.pointer(pointer)?.as_i64())
+                .filter(|id| *id != 0)
+                .collect();
+            Some((name, ids))
+        })
+        .collect();
     WindowList {
         focused_address,
         clients,
         shown_special_workspaces,
+        visible_workspace_ids,
     }
+}
+
+pub(super) fn is_monitor_idle(windows: &WindowList, connector: &str) -> bool {
+    let Some(visible_ids) = windows.visible_workspace_ids.get(connector) else {
+        return true;
+    };
+    !windows.clients.iter().any(|client| {
+        client.get("mapped").and_then(Value::as_bool) != Some(false)
+            && client
+                .pointer("/workspace/id")
+                .and_then(Value::as_i64)
+                .is_some_and(|id| visible_ids.contains(&id))
+    })
 }
 
 fn is_minimized(client: &Value, shown_special_workspaces: &[String]) -> bool {
@@ -223,6 +253,7 @@ mod tests {
                     client("0x4", "kitty", false),
                 ],
                 shown_special_workspaces: None,
+                visible_workspace_ids: HashMap::new(),
             },
             |_| false,
         );
@@ -271,6 +302,7 @@ mod tests {
                         client("0x3", "special", "special:magic"),
                     ],
                     shown_special_workspaces,
+                    visible_workspace_ids: HashMap::new(),
                 },
                 |_| false,
             );
@@ -293,6 +325,31 @@ mod tests {
                 .iter()
                 .all(|(_, is_minimized)| !is_minimized)
         );
+    }
+
+    #[test]
+    fn a_monitor_is_idle_while_no_mapped_window_is_on_the_workspaces_it_shows() {
+        let client = |workspace_id: i64, is_mapped: bool| serde_json::json!({"mapped": is_mapped, "workspace": {"id": workspace_id}});
+        let is_idle = |client: Value| {
+            is_monitor_idle(
+                &WindowList {
+                    focused_address: "0x1".to_owned(),
+                    clients: vec![client],
+                    shown_special_workspaces: None,
+                    visible_workspace_ids: HashMap::from([
+                        ("DP-1".to_owned(), vec![1, -98]),
+                        ("DP-2".to_owned(), vec![2, -97]),
+                    ]),
+                },
+                "DP-2",
+            )
+        };
+        assert!(is_idle(client(1, true)));
+        assert!(is_idle(client(-98, true)));
+        assert!(is_idle(client(-99, true)));
+        assert!(is_idle(client(2, false)));
+        assert!(!is_idle(client(2, true)));
+        assert!(!is_idle(client(-97, true)));
     }
 
     #[test]
@@ -346,6 +403,7 @@ mod tests {
                 focused_address: String::new(),
                 clients: vec![client("0x1"), client("0x2")],
                 shown_special_workspaces: None,
+                visible_workspace_ids: HashMap::new(),
             },
             |address| address == "0x2",
         );

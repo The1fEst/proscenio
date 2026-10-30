@@ -79,7 +79,8 @@ The dock is shown while any of these is true:
 - it is pinned;
 - the pointer, or a drag from another app, is over it, with `dock.hoverToReveal` on (the default);
 - a window preview is open;
-- none of its apps has the focused window, as on an empty workspace;
+- its monitor shows no window: none is on the monitor's active workspace or on the special workspace
+  shown there;
 - a window listed in it asked for attention less than 2 s ago and was still unfocused 150 ms after
   asking, which a window that Hyprland focuses at once (`misc:focus_on_activate`) never is.
 
