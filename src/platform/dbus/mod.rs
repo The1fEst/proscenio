@@ -2,6 +2,7 @@ pub mod dbusmenu;
 pub mod fprint;
 pub mod geoclue;
 pub mod ipc;
+pub mod lockhint;
 pub mod notify;
 pub mod powersettings;
 pub mod sleep;

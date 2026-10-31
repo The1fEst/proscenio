@@ -19,6 +19,7 @@ clock, with the password field and a few controls along the bottom edge.
 | The `lock` global shortcut | At once |
 | `proscenio ipc call lock activate` | At once |
 | `lock.launchOnStartup` | When the shell starts in a new Hyprland session |
+| Starting the shell while the session is locked | At once, see [Restarting while locked](#restarting-while-locked) |
 | `loginctl lock-session` | When the program that answers logind's lock request starts the lock |
 
 `loginctl lock-session` is what the [session screen](session-screen.md)'s **Lock** button, the
@@ -45,6 +46,31 @@ frame, for at most 2 seconds, or 500 ms when no lock starts. After waking, it re
 surfaces of the monitors still connected with new ones, because a frame sent just before sleep may
 never be confirmed, and GTK draws nothing more until it is. Every connected monitor without a lock
 surface then gets one.
+
+### Restarting while locked
+
+When the shell crashes or restarts while the screen is locked, Hyprland keeps the session locked and
+shows its "lockdead" screen. The shell that starts next locks again at once and takes the password
+as before; for Hyprland to hand the session to the new lock, `misc.allow_session_lock_restore` has
+to be on, and without it the "lockdead" screen stays. Unlocking returns each monitor to the
+workspace it was on before the first lock.
+
+While its lock holds, proscenio sets logind's `LockedHint` on the session, which
+`loginctl show-session --property=LockedHint` shows, and it clears the hint when the lock lifts. At
+start, the shell decides:
+
+| Hyprland's lock state | Hyprland instance | `LockedHint` | Locks |
+|---|---|---|---|
+| Locked | Any | Any | Yes |
+| Unlocked | The same as at the previous start | Any | No, and a set hint is cleared |
+| Unknown, without `hyprland-lock-notify-v1` | The same as at the previous start | Set | Yes |
+| Unknown, without `hyprland-lock-notify-v1` | The same as at the previous start | Not set | No |
+| Unlocked or unknown | New | Set | Yes |
+| Unlocked or unknown | New | Not set | Only with `lock.launchOnStartup` |
+
+Within one Hyprland instance, Hyprland's own state decides, so a hint left set by a shell killed
+right after unlocking never locks an open desktop. The hint decides when Hyprland itself was
+restarted inside the same logind session while locked, which would otherwise open the desktop.
 
 ## What the lock screen shows
 
@@ -181,7 +207,10 @@ fprintd's `net.reactivated.Fprint` interface.
 proscenio also follows the session's lock state through `hyprland-lock-notify-v1`
 (`src/platform/wayland/locknotify.rs`). Once its lock has been confirmed, a session that turns
 unlocked means another program lifted it, and proscenio drops its own lock and puts the desktop
-back.
+back. At start, proscenio waits for Hyprland's answer to the lock notification request, which
+reports a session that is already locked, before it decides whether to lock.
+`src/platform/dbus/lockhint.rs` reads and sets `LockedHint` on logind's
+`/org/freedesktop/login1/session/auto`.
 
 The fingerprint goes through fprintd's D-Bus interface rather than a second PAM conversation,
 because a D-Bus verification can be stopped when the password unlocks first, and a blocking

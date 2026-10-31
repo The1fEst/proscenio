@@ -73,10 +73,14 @@ impl LockNotifier {
         on_disconnected: impl Fn() + 'static,
     ) -> Option<Rc<Self>> {
         let connection = Connection::connect_to_env().ok()?;
-        let (globals, queue) = globals::registry_queue_init::<State>(&connection).ok()?;
+        let (globals, mut queue) = globals::registry_queue_init::<State>(&connection).ok()?;
         let notifier: HyprlandLockNotifierV1 = globals.bind(&queue.handle(), 1..=1, ()).ok()?;
         let notification = notifier.get_lock_notification(&queue.handle(), ());
-        let _ = connection.flush();
+        let mut state = State::default();
+        queue.roundtrip(&mut state).ok()?;
+        for is_locked in state.changes {
+            on_change(is_locked);
+        }
 
         let lock_notifier = Rc::new(LockNotifier {
             connection,

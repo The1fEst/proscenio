@@ -13,6 +13,7 @@ use std::time::Duration;
 use crate::core::listeners::Listeners;
 use crate::core::{config, persistent};
 use crate::platform::dbus::fprint::Reader;
+use crate::platform::dbus::lockhint;
 use crate::platform::dbus::sleep::SleepWatcher;
 use crate::platform::hyprland::hypr;
 use crate::platform::security::pam;
@@ -149,6 +150,28 @@ fn choose_stall_action(stall: Duration, replacement_count: u32) -> StallAction {
 
 fn is_ready_for_sleep(is_granted: bool, settled_flags: &[bool]) -> bool {
     is_granted && !settled_flags.is_empty() && settled_flags.iter().all(|is_settled| *is_settled)
+}
+
+fn should_lock_at_start(
+    is_locked_hint_set: bool,
+    is_compositor_locked: Option<bool>,
+    is_new_instance: bool,
+    should_launch_on_startup: bool,
+) -> bool {
+    if is_compositor_locked == Some(true) {
+        return true;
+    }
+    if is_new_instance {
+        return should_launch_on_startup || is_locked_hint_set;
+    }
+    is_compositor_locked.is_none() && is_locked_hint_set
+}
+
+fn resolve_original_workspace(active_workspace: i64) -> i64 {
+    if active_workspace > HIDDEN_WORKSPACE / 2 {
+        return HIDDEN_WORKSPACE - active_workspace;
+    }
+    active_workspace
 }
 
 impl Lock {
@@ -490,6 +513,7 @@ impl Lock {
             notifier.pump();
         }
         self.is_granted.set(true);
+        lockhint::set(true);
         self.has_seen_session_lock.set(self.is_session_locked.get());
         if !self.services.states.is_screen_locked.get() {
             self.services.states.set_screen_locked(true);
@@ -527,9 +551,25 @@ impl Lock {
     }
 
     pub fn start(self: &Rc<Self>) {
+        let is_compositor_locked = self
+            .notifier
+            .borrow()
+            .is_some()
+            .then(|| self.is_session_locked.get());
+        let is_locked_hint_set = is_compositor_locked != Some(true) && lockhint::is_set();
         let is_new_instance = persistent::is_new_hyprland_instance();
-        if is_new_instance && config::value_bool("/lock/launchOnStartup", false) {
+        let should_launch_on_startup = config::value_bool("/lock/launchOnStartup", false);
+        if should_lock_at_start(
+            is_locked_hint_set,
+            is_compositor_locked,
+            is_new_instance,
+            should_launch_on_startup,
+        ) {
             self.lock();
+            return;
+        }
+        if is_locked_hint_set {
+            lockhint::set(false);
         }
     }
 
@@ -542,14 +582,17 @@ impl Lock {
             let Some(name) = monitor.get("name").and_then(|name| name.as_str()) else {
                 return;
             };
-            let Some(workspace) = monitor
+            let Some(active_workspace) = monitor
                 .get("activeWorkspace")
                 .and_then(|workspace| workspace.get("id"))
                 .and_then(|id| id.as_i64())
             else {
                 return;
             };
-            workspaces.push((name.to_owned(), workspace));
+            workspaces.push((
+                name.to_owned(),
+                resolve_original_workspace(active_workspace),
+            ));
         }
         for (name, workspace) in &workspaces {
             hypr::request(&format!("dispatch hl.dsp.focus({{monitor=\"{name}\"}})"));
@@ -575,7 +618,9 @@ impl Lock {
         if let Some(grant_timer) = self.grant_timer.take() {
             grant_timer.remove();
         }
-        self.is_granted.set(false);
+        if self.is_granted.replace(false) {
+            lockhint::set(false);
+        }
         self.has_seen_session_lock.set(false);
         self.instance.replace(None);
         self.stop_finger();
@@ -758,6 +803,63 @@ mod tests {
                 is_ready_for_sleep(is_granted, settled_flags),
                 is_ready,
                 "{is_granted} {settled_flags:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_shell_locks_at_start_when_the_session_was_left_locked() {
+        let cases = [
+            (false, Some(false), false, false, false),
+            (false, Some(false), false, true, false),
+            (false, Some(false), true, false, false),
+            (false, Some(false), true, true, true),
+            (false, Some(true), false, false, true),
+            (false, Some(true), true, false, true),
+            (true, Some(true), false, false, true),
+            (true, Some(false), false, false, false),
+            (true, Some(false), false, true, false),
+            (true, Some(false), true, false, true),
+            (true, None, false, false, true),
+            (true, None, true, false, true),
+            (false, None, false, false, false),
+            (false, None, true, false, false),
+            (false, None, true, true, true),
+        ];
+        for (
+            is_locked_hint_set,
+            is_compositor_locked,
+            is_new_instance,
+            should_launch_on_startup,
+            should_lock,
+        ) in cases
+        {
+            assert_eq!(
+                should_lock_at_start(
+                    is_locked_hint_set,
+                    is_compositor_locked,
+                    is_new_instance,
+                    should_launch_on_startup
+                ),
+                should_lock,
+                "{is_locked_hint_set} {is_compositor_locked:?} {is_new_instance} {should_launch_on_startup}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_workspace_hidden_by_an_earlier_lock_resolves_to_the_original_one() {
+        let cases = [
+            (1, 1),
+            (-98, -98),
+            (HIDDEN_WORKSPACE - 3, 3),
+            (HIDDEN_WORKSPACE + 98, -98),
+        ];
+        for (active_workspace, original_workspace) in cases {
+            assert_eq!(
+                resolve_original_workspace(active_workspace),
+                original_workspace,
+                "{active_workspace}"
             );
         }
     }
