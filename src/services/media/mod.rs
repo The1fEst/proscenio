@@ -1,4 +1,5 @@
 pub mod audio;
+pub mod audiodevices;
 pub mod cameras;
 pub mod deviceusage;
 pub mod easyeffects;

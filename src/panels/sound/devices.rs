@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::core::config;
-use crate::services::media::audio::{Audio, Device, resolve_alias};
+use crate::services::media::audio::Audio;
+use crate::services::media::audiodevices::{Device, resolve_alias};
 use crate::ui::widgets::input::controls::ComboBox;
 
 struct Choice {
@@ -131,7 +132,7 @@ fn resolve_current_index(choices: &[Choice], current_name: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::media::audio::Port;
+    use crate::services::media::audiodevices::Port;
     use libpulse_binding::def::PortAvailable;
 
     fn device(name: &str, description: &str, nick: &str) -> Device {

@@ -11,6 +11,7 @@ use crate::panels::settings::content::inputs::slider_row;
 use crate::panels::settings::content::{Context, Page, Style};
 use crate::panels::sound::devices::DevicePicker;
 use crate::services::media::audio::{self, Audio};
+use crate::services::media::audiodevices;
 use crate::ui::widgets::input::controls::ConfigSwitch;
 use crate::ui::widgets::input::slider::Slider;
 use crate::ui::widgets::input::textfield::TextField;
@@ -223,7 +224,7 @@ fn side(page: &Page, audio: &Audio, is_sink: bool) -> Rc<Side> {
             move |alias| {
                 let name = audio.default_name(is_sink);
                 if !name.is_empty() {
-                    audio::store_alias(&name, &alias);
+                    audiodevices::store_alias(&name, &alias);
                 }
             }
         },
