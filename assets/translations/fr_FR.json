@@ -1580,5 +1580,6 @@
   "Copied to the clipboard and saved as %1": "Copiée dans le presse-papiers et enregistrée sous %1",
   "Saved as %1": "Enregistrée sous %1",
   "Open folder": "Ouvrir le dossier",
-  "Notify after a screenshot": "Notifier après une capture d'écran"
+  "Notify after a screenshot": "Notifier après une capture d'écran",
+  "Custom name": "Nom personnalisé"
 }

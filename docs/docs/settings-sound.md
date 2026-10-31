@@ -19,6 +19,7 @@ notice saying so.
 | Control | Does |
 |---|---|
 | Device | the default output (sink) or input (source); a device whose description starts with its short name shows as "*short name* · *the rest*". An output with two or more available ports, such as Speakers and Headphones on one card, is listed once per port as "*device* · *port*"; picking one switches the sink to that port and makes it the default. Ports that are not available, such as an unplugged jack, are not listed |
+| Custom name | a name for the default device, kept under its sound server name in `audio.aliases` of `~/.config/proscenio/config.toml`; it replaces the device's description in the Device list, the [volume mixer](volume-mixer.md) and the microphone entry of the [privacy indicator](bar.md#privacy-indicator). An empty field brings the description back. Pick another device first to name that one |
 | Volume | the default device's volume, 0 to 100 % |
 | Mute | mutes the default device |
 

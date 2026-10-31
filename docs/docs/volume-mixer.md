@@ -33,7 +33,7 @@ From top to bottom:
 
 | Part | What it does |
 |---|---|
-| Device | The default output (sink). Clicking it unfolds the list of outputs inside the panel; picking one makes it the default and folds the list. A device whose description starts with its short name shows as "*short name* · *the rest*". An output with two or more available ports is listed once per port as "*device* · *port*", and picking one also switches the sink to that port. |
+| Device | The default output (sink). Clicking it unfolds the list of outputs inside the panel; picking one makes it the default and folds the list. A device whose description starts with its short name shows as "*short name* · *the rest*". An output with two or more available ports is listed once per port as "*device* · *port*", and picking one also switches the sink to that port. A device with a custom name from the [Sound settings](settings-sound.md) shows that name instead. |
 | Volume | The default output's volume, 0 to 100 %. The speaker beside it mutes or unmutes the output. |
 | Apps | One row per app playing sound, as on the Volume Levels page: its icon, its name and what it plays, a volume slider, and a click on the icon to mute it. *Nothing is playing* while there are none. |
 | Volume Levels | Closes the panel and opens the Volume Levels page of the [Sound settings](settings-sound.md). |

@@ -1580,5 +1580,6 @@
   "Copied to the clipboard and saved as %1": "Panoya kopyalandı ve %1 olarak kaydedildi",
   "Saved as %1": "%1 olarak kaydedildi",
   "Open folder": "Klasörü aç",
-  "Notify after a screenshot": "Ekran görüntüsünden sonra bildirim göster"
+  "Notify after a screenshot": "Ekran görüntüsünden sonra bildirim göster",
+  "Custom name": "Özel ad"
 }

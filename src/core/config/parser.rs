@@ -1,5 +1,6 @@
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 
 use super::{
     CHEATSHEET_SUPER_KEY, Config, CornerStyle, DARK_MODE_DARK_FROM, DARK_MODE_LIGHT_FROM,
@@ -429,8 +430,24 @@ impl Config {
                 max_allowed_increase: number(&protection, "maxAllowedIncrease", 10.0) / 100.0,
                 max_allowed: number(&protection, "maxAllowed", 99.0) / 100.0,
             },
+            audio_aliases: read_aliases(root),
         }
     }
+}
+
+fn read_aliases(root: &Value) -> HashMap<String, String> {
+    root.pointer("/audio/aliases")
+        .and_then(Value::as_object)
+        .map(|aliases| {
+            aliases
+                .iter()
+                .filter_map(|(name, alias)| {
+                    let alias = alias.as_str()?.trim();
+                    (!alias.is_empty()).then(|| (name.clone(), alias.to_owned()))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 const DEFAULT_TOGGLES: [(&str, i32); 6] = [
@@ -540,6 +557,23 @@ mod tests {
         assert_eq!(
             Config::parse(&json!({})).night_schedule,
             ScheduleMode::Times
+        );
+    }
+
+    #[test]
+    fn audio_aliases_keep_trimmed_text_values_by_device_name() {
+        assert!(read_aliases(&json!({})).is_empty());
+        let root = json!({ "audio": { "aliases": {
+            "alsa_output.pci-0000_00_1f.3.analog-stereo": " Desk speakers ",
+            "blank": "  ",
+            "number": 3,
+        } } });
+        assert_eq!(
+            Config::parse(&root).audio_aliases,
+            HashMap::from([(
+                "alsa_output.pci-0000_00_1f.3.analog-stereo".to_owned(),
+                "Desk speakers".to_owned()
+            )])
         );
     }
 

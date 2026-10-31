@@ -8,11 +8,12 @@ use std::rc::Rc;
 use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::inputs::slider_row;
-use crate::panels::settings::content::{Context, Page};
+use crate::panels::settings::content::{Context, Page, Style};
 use crate::panels::sound::devices::DevicePicker;
 use crate::services::media::audio::{self, Audio};
 use crate::ui::widgets::input::controls::ConfigSwitch;
 use crate::ui::widgets::input::slider::Slider;
+use crate::ui::widgets::input::textfield::TextField;
 
 const PERCENT: (f64, f64) = (0.0, 100.0);
 const PROTECTION: &str = "/audio/protection/enable";
@@ -24,6 +25,7 @@ const NO_THEME: &str = "No sound theme is installed in /usr/share/sounds, so ale
 struct Side {
     is_sink: bool,
     picker: Rc<DevicePicker>,
+    alias_field: Rc<TextField>,
     slider: Rc<Slider>,
     mute_switch: Rc<ConfigSwitch>,
 }
@@ -202,6 +204,30 @@ fn side(page: &Page, audio: &Audio, is_sink: bool) -> Rc<Side> {
     let section = page.section(icon, &tr(title));
     let group = page.subsection(&section, &tr("Device"), "");
     let combo = page.combo(&group, if is_sink { "speaker" } else { "mic" });
+    let alias_field = page.text_field(
+        &group,
+        Style::Outlined,
+        &tr("Custom name"),
+        {
+            let audio = audio.clone();
+            move || {
+                config::current()
+                    .audio_aliases
+                    .get(&audio.default_name(is_sink))
+                    .cloned()
+                    .unwrap_or_default()
+            }
+        },
+        {
+            let audio = audio.clone();
+            move |alias| {
+                let name = audio.default_name(is_sink);
+                if !name.is_empty() {
+                    audio::store_alias(&name, &alias);
+                }
+            }
+        },
+    );
     let (slider, _) = slider_row(&page.theme, &section, slider_icon, &tr("Volume"), PERCENT);
     let mute_switch = page.switch(&section, mute_icon, &tr("Mute"), {
         let audio = audio.clone();
@@ -224,6 +250,7 @@ fn side(page: &Page, audio: &Audio, is_sink: bool) -> Rc<Side> {
     let side = Rc::new(Side {
         is_sink,
         picker: DevicePicker::new(combo, audio, is_sink),
+        alias_field,
         slider,
         mute_switch,
     });
@@ -253,4 +280,5 @@ fn refresh_side(audio: &Audio, side: &Rc<Side>) {
     show_percent(&side.slider, (volume * 100.0).round());
     side.mute_switch.set(is_muted);
     side.picker.refresh();
+    side.alias_field.refresh();
 }

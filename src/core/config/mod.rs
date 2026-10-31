@@ -2,6 +2,7 @@ mod parser;
 
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 use toml_edit::{DocumentMut, Item, TableLike};
@@ -240,6 +241,7 @@ pub struct Config {
     pub sounds_devices: bool,
     pub sounds_theme: String,
     pub protection: crate::services::media::audio::Protection,
+    pub audio_aliases: HashMap<String, String>,
 }
 
 impl Config {
@@ -656,5 +658,14 @@ mod tests {
                 "{pointer}"
             );
         }
+    }
+
+    #[test]
+    fn device_aliases_with_dots_in_their_names_survive_a_write() {
+        let name = "alsa_output.pci-0000_00_1f.3.analog-stereo";
+        let aliases = json!({ name: "Desk" });
+        let text = with_value("", "/audio/aliases", &aliases).unwrap();
+        let root: Value = toml_edit::de::from_str(&text).unwrap();
+        assert_eq!(root.pointer("/audio/aliases"), Some(&aliases));
     }
 }

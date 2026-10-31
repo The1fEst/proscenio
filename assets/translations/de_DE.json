@@ -1580,5 +1580,6 @@
   "Copied to the clipboard and saved as %1": "In die Zwischenablage kopiert und als %1 gespeichert",
   "Saved as %1": "Als %1 gespeichert",
   "Open folder": "Ordner öffnen",
-  "Notify after a screenshot": "Nach einem Screenshot benachrichtigen"
+  "Notify after a screenshot": "Nach einem Screenshot benachrichtigen",
+  "Custom name": "Eigener Name"
 }

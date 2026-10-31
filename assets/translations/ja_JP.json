@@ -1580,5 +1580,6 @@
   "Copied to the clipboard and saved as %1": "クリップボードにコピーし、%1 として保存しました",
   "Saved as %1": "%1 として保存しました",
   "Open folder": "フォルダを開く",
-  "Notify after a screenshot": "スクリーンショットの後に通知する"
+  "Notify after a screenshot": "スクリーンショットの後に通知する",
+  "Custom name": "カスタム名"
 }

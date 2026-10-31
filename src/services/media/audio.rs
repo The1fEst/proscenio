@@ -6,6 +6,7 @@ use libpulse_binding::context::{Context, FlagSet, State};
 use libpulse_binding::def::PortAvailable;
 use libpulse_binding::volume::{ChannelVolumes, Volume};
 use libpulse_glib_binding::Mainloop;
+use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -13,13 +14,14 @@ use std::time::Duration;
 
 use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::{assets, config, process};
+use crate::core::{assets, config, process, watch};
 use crate::platform::dbus::notify::{self, Notification};
 
 const HARD_MAX: f64 = 2.0;
 const SETTLE_DELAY: Duration = Duration::from_secs(3);
 const RECONNECT_DELAY: Duration = Duration::from_secs(1);
 const PRO_AUDIO_PROFILE: &str = "pro-audio";
+const ALIASES: &str = "/audio/aliases";
 
 #[derive(Clone, Copy)]
 pub struct Protection {
@@ -87,6 +89,7 @@ pub struct Audio {
     last_volume: Rc<Cell<f64>>,
     is_settled: Rc<Cell<bool>>,
     is_reconnecting: Rc<Cell<bool>>,
+    alias_watch: Rc<RefCell<Option<watch::Watch>>>,
     mainloop: Rc<Mainloop>,
     context: Rc<RefCell<Context>>,
 }
@@ -115,6 +118,7 @@ impl Audio {
             last_volume: Rc::new(Cell::new(0.0)),
             is_settled: Rc::new(Cell::new(false)),
             is_reconnecting: Rc::new(Cell::new(false)),
+            alias_watch: Rc::default(),
             mainloop: Rc::new(mainloop),
             context: Rc::new(RefCell::new(context)),
         };
@@ -122,6 +126,13 @@ impl Audio {
         let is_settled = audio.is_settled.clone();
         glib::timeout_add_local_once(SETTLE_DELAY, move || is_settled.set(true));
         audio.follow();
+        audio.alias_watch.replace(Some(watch::config(ALIASES, {
+            let audio = audio.clone();
+            move || {
+                audio.refresh_recorders();
+                audio.watchers.notify();
+            }
+        })));
         Some(audio)
     }
 
@@ -298,12 +309,17 @@ impl Audio {
         };
         let audio = self.clone();
         let sources: Rc<RefCell<HashMap<u32, (String, bool)>>> = Rc::default();
+        let aliases = config::current().audio_aliases.clone();
         introspect.get_source_info_list(move |result| match result {
             ListResult::Item(info) => {
+                let name = info.name.as_deref().unwrap_or_default();
                 let description = info.description.as_deref().unwrap_or_default();
                 sources.borrow_mut().insert(
                     info.index,
-                    (description.to_owned(), info.monitor_of_sink.is_some()),
+                    (
+                        resolve_alias(&aliases, name, description).to_owned(),
+                        info.monitor_of_sink.is_some(),
+                    ),
                 );
             }
             ListResult::End => audio.read_recorders(sources.take()),
@@ -536,6 +552,14 @@ impl Audio {
             context.set_default_sink(name, |_| {});
         } else {
             context.set_default_source(name, |_| {});
+        }
+    }
+
+    pub fn default_name(&self, is_sink: bool) -> String {
+        if is_sink {
+            self.sink_name.borrow().clone()
+        } else {
+            self.source_name.borrow().clone()
         }
     }
 
@@ -818,6 +842,33 @@ pub fn play_system_sound(theme: &str, name: &str) {
     }
 }
 
+pub fn resolve_alias<'a>(
+    aliases: &'a HashMap<String, String>,
+    name: &str,
+    description: &'a str,
+) -> &'a str {
+    aliases.get(name).map_or(description, String::as_str)
+}
+
+pub fn store_alias(name: &str, alias: &str) {
+    let mut aliases = config::current().audio_aliases.clone();
+    apply_alias(&mut aliases, name, alias);
+    let entries: serde_json::Map<String, Value> = aliases
+        .into_iter()
+        .map(|(name, alias)| (name, Value::from(alias)))
+        .collect();
+    config::store_value(ALIASES, Value::Object(entries));
+}
+
+fn apply_alias(aliases: &mut HashMap<String, String>, name: &str, alias: &str) {
+    let alias = alias.trim();
+    if alias.is_empty() {
+        aliases.remove(name);
+    } else {
+        aliases.insert(name.to_owned(), alias.to_owned());
+    }
+}
+
 struct SinkEntry {
     name: String,
     is_available: bool,
@@ -956,6 +1007,27 @@ mod tests {
         ]);
         let names: Vec<&str> = ports.iter().map(|port| port.name.as_str()).collect();
         assert_eq!(names, ["speakers", "line-out"]);
+    }
+
+    #[test]
+    fn an_alias_replaces_the_description_of_its_device_only() {
+        let aliases = HashMap::from([("sink_a".to_owned(), "Desk".to_owned())]);
+        assert_eq!(resolve_alias(&aliases, "sink_a", "Speakers"), "Desk");
+        assert_eq!(resolve_alias(&aliases, "sink_b", "Speakers"), "Speakers");
+    }
+
+    #[test]
+    fn an_alias_is_stored_trimmed_and_an_empty_one_removes_it() {
+        let mut aliases = HashMap::new();
+        apply_alias(&mut aliases, "sink_a", "  Desk ");
+        apply_alias(&mut aliases, "sink_b", "Living room");
+        assert_eq!(aliases["sink_a"], "Desk");
+        apply_alias(&mut aliases, "sink_a", "   ");
+        apply_alias(&mut aliases, "missing", "");
+        assert_eq!(
+            aliases,
+            HashMap::from([("sink_b".to_owned(), "Living room".to_owned())])
+        );
     }
 
     #[test]

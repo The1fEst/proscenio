@@ -1,7 +1,9 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::services::media::audio::{Audio, Device};
+use crate::core::config;
+use crate::services::media::audio::{Audio, Device, resolve_alias};
 use crate::ui::widgets::input::controls::ComboBox;
 
 struct Choice {
@@ -58,7 +60,7 @@ impl DevicePicker {
                 let Some(picker) = picker.upgrade() else {
                     return;
                 };
-                let choices = list_choices(&devices);
+                let choices = list_choices(&devices, &config::current().audio_aliases);
                 let labels: Vec<String> =
                     choices.iter().map(|choice| choice.label.clone()).collect();
                 let index = resolve_current_index(&choices, &current_name);
@@ -72,10 +74,10 @@ impl DevicePicker {
     }
 }
 
-fn list_choices(devices: &[Device]) -> Vec<Choice> {
+fn list_choices(devices: &[Device], aliases: &HashMap<String, String>) -> Vec<Choice> {
     let mut choices = Vec::new();
     for device in devices {
-        let label = device_label(device);
+        let label = device_label(device, aliases);
         if device.ports.len() < 2 {
             choices.push(Choice {
                 name: device.name.clone(),
@@ -97,7 +99,11 @@ fn list_choices(devices: &[Device]) -> Vec<Choice> {
     choices
 }
 
-fn device_label(device: &Device) -> String {
+fn device_label(device: &Device, aliases: &HashMap<String, String>) -> String {
+    resolve_alias(aliases, &device.name, &describe_device(device)).to_owned()
+}
+
+fn describe_device(device: &Device) -> String {
     let (description, nick) = (&device.description, &device.nick);
     if !nick.is_empty() && description.len() > nick.len() && description.starts_with(nick.as_str())
     {
@@ -168,8 +174,22 @@ mod tests {
             (device("alsa_output.pci", "", "Speakers"), "Speakers"),
             (device("alsa_output.pci", "", ""), "alsa_output.pci"),
         ] {
-            assert_eq!(device_label(&device), label);
+            assert_eq!(device_label(&device, &HashMap::new()), label);
         }
+    }
+
+    #[test]
+    fn an_alias_is_the_label_of_its_device_and_of_each_of_its_ports() {
+        let aliases = HashMap::from([("a".to_owned(), "Desk".to_owned())]);
+        let devices = [
+            device_with_ports("a", &["speakers", "headphones"], "speakers"),
+            device_with_ports("b", &["line"], "line"),
+        ];
+        let labels: Vec<String> = list_choices(&devices, &aliases)
+            .into_iter()
+            .map(|choice| choice.label)
+            .collect();
+        assert_eq!(labels, ["Desk · SPEAKERS", "Desk · HEADPHONES", "Card"]);
     }
 
     #[test]
@@ -179,7 +199,7 @@ mod tests {
             device_with_ports("b", &["line"], "line"),
             device("c", "", ""),
         ];
-        let choices = list_choices(&devices);
+        let choices = list_choices(&devices, &HashMap::new());
         let listed: Vec<(&str, Option<&str>, &str, bool)> = choices
             .iter()
             .map(|choice| {
@@ -209,13 +229,16 @@ mod tests {
             device_with_ports("b", &["speakers", "headphones"], "headphones"),
             device("c", "", ""),
         ];
-        let choices = list_choices(&devices);
+        let choices = list_choices(&devices, &HashMap::new());
         assert_eq!(resolve_current_index(&choices, "b"), 2);
         assert_eq!(resolve_current_index(&choices, "c"), 3);
-        let choices_without_active_port = list_choices(&[
-            device("a", "", ""),
-            device_with_ports("b", &["speakers", "headphones"], "line"),
-        ]);
+        let choices_without_active_port = list_choices(
+            &[
+                device("a", "", ""),
+                device_with_ports("b", &["speakers", "headphones"], "line"),
+            ],
+            &HashMap::new(),
+        );
         assert_eq!(resolve_current_index(&choices_without_active_port, "b"), 1);
         assert_eq!(resolve_current_index(&choices, "missing"), 0);
         assert_eq!(resolve_current_index(&[], "a"), 0);

@@ -1580,5 +1580,6 @@
   "Copied to the clipboard and saved as %1": "הועתק ללוח ההעתקה ונשמר בשם %1",
   "Saved as %1": "נשמר בשם %1",
   "Open folder": "פתיחת התיקייה",
-  "Notify after a screenshot": "הצגת התראה לאחר צילום מסך"
+  "Notify after a screenshot": "הצגת התראה לאחר צילום מסך",
+  "Custom name": "שם מותאם אישית"
 }
