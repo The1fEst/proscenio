@@ -6,8 +6,8 @@ use std::rc::Rc;
 use super::images::resolve_app_icon;
 use super::store::write_store;
 use super::{
-    FORGOTTEN_APPS, NAME, Notification, Notifications, PATH, QUIET_APPS, Reply, hint, hint_string,
-    is_app_listed, remember_app,
+    FORGOTTEN_APPS, NAME, Notification, Notifications, PATH, QUIET_APPS, Reply, URGENCY_CRITICAL,
+    hint, hint_string, is_app_listed, remember_app,
 };
 use crate::core::config;
 
@@ -97,7 +97,13 @@ impl Notifications {
         let is_quiet = is_app_listed(QUIET_APPS, &app_name);
         let is_forgotten = is_app_listed(FORGOTTEN_APPS, &app_name);
         let reply = take_reply(&mut labels, &hints);
-        let should_alert = !self.is_inhibited.get() && !self.is_silent.get() && !is_quiet;
+        let urgency = hint_byte(&hints, "urgency").unwrap_or(1);
+        let should_alert = is_alert_allowed(
+            self.is_inhibited.get(),
+            self.is_silent.get(),
+            is_quiet,
+            urgency,
+        );
         let mut notification = Notification {
             id,
             actions: labels,
@@ -108,7 +114,7 @@ impl Notifications {
             image: String::new(),
             summary: text(3),
             time_millis: glib::real_time() / 1000,
-            urgency: hint_byte(&hints, "urgency").unwrap_or(1),
+            urgency,
             is_transient: is_forgotten || hint_bool(&hints, "transient").unwrap_or(false),
             is_popup: should_alert && !self.is_hidden_by_sharing(),
             timeout_millis: resolve_timeout_millis(
@@ -117,6 +123,7 @@ impl Notifications {
                     "/notifications/timeout",
                     config::NOTIFICATION_TIMEOUT_MILLIS,
                 ),
+                urgency,
             ),
         };
         let is_popup = notification.is_popup;
@@ -199,11 +206,15 @@ impl Notifications {
     }
 }
 
-fn resolve_timeout_millis(expire_timeout_millis: i32, configured_millis: i64) -> i32 {
+fn is_alert_allowed(is_inhibited: bool, is_silent: bool, is_quiet: bool, urgency: u8) -> bool {
+    !is_inhibited && (!is_silent || urgency == URGENCY_CRITICAL) && !is_quiet
+}
+
+fn resolve_timeout_millis(expire_timeout_millis: i32, configured_millis: i64, urgency: u8) -> i32 {
     match expire_timeout_millis {
         0 => 0,
         positive if positive > 0 => positive,
-        _ if configured_millis <= 0 => 0,
+        _ if urgency == URGENCY_CRITICAL || configured_millis <= 0 => 0,
         _ => {
             let (min_millis, max_millis) = config::NOTIFICATION_TIMEOUT_RANGE_MILLIS;
             configured_millis.clamp(min_millis, max_millis) as i32
@@ -270,21 +281,47 @@ mod tests {
     #[test]
     fn a_popup_timeout_comes_from_the_sender_or_the_clamped_config_value() {
         let cases = [
-            (-1, 9000, 9000),
-            (-2, 9000, 9000),
-            (-1, 0, 0),
-            (-1, -5000, 0),
-            (-1, 500, 1000),
-            (-1, 60001, 60000),
-            (-1, 5_000_000_000, 60000),
-            (0, 9000, 0),
-            (3000, -5000, 3000),
+            (-1, 9000, 1, 9000),
+            (-2, 9000, 1, 9000),
+            (-1, 0, 1, 0),
+            (-1, -5000, 1, 0),
+            (-1, 500, 1, 1000),
+            (-1, 60001, 1, 60000),
+            (-1, 5_000_000_000, 1, 60000),
+            (0, 9000, 1, 0),
+            (3000, -5000, 1, 3000),
+            (-1, 9000, 0, 9000),
+            (-1, 9000, 2, 0),
+            (-2, 9000, 2, 0),
+            (0, 9000, 2, 0),
+            (3000, 9000, 2, 3000),
         ];
-        for (expire_timeout_millis, configured_millis, expected) in cases {
+        for (expire_timeout_millis, configured_millis, urgency, expected) in cases {
             assert_eq!(
-                resolve_timeout_millis(expire_timeout_millis, configured_millis),
+                resolve_timeout_millis(expire_timeout_millis, configured_millis, urgency),
                 expected,
-                "{expire_timeout_millis} {configured_millis}"
+                "{expire_timeout_millis} {configured_millis} {urgency}"
+            );
+        }
+    }
+
+    #[test]
+    fn only_a_critical_notification_pops_up_under_do_not_disturb() {
+        let cases = [
+            (false, false, false, 1, true),
+            (false, true, false, 1, false),
+            (false, true, false, 0, false),
+            (false, true, false, 2, true),
+            (true, true, false, 2, false),
+            (true, false, false, 2, false),
+            (false, true, true, 2, false),
+            (false, false, true, 1, false),
+        ];
+        for (is_inhibited, is_silent, is_quiet, urgency, expected) in cases {
+            assert_eq!(
+                is_alert_allowed(is_inhibited, is_silent, is_quiet, urgency),
+                expected,
+                "{is_inhibited} {is_silent} {is_quiet} {urgency}"
             );
         }
     }

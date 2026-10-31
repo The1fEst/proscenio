@@ -103,8 +103,9 @@ instead, as long as that monitor is connected.
 Popups are hidden while the screen is locked. They are grouped by app like the sidebar's list, and
 hold only the notifications that are still popping up.
 
-A notification does not pop up while a sidebar is open, while Do Not Disturb is on, while the screen
-is shared with `notifications.hideWhileSharing` on, or when its app has popups turned off. It still
+A notification does not pop up while a sidebar is open, while Do Not Disturb is on (a critical
+notification pops up anyway), while the screen is shared with `notifications.hideWhileSharing` on,
+or when its app has popups turned off. It still
 goes to the sidebar's list, unless it is transient: then it is dropped, and the notification it
 replaces is removed with reason 1.
 
@@ -140,7 +141,9 @@ pair of switches per app.
 | 0 | until it is dismissed or a sidebar opens |
 
 `notifications.timeout` is clamped to the range of its setting; at 0 or below it acts as an
-`expire_timeout` of 0.
+`expire_timeout` of 0. A critical notification (urgency 2) with an `expire_timeout` of 0 or below
+acts as one of 0: its popup stays until it is dismissed or a sidebar opens, whatever
+`notifications.timeout` says.
 
 When the time runs out, a notification leaves the screen and stays in the sidebar's list; a
 transient one is removed, with reason 1. Hovering a popup card pauses the timers of every
@@ -168,7 +171,8 @@ Do Not Disturb is `notifications.silent`. It can be switched in three places: th
 switch in the settings window, the `notifications_paused` button under the sidebar's notification
 list, and the Notifications [quick toggle](quick-toggles.md). While it is on, notifications still
 arrive and are kept, but they do not pop up and do not count as unread. A transient notification that
-arrives then is dropped at once.
+arrives then is dropped at once. A critical notification is the exception: it pops up and counts as
+unread as usual.
 
 ## Per-app rules
 

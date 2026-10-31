@@ -21,6 +21,7 @@ pub const QUIET_APPS: &str = "/notifications/quietApps";
 pub const FORGOTTEN_APPS: &str = "/notifications/forgottenApps";
 pub const HIDE_WHILE_SHARING: &str = "/notifications/hideWhileSharing";
 const KNOWN_APPS: &str = "notificationApps";
+const URGENCY_CRITICAL: u8 = 2;
 const NAME: &str = "org.freedesktop.Notifications";
 const PATH: &str = "/org/freedesktop/Notifications";
 
