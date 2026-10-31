@@ -158,6 +158,7 @@ impl Notifications {
             }
             list.push(notification);
         }
+        self.trim_history();
         write_store(&self.list.borrow());
         self.request_image(id, hints, app_icon);
 

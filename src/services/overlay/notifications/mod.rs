@@ -22,6 +22,7 @@ pub const FORGOTTEN_APPS: &str = "/notifications/forgottenApps";
 pub const HIDE_WHILE_SHARING: &str = "/notifications/hideWhileSharing";
 const KNOWN_APPS: &str = "notificationApps";
 const URGENCY_CRITICAL: u8 = 2;
+const HISTORY_LIMIT: usize = 50;
 const NAME: &str = "org.freedesktop.Notifications";
 const PATH: &str = "/org/freedesktop/Notifications";
 
@@ -159,6 +160,9 @@ impl Notifications {
             next_image_request: Rc::new(Cell::new(glib::real_time().unsigned_abs())),
             recent_arrival_millis: Rc::default(),
         };
+        if notifications.trim_history() {
+            write_store(&notifications.list.borrow());
+        }
         notifications.serve();
         let watcher = notifications.clone();
         let usage = device_usage.clone();
@@ -441,6 +445,16 @@ impl Notifications {
         );
     }
 
+    fn trim_history(&self) -> bool {
+        let evicted_entries = evict_oldest(&mut self.list.borrow_mut(), HISTORY_LIMIT);
+        for notification in &evicted_entries {
+            self.forget_state(notification.id);
+            remove_discarded_images(notification.id, &notification.image);
+            self.emit_closed(notification.id, 4);
+        }
+        !evicted_entries.is_empty()
+    }
+
     fn announce(&self) {
         self.listeners.notify();
     }
@@ -453,6 +467,18 @@ impl Notifications {
         self.next_id.set(id.wrapping_add(1).max(1));
         id
     }
+}
+
+fn evict_oldest(list: &mut Vec<Notification>, limit: usize) -> Vec<Notification> {
+    let mut evicted_entries = Vec::new();
+    while list.len() > limit {
+        let index = list[..list.len() - 1]
+            .iter()
+            .position(|entry| entry.urgency != URGENCY_CRITICAL)
+            .unwrap_or(0);
+        evicted_entries.push(list.remove(index));
+    }
+    evicted_entries
 }
 
 pub fn is_app_listed(pointer: &str, app_name: &str) -> bool {
@@ -679,5 +705,56 @@ mod tests {
         assert_eq!(notifications.draft(42), None);
         assert_eq!(notifications.unread_count.get(), 0);
         assert!(notifications.applied_image_requests.borrow().is_empty());
+    }
+
+    fn build_history(urgencies: &[u8]) -> Vec<Notification> {
+        let mut list = sample_group(&vec![false; urgencies.len()]).notifications;
+        for (entry, urgency) in list.iter_mut().zip(urgencies) {
+            entry.urgency = *urgency;
+        }
+        list
+    }
+
+    fn collect_ids(list: &[Notification]) -> Vec<u32> {
+        list.iter().map(|entry| entry.id).collect()
+    }
+
+    #[test]
+    fn the_oldest_non_critical_notifications_are_evicted_first() {
+        let cases: [(&[u8], usize, &[u32], &[u32]); 6] = [
+            (&[1, 1, 1, 1], 3, &[2, 3, 4], &[1]),
+            (&[2, 1, 1, 1], 3, &[1, 3, 4], &[2]),
+            (&[2, 1, 2, 1, 1], 2, &[3, 5], &[2, 4, 1]),
+            (&[2, 2, 2, 1], 3, &[2, 3, 4], &[1]),
+            (&[2, 2, 2, 2], 2, &[3, 4], &[1, 2]),
+            (&[1, 1], 5, &[1, 2], &[]),
+        ];
+        for (urgencies, limit, kept_ids, evicted_ids) in cases {
+            let mut list = build_history(urgencies);
+            let evicted_entries = evict_oldest(&mut list, limit);
+            assert_eq!(collect_ids(&list), kept_ids, "{urgencies:?} {limit}");
+            assert_eq!(
+                collect_ids(&evicted_entries),
+                evicted_ids,
+                "{urgencies:?} {limit}"
+            );
+        }
+    }
+
+    #[test]
+    fn trimming_the_history_forgets_what_the_evicted_ones_held() {
+        let notifications = new_detached();
+        let mut list = build_history(&vec![1; HISTORY_LIMIT + 2]);
+        for (index, entry) in list.iter_mut().enumerate() {
+            entry.id = 900_000 + index as u32;
+        }
+        notifications.list.replace(list);
+        notifications.mark_unread(900_000);
+        notifications.mark_unread(900_050);
+        assert!(notifications.trim_history());
+        assert_eq!(notifications.list.borrow().len(), HISTORY_LIMIT);
+        assert_eq!(notifications.list.borrow()[0].id, 900_002);
+        assert_eq!(notifications.unread_count.get(), 1);
+        assert!(!notifications.trim_history());
     }
 }

@@ -21,7 +21,7 @@ Notifications interface, version 1.2, at `/org/freedesktop/Notifications`:
 | `CloseNotification` | removes a notification, as its sender asks |
 | `GetCapabilities` | returns `actions`, `body`, `body-hyperlinks`, `body-images`, `body-markup`, `icon-static`, `inline-reply` and `persistence` |
 | `GetServerInformation` | returns `proscenio`, `fEst`, `0.1` and `1.2` |
-| `NotificationClosed` | signals a removal, with reason 1 when it expired, 2 when the user dismissed it, 3 when `CloseNotification` closed it |
+| `NotificationClosed` | signals a removal, with reason 1 when it expired, 2 when the user dismissed it, 3 when `CloseNotification` closed it, 4 when the history limit removed it |
 | `ActionInvoked` | signals that the user clicked one of the notification's actions |
 | `NotificationReplied` | signals the text the user sent from the notification's reply field |
 
@@ -73,7 +73,11 @@ but never limited by the flood rule. Dropped calls do not count toward the 20.
 ## Storage
 
 The list is saved to `~/.cache/proscenio/notifications.json` (`$XDG_CACHE_HOME/proscenio/` when that
-variable is set) and rewritten on every arrival and every removal. It is a JSON array:
+variable is set) and rewritten on every arrival and every removal. It holds at most 50
+notifications, which is also the most the sidebar's list shows. When a 51st arrives, or a longer list
+is read at startup, the oldest non-critical notification is removed, with reason 4, and the oldest
+critical one only when every other is critical. The newest notification is never the one removed. The
+file is a JSON array:
 
 ```json
 [

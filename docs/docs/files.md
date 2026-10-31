@@ -95,7 +95,7 @@ The files in `generated/`:
 
 | Path | What |
 |---|---|
-| `~/.cache/proscenio/notifications.json` | The notification history |
+| `~/.cache/proscenio/notifications.json` | The notification history, at most 50 notifications |
 | `~/.cache/proscenio/notifications/<id>-<n>.png` | Images that notifications send as raw pixels, `<n>` being the number of the image request that wrote it, removed with the notification or when a newer image replaces it |
 | `~/.cache/proscenio/coverart/` | Album art the media controls download, named by the MD5 of its URL |
 | `~/.cache/thumbnails/<size>/<md5>.png` | Wallpaper thumbnails, in the shared freedesktop thumbnail cache (`normal`, `large`, `x-large`, `xx-large`) |
