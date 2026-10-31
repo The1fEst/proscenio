@@ -106,6 +106,7 @@ the first monitor when there is none.
 | `mpris` | `playPause`, `previous`, `next` | The active player: the one playing most recently, else the first. `next` seeks to the end of the track when the player cannot skip but can seek |
 | | `pauseAll` | Pauses every player that can pause |
 | `brightness` | `increment`, `decrement` | The focused monitor's brightness, in steps of 5 %. At zero, `decrement` dims further through the gamma of the screen's color matrix, down to 25 %, and `increment` brings the gamma back to 100 % before it raises the brightness |
+| `audio` | `cycleOutput` | Makes the next available output (sink) the default, in the order of the sink names, and wraps after the last. A sink whose ports are all unavailable is skipped. Nothing happens with no other available sink, or when no sound server was running as the shell started. It sets the default sink exactly as the device list in [Sound settings](settings-sound.md) does |
 | `theme` | `toggleLightDark` | Switches between dark and light mode with `proscenio switchwall --noswitch`; see [Colors from the wallpaper](colors.md) |
 | `cliphistService` | `update` | Reads the clipboard history from `cliphist` again |
 | `wallpaperSelector` | `toggle` | The [wallpaper selector](wallpaper-selector.md) |

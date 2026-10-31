@@ -598,6 +598,14 @@ fn register_ipc(
         let session = services.session.clone();
         move || session.toggle_dark_mode()
     });
+    ipc.add("audio", "cycleOutput", {
+        let audio = services.audio.clone();
+        move || {
+            if let Some(audio) = &audio {
+                audio.cycle_output();
+            }
+        }
+    });
     ipc.add("cliphistService", "update", {
         let cliphist = services.cliphist.clone();
         move || cliphist.refresh()

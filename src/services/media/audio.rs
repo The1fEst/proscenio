@@ -546,6 +546,31 @@ impl Audio {
         introspect.set_sink_port_by_name(sink, port, None);
     }
 
+    pub fn cycle_output(&self) {
+        let Some(introspect) = self.introspector() else {
+            return;
+        };
+        let audio = self.clone();
+        let sinks = Rc::new(RefCell::new(Vec::new()));
+        introspect.get_sink_info_list(move |result| match result {
+            ListResult::Item(info) => {
+                let availabilities: Vec<PortAvailable> =
+                    info.ports.iter().map(|port| port.available).collect();
+                sinks.borrow_mut().push(SinkEntry {
+                    name: info.name.as_deref().unwrap_or_default().to_owned(),
+                    is_available: is_sink_available(&availabilities),
+                });
+            }
+            ListResult::End => {
+                let current_name = audio.sink_name.borrow().clone();
+                if let Some(name) = find_next_sink(&sinks.borrow(), &current_name) {
+                    audio.set_default(true, name);
+                }
+            }
+            ListResult::Error => {}
+        });
+    }
+
     pub fn set_source_volume(&self, part: f64) {
         let name = self.source_name.borrow().clone();
         if name.is_empty() {
@@ -793,6 +818,30 @@ pub fn play_system_sound(theme: &str, name: &str) {
     }
 }
 
+struct SinkEntry {
+    name: String,
+    is_available: bool,
+}
+
+fn is_sink_available(ports: &[PortAvailable]) -> bool {
+    ports.is_empty() || ports.iter().any(|port| *port != PortAvailable::No)
+}
+
+fn find_next_sink<'a>(sinks: &'a [SinkEntry], current_name: &str) -> Option<&'a str> {
+    let mut names: Vec<&str> = sinks
+        .iter()
+        .filter(|sink| sink.is_available || sink.name == current_name)
+        .map(|sink| sink.name.as_str())
+        .collect();
+    names.sort_unstable();
+    let next_index = names
+        .iter()
+        .position(|name| *name == current_name)
+        .map_or(0, |index| index + 1);
+    let next = names.get(next_index).or(names.first())?;
+    (*next != current_name).then_some(*next)
+}
+
 fn filter_usable_ports(ports: Vec<Port>) -> Vec<Port> {
     ports
         .into_iter()
@@ -907,6 +956,52 @@ mod tests {
         ]);
         let names: Vec<&str> = ports.iter().map(|port| port.name.as_str()).collect();
         assert_eq!(names, ["speakers", "line-out"]);
+    }
+
+    #[test]
+    fn a_sink_is_available_without_ports_or_with_a_port_that_may_be_in_use() {
+        use PortAvailable::{No, Unknown, Yes};
+        for (ports, expected) in [
+            (&[][..], true),
+            (&[No, Yes][..], true),
+            (&[No, Unknown][..], true),
+            (&[No, No][..], false),
+        ] {
+            assert_eq!(is_sink_available(ports), expected, "{ports:?}");
+        }
+    }
+
+    #[test]
+    fn cycling_goes_to_the_next_available_sink_by_name_and_wraps() {
+        let sinks = |entries: &[(&str, bool)]| -> Vec<SinkEntry> {
+            entries
+                .iter()
+                .map(|(name, is_available)| SinkEntry {
+                    name: (*name).to_owned(),
+                    is_available: *is_available,
+                })
+                .collect()
+        };
+        let listed = sinks(&[("c", true), ("a", true), ("d", false), ("b", true)]);
+        for (current_name, expected) in [
+            ("a", Some("b")),
+            ("b", Some("c")),
+            ("c", Some("a")),
+            ("d", Some("a")),
+            ("missing", Some("a")),
+        ] {
+            assert_eq!(
+                find_next_sink(&listed, current_name),
+                expected,
+                "{current_name}"
+            );
+        }
+        assert_eq!(find_next_sink(&sinks(&[("a", true)]), "a"), None);
+        assert_eq!(
+            find_next_sink(&sinks(&[("a", true), ("b", false)]), "a"),
+            None
+        );
+        assert_eq!(find_next_sink(&[], "a"), None);
     }
 
     #[test]
