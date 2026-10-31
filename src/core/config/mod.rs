@@ -50,6 +50,7 @@ pub struct RegionOptions {
     pub circle_padding: f64,
     pub save: Cell<bool>,
     pub save_path: String,
+    pub should_notify: bool,
 }
 
 impl RegionOptions {

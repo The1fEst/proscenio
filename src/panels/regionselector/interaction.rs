@@ -360,6 +360,7 @@ impl Selection {
             &save_dir,
             &record_region,
             &crate::core::process::executable(),
+            options.should_notify,
         );
         let script = screenshot::delayed_command(
             command,

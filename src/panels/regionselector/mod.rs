@@ -1,4 +1,5 @@
 mod interaction;
+pub mod notification;
 mod options;
 mod renderer;
 pub mod screenshot;

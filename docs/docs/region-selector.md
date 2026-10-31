@@ -94,6 +94,18 @@ changes.
 With **Also save to a file** on (`screenSnip.save`), a copied screenshot is also written to
 `screenSnip.savePath` as `screenshot-YYYY-MM-DD_HH.MM.SS.png`; the clipboard gets it all the same.
 
+### The notification
+
+A copied screenshot sends a notification from "Screenshot" with the summary "Screenshot taken". The
+body says that the image was copied to the clipboard, or copied and saved as the file's name, and
+the image is the preview: the saved file, or the copied image scaled to fit 480 pixels. When a file
+was saved, the notification has two buttons, **Open**, which opens the file in the default image
+viewer, and **Open folder**, which opens the folder in the default file manager. It is not kept in
+the notification history once it expires.
+
+`screenSnip.notify` (on by default) turns it off. Screenshots opened in `satty` and recordings send
+no such notification.
+
 ## Options
 
 The **Options** button on the toolbar opens a card above it. Its choices are saved in `config.toml`
@@ -143,6 +155,7 @@ in the [settings](settings.md).
 |---|---|---|
 | `screenSnip.save` | `false` | Also save to a file |
 | `screenSnip.savePath` | empty | The screenshot folder; `~` is expanded |
+| `screenSnip.notify` | `true` | Notify after a screenshot |
 | `screenRecord.savePath` | the XDG videos folder | The recording folder |
 | `regionSelector.showPointer` | `false` | Include the pointer |
 | `regionSelector.targetRegions.windows` | `true` | Hint target regions: Windows |
@@ -168,6 +181,9 @@ runs.
    rounding and adds the shadow, and the result is a PNG with transparency.
 3. The crop is piped to `wl-copy`, to `tee` and `wl-copy` when saving, or to `satty -f -`, and the
    temporary picture is removed. A selector dismissed without a capture deletes its picture too.
+4. A copy then runs `proscenio screenshot-notify`, which sends the notification. Without a saved
+   file the crop is also written to `image-<output>.preview.png` next to the temporary picture, for
+   the notification's preview, and removed afterwards.
 
 With a countdown, the command first sleeps, then runs `grim` again and crops the fresh picture. With
 the pointer included, the selector also turns off Hyprland's `cursor:hide_on_key_press` while it

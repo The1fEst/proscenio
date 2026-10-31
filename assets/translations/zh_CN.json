@@ -1568,5 +1568,11 @@
   "The previous settings come back in %1 s unless you keep these.": "除非保留这些设置，否则 %1 秒后将恢复之前的设置。",
   "The previous settings could not be restored: %1": "无法恢复之前的设置：%1",
   "Num Lock": "Num Lock",
-  "Keyboard layout": "键盘布局"
+  "Keyboard layout": "键盘布局",
+  "Screenshot taken": "已截图",
+  "Copied to the clipboard": "已复制到剪贴板",
+  "Copied to the clipboard and saved as %1": "已复制到剪贴板，并保存为 %1",
+  "Saved as %1": "已保存为 %1",
+  "Open folder": "打开文件夹",
+  "Notify after a screenshot": "截图后发送通知"
 }

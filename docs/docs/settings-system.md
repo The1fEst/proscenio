@@ -90,6 +90,7 @@ snip actions, `wf-recorder` and `slurp` for recording.
 |---|---|---|---|---|
 | Screenshots | Also save to a file | `screenSnip.save` | off | |
 | Screenshots | Folder | `screenSnip.savePath` | | live only while saving |
+| Screenshots | Notify after a screenshot | `screenSnip.notify` | on | |
 | Screen recordings | Folder | `screenRecord.savePath` | the XDG Videos folder | |
 | Region selector | Include the pointer | `regionSelector.showPointer` | off | |
 | Hint target regions | Windows | `regionSelector.targetRegions.windows` | on | |

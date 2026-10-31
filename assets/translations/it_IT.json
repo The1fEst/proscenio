@@ -1568,5 +1568,11 @@
   "The previous settings come back in %1 s unless you keep these.": "Le impostazioni precedenti tornano tra %1 s, a meno che tu non mantenga queste.",
   "The previous settings could not be restored: %1": "Impossibile ripristinare le impostazioni precedenti: %1",
   "Num Lock": "Bloc Num",
-  "Keyboard layout": "Disposizione della tastiera"
+  "Keyboard layout": "Disposizione della tastiera",
+  "Screenshot taken": "Schermata acquisita",
+  "Copied to the clipboard": "Copiata negli appunti",
+  "Copied to the clipboard and saved as %1": "Copiata negli appunti e salvata come %1",
+  "Saved as %1": "Salvata come %1",
+  "Open folder": "Apri cartella",
+  "Notify after a screenshot": "Notifica dopo una schermata"
 }

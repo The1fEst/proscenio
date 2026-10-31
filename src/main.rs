@@ -67,6 +67,7 @@ fn main() -> glib::ExitCode {
         Some("colors") => return colors::run(&arguments[2..]),
         Some("switchwall") => return switchwall::run(&arguments[2..]),
         Some("record") => return recording::run(&arguments[2..]),
+        Some("screenshot-notify") => return regionselector::notification::run(&arguments[2..]),
         Some(renderercheck::COMMAND) => return renderercheck::run(APP_ID),
         _ => {}
     }

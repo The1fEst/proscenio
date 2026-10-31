@@ -1568,5 +1568,11 @@
   "The previous settings come back in %1 s unless you keep these.": "Через %1 с вернутся прежние настройки, если не оставить эти.",
   "The previous settings could not be restored: %1": "Не удалось восстановить прежние настройки: %1",
   "Num Lock": "Num Lock",
-  "Keyboard layout": "Раскладка клавиатуры"
+  "Keyboard layout": "Раскладка клавиатуры",
+  "Screenshot taken": "Снимок экрана сделан",
+  "Copied to the clipboard": "Скопировано в буфер обмена",
+  "Copied to the clipboard and saved as %1": "Скопировано в буфер обмена и сохранено как %1",
+  "Saved as %1": "Сохранено как %1",
+  "Open folder": "Открыть папку",
+  "Notify after a screenshot": "Уведомлять после снимка экрана"
 }

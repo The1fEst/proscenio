@@ -94,6 +94,7 @@ impl Config {
                     .unwrap_or(10.0),
                 save: Cell::new(flag(&snip, "save", false)),
                 save_path: paths::expand_home(&text(&snip, "savePath", "")),
+                should_notify: flag(&snip, "notify", true),
             },
             overview_enable: flag(&overview, "enable", true),
             overview_scale: number(&overview, "scale", 0.18),

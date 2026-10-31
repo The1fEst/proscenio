@@ -47,6 +47,13 @@ pub fn build(context: &Context) -> Rc<Page> {
     };
     update_snip_path_field();
     page.watch("/screenSnip/save", update_snip_path_field);
+    page.config_switch(
+        &screenshots_section,
+        "notifications",
+        &tr("Notify after a screenshot"),
+        "/screenSnip/notify",
+        true,
+    );
 
     let recordings_section = page.subsection(&paths_section, &tr("Screen recordings"), "");
     let videos_folder = gtk4::glib::user_special_dir(gtk4::glib::UserDirectory::Videos)

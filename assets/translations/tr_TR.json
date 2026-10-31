@@ -1568,5 +1568,11 @@
   "The previous settings come back in %1 s unless you keep these.": "Bunları korumazsanız önceki ayarlar %1 sn içinde geri gelecek.",
   "The previous settings could not be restored: %1": "Önceki ayarlar geri yüklenemedi: %1",
   "Num Lock": "Num Lock",
-  "Keyboard layout": "Klavye düzeni"
+  "Keyboard layout": "Klavye düzeni",
+  "Screenshot taken": "Ekran görüntüsü alındı",
+  "Copied to the clipboard": "Panoya kopyalandı",
+  "Copied to the clipboard and saved as %1": "Panoya kopyalandı ve %1 olarak kaydedildi",
+  "Saved as %1": "%1 olarak kaydedildi",
+  "Open folder": "Klasörü aç",
+  "Notify after a screenshot": "Ekran görüntüsünden sonra bildirim göster"
 }

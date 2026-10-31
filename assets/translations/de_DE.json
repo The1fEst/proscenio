@@ -1568,5 +1568,11 @@
   "The previous settings come back in %1 s unless you keep these.": "Die vorherigen Einstellungen kehren in %1 s zurück, wenn du diese nicht behältst.",
   "The previous settings could not be restored: %1": "Die vorherigen Einstellungen konnten nicht wiederhergestellt werden: %1",
   "Num Lock": "Num-Lock",
-  "Keyboard layout": "Tastaturbelegung"
+  "Keyboard layout": "Tastaturbelegung",
+  "Screenshot taken": "Screenshot aufgenommen",
+  "Copied to the clipboard": "In die Zwischenablage kopiert",
+  "Copied to the clipboard and saved as %1": "In die Zwischenablage kopiert und als %1 gespeichert",
+  "Saved as %1": "Als %1 gespeichert",
+  "Open folder": "Ordner öffnen",
+  "Notify after a screenshot": "Nach einem Screenshot benachrichtigen"
 }

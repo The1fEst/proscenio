@@ -1568,5 +1568,11 @@
   "The previous settings come back in %1 s unless you keep these.": "ההגדרות הקודמות יחזרו בעוד %1 שנ׳ אלא אם תשמרו את אלה.",
   "The previous settings could not be restored: %1": "לא ניתן היה לשחזר את ההגדרות הקודמות: %1",
   "Num Lock": "Num Lock",
-  "Keyboard layout": "פריסת מקלדת"
+  "Keyboard layout": "פריסת מקלדת",
+  "Screenshot taken": "צילום המסך בוצע",
+  "Copied to the clipboard": "הועתק ללוח ההעתקה",
+  "Copied to the clipboard and saved as %1": "הועתק ללוח ההעתקה ונשמר בשם %1",
+  "Saved as %1": "נשמר בשם %1",
+  "Open folder": "פתיחת התיקייה",
+  "Notify after a screenshot": "הצגת התראה לאחר צילום מסך"
 }

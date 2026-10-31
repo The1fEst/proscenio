@@ -1,3 +1,4 @@
+use gtk4::gdk_pixbuf::Pixbuf;
 use gtk4::gio;
 use gtk4::glib::{self, Variant, VariantTy};
 use gtk4::prelude::*;
@@ -22,10 +23,24 @@ pub struct Notification<'a> {
     pub summary: &'a str,
     pub body: &'a str,
     pub icon: &'a str,
+    pub image_path: &'a str,
+    pub image: Option<&'a Pixbuf>,
     pub category: &'a str,
     pub urgency: Urgency,
     pub is_transient: bool,
     pub actions: &'a [(&'a str, &'a str)],
+}
+
+fn encode_pixels(image: &Pixbuf) -> Variant {
+    Variant::tuple_from_iter([
+        image.width().to_variant(),
+        image.height().to_variant(),
+        image.rowstride().to_variant(),
+        image.has_alpha().to_variant(),
+        image.bits_per_sample().to_variant(),
+        image.n_channels().to_variant(),
+        Variant::array_from_fixed_array(&image.read_pixel_bytes()),
+    ])
 }
 
 fn arguments(notification: &Notification) -> Variant {
@@ -41,6 +56,12 @@ fn arguments(notification: &Notification) -> Variant {
     }
     if !notification.category.is_empty() {
         hints.insert("category", notification.category.to_variant());
+    }
+    if !notification.image_path.is_empty() {
+        hints.insert("image-path", notification.image_path.to_variant());
+    }
+    if let Some(image) = notification.image {
+        hints.insert("image-data", encode_pixels(image));
     }
     (
         notification.app,
@@ -172,4 +193,39 @@ fn send_and_wait(context: &glib::MainContext, notification: &Notification) -> Op
     }
     main_loop.run();
     action_key.take()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gtk4::gdk_pixbuf::Colorspace;
+
+    #[test]
+    fn image_hints_carry_the_pixels_and_the_path() {
+        let image = Pixbuf::new(Colorspace::Rgb, true, 8, 2, 3).unwrap();
+        let parameters = arguments(&Notification {
+            image_path: "/pictures/a.png",
+            image: Some(&image),
+            ..Default::default()
+        });
+        let hints = glib::VariantDict::new(Some(&parameters.child_value(6)));
+        let pixel_hint = hints.lookup_value("image-data", None).unwrap();
+        assert_eq!(pixel_hint.type_().as_str(), "(iiibiiay)");
+        assert_eq!(pixel_hint.child_value(0).get::<i32>(), Some(2));
+        assert_eq!(pixel_hint.child_value(1).get::<i32>(), Some(3));
+        assert_eq!(
+            hints
+                .lookup_value("image-path", None)
+                .and_then(|path| path.get::<String>()),
+            Some("/pictures/a.png".to_owned())
+        );
+    }
+
+    #[test]
+    fn a_notification_without_an_image_has_no_image_hints() {
+        let parameters = arguments(&Notification::default());
+        let hints = glib::VariantDict::new(Some(&parameters.child_value(6)));
+        assert!(hints.lookup_value("image-data", None).is_none());
+        assert!(hints.lookup_value("image-path", None).is_none());
+    }
 }
