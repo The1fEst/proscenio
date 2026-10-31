@@ -57,6 +57,19 @@ in the icon.
 | timeout | `expire_timeout` |
 | time | the moment it arrived |
 
+## Duplicates and floods
+
+`Notify` answers every call with an ID, but a call can be dropped before it adds anything:
+
+| Dropped when | The call is answered with |
+|---|---|
+| `replaces_id` is 0 and a notification still in the list, from the same app with the same summary, body and urgency, arrived less than 5 s ago | the ID of that notification |
+| the app already had 20 notifications accepted in the last second, unless this one is critical | the `replaces_id`, when it names a notification in the list; else a new ID that names nothing |
+
+A call with a `replaces_id` is an update and never a duplicate. A dropped call changes nothing: no
+popup, no unread count, no saved entry. Critical notifications are checked for duplicates
+but never limited by the flood rule. Dropped calls do not count toward the 20.
+
 ## Storage
 
 The list is saved to `~/.cache/proscenio/notifications.json` (`$XDG_CACHE_HOME/proscenio/` when that

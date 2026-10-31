@@ -64,6 +64,9 @@ pub const CAPABILITIES: &[&str] = &[
 ];
 
 const REPLY_ACTION: &str = "inline-reply";
+const DUPLICATE_WINDOW_MILLIS: i64 = 5000;
+const FLOOD_WINDOW_MILLIS: i64 = 1000;
+const FLOOD_LIMIT: usize = 20;
 
 impl Notifications {
     fn receive(self: &Rc<Self>, call: &Variant) -> u32 {
@@ -90,14 +93,28 @@ impl Notifications {
             }
         }
 
+        let app_name = text(0);
+        let summary = text(3);
+        let body = text(4);
+        let urgency = hint_byte(&hints, "urgency").unwrap_or(1);
+        let time_millis = glib::real_time() / 1000;
+        if let Some(id) = self.reject(
+            replaces_id,
+            &app_name,
+            &summary,
+            &body,
+            urgency,
+            time_millis,
+        ) {
+            return id;
+        }
+
         let id = self.take_id(replaces_id);
 
-        let app_name = text(0);
         remember_app(&app_name);
         let is_quiet = is_app_listed(QUIET_APPS, &app_name);
         let is_forgotten = is_app_listed(FORGOTTEN_APPS, &app_name);
         let reply = take_reply(&mut labels, &hints);
-        let urgency = hint_byte(&hints, "urgency").unwrap_or(1);
         let should_alert = is_alert_allowed(
             self.is_inhibited.get(),
             self.is_silent.get(),
@@ -110,10 +127,10 @@ impl Notifications {
             reply,
             app_icon: resolve_app_icon(text(2), &hints, &app_name),
             app_name,
-            body: text(4),
+            body,
             image: String::new(),
-            summary: text(3),
-            time_millis: glib::real_time() / 1000,
+            summary,
+            time_millis,
             urgency,
             is_transient: is_forgotten || hint_bool(&hints, "transient").unwrap_or(false),
             is_popup: should_alert && !self.is_hidden_by_sharing(),
@@ -152,6 +169,54 @@ impl Notifications {
         }
         self.announce();
         id
+    }
+
+    fn reject(
+        &self,
+        replaces_id: u32,
+        app_name: &str,
+        summary: &str,
+        body: &str,
+        urgency: u8,
+        now_millis: i64,
+    ) -> Option<u32> {
+        if replaces_id == 0 {
+            let duplicate = self
+                .list
+                .borrow()
+                .iter()
+                .rev()
+                .find(|entry| {
+                    (0..DUPLICATE_WINDOW_MILLIS).contains(&(now_millis - entry.time_millis))
+                        && entry.urgency == urgency
+                        && entry.app_name == app_name
+                        && entry.summary == summary
+                        && entry.body == body
+                })
+                .map(|entry| entry.id);
+            if duplicate.is_some() {
+                return duplicate;
+            }
+        }
+        if urgency == URGENCY_CRITICAL {
+            return None;
+        }
+        let mut arrivals = self.recent_arrival_millis.borrow_mut();
+        arrivals.retain(|_, times| {
+            while times
+                .front()
+                .is_some_and(|time_millis| now_millis - time_millis >= FLOOD_WINDOW_MILLIS)
+            {
+                times.pop_front();
+            }
+            !times.is_empty()
+        });
+        let times = arrivals.entry(app_name.to_owned()).or_default();
+        if times.len() >= FLOOD_LIMIT {
+            return Some(self.take_id(replaces_id));
+        }
+        times.push_back(now_millis);
+        None
     }
 
     pub(super) fn serve(&self) {
@@ -243,6 +308,7 @@ fn hint_byte(hints: &Variant, key: &str) -> Option<u8> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::{new_detached, sample_group};
     use super::*;
     use std::collections::HashMap;
 
@@ -324,5 +390,63 @@ mod tests {
                 "{is_inhibited} {is_silent} {is_quiet} {urgency}"
             );
         }
+    }
+
+    #[test]
+    fn a_repeat_within_the_window_is_answered_with_the_held_id() {
+        let notifications = new_detached();
+        let mut entries = sample_group(&[false, false]).notifications;
+        for (entry, (urgency, id)) in entries.iter_mut().zip([(1, 7), (2, 8)]) {
+            entry.id = id;
+            entry.urgency = urgency;
+            entry.summary = "Hi".to_owned();
+            entry.body = "Text".to_owned();
+            entry.time_millis = 10_000;
+        }
+        notifications.list.replace(entries);
+        let cases = [
+            (0, "Chat", "Hi", "Text", 1, 10_000, Some(7)),
+            (0, "Chat", "Hi", "Text", 1, 14_999, Some(7)),
+            (0, "Chat", "Hi", "Text", 2, 12_000, Some(8)),
+            (0, "Chat", "Hi", "Text", 1, 15_000, None),
+            (0, "Chat", "Hi", "Text", 1, 9_999, None),
+            (0, "Mail", "Hi", "Text", 1, 10_000, None),
+            (0, "Chat", "Yo", "Text", 1, 10_000, None),
+            (0, "Chat", "Hi", "Other", 1, 10_000, None),
+            (0, "Chat", "Hi", "Text", 0, 10_000, None),
+            (7, "Chat", "Hi", "Text", 1, 10_000, None),
+            (99, "Chat", "Hi", "Text", 1, 10_000, None),
+        ];
+        for (replaces_id, app_name, summary, body, urgency, now_millis, expected) in cases {
+            assert_eq!(
+                notifications.reject(replaces_id, app_name, summary, body, urgency, now_millis),
+                expected,
+                "{replaces_id} {app_name} {summary} {body} {urgency} {now_millis}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_app_over_the_flood_limit_is_dropped_except_critical_ones() {
+        let notifications = new_detached();
+        for _ in 0..FLOOD_LIMIT {
+            assert_eq!(notifications.reject(0, "Chat", "", "", 1, 0), None);
+        }
+        let reject = |app_name: &str, urgency: u8, now_millis: i64| {
+            notifications.reject(0, app_name, "", "", urgency, now_millis)
+        };
+        assert_eq!(reject("Chat", 1, 500), Some(1));
+        assert_eq!(reject("Chat", 1, 999), Some(2));
+        assert_eq!(reject("Chat", 2, 999), None);
+        assert_eq!(reject("Mail", 1, 999), None);
+        assert_eq!(reject("Chat", 1, 1000), None);
+
+        let mut entries = sample_group(&[false]).notifications;
+        entries[0].app_name = "Other".to_owned();
+        notifications.list.replace(entries);
+        for _ in 1..FLOOD_LIMIT {
+            assert_eq!(reject("Chat", 1, 1000), None);
+        }
+        assert_eq!(notifications.reject(1, "Chat", "", "", 1, 1000), Some(1));
     }
 }

@@ -7,7 +7,7 @@ use gtk4::glib::{self, Variant};
 use gtk4::prelude::*;
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -132,6 +132,7 @@ pub struct Notifications {
     drafts: Rc<RefCell<HashMap<u32, String>>>,
     applied_image_requests: Rc<RefCell<HashMap<u32, u64>>>,
     next_image_request: Rc<Cell<u64>>,
+    recent_arrival_millis: Rc<RefCell<HashMap<String, VecDeque<i64>>>>,
 }
 
 impl Notifications {
@@ -156,6 +157,7 @@ impl Notifications {
             drafts: Rc::new(RefCell::new(HashMap::new())),
             applied_image_requests: Rc::default(),
             next_image_request: Rc::new(Cell::new(glib::real_time().unsigned_abs())),
+            recent_arrival_millis: Rc::default(),
         };
         notifications.serve();
         let watcher = notifications.clone();
@@ -529,26 +531,28 @@ pub fn sample_group(reply_flags: &[bool]) -> Group {
 }
 
 #[cfg(test)]
+fn new_detached() -> Notifications {
+    Notifications {
+        list: Rc::default(),
+        unread_count: Rc::default(),
+        is_silent: Rc::default(),
+        unread_ids: Rc::default(),
+        next_id: Rc::new(Cell::new(1)),
+        is_inhibited: Rc::default(),
+        is_sharing: Rc::default(),
+        connection: None,
+        listeners: Rc::default(),
+        timers: Rc::default(),
+        drafts: Rc::default(),
+        applied_image_requests: Rc::default(),
+        next_image_request: Rc::default(),
+        recent_arrival_millis: Rc::default(),
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
-
-    fn new_detached() -> Notifications {
-        Notifications {
-            list: Rc::default(),
-            unread_count: Rc::default(),
-            is_silent: Rc::default(),
-            unread_ids: Rc::default(),
-            next_id: Rc::new(Cell::new(1)),
-            is_inhibited: Rc::default(),
-            is_sharing: Rc::default(),
-            connection: None,
-            listeners: Rc::default(),
-            timers: Rc::default(),
-            drafts: Rc::default(),
-            applied_image_requests: Rc::default(),
-            next_image_request: Rc::default(),
-        }
-    }
 
     #[test]
     fn sharing_follows_the_screen_state_at_once() {
