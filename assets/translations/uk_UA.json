@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "Індикатори приватності над повноекранними вікнами",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Показує крапку на місці панелі для кожного мікрофона, демонстрації екрана чи камери, що використовуються",
   "New window": "Нове вікно",
-  "Close all windows": "Закрити всі вікна"
+  "Close all windows": "Закрити всі вікна",
+  "Empty trash": "Очистити смітник",
+  "Empty the trash?": "Очистити смітник?",
+  "Everything in the trash is deleted permanently.": "Увесь вміст смітника видаляється назавжди.",
+  "Show trash": "Показувати смітник"
 }

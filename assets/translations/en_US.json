@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "Privacy indicators over fullscreen windows",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Shows a dot where the bar sits for each microphone, screen share or camera in use",
   "New window": "New window",
-  "Close all windows": "Close all windows"
+  "Close all windows": "Close all windows",
+  "Empty trash": "Empty trash",
+  "Empty the trash?": "Empty the trash?",
+  "Everything in the trash is deleted permanently.": "Everything in the trash is deleted permanently.",
+  "Show trash": "Show trash"
 }

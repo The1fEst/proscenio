@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "Indicadores de privacidade sobre janelas em tela cheia",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Mostra um ponto onde fica a barra para cada microfone, compartilhamento de tela ou câmera em uso",
   "New window": "Nova janela",
-  "Close all windows": "Fechar todas as janelas"
+  "Close all windows": "Fechar todas as janelas",
+  "Empty trash": "Esvaziar a lixeira",
+  "Empty the trash?": "Esvaziar a lixeira?",
+  "Everything in the trash is deleted permanently.": "Tudo o que está na lixeira é excluído permanentemente.",
+  "Show trash": "Mostrar a lixeira"
 }

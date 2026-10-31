@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "Indicatori di privacy sopra le finestre a schermo intero",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Mostra un punto dove si trova la barra per ogni microfono, condivisione dello schermo o fotocamera in uso",
   "New window": "Nuova finestra",
-  "Close all windows": "Chiudi tutte le finestre"
+  "Close all windows": "Chiudi tutte le finestre",
+  "Empty trash": "Svuota il cestino",
+  "Empty the trash?": "Svuotare il cestino?",
+  "Everything in the trash is deleted permanently.": "Tutto il contenuto del cestino viene eliminato definitivamente.",
+  "Show trash": "Mostra il cestino"
 }

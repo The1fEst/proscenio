@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "Chỉ báo quyền riêng tư trên cửa sổ toàn màn hình",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Hiển thị một chấm tại vị trí của thanh cho mỗi micrô, lượt chia sẻ màn hình hoặc camera đang được sử dụng",
   "New window": "Cửa sổ mới",
-  "Close all windows": "Đóng tất cả cửa sổ"
+  "Close all windows": "Đóng tất cả cửa sổ",
+  "Empty trash": "Dọn sạch thùng rác",
+  "Empty the trash?": "Dọn sạch thùng rác?",
+  "Everything in the trash is deleted permanently.": "Mọi thứ trong thùng rác sẽ bị xóa vĩnh viễn.",
+  "Show trash": "Hiện thùng rác"
 }

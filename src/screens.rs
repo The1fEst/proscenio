@@ -65,6 +65,7 @@ impl Part {
                 "/dock/hoverRegionHeight",
                 "/dock/hoverToReveal",
                 "/dock/monochromeIcons",
+                "/dock/showTrash",
                 "/dock/ignoredAppRegexes",
             ],
             Part::Bar => &[

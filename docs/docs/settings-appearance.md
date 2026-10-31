@@ -449,6 +449,7 @@ A link row opens this subpage. See [Dock](dock.md).
 | Pinned on startup | `dock.pinnedOnStartup` | off | |
 | Hover region height (px) | `dock.hoverRegionHeight` | 2 | 1–50, live only while hovering reveals |
 | Tint app icons | `dock.monochromeIcons` | on | |
+| Show trash | `dock.showTrash` | off | |
 | Icon size (px) | `dock.iconSize` | 35 | 20–120, in steps of 5 |
 | Ignored apps | `dock.ignoredAppRegexes` | empty | |
 

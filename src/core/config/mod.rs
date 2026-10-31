@@ -101,6 +101,7 @@ pub struct Config {
     pub dock_hover_region: i32,
     pub dock_pinned_on_startup: bool,
     pub dock_hover_to_reveal: bool,
+    pub dock_shows_trash: bool,
     pub dock_pinned: RefCell<Vec<String>>,
     pub dock_ignored: Vec<String>,
     pub cheatsheet_super: String,

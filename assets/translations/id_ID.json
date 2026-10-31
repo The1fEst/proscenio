@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "Indikator privasi di atas jendela layar penuh",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Menampilkan titik di tempat bilah berada untuk setiap mikrofon, berbagi layar, atau kamera yang sedang digunakan",
   "New window": "Jendela baru",
-  "Close all windows": "Tutup semua jendela"
+  "Close all windows": "Tutup semua jendela",
+  "Empty trash": "Kosongkan tempat sampah",
+  "Empty the trash?": "Kosongkan tempat sampah?",
+  "Everything in the trash is deleted permanently.": "Semua isi tempat sampah dihapus secara permanen.",
+  "Show trash": "Tampilkan tempat sampah"
 }

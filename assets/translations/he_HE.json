@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "חיווי פרטיות מעל חלונות במסך מלא",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "מציג נקודה במקום שבו נמצא הסרגל עבור כל מיקרופון, שיתוף מסך או מצלמה שנמצאים בשימוש",
   "New window": "חלון חדש",
-  "Close all windows": "סגירת כל החלונות"
+  "Close all windows": "סגירת כל החלונות",
+  "Empty trash": "ריקון האשפה",
+  "Empty the trash?": "לרוקן את האשפה?",
+  "Everything in the trash is deleted permanently.": "כל מה שבאשפה נמחק לצמיתות.",
+  "Show trash": "להציג את האשפה"
 }

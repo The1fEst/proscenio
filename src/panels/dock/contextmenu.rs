@@ -22,6 +22,7 @@ const ELEVATION: i32 = 10;
 const MIN_WIDTH: i32 = 200;
 const MAX_LABEL_CHARS: i32 = 28;
 const SEPARATOR_MARGIN: i32 = 4;
+const DISABLED_OPACITY: f64 = 0.5;
 
 type OnChoose = Rc<dyn Fn(&MenuItem)>;
 
@@ -130,6 +131,8 @@ impl ContextMenu {
             MenuItem::TogglePin { is_pinned: true } => (Icon::Symbol("keep_off"), tr("Unpin")),
             MenuItem::TogglePin { is_pinned: false } => (Icon::Symbol("push_pin"), tr("Pin")),
             MenuItem::CloseWindows { .. } => (Icon::Symbol("close"), tr("Close all windows")),
+            MenuItem::OpenTrash => (Icon::Symbol("folder_open"), tr("Open")),
+            MenuItem::EmptyTrash { .. } => (Icon::Symbol("delete_forever"), tr("Empty trash")),
         };
         let content = Row::new(SPACING);
         content.set_valign(gtk4::Align::Center);
@@ -137,6 +140,10 @@ impl ContextMenu {
         content.append(&build_label(&label));
         let button = self.build_entry_button();
         button.set_content(&Centered::filling_width(&content), HORIZONTAL_PADDING, 0);
+        if matches!(&*item, MenuItem::EmptyTrash { is_enabled: false }) {
+            button.set_sensitive(false);
+            button.set_opacity(DISABLED_OPACITY);
+        }
         self.connect_choice(&button, item, on_choose);
         button.upcast()
     }

@@ -19,7 +19,20 @@ pub(super) enum MenuItem {
     CloseWindows {
         addresses: Vec<String>,
     },
+    OpenTrash,
+    EmptyTrash {
+        is_enabled: bool,
+    },
     Separator,
+}
+
+pub(super) fn build_trash_items(item_count: usize) -> Vec<MenuItem> {
+    vec![
+        MenuItem::OpenTrash,
+        MenuItem::EmptyTrash {
+            is_enabled: item_count > 0,
+        },
+    ]
 }
 
 pub(super) fn build_items(
@@ -128,6 +141,23 @@ mod tests {
                 MenuItem::CloseWindows {
                     addresses: vec!["0x1".to_owned(), "0x2".to_owned()]
                 },
+            ]
+        );
+    }
+
+    #[test]
+    fn the_trash_menu_offers_emptying_only_while_the_trash_holds_items() {
+        assert_eq!(
+            [0, 3].map(build_trash_items),
+            [
+                vec![
+                    MenuItem::OpenTrash,
+                    MenuItem::EmptyTrash { is_enabled: false }
+                ],
+                vec![
+                    MenuItem::OpenTrash,
+                    MenuItem::EmptyTrash { is_enabled: true }
+                ],
             ]
         );
     }

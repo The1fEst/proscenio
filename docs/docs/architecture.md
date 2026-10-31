@@ -128,7 +128,7 @@ on every monitor when a config key it was built from changes.
 | Sheet | The cheatsheet | `cheatsheet` |
 | Popups | Notification popups | — |
 | Background | The background, unless started with `--no-background` | `background.hideWhenFullscreen`, `background.parallax`, `bar.workspaces.shown` |
-| Dock | The dock, when `dock.enable` is on | `dock.enable`, `dock.iconSize`, `dock.hoverRegionHeight`, `dock.hoverToReveal`, `dock.monochromeIcons`, `dock.ignoredAppRegexes` |
+| Dock | The dock, when `dock.enable` is on | `dock.enable`, `dock.iconSize`, `dock.hoverRegionHeight`, `dock.hoverToReveal`, `dock.monochromeIcons`, `dock.showTrash`, `dock.ignoredAppRegexes` |
 | Bar | The bar and the screen corners | `bar` except `bar.screenList` and the weather keys, `tray.filterPassive`, `tray.invertPinnedItems`, `tray.monochromeIcons`, `tray.showItemId`, `battery.low`, `interactions.deadPixelWorkaround`, `appearance.fakeScreenRounding`, `sidebar.cornerOpen` |
 
 Changes are collected and rebuilt together once the main loop is idle. The bar holds the panels and

@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "全画面ウィンドウ上のプライバシーインジケーター",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "使用中のマイク、画面共有、カメラごとに、バーのある位置にドットを表示します",
   "New window": "新しいウィンドウ",
-  "Close all windows": "すべてのウィンドウを閉じる"
+  "Close all windows": "すべてのウィンドウを閉じる",
+  "Empty trash": "ごみ箱を空にする",
+  "Empty the trash?": "ごみ箱を空にしますか？",
+  "Everything in the trash is deleted permanently.": "ごみ箱の中身はすべて完全に削除されます。",
+  "Show trash": "ごみ箱を表示する"
 }

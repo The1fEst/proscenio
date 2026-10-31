@@ -4,6 +4,8 @@ mod contextmenu;
 mod menuitems;
 pub mod preview;
 mod taskbar;
+mod trashbutton;
+mod trashdialog;
 
 use gtk4::gdk;
 use gtk4::glib;
@@ -348,6 +350,12 @@ pub fn open(
             });
         }
     });
+
+    if config.dock_shows_trash {
+        let (trash_button, watcher) = dock.make_trash_button(app);
+        row.insert_child_after(&trash_button, Some(&dock.apps));
+        scope.hold(watcher);
+    }
 
     overview.connect_clicked(|_| actions::run("overviewWorkspacesToggle"));
 

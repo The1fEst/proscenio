@@ -70,6 +70,7 @@ impl Config {
             dock_hover_region: number(&dock, "hoverRegionHeight", 2.0) as i32,
             dock_pinned_on_startup: flag(&dock, "pinnedOnStartup", false),
             dock_hover_to_reveal: flag(&dock, "hoverToReveal", true),
+            dock_shows_trash: flag(&dock, "showTrash", false),
             dock_pinned: RefCell::new(strings_or(dock.get("pinnedApps"), &DOCK_PINNED_APPS)),
             dock_ignored: strings(&dock, "ignoredAppRegexes"),
             region: RegionOptions {

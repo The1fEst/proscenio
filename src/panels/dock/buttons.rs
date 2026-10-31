@@ -118,7 +118,7 @@ impl Dock {
                         hypr::close_window(address);
                     }
                 }
-                MenuItem::Separator => {}
+                MenuItem::OpenTrash | MenuItem::EmptyTrash { .. } | MenuItem::Separator => {}
             });
     }
 
@@ -295,8 +295,10 @@ impl Dock {
         entry
     }
 
-    fn icon(&self, id: &str, dots: &gtk4::Box) -> gtk4::Widget {
-        let class = id.to_owned();
+    pub(super) fn paint_icon(
+        &self,
+        resolve_name: impl Fn(&gtk4::IconTheme) -> String + 'static,
+    ) -> Paint {
         let theme = self.theme.clone();
         let monochrome = self.config.dock_monochrome;
         let icon_size = self.metrics.icon_size;
@@ -307,7 +309,7 @@ impl Dock {
             let icons = gtk4::IconTheme::for_display(&display);
             let paintable = crate::platform::system::appicon::load_icon(
                 &icons,
-                &crate::platform::system::appicon::guess(&icons, &class),
+                &resolve_name(&icons),
                 "image-missing",
                 icon_size,
                 1,
@@ -323,6 +325,14 @@ impl Dock {
             }
         });
         image.set_size_request(self.metrics.background() - BUTTON_PADDING * 2, icon_size);
+        image
+    }
+
+    fn icon(&self, id: &str, dots: &gtk4::Box) -> gtk4::Widget {
+        let class = id.to_owned();
+        let icon_size = self.metrics.icon_size;
+        let image =
+            self.paint_icon(move |icons| crate::platform::system::appicon::guess(icons, &class));
 
         dots.set_halign(gtk4::Align::Center);
         let content = gtk4::Overlay::new();

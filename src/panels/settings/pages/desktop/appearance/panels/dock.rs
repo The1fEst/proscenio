@@ -44,6 +44,13 @@ pub fn build(context: &Context) -> Rc<Page> {
         "/dock/monochromeIcons",
         true,
     );
+    page.config_switch(
+        &looks_section,
+        "delete",
+        &tr("Show trash"),
+        "/dock/showTrash",
+        false,
+    );
     page.config_spin(
         &looks_section,
         "apps",

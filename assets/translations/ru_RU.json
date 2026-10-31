@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "Индикаторы приватности над полноэкранными окнами",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Показывает точку на месте панели для каждого используемого микрофона, демонстрации экрана или камеры",
   "New window": "Новое окно",
-  "Close all windows": "Закрыть все окна"
+  "Close all windows": "Закрыть все окна",
+  "Empty trash": "Очистить корзину",
+  "Empty the trash?": "Очистить корзину?",
+  "Everything in the trash is deleted permanently.": "Всё содержимое корзины удаляется безвозвратно.",
+  "Show trash": "Показывать корзину"
 }

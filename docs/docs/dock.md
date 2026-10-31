@@ -13,6 +13,7 @@ Dock** in the [settings](settings-appearance.md).
 From left to right it holds:
 
 - the pinned apps, then a separator when anything is pinned, then the other apps with open windows;
+- the [trash button](#trash), when `dock.showTrash` is on;
 - a button that opens the [overview](overview.md).
 
 ![The dock with five app buttons, a separator and the overview button](/img/screenshots/dock.webp)
@@ -86,6 +87,24 @@ nothing in it is left out:
 
 Choosing a row closes the menu, and so do Escape and a click anywhere outside it. The dock stays
 shown while the menu is open, and the window previews close when it opens.
+
+## Trash
+
+With `dock.showTrash` on, a trash button follows the apps. Its icon is the theme's `user-trash` while
+the trash is empty and `user-trash-full` otherwise. The count comes from the number of items in
+`$XDG_DATA_HOME/Trash/files` (`~/.local/share/Trash/files` by default), which a file monitor watches,
+so the icon changes as soon as an item is trashed or restored. Trash folders on other volumes are not
+counted.
+
+| On the trash button | Does |
+|---|---|
+| Click | Opens `trash:///` in the default file manager, the app that handles `inode/directory` |
+| Right-click | Opens a menu with **Open** and **Empty trash**; the second is dimmed while the trash is empty |
+| Drop files on it | Moves the files to the trash |
+
+**Empty trash** asks first, in a dialog on the focused monitor. Confirming deletes everything in
+`Trash/files` and `Trash/info`, and the `Trash/directorysizes` file, for good; **Cancel**, Escape and a
+click outside the dialog delete nothing.
 
 ## Showing and hiding
 
@@ -170,6 +189,7 @@ Every setting applies at once.
 | `dock.hoverRegionHeight` | `2` | Hover region height (px) |
 | `dock.monochromeIcons` | `true` | Tint app icons |
 | `dock.iconSize` | `35` | Icon size (px) |
+| `dock.showTrash` | `false` | Show trash |
 | `dock.pinnedApps` | `org.kde.dolphin`, `brave-origin`, `kitty`; an empty list pins nothing | arranged in the dock by dragging |
 | `dock.ignoredAppRegexes` | none | Ignored apps |
 
@@ -192,4 +212,6 @@ The dock is drawn on the `top` layer. Its layer namespaces, for Hyprland layer r
 
 The code is in `src/panels/dock/`. `mod.rs` holds the dock window, `buttons.rs` the app buttons,
 `taskbar.rs` the grouping of windows into apps, `arrangement.rs` the drag to reorder, `preview.rs`
-the previews, `menuitems.rs` the rows of the context menu and `contextmenu.rs` its popup.
+the previews, `menuitems.rs` the rows of the context menus, `contextmenu.rs` their popup, `trashbutton.rs` the trash
+button and `trashdialog.rs` its confirmation. `src/platform/system/trash.rs` counts, watches and empties
+the trash.

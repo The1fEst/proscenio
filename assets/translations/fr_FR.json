@@ -1599,5 +1599,9 @@
   "Privacy indicators over fullscreen windows": "Indicateurs de confidentialité au-dessus des fenêtres en plein écran",
   "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Affiche un point à l'emplacement de la barre pour chaque microphone, partage d'écran ou caméra utilisé",
   "New window": "Nouvelle fenêtre",
-  "Close all windows": "Fermer toutes les fenêtres"
+  "Close all windows": "Fermer toutes les fenêtres",
+  "Empty trash": "Vider la corbeille",
+  "Empty the trash?": "Vider la corbeille ?",
+  "Everything in the trash is deleted permanently.": "Tout le contenu de la corbeille est supprimé définitivement.",
+  "Show trash": "Afficher la corbeille"
 }

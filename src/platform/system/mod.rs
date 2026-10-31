@@ -8,6 +8,7 @@ pub mod loginshell;
 pub mod readiness;
 pub mod sessionenvironment;
 pub mod terminals;
+pub mod trash;
 pub mod udev;
 pub mod xkbregistry;
 pub mod ydotool;
