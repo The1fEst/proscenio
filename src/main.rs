@@ -25,13 +25,14 @@ use crate::panels::{
 };
 use crate::platform::dbus::ipc;
 use crate::platform::hyprland::hypr;
-use crate::platform::system::locale;
+use crate::platform::system::{locale, readiness};
 use crate::platform::wayland::shortcuts;
 use crate::screens::{Screens, Surfaces};
 use crate::services::Services;
 use crate::services::hardware::devicenotifications::DeviceNotifications;
 use crate::services::media::{mpris, recording};
-use crate::services::overlay::statusnotifierwatcher::StatusNotifierWatcher;
+use crate::services::overlay::notifications;
+use crate::services::overlay::statusnotifierwatcher::{self, StatusNotifierWatcher};
 use crate::services::session::states;
 use crate::theming::{colors, switchwall};
 use crate::ui::theme::{self, Theme};
@@ -113,6 +114,14 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     let _ = settings::pages::migrate_settings_files();
     let services = Rc::new(Services::new(&config));
     std::mem::forget(StatusNotifierWatcher::start(services.session_bus.as_ref()));
+    readiness::report_when_ready(
+        services.session_bus.as_ref(),
+        &[
+            notifications::NAME,
+            statusnotifierwatcher::NAME,
+            &statusnotifierwatcher::host_name(),
+        ],
+    );
     std::mem::forget(DeviceNotifications::start());
     let launcher = launcher::Launcher::new(&services.cliphist, &services.todo, &services.net);
     let osd = osd::Osd::new(app, &services, &theme);

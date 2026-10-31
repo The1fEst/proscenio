@@ -49,6 +49,10 @@ pub struct StatusNotifierWatcher {
     name_watches: RefCell<HashMap<String, Unwatch>>,
 }
 
+pub fn host_name() -> String {
+    format!("org.kde.StatusNotifierHost-{}", std::process::id())
+}
+
 fn is_registered(items: &[Item], owner: &str, path: &str) -> bool {
     items
         .iter()

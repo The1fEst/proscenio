@@ -85,6 +85,7 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
+Type=notify
 ExecStart=/usr/bin/proscenio
 Restart=on-failure
 RestartSec=2
@@ -93,6 +94,15 @@ Slice=session.slice
 [Install]
 WantedBy=graphical-session.target
 ```
+
+With `Type=notify`, systemd treats the unit as started when proscenio sends `READY=1` to the socket
+in `NOTIFY_SOCKET`. It does so once the session bus shows the notification server name, the
+`org.kde.StatusNotifierWatcher` name and the bar's `org.kde.StatusNotifierHost-<pid>` name, all
+owned by proscenio, so units ordered `After=` it can rely on the tray and the notification server.
+If a name is still not owned by proscenio after 10 seconds, for example because another notification
+daemon holds it, proscenio writes a line naming the process that holds it to its log and sends
+`READY=1` anyway. Without `NOTIFY_SOCKET`, as under `Type=simple` or when started from Hyprland's
+config, nothing is sent.
 
 Or start it from Hyprland's own config:
 

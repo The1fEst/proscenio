@@ -23,7 +23,7 @@ pub const HIDE_WHILE_SHARING: &str = "/notifications/hideWhileSharing";
 const KNOWN_APPS: &str = "notificationApps";
 const URGENCY_CRITICAL: u8 = 2;
 const HISTORY_LIMIT: usize = 50;
-const NAME: &str = "org.freedesktop.Notifications";
+pub const NAME: &str = "org.freedesktop.Notifications";
 const PATH: &str = "/org/freedesktop/Notifications";
 
 #[derive(Clone, Debug, PartialEq)]

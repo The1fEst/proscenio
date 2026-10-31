@@ -11,6 +11,7 @@ use crate::core::watch;
 use crate::panels::bar::traymenu;
 use crate::platform::dbus;
 use crate::platform::system::appicon;
+use crate::services::overlay::statusnotifierwatcher::host_name;
 use crate::ui::anim;
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::input::ripple::{Look, RippleButton};
@@ -206,7 +207,7 @@ fn register_host(session: &gio::DBusConnection) {
     if REGISTERED.replace(true) {
         return;
     }
-    let name = format!("org.kde.StatusNotifierHost-{}", std::process::id());
+    let name = host_name();
     gio::bus_own_name_on_connection(
         session,
         &name,

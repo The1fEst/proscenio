@@ -5,6 +5,7 @@ pub mod defaultapps;
 pub mod desktop;
 pub mod locale;
 pub mod loginshell;
+pub mod readiness;
 pub mod sessionenvironment;
 pub mod terminals;
 pub mod udev;
