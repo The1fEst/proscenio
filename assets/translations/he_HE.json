@@ -1562,5 +1562,6 @@
   "Monitor: %1": "צג: %1",
   "Window: %1": "חלון: %1",
   "Region: %1": "אזור: %1",
-  "Workspace: %1": "סביבת עבודה: %1"
+  "Workspace: %1": "סביבת עבודה: %1",
+  "Caps Lock is on": "Caps Lock פועל"
 }

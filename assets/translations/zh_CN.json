@@ -1562,5 +1562,6 @@
   "Monitor: %1": "显示器：%1",
   "Window: %1": "窗口：%1",
   "Region: %1": "区域：%1",
-  "Workspace: %1": "工作区：%1"
+  "Workspace: %1": "工作区：%1",
+  "Caps Lock is on": "大写锁定已开启"
 }

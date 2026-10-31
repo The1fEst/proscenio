@@ -46,6 +46,7 @@ struct Context {
     text: RefCell<String>,
     is_in_progress: Cell<bool>,
     has_failed: Cell<bool>,
+    pam_message: RefCell<Option<String>>,
     is_fingerprint_active: Cell<bool>,
     target: Cell<Option<Target>>,
     should_also_inhibit: Cell<bool>,
@@ -388,6 +389,7 @@ impl Lock {
         if self.instance.borrow().is_some() {
             return;
         }
+        self.context.pam_message.replace(None);
         self.context.reset();
         let instance = Rc::new(SessionLock::new());
         instance.connect_monitor({
@@ -603,6 +605,7 @@ impl Lock {
             return;
         }
         self.context.should_also_inhibit.set(should_also_inhibit);
+        self.context.pam_message.replace(None);
         self.context.changed.notify();
         let password = self.context.text.borrow().clone();
         let unlock_password = password.clone();
@@ -616,7 +619,8 @@ impl Lock {
                 pam::wipe(&mut unlock_password.into_bytes());
                 return;
             };
-            if auth_result.unwrap_or(false) {
+            let verdict = auth_result.unwrap_or_default();
+            if verdict.is_granted {
                 lock.run_target(target, Some(unlock_password));
                 return;
             }
@@ -624,6 +628,7 @@ impl Lock {
             lock.context.replace_text(String::new());
             lock.context.is_in_progress.set(false);
             lock.context.has_failed.set(true);
+            lock.context.pam_message.replace(verdict.message);
             lock.context.changed.notify();
             lock.context.shake_requested.notify();
         });

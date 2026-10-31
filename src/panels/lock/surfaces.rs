@@ -41,6 +41,8 @@ const FINGERPRINT_START: i32 = 10;
 const FINGERPRINT_END: i32 = 6;
 const FCITX: &str = "Fcitx";
 const FCITX_END: i32 = 10;
+const NOTICE_SIDE: i32 = 12;
+const NOTICE_WIDTH_CHARS: i32 = 60;
 const APPEAR_SCALE: f64 = 0.9;
 const APPEAR_SCALE_MILLIS: f64 = 500.0;
 const APPEAR_FADE_MILLIS: f64 = 200.0;
@@ -105,6 +107,9 @@ mod imp {
             let Some(right) = main.next_sibling() else {
                 return;
             };
+            let Some(notice) = right.next_sibling() else {
+                return;
+            };
             let natural = |widget: &gtk4::Widget| {
                 (
                     widget.measure(gtk4::Orientation::Horizontal, -1).1,
@@ -117,18 +122,43 @@ mod imp {
             let (left_width, _) = natural(&left);
             let (right_width, _) = natural(&right);
             let scale = self.scale.get() as f32;
-            let place = |widget: &gtk4::Widget, x: i32, width: i32| {
-                let half = gtk4::graphene::Point::new(width as f32 / 2.0, main_height as f32 / 2.0);
+            let place = |widget: &gtk4::Widget, x: i32, y: i32, width: i32, height: i32| {
+                let half = gtk4::graphene::Point::new(width as f32 / 2.0, height as f32 / 2.0);
                 let center = gtk4::graphene::Point::new(x as f32 + half.x(), y as f32 + half.y());
                 let transform = gtk4::gsk::Transform::new()
                     .translate(&center)
                     .scale(scale, scale)
                     .translate(&gtk4::graphene::Point::new(-half.x(), -half.y()));
-                widget.allocate(width, main_height, -1, Some(transform));
+                widget.allocate(width, height, -1, Some(transform));
             };
-            place(&left, x - ISLAND_GAP - left_width, left_width);
-            place(&main, x, main_width);
-            place(&right, x + main_width + ISLAND_GAP, right_width);
+            place(
+                &left,
+                x - ISLAND_GAP - left_width,
+                y,
+                left_width,
+                main_height,
+            );
+            place(&main, x, y, main_width, main_height);
+            place(
+                &right,
+                x + main_width + ISLAND_GAP,
+                y,
+                right_width,
+                main_height,
+            );
+            if notice.should_layout() {
+                let (minimum_width, natural_width, _, _) =
+                    notice.measure(gtk4::Orientation::Horizontal, -1);
+                let notice_width = natural_width.min(width - 2 * ISLAND_GAP).max(minimum_width);
+                let notice_height = notice.measure(gtk4::Orientation::Vertical, notice_width).1;
+                place(
+                    &notice,
+                    (width - notice_width) / 2,
+                    y - ISLAND_GAP - notice_height,
+                    notice_width,
+                    notice_height,
+                );
+            }
         }
     }
 }
@@ -140,10 +170,15 @@ glib::wrapper! {
 }
 
 impl Islands {
-    fn new(left: &gtk4::Widget, main: &gtk4::Widget, right: &gtk4::Widget) -> Self {
+    fn new(
+        left: &gtk4::Widget,
+        main: &gtk4::Widget,
+        right: &gtk4::Widget,
+        notice: &gtk4::Widget,
+    ) -> Self {
         let islands: Islands = glib::Object::new();
         islands.imp().scale.set(APPEAR_SCALE);
-        for child in [left, main, right] {
+        for child in [left, main, right, notice] {
             child.set_parent(&islands);
         }
         islands
@@ -446,10 +481,30 @@ impl Lock {
         right_frame.append(&power_button);
         right_frame.append(&reboot_button);
 
+        let pam_message_label = text::styled("");
+        text::set_color(&pam_message_label, "colError");
+        pam_message_label.set_wrap(true);
+        pam_message_label.set_max_width_chars(NOTICE_WIDTH_CHARS);
+        pam_message_label.set_justify(gtk4::Justification::Center);
+        let caps_lock_label = text::styled("");
+        text::set_color(&caps_lock_label, "colOnSurfaceVariant");
+        let notice_column = gtk4::Box::new(gtk4::Orientation::Vertical, PAIR_SPACING);
+        notice_column.set_margin_start(NOTICE_SIDE);
+        notice_column.set_margin_end(NOTICE_SIDE);
+        notice_column.append(&pam_message_label);
+        notice_column.append(&caps_lock_label);
+        let notice_frame = toolbar::frame();
+        notice_frame.append(&notice_column);
+        let keyboard = monitor
+            .display()
+            .default_seat()
+            .and_then(|seat| seat.keyboard());
+
         let islands = Islands::new(
             left_frame.upcast_ref(),
             main_frame.upcast_ref(),
             right_frame.upcast_ref(),
+            notice_frame.upcast_ref(),
         );
         islands.set_opacity(0.0);
         let window = gtk4::Window::new();
@@ -513,6 +568,7 @@ impl Lock {
             let surface = Rc::downgrade(&surface);
             let context = Rc::downgrade(context);
             let services = self.services.clone();
+            let keyboard = keyboard.clone();
             move || {
                 let (Some(surface), Some(context)) = (surface.upgrade(), context.upgrade()) else {
                     return;
@@ -550,13 +606,25 @@ impl Lock {
                     surface.field.add_css_class("plain");
                 }
                 surface.placeholder_label.set_visible(length == 0);
-                surface
-                    .placeholder_label
-                    .set_text(&tr(if context.has_failed.get() {
+                let has_pam_message = {
+                    let pam_message = context.pam_message.borrow();
+                    pam_message_label.set_text(pam_message.as_deref().unwrap_or_default());
+                    pam_message.is_some()
+                };
+                surface.placeholder_label.set_text(&tr(
+                    if context.has_failed.get() && !has_pam_message {
                         "Incorrect password"
                     } else {
                         "Enter password"
-                    }));
+                    },
+                ));
+                pam_message_label.set_visible(has_pam_message);
+                let is_caps_lock_on = keyboard
+                    .as_ref()
+                    .is_some_and(|keyboard| keyboard.is_caps_locked());
+                caps_lock_label.set_text(&tr("Caps Lock is on"));
+                caps_lock_label.set_visible(is_caps_lock_on);
+                notice_frame.set_visible(has_pam_message || is_caps_lock_on);
                 let is_busy = context.is_in_progress.get();
                 surface.field.set_sensitive(!is_busy);
                 surface.confirm_button.set_sensitive(!is_busy);
@@ -671,6 +739,17 @@ impl Lock {
                     }
                 }
             }));
+        if let Some(keyboard) = keyboard {
+            let handler = keyboard.connect_caps_lock_state_notify({
+                let refresh = Rc::downgrade(&refresh);
+                move |_| {
+                    if let Some(refresh) = refresh.upgrade() {
+                        refresh();
+                    }
+                }
+            });
+            surface.scope.defer(move || keyboard.disconnect(handler));
+        }
 
         field.connect_changed({
             let context = Rc::downgrade(context);

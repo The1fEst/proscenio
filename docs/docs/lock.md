@@ -81,6 +81,7 @@ clicking or pressing a key gives the field the keyboard.
 - Escape clears the field, and so do ten seconds without a key.
 - Holding Control turns the confirm button into a coffee cup: Ctrl+Enter unlocks and turns on
   **Keep awake**, the idle inhibitor of the [quick toggles](quick-toggles.md).
+- While Caps Lock is on, "Caps Lock is on" shows above the field.
 
 ## Unlocking
 
@@ -88,7 +89,10 @@ Enter or the confirm button checks the password with PAM's `login` service, on a
 the screen stays responsive.
 
 - Right: the lock lifts.
-- Wrong: the field empties, reads "Incorrect password" and shakes.
+- Wrong: the field empties and shakes. Error and informational messages PAM sent during the check
+  show above the field in the error color, one per line, and the field reads "Enter password";
+  `pam_faillock`, for example, says that the account is locked and for how many minutes. Without a
+  message the field reads "Incorrect password". The messages stay until the next check.
 
 ### Fingerprint
 

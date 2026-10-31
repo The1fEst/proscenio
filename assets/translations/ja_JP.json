@@ -1562,5 +1562,6 @@
   "Monitor: %1": "モニター: %1",
   "Window: %1": "ウィンドウ: %1",
   "Region: %1": "領域: %1",
-  "Workspace: %1": "ワークスペース: %1"
+  "Workspace: %1": "ワークスペース: %1",
+  "Caps Lock is on": "Caps Lock がオンです"
 }
