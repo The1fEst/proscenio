@@ -39,6 +39,7 @@ pub enum Menu {
     NightLight,
     WireGuard,
     DoNotDisturb,
+    KeepAwake,
 }
 
 pub fn profile_label(profile: &str) -> &'static str {
@@ -68,6 +69,7 @@ pub fn menu(kind: &str) -> Option<Menu> {
         "nightLight" => Some(Menu::NightLight),
         "wireGuard" => Some(Menu::WireGuard),
         "notifications" => Some(Menu::DoNotDisturb),
+        "idleInhibitor" => Some(Menu::KeepAwake),
         _ => None,
     }
 }
@@ -248,10 +250,14 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
         },
         "idleInhibitor" => Look {
             name: "Keep awake",
-            status: String::new(),
+            status: services
+                .session
+                .keep_awake_end_secs()
+                .map(format_status_at)
+                .unwrap_or_default(),
             has_status: true,
             icon: "coffee".to_owned(),
-            tooltip: tr("Keep system awake"),
+            tooltip: trf("%1 | Right-click for a timer", &[&tr("Keep system awake")]),
             is_toggled: services.session.keeps_awake.get(),
             is_available: true,
         },

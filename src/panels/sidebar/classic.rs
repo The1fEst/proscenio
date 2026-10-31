@@ -106,7 +106,7 @@ pub fn build(theme: &SharedTheme, context: Rc<Context>, scope: &Scope) -> gtk4::
 fn has_alt(kind: &str) -> bool {
     matches!(
         kind,
-        "network" | "bluetooth" | "nightLight" | "easyEffects" | "wireGuard"
+        "network" | "bluetooth" | "nightLight" | "idleInhibitor" | "easyEffects" | "wireGuard"
     )
 }
 
@@ -133,6 +133,7 @@ fn run_alt(kind: &str, context: &Context) {
             );
             (context.close)();
         }
+        "idleInhibitor" => (context.open_menu)(Menu::KeepAwake),
         "wireGuard" => (context.open_menu)(Menu::WireGuard),
         _ => {}
     }
@@ -177,7 +178,7 @@ fn show(toggle: &Toggle, services: &Rc<Services>) {
 
     let tooltip = match toggle.kind {
         "nightLight" => tr("Night Light | Right-click to toggle Auto mode"),
-        "idleInhibitor" => tr("Keep system awake"),
+        "idleInhibitor" => trf("%1 | Right-click for a timer", &[&tr("Keep system awake")]),
         "wireGuard" => tr("WireGuard | Right-click to manage connections"),
         "network" => trf(
             "%1 | Right-click to configure",

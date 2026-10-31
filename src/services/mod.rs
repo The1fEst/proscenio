@@ -97,7 +97,7 @@ impl Services {
             Notifications::new(config, session.clone(), system.as_ref(), &device_usage);
         let color = ScreenColor::new(&events);
         let location = Location::new(system.clone());
-        let desktop_session = Session::new(config, &color, &location);
+        let desktop_session = Session::new(config, &color, &location, system.as_ref());
         let services = Services {
             dark_mode_schedule: DarkModeSchedule::new(&desktop_session, &location),
             background: BackgroundTasks::start(),

@@ -70,7 +70,7 @@ array of its plural forms. Where both have a string, the catalog's wins.
 | Path | What |
 |---|---|
 | `~/.local/state/proscenio/generated/` | The colors generated from the wallpaper; see [Colors from the wallpaper](colors.md) |
-| `~/.local/state/proscenio/states.json` | Timers and the stopwatch, the idle inhibitor, the end of a timed Do Not Disturb, the calendar's last tab, the remembered screenshot region, the apps that have sent notifications, and the Hyprland instance proscenio last ran in |
+| `~/.local/state/proscenio/states.json` | Timers and the stopwatch, the idle inhibitor and its end, the end of a timed Do Not Disturb, the calendar's last tab, the remembered screenshot region, the apps that have sent notifications, and the Hyprland instance proscenio last ran in |
 | `~/.local/state/proscenio/frecency.json` | How often and when each app was last started from the launcher; see [Apps](overview.md#apps) |
 | `~/.local/state/proscenio/todo.json` | The to-do list |
 | `~/.local/state/proscenio/shaders/<filter>.frag` | The color filter shaders the accessibility settings hand to Hyprland's `decoration:screen_shader` |

@@ -16,7 +16,7 @@ use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use crate::core::config::{self, Config, ScheduleMode};
 use crate::core::listeners::{Listeners, Subscription};
@@ -25,6 +25,7 @@ use crate::core::{persistent, watch};
 use crate::services::hyprland::screencolor::{NEUTRAL_TEMPERATURE, ScreenColor};
 use location::Location;
 use schedule::Span;
+use crate::services::session::deadline::{Deadline, Hold};
 
 pub struct Session {
     pub is_night_light_on: Cell<bool>,
@@ -35,6 +36,7 @@ pub struct Session {
     color: Rc<ScreenColor>,
     location: Rc<Location>,
     inhibitor: RefCell<Option<process::Running>>,
+    keep_awake_deadline: Rc<Deadline>,
     schedule: Schedule,
     listeners: Listeners,
     config_watch: RefCell<Option<watch::Watch>>,
@@ -62,6 +64,7 @@ struct Night {
 const KELVIN_STEP: f64 = 10.0;
 const DAY_SECONDS: i32 = 24 * 60 * 60;
 const INHIBIT: [&str; 2] = ["idle", "inhibit"];
+const INHIBIT_UNTIL: [&str; 2] = ["idle", "inhibitUntil"];
 
 fn temperature_at(now: i32, night: &Night) -> Option<i32> {
     let start = night.from - night.transition;
@@ -181,9 +184,14 @@ fn has_passed(boundary: i32, override_start_seconds: i64, now: &glib::DateTime) 
 }
 
 impl Session {
-    pub fn new(config: &Config, color: &Rc<ScreenColor>, location: &Rc<Location>) -> Rc<Self> {
+    pub fn new(
+        config: &Config,
+        color: &Rc<ScreenColor>,
+        location: &Rc<Location>,
+        system: Option<&gio::DBusConnection>,
+    ) -> Rc<Self> {
         let (from, to) = parse_night_span(&config.night_from, &config.night_to);
-        let session = Rc::new(Session {
+        let session = Rc::new_cyclic(|weak: &Weak<Session>| Session {
             is_night_light_on: Cell::new(false),
             keeps_awake: Cell::new(false),
             is_dark_mode: Cell::new(read_dark_mode()),
@@ -192,6 +200,14 @@ impl Session {
             color: color.clone(),
             location: location.clone(),
             inhibitor: RefCell::new(None),
+            keep_awake_deadline: Deadline::new(INHIBIT_UNTIL, system, {
+                let weak = weak.clone();
+                move || {
+                    if let Some(session) = weak.upgrade() {
+                        session.release_keep_awake();
+                    }
+                }
+            }),
             schedule: Schedule {
                 mode: Cell::new(config.night_schedule),
                 from: Cell::new(from),
@@ -211,10 +227,9 @@ impl Session {
             && persistent::read(&INHIBIT)
                 .and_then(|value| value.as_bool())
                 .unwrap_or(false);
-        if was_kept_awake {
-            session.toggle_keep_awake();
-        } else {
-            persistent::write(&INHIBIT, false.into());
+        match session.keep_awake_deadline.restore(was_kept_awake) {
+            Some(hold) => session.keep_awake(hold),
+            None => session.release_keep_awake(),
         }
         session
             .config_watch
@@ -376,28 +391,53 @@ impl Session {
     }
 
     pub fn toggle_keep_awake(&self) {
-        let mut inhibitor = self.inhibitor.borrow_mut();
-        match inhibitor.take() {
-            Some(mut child) => {
-                child.stop();
-                self.keeps_awake.set(false);
-            }
-            None => {
-                let mut command = process::quiet(&[
-                    "systemd-inhibit",
-                    "--what=idle:sleep",
-                    "--who=proscenio",
-                    "--why=Keep awake",
-                    "cat",
-                ]);
-                command.stdin(std::process::Stdio::piped());
-                *inhibitor = process::start(command);
-                self.keeps_awake.set(inhibitor.is_some());
-            }
+        if self.keeps_awake.get() {
+            self.release_keep_awake();
+        } else {
+            self.keep_awake(Hold::Indefinite);
         }
+    }
+
+    pub fn keep_awake(&self, hold: Hold) {
+        let mut inhibitor = self.inhibitor.borrow_mut();
+        if inhibitor.is_none() {
+            let mut command = process::quiet(&[
+                "systemd-inhibit",
+                "--what=idle:sleep",
+                "--who=proscenio",
+                "--why=Keep awake",
+                "cat",
+            ]);
+            command.stdin(std::process::Stdio::piped());
+            *inhibitor = process::start(command);
+        }
+        let is_held = inhibitor.is_some();
         drop(inhibitor);
-        persistent::write(&INHIBIT, self.keeps_awake.get().into());
+        if !is_held {
+            self.release_keep_awake();
+            return;
+        }
+        self.keeps_awake.set(true);
+        persistent::write(&INHIBIT, true.into());
+        match hold {
+            Hold::Indefinite => self.keep_awake_deadline.clear(),
+            Hold::Until(end_secs) => self.keep_awake_deadline.start(end_secs),
+        }
         self.announce();
+    }
+
+    pub fn release_keep_awake(&self) {
+        if let Some(mut child) = self.inhibitor.borrow_mut().take() {
+            child.stop();
+        }
+        self.keeps_awake.set(false);
+        self.keep_awake_deadline.clear();
+        persistent::write(&INHIBIT, false.into());
+        self.announce();
+    }
+
+    pub fn keep_awake_end_secs(&self) -> Option<i64> {
+        self.keep_awake_deadline.end_secs()
     }
 
     pub fn lock(&self) {

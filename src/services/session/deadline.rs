@@ -40,6 +40,16 @@ pub const DO_NOT_DISTURB_PRESETS: [Preset; 7] = [
     Preset::Indefinite,
 ];
 
+pub const KEEP_AWAKE_PRESETS: [Preset; 7] = [
+    Preset::Minutes(15),
+    Preset::Minutes(30),
+    Preset::Minutes(60),
+    Preset::Minutes(120),
+    Preset::Minutes(240),
+    Preset::Minutes(480),
+    Preset::Indefinite,
+];
+
 impl Preset {
     pub fn from_clock_text(text: &str) -> Option<Preset> {
         let (hour, minute) = parse_clock_time(text)?
@@ -324,6 +334,29 @@ mod tests {
         );
         for text in ["24:00", "12:60", "12", "ab:cd", ""] {
             assert_eq!(Preset::from_clock_text(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn each_menu_offers_its_durations_and_ends_in_the_future_or_never() {
+        let now = build_utc_time(2026, 10, 31, 12, 0, 0.0);
+        let minutes = |presets: &[Preset]| -> Vec<u32> {
+            presets
+                .iter()
+                .filter_map(|preset| match preset {
+                    Preset::Minutes(minutes) => Some(*minutes),
+                    _ => None,
+                })
+                .collect()
+        };
+        assert_eq!(minutes(&DO_NOT_DISTURB_PRESETS), [15, 30, 60, 180, 480]);
+        assert_eq!(minutes(&KEEP_AWAKE_PRESETS), [15, 30, 60, 120, 240, 480]);
+        for preset in DO_NOT_DISTURB_PRESETS.iter().chain(&KEEP_AWAKE_PRESETS) {
+            match preset.resolve(&now) {
+                Some(Hold::Until(end_secs)) => assert!(end_secs > now.to_unix(), "{preset:?}"),
+                Some(Hold::Indefinite) => assert_eq!(*preset, Preset::Indefinite),
+                None => panic!("{preset:?}"),
+            }
         }
     }
 

@@ -83,7 +83,7 @@ a dialog or a settings page.
 | `notifications` | Notifications | Do Not Disturb is off | turns Do Not Disturb on or off | the Do Not Disturb dialog |
 | `nightLight` | Night Light | night light is active | turns it on or off | the night light dialog |
 | `darkMode` | Dark Mode | the palette is dark | switches the palette to the other mode | — |
-| `idleInhibitor` | Keep awake | the idle and sleep inhibitor is held | takes or releases it | — |
+| `idleInhibitor` | Keep awake | the idle and sleep inhibitor is held | takes or releases it | the Keep awake dialog |
 | `powerProfile` | Power Profile | the profile is not Balanced | moves to the next profile | — |
 | `easyEffects` | EasyEffects | EasyEffects is running | starts it in the background or quits it | opens its window |
 | `cloudflareWarp` | Cloudflare WARP | WARP is connected | connects or disconnects | — |
@@ -108,6 +108,7 @@ The status line of a two-cell tile reads:
 | Dark Mode | `Dark` or `Light` |
 | Power Profile | `Power Saver`, `Balanced` or `Performance` |
 | Screen snip, Color picker | no status line |
+| Keep awake | `Until HH:MM` while the inhibitor has an end, else `On` or `Off` |
 | the rest | `On` or `Off` |
 
 ### Wi-Fi and Ethernet
@@ -176,6 +177,14 @@ Holds `systemd-inhibit --what=idle:sleep --who=proscenio --why="Keep awake" cat`
 `cat` reads a pipe from the shell, so the inhibitor ends when the shell exits. The state is kept in
 `~/.local/state/proscenio/states.json` under `idle.inhibit`: a shell restarted within the same
 Hyprland session takes the inhibitor again, and a fresh Hyprland session starts with it off.
+
+The secondary action opens a dialog that holds the inhibitor for 15 minutes, 30 minutes, 1 hour,
+2 hours, 4 hours or 8 hours, or until it is turned off. While it has an end, the tile's status reads
+*Until HH:MM* in the `time.format` clock format. The end is kept as seconds since the Unix epoch in
+`states.json` under `idle.inhibitUntil`. A shell restarted before the end holds the inhibitor until
+it; one restarted after the end finds it released. A click on the tile releases it, and a click while
+it is off holds it with no end. One timer is armed for the end and is checked again after the
+computer resumes from sleep. The `inhibit` target of the [IPC](ipc.md) does the same from a script.
 
 ### Power Profile
 
@@ -250,6 +259,7 @@ instead:
 | Wi-Fi | opens the settings window's Wi-Fi page, or the Network page while the main connection is wired, and closes the sidebar |
 | Bluetooth | opens the settings window's Bluetooth page and closes the sidebar |
 | Night Light | turns the schedule on or off |
+| Keep awake | opens the Keep awake dialog |
 | EasyEffects | opens its window and closes the sidebar |
 | WireGuard | opens the WireGuard dialog |
 
@@ -258,7 +268,7 @@ connection in use.
 
 ## The dialogs
 
-A tile's secondary action can open one of five dialogs. Each is a card that drops in over the
+A tile's secondary action can open one of six dialogs. Each is a card that drops in over the
 sidebar and dims it. A click on the dimmed part, Escape, or **Done** closes it. One dialog is open at
 a time, and closing the sidebar removes it.
 
@@ -324,3 +334,9 @@ later. **New Connection** closes the sidebar and opens the settings window's Net
 A list of the choices in [Do Not Disturb](notifications.md#do-not-disturb): 15 minutes, 30 minutes,
 1 hour, 3 hours, 8 hours, until 8:00, and until turned off. A click on one turns Do Not Disturb on
 for that time and closes the dialog.
+
+### Keep awake
+
+A list of the choices in [Keep awake](#keep-awake): 15 minutes, 30 minutes, 1 hour, 2 hours, 4 hours,
+8 hours, and until turned off. A click on one holds the inhibitor for that time and closes the
+dialog.

@@ -12,7 +12,9 @@ use crate::panels::wifinetwork::{self, NetworkList};
 use crate::services::Services;
 use crate::services::network::net;
 use crate::services::network::wifi::Wifi;
-use crate::services::session::deadline::{DO_NOT_DISTURB_PRESETS, Hold, Preset};
+use crate::services::session::deadline::{
+    DO_NOT_DISTURB_PRESETS, Hold, KEEP_AWAKE_PRESETS, Preset,
+};
 use crate::services::session::parse_clock_time;
 use crate::ui::theme::{SharedTheme, pixel_size, transparentize};
 use crate::ui::widgets::display::customicon;
@@ -56,6 +58,12 @@ pub fn open(menu: Menu, context: &Context) -> Rc<WindowDialog> {
                 &DO_NOT_DISTURB_PRESETS,
                 move |hold| notifications.silence(hold),
             )
+        }
+        Menu::KeepAwake => {
+            let session = context.services.session.clone();
+            preset_dialog(context, "Keep awake", &KEEP_AWAKE_PRESETS, move |hold| {
+                session.keep_awake(hold)
+            })
         }
     }
 }

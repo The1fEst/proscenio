@@ -48,4 +48,26 @@ pub fn register(ipc: &Ipc, services: &Services) {
             }
         },
     );
+
+    let session = &services.session;
+    ipc.add("inhibit", "toggle", {
+        let session = session.clone();
+        move || session.toggle_keep_awake()
+    });
+    ipc.add("inhibit", "enable", {
+        let session = session.clone();
+        move || session.keep_awake(Hold::Indefinite)
+    });
+    ipc.add("inhibit", "disable", {
+        let session = session.clone();
+        move || session.release_keep_awake()
+    });
+    ipc.add_with("inhibit", "enableFor", &["minutes: string"], {
+        let session = session.clone();
+        move |arguments| {
+            if let Some(hold) = resolve_now(Preset::from_minutes_text(&arguments[0])) {
+                session.keep_awake(hold);
+            }
+        }
+    });
 }
