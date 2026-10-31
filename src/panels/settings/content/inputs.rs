@@ -5,6 +5,7 @@ use std::rc::Rc;
 use super::{Choice, Page, Parent, Style};
 use crate::core::config;
 use crate::core::i18n::tr;
+use crate::services::session::parse_clock_time;
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::controls::{self, ComboBox, ConfigSwitch};
@@ -401,6 +402,28 @@ impl Page {
         field.bind(read_current);
         parent.add(&field.root);
         self.keep(field.clone());
+        field
+    }
+
+    pub fn add_clock_field(
+        &self,
+        parent: &impl Parent,
+        label: &str,
+        pointer: &'static str,
+        default: &'static str,
+    ) -> Rc<TextField> {
+        let field = self.text_field(
+            parent,
+            Style::Outlined,
+            label,
+            move || config::value_str(pointer).unwrap_or_else(|| default.to_owned()),
+            move |text| {
+                if let Some(time) = parse_clock_time(&text) {
+                    config::store_value(pointer, Value::from(time));
+                }
+            },
+        );
+        self.refresh_text_on(pointer, &field);
         field
     }
 

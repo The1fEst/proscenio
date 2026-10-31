@@ -27,6 +27,8 @@ pub const CHEATSHEET_SUPER_KEY: &str = "\u{f05b3}";
 pub const NIGHT_FROM: &str = "19:00";
 pub const NIGHT_TO: &str = "06:30";
 pub const NIGHT_TRANSITION_MINUTES: i32 = 30;
+pub const DARK_MODE_DARK_FROM: &str = "20:00";
+pub const DARK_MODE_LIGHT_FROM: &str = "07:00";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ScheduleMode {
@@ -225,6 +227,10 @@ pub struct Config {
     pub night_from: String,
     pub night_to: String,
     pub night_transition: i32,
+    pub is_dark_mode_automatic: bool,
+    pub dark_mode_schedule: ScheduleMode,
+    pub dark_mode_dark_from: String,
+    pub dark_mode_light_from: String,
     pub pomodoro_focus: i64,
     pub pomodoro_break: i64,
     pub pomodoro_long_break: i64,

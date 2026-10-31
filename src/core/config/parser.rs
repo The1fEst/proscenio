@@ -2,8 +2,9 @@ use serde_json::Value;
 use std::cell::{Cell, RefCell};
 
 use super::{
-    CHEATSHEET_SUPER_KEY, Config, CornerStyle, DATE_FORMAT, DOCK_PINNED_APPS, NIGHT_FROM, NIGHT_TO,
-    NIGHT_TRANSITION_MINUTES, RegionOptions, ScheduleMode, TIME_FORMAT,
+    CHEATSHEET_SUPER_KEY, Config, CornerStyle, DARK_MODE_DARK_FROM, DARK_MODE_LIGHT_FROM,
+    DATE_FORMAT, DOCK_PINNED_APPS, NIGHT_FROM, NIGHT_TO, NIGHT_TRANSITION_MINUTES, RegionOptions,
+    ScheduleMode, TIME_FORMAT,
 };
 use crate::core::paths;
 use crate::platform::hyprland::hypr;
@@ -385,6 +386,21 @@ impl Config {
                 .map_or(NIGHT_TRANSITION_MINUTES, |minutes| {
                     minutes.clamp(0, 120) as i32
                 }),
+            is_dark_mode_automatic: root
+                .pointer("/appearance/darkMode/automatic")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            dark_mode_schedule: parse_schedule_mode(root.pointer("/appearance/darkMode/schedule")),
+            dark_mode_dark_from: root
+                .pointer("/appearance/darkMode/darkFrom")
+                .and_then(Value::as_str)
+                .unwrap_or(DARK_MODE_DARK_FROM)
+                .to_owned(),
+            dark_mode_light_from: root
+                .pointer("/appearance/darkMode/lightFrom")
+                .and_then(Value::as_str)
+                .unwrap_or(DARK_MODE_LIGHT_FROM)
+                .to_owned(),
             pomodoro_focus: integer_within(
                 &pomodoro,
                 "focus",
@@ -525,6 +541,25 @@ mod tests {
             Config::parse(&json!({})).night_schedule,
             ScheduleMode::Times
         );
+    }
+
+    #[test]
+    fn automatic_dark_mode_is_off_and_keeps_the_times_it_is_given() {
+        let config = Config::parse(&json!({}));
+        assert!(!config.is_dark_mode_automatic);
+        assert_eq!(config.dark_mode_schedule, ScheduleMode::Times);
+        assert_eq!(config.dark_mode_dark_from, "20:00");
+        assert_eq!(config.dark_mode_light_from, "07:00");
+        let config = Config::parse(&json!({ "appearance": { "darkMode": {
+            "automatic": true,
+            "schedule": "sun",
+            "darkFrom": "21:15",
+            "lightFrom": "06:00",
+        } } }));
+        assert!(config.is_dark_mode_automatic);
+        assert_eq!(config.dark_mode_schedule, ScheduleMode::Sun);
+        assert_eq!(config.dark_mode_dark_from, "21:15");
+        assert_eq!(config.dark_mode_light_from, "06:00");
     }
 
     #[test]

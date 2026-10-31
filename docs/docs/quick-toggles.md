@@ -158,6 +158,16 @@ Runs `proscenio switchwall --mode light` or `--mode dark` with `--noswitch`, whi
 palette again in the other mode from the same wallpaper. The tile reads the mode from the generated
 palette, `~/.local/state/proscenio/generated/material_colors.scss`. See [Colors](colors.md).
 
+With `appearance.darkMode.automatic` on, off by default, the shell switches the mode itself by
+running the same command, either at `appearance.darkMode.darkFrom` and `appearance.darkMode.lightFrom`,
+20:00 and 07:00 by default, or, with `appearance.darkMode.schedule` set to `sun`, at the day's sunset
+and sunrise at the position GeoClue gives. The schedule is checked on every tick of the background
+loop and runs the command only when the scheduled mode has changed since the last tick and differs
+from the current one, and once at startup, when the schedule is turned on and when its times change,
+if the current mode is wrong. A manual switch therefore holds until the next change of the schedule.
+After sleep the first tick catches up, so the mode is right within one polling interval. While no
+position is known, the fixed times apply.
+
 ### Keep awake
 
 Holds `systemd-inhibit --what=idle:sleep --who=proscenio --why="Keep awake" cat` while it is on.

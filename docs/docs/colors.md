@@ -17,7 +17,8 @@ proscenio switchwall [--mode dark|light] [--type SCHEME] [--color [HEX|clear]] \
 Every control in the shell that touches these runs it, among them the
 [wallpaper selector](wallpaper-selector.md), the Quick and Colors pages of the [settings](settings.md),
 the dark mode buttons of the bar and of the [quick toggles](quick-toggles.md), the launcher's `/dark`,
-`/light` and `/accentcolor` actions, and `proscenio ipc call theme toggleLightDark`. The shell starts
+`/light` and `/accentcolor` actions, `proscenio ipc call theme toggleLightDark`, and the
+[automatic dark mode](quick-toggles.md#dark-mode) when it is on. The shell starts
 it in a transient systemd scope of its own (`systemd-run --user --scope`), outside the shell's
 process.
 

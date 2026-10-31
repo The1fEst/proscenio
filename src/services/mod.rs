@@ -38,6 +38,7 @@ use crate::services::overlay::polkit::Polkit;
 use crate::services::overlay::prompter::Prompter;
 use crate::services::session::Session;
 use crate::services::session::background::BackgroundTasks;
+use crate::services::session::darkmode::DarkModeSchedule;
 use crate::services::session::location::Location;
 use crate::services::session::states::States;
 use crate::services::session::timer::Timer;
@@ -77,6 +78,7 @@ pub struct Services {
     pub wallpapers: std::rc::Rc<Wallpapers>,
     pub polkit: std::rc::Rc<Polkit>,
     pub prompter: std::rc::Rc<Prompter>,
+    dark_mode_schedule: std::rc::Rc<DarkModeSchedule>,
     _workspace_group_writer: std::rc::Rc<WorkspaceGroupWriter>,
     _hyprlock_clock_writer: HyprlockClockWriter,
 }
@@ -93,7 +95,10 @@ impl Services {
         let device_usage = DeviceUsage::new(&events, &hypr, audio.clone());
         let notifications = Notifications::new(config, session.clone(), &device_usage);
         let color = ScreenColor::new(&events);
+        let location = Location::new(system.clone());
+        let desktop_session = Session::new(config, &color, &location);
         let services = Services {
+            dark_mode_schedule: DarkModeSchedule::new(&desktop_session, &location),
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),
             xkb: Xkb::new(&events),
@@ -118,7 +123,7 @@ impl Services {
             bluez: Bluez::new(system.clone()),
             power: Power::new(system.clone()),
             polkit: Polkit::new(system.clone()),
-            session: Session::new(config, &color, &Location::new(system.clone())),
+            session: desktop_session,
             weather: Weather::new(system.clone()),
             battery: Battery::new(system),
             updates: Updates::new(),
@@ -163,6 +168,13 @@ impl Services {
             let session = self.session.clone();
             move || {
                 session.follow_clock();
+                Ok(())
+            }
+        });
+        background.add("dark mode schedule", {
+            let dark_mode_schedule = self.dark_mode_schedule.clone();
+            move || {
+                dark_mode_schedule.follow_clock();
                 Ok(())
             }
         });

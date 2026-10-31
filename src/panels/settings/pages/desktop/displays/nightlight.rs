@@ -1,10 +1,8 @@
-use serde_json::Value;
 use std::rc::Rc;
 
 use crate::core::config;
 use crate::core::i18n::tr;
-use crate::panels::settings::content::{Context, Page, Style};
-use crate::services::session::parse_clock_time;
+use crate::panels::settings::content::{Context, Page};
 
 const NIGHT_AUTOMATIC: &str = "/light/night/automatic";
 const NIGHT_SCHEDULE: &str = "/light/night/schedule";
@@ -22,30 +20,18 @@ pub fn build(context: &Context) -> Rc<Page> {
     );
     page.add_schedule_selection(&night_section, NIGHT_SCHEDULE);
     let times_row = page.uniform_row(&night_section);
-    let from_field = page.text_field(
+    let from_field = page.add_clock_field(
         &times_row,
-        Style::Outlined,
         &tr("From (HH:mm)"),
-        || config::value_str("/light/night/from").unwrap_or_else(|| config::NIGHT_FROM.to_owned()),
-        |text| {
-            if let Some(time) = parse_clock_time(&text) {
-                config::store_value("/light/night/from", Value::from(time));
-            }
-        },
+        "/light/night/from",
+        config::NIGHT_FROM,
     );
-    page.refresh_text_on("/light/night/from", &from_field);
-    let to_field = page.text_field(
+    let to_field = page.add_clock_field(
         &times_row,
-        Style::Outlined,
         &tr("To (HH:mm)"),
-        || config::value_str("/light/night/to").unwrap_or_else(|| config::NIGHT_TO.to_owned()),
-        |text| {
-            if let Some(time) = parse_clock_time(&text) {
-                config::store_value("/light/night/to", Value::from(time));
-            }
-        },
+        "/light/night/to",
+        config::NIGHT_TO,
     );
-    page.refresh_text_on("/light/night/to", &to_field);
     let update_schedule_fields = move || {
         let is_automatic = config::value_bool(NIGHT_AUTOMATIC, true);
         from_field.set_enabled(is_automatic);

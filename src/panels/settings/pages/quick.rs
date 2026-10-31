@@ -35,6 +35,7 @@ const KEY_TEXT_SIZE: f64 = 12.0;
 const SUPER_FALLBACK: &str = "󰖳";
 const MODE_PADDING: i32 = 5;
 const MODE_ICON_SIZE: f64 = 30.0;
+const DARK_MODE_AUTOMATIC: &str = "/appearance/darkMode/automatic";
 const BOTTOM_BIT: i64 = 1;
 const VERTICAL_BIT: i64 = 2;
 
@@ -46,6 +47,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     top_row.append(&preview(&page));
     top_row.append(&wallpaper_controls(&page));
     colors_section.append(&top_row);
+    add_automatic_dark_mode(&page, &colors_section);
     super::desktop::appearance::colors::add_palette(&page, &colors_section);
     super::desktop::appearance::colors::add_shell_surfaces(&page, &colors_section);
 
@@ -60,6 +62,37 @@ pub fn build(context: &Context) -> Rc<Page> {
     let rounding_section = page.subsection(&corners_row, &tr("Screen round corner"), "");
     add_screen_rounding(&page, &rounding_section);
     page
+}
+
+fn add_automatic_dark_mode(page: &Page, parent: &gtk4::Box) {
+    page.config_switch(
+        parent,
+        "brightness_auto",
+        &tr("Automatic dark mode"),
+        DARK_MODE_AUTOMATIC,
+        false,
+    );
+    page.add_schedule_selection(parent, "/appearance/darkMode/schedule");
+    let times_row = page.uniform_row(parent);
+    let dark_field = page.add_clock_field(
+        &times_row,
+        &tr("Dark from (HH:mm)"),
+        "/appearance/darkMode/darkFrom",
+        config::DARK_MODE_DARK_FROM,
+    );
+    let light_field = page.add_clock_field(
+        &times_row,
+        &tr("Light from (HH:mm)"),
+        "/appearance/darkMode/lightFrom",
+        config::DARK_MODE_LIGHT_FROM,
+    );
+    let update_time_fields = move || {
+        let is_automatic = config::value_bool(DARK_MODE_AUTOMATIC, false);
+        dark_field.set_enabled(is_automatic);
+        light_field.set_enabled(is_automatic);
+    };
+    update_time_fields();
+    page.watch(DARK_MODE_AUTOMATIC, update_time_fields);
 }
 
 pub fn add_screen_rounding(page: &Page, parent: &gtk4::Box) {

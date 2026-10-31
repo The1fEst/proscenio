@@ -1,6 +1,7 @@
 pub mod accounts;
 pub mod appearance;
 pub mod background;
+pub mod darkmode;
 pub mod location;
 mod schedule;
 pub mod states;
@@ -129,15 +130,16 @@ pub fn parse_clock_time(text: &str) -> Option<String> {
     (hour < 24 && minute < 60).then(|| format!("{hour:02}:{minute:02}"))
 }
 
+fn parse_clock_minutes(clock: &str, default: &str) -> i32 {
+    minutes(clock)
+        .or_else(|| minutes(default))
+        .unwrap_or_default()
+}
+
 fn parse_night_span(from: &str, to: &str) -> (i32, i32) {
-    let parse_time = |clock: &str, default: &str| {
-        minutes(clock)
-            .or_else(|| minutes(default))
-            .unwrap_or_default()
-    };
     (
-        parse_time(from, config::NIGHT_FROM),
-        parse_time(to, config::NIGHT_TO),
+        parse_clock_minutes(from, config::NIGHT_FROM),
+        parse_clock_minutes(to, config::NIGHT_TO),
     )
 }
 
@@ -458,11 +460,11 @@ impl Session {
     }
 
     pub fn toggle_dark_mode(&self) {
-        let mode = if self.is_dark_mode.get() {
-            "light"
-        } else {
-            "dark"
-        };
+        self.set_dark_mode(!self.is_dark_mode.get());
+    }
+
+    pub fn set_dark_mode(&self, is_dark: bool) {
+        let mode = if is_dark { "dark" } else { "light" };
         crate::theming::switchwallqueue::request(&["--mode", mode, "--noswitch"]);
     }
 

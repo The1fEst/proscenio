@@ -190,6 +190,9 @@ The first page gathers the settings changed most often.
 | Wallpaper preview | shows `background.wallpaperPath` |
 | Choose file | runs `proscenio switchwall`, which asks `kdialog` for an image, starting in the Pictures folder, and makes it the wallpaper; disabled without `kdialog` |
 | Light, Dark | run `proscenio switchwall --mode light` or `--mode dark` with `--noswitch`, which regenerates the colors in that mode without changing the wallpaper; the current mode is highlighted |
+| Automatic dark mode | switches between dark and light mode on a schedule (`appearance.darkMode.automatic`, off) |
+| Fixed times, Sunset to sunrise | the schedule: the times below, or dark from the day's sunset to its sunrise at the position GeoClue gives (`appearance.darkMode.schedule`: `times` or `sun`, `times`) |
+| Dark from, Light from | the times of the fixed schedule, 24-hour `HH:mm` (`appearance.darkMode.darkFrom`, `20:00`, and `appearance.darkMode.lightFrom`, `07:00`); also used until the position is known, and inactive while the automatic switch is off |
 | Palette | the color scheme generated from the wallpaper: Auto, Content, Expressive, Fidelity, Fruit Salad, Monochrome, Neutral, Rainbow or Tonal Spot (`appearance.palette.type`); a change regenerates the colors |
 | Accent color | a color such as `#8caaee` to generate from instead of the wallpaper's; empty uses the wallpaper (`appearance.palette.accentColor`) |
 | Extra background tint | tints shell surfaces more strongly with the accent color (`appearance.extraBackgroundTint`, on) |
@@ -200,6 +203,7 @@ The first page gathers the settings changed most often.
 
 The palette and transparency controls are the same ones the Colors subpage of
 [Appearance](settings-appearance.md) shows; [Colors](colors.md) explains how the scheme is made.
+How the automatic dark mode switches is described under [Dark Mode](quick-toggles.md#dark-mode).
 
 **Bar & screen**
 

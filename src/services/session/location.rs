@@ -27,15 +27,15 @@ impl Location {
             watches: RefCell::default(),
         });
         location.follow_demand();
-        let watch = watch::config("/light/night", {
+        let watches = ["/light/night", "/appearance/darkMode"].map(|pointer| {
             let location = Rc::downgrade(&location);
-            move || {
+            watch::config(pointer, move || {
                 if let Some(location) = location.upgrade() {
                     location.follow_demand();
                 }
-            }
+            })
         });
-        location.watches.replace(vec![watch]);
+        location.watches.replace(watches.into());
         location
     }
 
@@ -53,7 +53,8 @@ impl Location {
 
     fn follow_demand(self: &Rc<Self>) {
         let config = config::current();
-        let is_needed = config.night_automatic && config.night_schedule == ScheduleMode::Sun;
+        let is_needed = (config.night_automatic && config.night_schedule == ScheduleMode::Sun)
+            || (config.is_dark_mode_automatic && config.dark_mode_schedule == ScheduleMode::Sun);
         let Some(system) = self.system.clone().filter(|_| is_needed) else {
             self.release_client();
             return;
