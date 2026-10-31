@@ -2,10 +2,10 @@ pub mod accounts;
 pub mod appearance;
 pub mod background;
 pub mod darkmode;
-pub mod location;
-mod schedule;
 pub mod deadline;
 pub mod deadlineipc;
+pub mod location;
+mod schedule;
 pub mod states;
 pub mod timedate;
 pub mod timer;
@@ -23,9 +23,9 @@ use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::{self, detach};
 use crate::core::{persistent, watch};
 use crate::services::hyprland::screencolor::{NEUTRAL_TEMPERATURE, ScreenColor};
+use crate::services::session::deadline::{Deadline, Hold};
 use location::Location;
 use schedule::Span;
-use crate::services::session::deadline::{Deadline, Hold};
 
 pub struct Session {
     pub is_night_light_on: Cell<bool>,
