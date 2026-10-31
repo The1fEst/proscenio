@@ -406,11 +406,16 @@ resources group. It shows `--°` until the first report arrives.
 
 - A right click fetches the report again and says so in a notification.
 - Hovering it opens a popup with the place, the temperature and what it feels like, eight cards (UV
-  index, wind and its direction, precipitation, humidity, visibility, pressure, sunrise, sunset), and
-  the time of the last refresh.
+  index, wind and its direction, precipitation, humidity, visibility, pressure, sunrise, sunset), the
+  forecast, and the time of the last refresh.
+- The forecast has two cards. The first lists the next eight three-hour slots from the current time,
+  each with its time in the clock's time format without seconds, a condition icon, the temperature and the chance of
+  rain. The second lists today and the next two days, each with the weekday, the chance of rain, a
+  condition icon and the low and high temperature. Temperatures follow **Fahrenheit unit**. A card
+  whose data the response lacks is hidden.
 
-The report comes from `https://wttr.in/<place>?format=j1`, fetched with `curl`. The rest of the
-options are on **System → Services → Weather**:
+The report and the forecast come from `https://wttr.in/<place>?format=j1`, fetched with `curl`. The
+rest of the options are on **System → Services → Weather**:
 
 | Setting | Key | Default |
 |---|---|---|

@@ -6,7 +6,7 @@ use crate::core::config::Config;
 use crate::core::i18n::{tr, trf};
 use crate::core::scope::Scope;
 use crate::platform::dbus::notify::{self, Notification};
-use crate::services::session::weather::{self, Weather};
+use crate::services::session::weather::{self, DailyEntry, HourlyEntry, Weather};
 use crate::ui::theme::pixel_size;
 use crate::ui::widgets::layout::centered::Centered;
 use crate::ui::widgets::layout::column::Column;
@@ -15,6 +15,8 @@ use crate::ui::widgets::{display::text, overlay::popup};
 const PADDING: i32 = 10;
 const LAYOUT_SPACING: i32 = 5;
 const CARD_PADDING: i32 = 14;
+const FORECAST_PADDING: i32 = 10;
+const FORECAST_SPACING: i32 = 8;
 
 pub fn build(weather: &Rc<Weather>, config: &Rc<Config>, scope: &Scope) -> gtk4::Widget {
     let symbol = text::symbol("cloud", pixel_size::LARGE as f64);
@@ -83,6 +85,10 @@ struct Panel {
     city: gtk4::Label,
     summary: gtk4::Label,
     values: Vec<gtk4::Label>,
+    hourly: gtk4::Box,
+    hourly_card: gtk4::Box,
+    daily: gtk4::Box,
+    daily_card: gtk4::Box,
     footer: gtk4::Label,
 }
 
@@ -133,6 +139,13 @@ impl Panel {
             values.push(value);
         }
 
+        let hourly = gtk4::Box::new(gtk4::Orientation::Horizontal, FORECAST_SPACING);
+        hourly.set_homogeneous(true);
+        let hourly_card = build_forecast_card(&hourly);
+
+        let daily = gtk4::Box::new(gtk4::Orientation::Vertical, FORECAST_SPACING);
+        let daily_card = build_forecast_card(&daily);
+
         let footer = text::styled_sized("", pixel_size::SMALLER);
         text::set_color(&footer, "colOnSurfaceVariant");
         footer.set_halign(gtk4::Align::Center);
@@ -140,6 +153,8 @@ impl Panel {
         let column = gtk4::Box::new(gtk4::Orientation::Vertical, 5);
         column.append(&header);
         column.append(&grid);
+        column.append(&hourly_card);
+        column.append(&daily_card);
         column.append(&footer);
 
         Panel {
@@ -147,6 +162,10 @@ impl Panel {
             city,
             summary,
             values,
+            hourly,
+            hourly_card,
+            daily,
+            daily_card,
             footer,
         }
     }
@@ -171,9 +190,91 @@ impl Panel {
         for (label, reading) in self.values.iter().zip(readings) {
             label.set_text(&reading);
         }
+        replace_children(
+            &self.hourly,
+            &self.hourly_card,
+            report.hourly.iter().map(build_hourly_slot),
+        );
+        replace_children(
+            &self.daily,
+            &self.daily_card,
+            report.daily.iter().map(build_daily_row),
+        );
         self.footer
             .set_text(&trf("Last refresh: %1", &[&report.refresh_time]));
     }
+}
+
+fn build_forecast_card(content: &gtk4::Box) -> gtk4::Box {
+    content.set_margin_top(FORECAST_PADDING);
+    content.set_margin_bottom(FORECAST_PADDING);
+    content.set_margin_start(FORECAST_PADDING);
+    content.set_margin_end(FORECAST_PADDING);
+    let card = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    card.add_css_class("weather-card");
+    card.append(content);
+    card
+}
+
+fn replace_children(
+    container: &gtk4::Box,
+    card: &gtk4::Box,
+    children: impl Iterator<Item = gtk4::Widget>,
+) {
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
+    for child in children {
+        container.append(&child);
+    }
+    card.set_visible(container.first_child().is_some());
+}
+
+fn build_muted_label(content: &str, size: i32) -> gtk4::Label {
+    let label = text::styled_sized(content, size);
+    text::set_color(&label, "colOnSurfaceVariant");
+    label
+}
+
+fn build_condition_symbol(code: &str) -> gtk4::Label {
+    let symbol = text::symbol(weather::symbol(code), pixel_size::LARGE as f64);
+    text::set_color(&symbol, "colOnSurfaceVariant");
+    symbol
+}
+
+fn build_hourly_slot(entry: &HourlyEntry) -> gtk4::Widget {
+    let slot = gtk4::Box::new(gtk4::Orientation::Vertical, 2);
+    slot.set_halign(gtk4::Align::Center);
+    slot.append(&build_muted_label(&entry.time, pixel_size::SMALLER));
+    slot.append(&build_condition_symbol(&entry.code));
+    slot.append(&build_muted_label(&entry.temperature, pixel_size::SMALL));
+    slot.append(&build_muted_label(
+        &entry.chance_of_rain,
+        pixel_size::SMALLEST,
+    ));
+    slot.upcast()
+}
+
+fn build_daily_row(entry: &DailyEntry) -> gtk4::Widget {
+    let weekday = build_muted_label(&entry.weekday, pixel_size::SMALL);
+    weekday.set_xalign(0.0);
+    weekday.set_hexpand(true);
+    let chance = build_muted_label(&entry.chance_of_rain, pixel_size::SMALLER);
+    chance.set_width_chars(4);
+    chance.set_xalign(1.0);
+    let range = build_muted_label(
+        &format!("{} / {}", entry.minimum, entry.maximum),
+        pixel_size::SMALL,
+    );
+    range.set_width_chars(9);
+    range.set_xalign(1.0);
+
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, FORECAST_SPACING);
+    row.append(&weekday);
+    row.append(&chance);
+    row.append(&build_condition_symbol(&entry.code));
+    row.append(&range);
+    row.upcast()
 }
 
 fn card(title: &str, icon: &str) -> (gtk4::Widget, gtk4::Label) {

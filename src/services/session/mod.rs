@@ -4,6 +4,7 @@ pub mod background;
 pub mod darkmode;
 pub mod deadline;
 pub mod deadlineipc;
+pub mod forecast;
 pub mod location;
 mod schedule;
 pub mod states;

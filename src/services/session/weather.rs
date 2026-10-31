@@ -4,6 +4,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
+use super::forecast::{self, Date, Moment};
 use super::location::{Location, LocationUpdate};
 use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
@@ -26,7 +27,29 @@ pub struct Report {
     pub temperature: String,
     pub feels_like: String,
     pub refresh_time: String,
+    pub hourly: Vec<HourlyEntry>,
+    pub daily: Vec<DailyEntry>,
 }
+
+#[derive(Clone, Default)]
+pub struct HourlyEntry {
+    pub time: String,
+    pub code: String,
+    pub temperature: String,
+    pub chance_of_rain: String,
+}
+
+#[derive(Clone, Default)]
+pub struct DailyEntry {
+    pub weekday: String,
+    pub code: String,
+    pub minimum: String,
+    pub maximum: String,
+    pub chance_of_rain: String,
+}
+
+const HOURLY_COUNT: usize = 8;
+const DAILY_COUNT: usize = 3;
 
 pub struct Weather {
     pub report: RefCell<Report>,
@@ -196,7 +219,14 @@ impl Weather {
             )
         };
 
+        let forecast = forecast::parse(response);
+        let hourly = read_local_moment()
+            .map(|now| build_hourly_entries(&forecast, now, uses_uscs))
+            .unwrap_or_default();
+
         Report {
+            hourly,
+            daily: build_daily_entries(&forecast, uses_uscs),
             uv: read(current, "uvIndex", "0"),
             humidity: format!("{}%", read(current, "humidity", "0")),
             sunrise: read(sky, "sunrise", "0.0"),
@@ -242,6 +272,92 @@ pub fn symbol(code: &str) -> &'static str {
     }
 }
 
+fn read_local_moment() -> Option<Moment> {
+    let now = glib::DateTime::now_local().ok()?;
+    Some(Moment {
+        date: Date {
+            year: now.year(),
+            month: now.month() as u32,
+            day: now.day_of_month() as u32,
+        },
+        minute_of_day: now.hour() as u32 * 60 + now.minute() as u32,
+    })
+}
+
+fn format_moment(moment: Moment, format: &str) -> String {
+    glib::DateTime::from_local(
+        moment.date.year,
+        moment.date.month as i32,
+        moment.date.day as i32,
+        (moment.minute_of_day / 60) as i32,
+        (moment.minute_of_day % 60) as i32,
+        0.0,
+    )
+    .ok()
+    .and_then(|time| time.format(format).ok())
+    .map(Into::into)
+    .unwrap_or_default()
+}
+
+fn strip_seconds(pattern: &str) -> String {
+    pattern
+        .replace(":%-S", "")
+        .replace(":%S", "")
+        .replace("%-S", "")
+        .replace("%S", "")
+}
+
+fn format_degrees(temperature: forecast::Temperature, uses_uscs: bool) -> String {
+    format!("{}°", temperature.degrees(uses_uscs))
+}
+
+fn format_chance(chance_of_rain_percent: Option<u32>) -> String {
+    chance_of_rain_percent
+        .map(|percent| format!("{percent}%"))
+        .unwrap_or_default()
+}
+
+fn build_hourly_entries(
+    forecast: &forecast::Forecast,
+    now: Moment,
+    uses_uscs: bool,
+) -> Vec<HourlyEntry> {
+    let time_format = strip_seconds(&crate::panels::bar::clock::strftime_from_qt(
+        &config::current().time_format,
+    ));
+    forecast
+        .select_upcoming_slots(now, HOURLY_COUNT)
+        .into_iter()
+        .map(|slot| HourlyEntry {
+            time: format_moment(slot.start, &time_format),
+            code: slot.code.clone(),
+            temperature: format_degrees(slot.temperature, uses_uscs),
+            chance_of_rain: format_chance(slot.chance_of_rain_percent),
+        })
+        .collect()
+}
+
+fn build_daily_entries(forecast: &forecast::Forecast, uses_uscs: bool) -> Vec<DailyEntry> {
+    forecast
+        .days
+        .iter()
+        .take(DAILY_COUNT)
+        .map(|day| DailyEntry {
+            weekday: format_moment(
+                Moment {
+                    date: day.date,
+                    minute_of_day: 0,
+                },
+                "%a",
+            ),
+            code: day.code.clone(),
+            minimum: format_degrees(day.minimum, uses_uscs),
+            maximum: format_degrees(day.maximum, uses_uscs),
+            chance_of_rain: format_chance(day.chance_of_rain_percent),
+        })
+        .collect()
+}
+
 fn stamp_format() -> String {
     let config = config::current();
     format!(
@@ -260,6 +376,73 @@ async fn run(line: &[&str]) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn build_forecast_response(days: &[&str]) -> Value {
+        let hours = [0, 300, 600, 900, 1200, 1500, 1800, 2100];
+        let weather: Vec<Value> = days
+            .iter()
+            .map(|date| {
+                serde_json::json!({
+                    "date": date,
+                    "mintempC": "0", "maxtempC": "20",
+                    "hourly": hours.iter().map(|time| serde_json::json!({
+                        "time": time.to_string(),
+                        "tempC": (time / 100).to_string(),
+                        "weatherCode": "113",
+                        "chanceofrain": "30",
+                    })).collect::<Vec<_>>(),
+                })
+            })
+            .collect();
+        serde_json::json!({ "weather": weather })
+    }
+
+    #[test]
+    fn the_hourly_entries_follow_the_unit_and_cross_midnight() {
+        let forecast = forecast::parse(&build_forecast_response(&[
+            "2026-10-31",
+            "2026-11-01",
+            "2026-11-02",
+        ]));
+        let now = Moment {
+            date: Date {
+                year: 2026,
+                month: 10,
+                day: 31,
+            },
+            minute_of_day: 22 * 60,
+        };
+        let celsius = build_hourly_entries(&forecast, now, false);
+        assert_eq!(celsius.len(), HOURLY_COUNT);
+        assert_eq!(celsius[0].temperature, "0°");
+        assert_eq!(celsius[1].temperature, "3°");
+        assert_eq!(celsius[0].chance_of_rain, "30%");
+
+        let fahrenheit = build_hourly_entries(&forecast, now, true);
+        assert_eq!(fahrenheit[1].temperature, "37°");
+    }
+
+    #[test]
+    fn the_daily_entries_are_limited_and_follow_the_unit() {
+        let forecast = forecast::parse(&build_forecast_response(&[
+            "2026-10-31",
+            "2026-11-01",
+            "2026-11-02",
+            "2026-11-03",
+        ]));
+        assert_eq!(build_daily_entries(&forecast, false).len(), DAILY_COUNT);
+        assert_eq!(build_daily_entries(&forecast, false)[0].maximum, "20°");
+        assert_eq!(build_daily_entries(&forecast, true)[0].maximum, "68°");
+        assert_eq!(build_daily_entries(&forecast, true)[0].minimum, "32°");
+    }
+
+    #[test]
+    fn slot_times_drop_the_seconds_of_the_shell_time_format() {
+        let convert = crate::panels::bar::clock::strftime_from_qt;
+        assert_eq!(strip_seconds(&convert("HH:mm:ss")), "%H:%M");
+        assert_eq!(strip_seconds(&convert("h:mm:ss AP")), "%-I:%M %p");
+        assert_eq!(strip_seconds(&convert("HH:mm")), "%H:%M");
+    }
 
     #[test]
     fn a_dropped_weather_service_is_freed() {
