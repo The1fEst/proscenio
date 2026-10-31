@@ -419,7 +419,7 @@ impl Screens {
                 let screen_surfaces = surfaces
                     .iter()
                     .find(|screen_surfaces| screen_surfaces.connector == connector)?;
-                let mut windows = vec![crate::open_bar(
+                let mut windows = vec![crate::barwindow::open_bar(
                     app,
                     config,
                     theme,
