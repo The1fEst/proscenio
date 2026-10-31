@@ -213,7 +213,8 @@ its sunrise, which takes the place of To. The times come from the position GeoCl
 worked out again on every tick of the background loop, so a new day, a new position and a wake from
 sleep take effect within one polling interval. The shell asks GeoClue only while the automatic
 schedule and **Sunset to sunrise** are both on, or the [automatic dark mode](settings.md#quick) is
-on with its own **Sunset to sunrise**, and keeps the last position it received in
+on with its own **Sunset to sunrise**, or the weather is on with GPS (one client serves all of
+them), and keeps the last position it received in
 `~/.local/state/proscenio/states.json` under `location`, which it uses at startup until GeoClue
 answers. While no position is known, the From and To times apply. Where the sun stays up all day
 night light stays off, and where it stays down all day it stays on.

@@ -124,7 +124,7 @@ impl Services {
             power: Power::new(system.clone()),
             polkit: Polkit::new(system.clone()),
             session: desktop_session,
-            weather: Weather::new(system.clone()),
+            weather: Weather::new(&location),
             battery: Battery::new(system),
             updates: Updates::new(),
             easyeffects: EasyEffects::new(),

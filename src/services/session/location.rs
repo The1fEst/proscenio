@@ -4,30 +4,45 @@ use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::core::config::{self, ScheduleMode};
+use crate::core::listeners::{Listeners, Subscription};
 use crate::core::sun::{self, Date, Daylight, Position};
-use crate::core::{persistent, watch};
+use crate::core::{config, persistent, watch};
 use crate::platform::dbus::geoclue;
 
 const CACHED_POSITION: [&str; 1] = ["location"];
 
+pub enum LocationUpdate {
+    Found,
+    Failed { had_position: bool },
+}
+
 pub struct Location {
-    position: Cell<Option<Position>>,
+    live_position: Cell<Option<Position>>,
+    cached_position: Cell<Option<Position>>,
     system: Option<gio::DBusConnection>,
     client: RefCell<Option<geoclue::LocationClientSlot>>,
+    listeners: Listeners<LocationUpdate>,
     watches: RefCell<Vec<watch::Watch>>,
 }
 
 impl Location {
     pub fn new(system: Option<gio::DBusConnection>) -> Rc<Self> {
         let location = Rc::new(Location {
-            position: Cell::new(read_cached_position()),
+            live_position: Cell::new(None),
+            cached_position: Cell::new(read_cached_position()),
             system,
             client: RefCell::new(None),
+            listeners: Listeners::default(),
             watches: RefCell::default(),
         });
         location.follow_demand();
-        let watches = ["/light/night", "/appearance/darkMode"].map(|pointer| {
+        let watches = [
+            "/light/night",
+            "/appearance/darkMode",
+            "/bar/weather/enable",
+            "/bar/weather/enableGPS",
+        ]
+        .map(|pointer| {
             let location = Rc::downgrade(&location);
             watch::config(pointer, move || {
                 if let Some(location) = location.upgrade() {
@@ -39,8 +54,16 @@ impl Location {
         location
     }
 
+    pub fn live_position(&self) -> Option<Position> {
+        self.live_position.get()
+    }
+
+    pub fn subscribe(&self, listener: impl Fn(&LocationUpdate) + 'static) -> Subscription {
+        self.listeners.add_with(listener)
+    }
+
     pub fn compute_daylight_today(&self) -> Option<Daylight> {
-        let position = self.position.get()?;
+        let position = self.live_position.get().or(self.cached_position.get())?;
         let now = glib::DateTime::now_local().ok()?;
         let date = Date {
             year: now.year(),
@@ -52,10 +75,11 @@ impl Location {
     }
 
     fn follow_demand(self: &Rc<Self>) {
-        let config = config::current();
-        let is_needed = (config.night_automatic && config.night_schedule == ScheduleMode::Sun)
-            || (config.is_dark_mode_automatic && config.dark_mode_schedule == ScheduleMode::Sun);
-        let Some(system) = self.system.clone().filter(|_| is_needed) else {
+        let Some(system) = self
+            .system
+            .clone()
+            .filter(|_| config::current().needs_position())
+        else {
             self.release_client();
             return;
         };
@@ -81,9 +105,11 @@ impl Location {
                         latitude_degrees,
                         longitude_degrees,
                     };
-                    if location.position.replace(Some(position)) != Some(position) {
+                    location.live_position.set(Some(position));
+                    if location.cached_position.replace(Some(position)) != Some(position) {
                         write_cached_position(position);
                     }
+                    location.listeners.notify_with(&LocationUpdate::Found);
                 }
             },
             {
@@ -93,9 +119,14 @@ impl Location {
                     let Some(location) = location.upgrade() else {
                         return;
                     };
-                    if location.is_current_client(&slot) {
-                        location.client.take();
+                    if !location.is_current_client(&slot) {
+                        return;
                     }
+                    location.client.take();
+                    let had_position = location.live_position.replace(None).is_some();
+                    location
+                        .listeners
+                        .notify_with(&LocationUpdate::Failed { had_position });
                 }
             },
         );
@@ -109,6 +140,7 @@ impl Location {
     }
 
     fn release_client(&self) {
+        self.live_position.set(None);
         let Some(slot) = self.client.take() else {
             return;
         };
@@ -117,6 +149,12 @@ impl Location {
         {
             geoclue::release(system, client.client_path);
         }
+    }
+}
+
+impl Drop for Location {
+    fn drop(&mut self) {
+        self.release_client();
     }
 }
 
@@ -134,4 +172,21 @@ fn write_cached_position(position: Position) {
         "longitude": position.longitude_degrees,
     });
     persistent::write(&CACHED_POSITION, cached);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_the_newest_location_request_counts() {
+        let location = Location::new(None);
+        let older_slot = geoclue::LocationClientSlot::default();
+        let newer_slot = geoclue::LocationClientSlot::default();
+        location.client.replace(Some(newer_slot.clone()));
+        assert!(location.is_current_client(&Rc::downgrade(&newer_slot)));
+        assert!(!location.is_current_client(&Rc::downgrade(&older_slot)));
+        location.release_client();
+        assert!(!location.is_current_client(&Rc::downgrade(&newer_slot)));
+    }
 }

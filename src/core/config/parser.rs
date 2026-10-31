@@ -563,6 +563,24 @@ mod tests {
     }
 
     #[test]
+    fn a_position_is_needed_only_by_a_sun_schedule_that_is_on_or_by_the_weather_with_gps() {
+        let needs_position = |root: Value| Config::parse(&root).needs_position();
+        assert!(!needs_position(json!({})));
+        let night = |is_automatic: bool, schedule: &str| json!({ "light": { "night": { "automatic": is_automatic, "schedule": schedule } } });
+        let dark_mode = |is_automatic: bool, schedule: &str| json!({ "appearance": { "darkMode": { "automatic": is_automatic, "schedule": schedule } } });
+        let weather = |is_enabled: bool, is_gps: bool| json!({ "bar": { "weather": { "enable": is_enabled, "enableGPS": is_gps } } });
+        assert!(needs_position(night(true, "sun")));
+        assert!(!needs_position(night(false, "sun")));
+        assert!(!needs_position(night(true, "times")));
+        assert!(needs_position(dark_mode(true, "sun")));
+        assert!(!needs_position(dark_mode(true, "times")));
+        assert!(!needs_position(dark_mode(false, "sun")));
+        assert!(needs_position(weather(true, true)));
+        assert!(!needs_position(weather(true, false)));
+        assert!(!needs_position(weather(false, true)));
+    }
+
+    #[test]
     fn pomodoro_lengths_and_cycles_outside_their_range_are_clamped() {
         let pomodoro = |config: &Config| {
             (

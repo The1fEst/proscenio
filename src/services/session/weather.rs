@@ -1,14 +1,13 @@
-use gtk4::gio;
 use gtk4::glib;
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
+use super::location::{Location, LocationUpdate};
 use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, process, watch};
-use crate::platform::dbus::geoclue;
 use crate::platform::dbus::notify::{self, Notification};
 
 #[derive(Clone, Default)]
@@ -31,125 +30,75 @@ pub struct Report {
 
 pub struct Weather {
     pub report: RefCell<Report>,
-    position: Cell<Option<(f64, f64)>>,
-    location: RefCell<Option<geoclue::LocationClientSlot>>,
-    system: Option<gio::DBusConnection>,
+    location: Rc<Location>,
     listeners: Listeners,
     config_watches: RefCell<Vec<watch::Watch>>,
+    location_subscription: RefCell<Option<Subscription>>,
     fetch_generation: Cell<u64>,
 }
 
 impl Weather {
-    pub fn new(system: Option<gio::DBusConnection>) -> Rc<Self> {
+    pub fn new(location: &Rc<Location>) -> Rc<Self> {
         let weather = Rc::new(Weather {
             report: RefCell::default(),
-            position: Cell::default(),
-            location: RefCell::new(None),
-            system,
+            location: location.clone(),
             listeners: Listeners::default(),
             config_watches: RefCell::default(),
+            location_subscription: RefCell::new(None),
             fetch_generation: Cell::new(0),
         });
-        weather.locate();
         let watches = [
-            ("/bar/weather/enable", true),
-            ("/bar/weather/enableGPS", true),
-            ("/bar/weather/city", false),
-            ("/bar/weather/useUSCS", false),
+            "/bar/weather/enable",
+            "/bar/weather/enableGPS",
+            "/bar/weather/city",
+            "/bar/weather/useUSCS",
         ]
-        .map(|(pointer, should_relocate)| {
+        .map(|pointer| {
             let weather = Rc::downgrade(&weather);
             watch::config(pointer, move || {
                 let Some(weather) = weather.upgrade() else {
                     return;
                 };
-                if should_relocate {
-                    weather.locate();
-                }
                 if config::current().weather_enable {
                     weather.fetch();
                 }
             })
         });
         weather.config_watches.replace(watches.into());
+        let subscription = location.subscribe({
+            let weather = Rc::downgrade(&weather);
+            move |update| {
+                let Some(weather) = weather.upgrade() else {
+                    return;
+                };
+                if !weather.uses_position() {
+                    return;
+                }
+                match update {
+                    LocationUpdate::Found => weather.fetch(),
+                    LocationUpdate::Failed { had_position } => {
+                        notify::send(&Notification {
+                            app: "Shell",
+                            summary: &tr("Weather Service"),
+                            body: &tr(
+                                "Cannot find a GPS service. Using the fallback method instead.",
+                            ),
+                            ..Default::default()
+                        });
+                        if *had_position {
+                            weather.fetch();
+                        }
+                    }
+                }
+            }
+        });
+        weather.location_subscription.replace(Some(subscription));
         weather
     }
 
-    fn locate(self: &Rc<Self>) {
+    fn uses_position(&self) -> bool {
         let config = config::current();
-        let Some(system) = self
-            .system
-            .clone()
-            .filter(|_| config.weather_enable && config.weather_gps)
-        else {
-            self.stop_locating();
-            self.position.set(None);
-            return;
-        };
-        if self.location.borrow().is_some() {
-            return;
-        }
-        let slot = geoclue::LocationClientSlot::default();
-        self.location.replace(Some(slot.clone()));
-        geoclue::follow(
-            system,
-            slot.clone(),
-            {
-                let weather = Rc::downgrade(self);
-                let slot = Rc::downgrade(&slot);
-                move |latitude, longitude| {
-                    let Some(weather) = weather.upgrade() else {
-                        return;
-                    };
-                    if !weather.is_current_location(&slot) {
-                        return;
-                    }
-                    weather.position.set(Some((latitude, longitude)));
-                    weather.fetch();
-                }
-            },
-            {
-                let weather = Rc::downgrade(self);
-                let slot = Rc::downgrade(&slot);
-                move || {
-                    let Some(weather) = weather.upgrade() else {
-                        return;
-                    };
-                    if !weather.is_current_location(&slot) {
-                        return;
-                    }
-                    weather.location.take();
-                    let had_position = weather.position.replace(None).is_some();
-                    notify::send(&Notification {
-                        app: "Shell",
-                        summary: &tr("Weather Service"),
-                        body: &tr("Cannot find a GPS service. Using the fallback method instead."),
-                        ..Default::default()
-                    });
-                    if had_position {
-                        weather.fetch();
-                    }
-                }
-            },
-        );
-    }
-
-    fn is_current_location(&self, slot: &geoclue::WeakLocationClientSlot) -> bool {
-        self.location
-            .borrow()
-            .as_ref()
-            .is_some_and(|current| Rc::as_ptr(current) == slot.as_ptr())
-    }
-
-    fn stop_locating(&self) {
-        let Some(slot) = self.location.take() else {
-            return;
-        };
-        if let Some(client) = slot.take()
-            && let Some(system) = self.system.clone()
-        {
-            geoclue::release(system, client.client_path);
-        }
+        config.weather_enable && config.weather_gps
     }
 
     pub fn period() -> Duration {
@@ -166,14 +115,20 @@ impl Weather {
 
     pub fn fetch(self: &Rc<Self>) {
         let weather = Rc::downgrade(self);
-        let position = self.position.get();
+        let position = self
+            .uses_position()
+            .then(|| self.location.live_position())
+            .flatten();
         let generation = self.start_fetch();
         glib::spawn_future_local(async move {
             if weather.upgrade().is_none() {
                 return;
             }
             let place = match position {
-                Some((latitude, longitude)) => format!("{latitude},{longitude}"),
+                Some(position) => format!(
+                    "{},{}",
+                    position.latitude_degrees, position.longitude_degrees
+                ),
                 None => config::current()
                     .weather_city
                     .split_whitespace()
@@ -268,12 +223,6 @@ impl Weather {
     }
 }
 
-impl Drop for Weather {
-    fn drop(&mut self) {
-        self.stop_locating();
-    }
-}
-
 pub fn symbol(code: &str) -> &'static str {
     match code {
         "113" => "clear_day",
@@ -314,27 +263,15 @@ mod tests {
 
     #[test]
     fn a_dropped_weather_service_is_freed() {
-        let weather = Weather::new(None);
+        let weather = Weather::new(&Location::new(None));
         let weak_weather = Rc::downgrade(&weather);
         drop(weather);
         assert!(weak_weather.upgrade().is_none());
     }
 
     #[test]
-    fn only_the_newest_location_request_counts() {
-        let weather = Weather::new(None);
-        let older_slot = geoclue::LocationClientSlot::default();
-        let newer_slot = geoclue::LocationClientSlot::default();
-        weather.location.replace(Some(newer_slot.clone()));
-        assert!(weather.is_current_location(&Rc::downgrade(&newer_slot)));
-        assert!(!weather.is_current_location(&Rc::downgrade(&older_slot)));
-        weather.stop_locating();
-        assert!(!weather.is_current_location(&Rc::downgrade(&newer_slot)));
-    }
-
-    #[test]
     fn only_the_report_of_the_newest_fetch_is_shown() {
-        let weather = Weather::new(None);
+        let weather = Weather::new(&Location::new(None));
         let response =
             |city: &str| serde_json::json!({"nearest_area": [{"areaName": [{"value": city}]}]});
         let older = weather.start_fetch();

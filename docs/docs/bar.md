@@ -421,8 +421,10 @@ With GPS on, the shell creates a GeoClue client on the system bus (`CreateClient
 newer), under the desktop ID `proscenio`, and fetches the weather for the coordinates it reports.
 When GeoClue is missing or refuses, a notification says so, and the city name is used instead.
 GeoClue is only asked while the weather is enabled: turning GPS or the weather off stops and deletes
-that client, also when it is still starting, and a location that still arrives is ignored. When
-fetches overlap, only the report of the newest one is shown.
+that client, also when it is still starting, and a location that still arrives is ignored. The one
+client is shared with the sun schedules of night light and dark mode and stays up while any of them
+needs a position; the weather uses its position only while it is enabled with GPS on. When fetches
+overlap, only the report of the newest one is shown.
 
 ## The right region
 

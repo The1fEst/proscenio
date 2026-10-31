@@ -255,6 +255,15 @@ impl Config {
         self.screens.is_empty() || self.screens.iter().any(|screen| screen == name)
     }
 
+    pub fn needs_position(&self) -> bool {
+        let follows_sun = |is_automatic: bool, schedule: ScheduleMode| {
+            is_automatic && schedule == ScheduleMode::Sun
+        };
+        follows_sun(self.night_automatic, self.night_schedule)
+            || follows_sun(self.is_dark_mode_automatic, self.dark_mode_schedule)
+            || (self.weather_enable && self.weather_gps)
+    }
+
     pub fn is_floating(&self) -> bool {
         self.corner_style == CornerStyle::Float
     }
