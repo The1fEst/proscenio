@@ -1563,5 +1563,8 @@
   "Window: %1": "Janela: %1",
   "Region: %1": "Região: %1",
   "Workspace: %1": "Área de trabalho: %1",
-  "Caps Lock is on": "Caps Lock está ativado"
+  "Caps Lock is on": "Caps Lock está ativado",
+  "Keep these display settings?": "Manter estas configurações das telas?",
+  "The previous settings come back in %1 s unless you keep these.": "As configurações anteriores voltam em %1 s, a não ser que você mantenha estas.",
+  "The previous settings could not be restored: %1": "Não foi possível restaurar as configurações anteriores: %1"
 }

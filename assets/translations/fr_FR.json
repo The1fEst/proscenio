@@ -1563,5 +1563,8 @@
   "Window: %1": "Fenêtre : %1",
   "Region: %1": "Région : %1",
   "Workspace: %1": "Espace de travail : %1",
-  "Caps Lock is on": "Verr. maj. est activé"
+  "Caps Lock is on": "Verr. maj. est activé",
+  "Keep these display settings?": "Garder ces réglages des écrans ?",
+  "The previous settings come back in %1 s unless you keep these.": "Les réglages précédents reviennent dans %1 s, sauf si vous gardez ceux-ci.",
+  "The previous settings could not be restored: %1": "Impossible de restaurer les réglages précédents : %1"
 }

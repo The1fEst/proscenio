@@ -20,8 +20,8 @@ use crate::core::paths;
 use crate::core::scope::Scope;
 use crate::panels::overview::{self, launcher};
 use crate::panels::{
-    bar, calendar, conflicts, keyringprompt, lock, mediacontrols, mixer, osd, osk, polkit,
-    regionselector, renderercheck, settings, sidebar, wallpaperselector, welcome,
+    bar, calendar, conflicts, displayconfirm, keyringprompt, lock, mediacontrols, mixer, osd, osk,
+    polkit, regionselector, renderercheck, settings, sidebar, wallpaperselector, welcome,
 };
 use crate::platform::dbus::ipc;
 use crate::platform::hyprland::hypr;
@@ -130,6 +130,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
         &theme,
         &services.prompter,
     ));
+    std::mem::forget(displayconfirm::DisplayConfirmWindows::new(app, &theme));
     conflicts::check(app, &theme);
     std::mem::forget(panels::bellflash::watch(app, &services));
     platform::network::proxy::apply_at_start();

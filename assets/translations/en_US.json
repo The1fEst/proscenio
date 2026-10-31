@@ -1563,5 +1563,8 @@
   "Window: %1": "Window: %1",
   "Region: %1": "Region: %1",
   "Workspace: %1": "Workspace: %1",
-  "Caps Lock is on": "Caps Lock is on"
+  "Caps Lock is on": "Caps Lock is on",
+  "Keep these display settings?": "Keep these display settings?",
+  "The previous settings come back in %1 s unless you keep these.": "The previous settings come back in %1 s unless you keep these.",
+  "The previous settings could not be restored: %1": "The previous settings could not be restored: %1"
 }

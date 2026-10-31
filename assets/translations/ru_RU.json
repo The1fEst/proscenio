@@ -1563,5 +1563,8 @@
   "Window: %1": "Окно: %1",
   "Region: %1": "Область: %1",
   "Workspace: %1": "Рабочий стол: %1",
-  "Caps Lock is on": "Включён Caps Lock"
+  "Caps Lock is on": "Включён Caps Lock",
+  "Keep these display settings?": "Оставить эти настройки дисплеев?",
+  "The previous settings come back in %1 s unless you keep these.": "Через %1 с вернутся прежние настройки, если не оставить эти.",
+  "The previous settings could not be restored: %1": "Не удалось восстановить прежние настройки: %1"
 }

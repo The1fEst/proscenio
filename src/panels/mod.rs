@@ -5,6 +5,7 @@ pub mod calendar;
 pub mod cheatsheet;
 pub mod conflicts;
 pub mod corners;
+pub mod displayconfirm;
 pub mod dock;
 pub mod keyringprompt;
 pub mod lock;

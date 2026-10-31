@@ -1563,5 +1563,8 @@
   "Window: %1": "Fenster: %1",
   "Region: %1": "Bereich: %1",
   "Workspace: %1": "Arbeitsfläche: %1",
-  "Caps Lock is on": "Feststelltaste ist aktiv"
+  "Caps Lock is on": "Feststelltaste ist aktiv",
+  "Keep these display settings?": "Diese Bildschirmeinstellungen behalten?",
+  "The previous settings come back in %1 s unless you keep these.": "Die vorherigen Einstellungen kehren in %1 s zurück, wenn du diese nicht behältst.",
+  "The previous settings could not be restored: %1": "Die vorherigen Einstellungen konnten nicht wiederhergestellt werden: %1"
 }

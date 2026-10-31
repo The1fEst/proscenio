@@ -1563,5 +1563,8 @@
   "Window: %1": "Finestra: %1",
   "Region: %1": "Regione: %1",
   "Workspace: %1": "Spazio di lavoro: %1",
-  "Caps Lock is on": "Bloc Maiusc è attivo"
+  "Caps Lock is on": "Bloc Maiusc è attivo",
+  "Keep these display settings?": "Mantenere queste impostazioni degli schermi?",
+  "The previous settings come back in %1 s unless you keep these.": "Le impostazioni precedenti tornano tra %1 s, a meno che tu non mantenga queste.",
+  "The previous settings could not be restored: %1": "Impossibile ripristinare le impostazioni precedenti: %1"
 }

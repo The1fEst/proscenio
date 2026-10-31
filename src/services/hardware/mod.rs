@@ -2,6 +2,7 @@ pub mod battery;
 pub mod brightness;
 pub mod devicenotifications;
 pub mod deviceoptions;
+pub mod displayconfirm;
 pub mod displays;
 pub mod power;
 pub mod shellusage;

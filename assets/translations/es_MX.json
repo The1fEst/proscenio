@@ -1563,5 +1563,8 @@
   "Window: %1": "Ventana: %1",
   "Region: %1": "Región: %1",
   "Workspace: %1": "Espacio de trabajo: %1",
-  "Caps Lock is on": "Bloq Mayús está activado"
+  "Caps Lock is on": "Bloq Mayús está activado",
+  "Keep these display settings?": "¿Conservar esta configuración de las pantallas?",
+  "The previous settings come back in %1 s unless you keep these.": "La configuración anterior vuelve en %1 s a menos que conserves esta.",
+  "The previous settings could not be restored: %1": "No se pudo restaurar la configuración anterior: %1"
 }

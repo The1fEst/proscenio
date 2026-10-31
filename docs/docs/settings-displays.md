@@ -41,6 +41,29 @@ write from the same page succeeds: under the **Rescan displays** button on this 
 arrangement on the welcome screen, and at the top of the **Color** subpage's section. The block
 writer is `src/platform/hyprland/monitorrules.rs`.
 
+## Confirming a change
+
+A change that can leave a screen black asks for confirmation once Hyprland has reloaded: a new
+mode, resolution, refresh rate, scale or rotation, a new color profile, bit depth, **Force HDR**,
+**Force wide color** or variable refresh rate value, and turning a display off. A choice that
+matches what the display already runs does not ask. Every other change, such as position, main
+display, mirroring, luminance, ICC profile, reserved area or night light, applies without asking.
+
+The question "Keep these display settings?" covers every display with an overlay that takes the
+pointer and, on the focused display, the keyboard, so it shows on a screen that stayed black as long
+as another screen works. It counts down from 10 seconds.
+
+- **Keep** keeps the new settings.
+- **Revert**, **Escape** or the countdown reaching 0 writes the `displays.lua` text from before the
+  change back and reloads Hyprland. When that file cannot be written, the question stays, says why,
+  and **Revert** tries again.
+
+The asking applies wherever these changes are made, the welcome screen included. A second asking
+change while the question is open does not move the revert target: it stays the text from before the
+first change, and the countdown starts again from 10 seconds. A revert restores the whole file, so
+the options under **All displays** changed in the meantime go back too. The shell holds the revert
+target in memory, so quitting the shell during the countdown keeps the new settings.
+
 ## Displays
 
 ![The Displays page with the resolution, refresh rate and rotation of one display](/img/screenshots/settings-displays.webp)

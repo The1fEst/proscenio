@@ -1563,5 +1563,8 @@
   "Window: %1": "Cửa sổ: %1",
   "Region: %1": "Vùng: %1",
   "Workspace: %1": "Vùng làm việc: %1",
-  "Caps Lock is on": "Caps Lock đang bật"
+  "Caps Lock is on": "Caps Lock đang bật",
+  "Keep these display settings?": "Giữ các cài đặt màn hình này?",
+  "The previous settings come back in %1 s unless you keep these.": "Các cài đặt trước đó sẽ quay lại sau %1 giây nếu bạn không giữ các cài đặt này.",
+  "The previous settings could not be restored: %1": "Không thể khôi phục các cài đặt trước đó: %1"
 }

@@ -3,8 +3,11 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::rc::Rc;
 
+use crate::core::listeners::Subscription;
 use crate::platform::hyprland::hypr;
+use crate::platform::hyprland::hyprconfig::{self, Area};
 use crate::platform::hyprland::monitorrules::{self, Rule, RuleSet};
+use crate::services::hardware::displayconfirm::{DisplayConfirmation, needs_confirmation};
 
 const CONNECTOR_PREFERENCE: [(&str, u32); 6] = [
     ("DP", 0),
@@ -330,6 +333,7 @@ pub struct Displays {
     pub icc_profiles: Vec<String>,
     pub write_error: RefCell<Option<String>>,
     listeners: RefCell<Vec<Box<dyn Fn()>>>,
+    reverted_subscription: RefCell<Option<Subscription>>,
 }
 
 impl Displays {
@@ -340,7 +344,18 @@ impl Displays {
             icc_profiles: monitorrules::icc_profiles(),
             write_error: RefCell::new(None),
             listeners: RefCell::new(Vec::new()),
+            reverted_subscription: RefCell::new(None),
         });
+        displays.reverted_subscription.replace(Some(
+            DisplayConfirmation::shared().connect_reverted({
+                let displays = Rc::downgrade(&displays);
+                move || {
+                    if let Some(displays) = displays.upgrade() {
+                        displays.reload();
+                    }
+                }
+            }),
+        ));
         displays.reload();
         displays
     }
@@ -503,7 +518,27 @@ impl Displays {
         primary: Option<&str>,
     ) {
         let pairs = self.rule_pairs(monitor, keys);
-        self.write(vec![(monitor.name.clone(), pairs)], primary);
+        let requires_confirmation =
+            needs_confirmation(&self.current_values(monitor, &pairs), &pairs);
+        self.write(
+            vec![(monitor.name.clone(), pairs)],
+            primary,
+            requires_confirmation,
+        );
+    }
+
+    fn current_values(
+        &self,
+        monitor: &Monitor,
+        pairs: &[(String, String)],
+    ) -> Vec<(String, String)> {
+        let mut values = self.rule_pairs(monitor, &[]);
+        for (key, _) in pairs {
+            if !values.iter().any(|(name, _)| name == key) {
+                values.push((key.clone(), self.value_of(&monitor.name, key)));
+            }
+        }
+        values
     }
 
     pub fn set_disabled(
@@ -513,22 +548,35 @@ impl Displays {
         primary: Option<&str>,
     ) -> bool {
         let pairs = vec![("disabled".to_owned(), is_disabled.to_string())];
-        self.write(vec![(monitor.name.clone(), pairs)], primary)
+        let current_pairs = [("disabled".to_owned(), monitor.is_disabled.to_string())];
+        let requires_confirmation = needs_confirmation(&current_pairs, &pairs);
+        self.write(
+            vec![(monitor.name.clone(), pairs)],
+            primary,
+            requires_confirmation,
+        )
     }
 
     fn write(
         &self,
         mut rules: Vec<(String, Vec<(String, String)>)>,
         primary: Option<&str>,
+        requires_confirmation: bool,
     ) -> bool {
         if let Some(name) = primary {
             merge_primary_rules(&mut rules, self.build_primary_rules(name));
         }
+        let restore_text = requires_confirmation
+            .then(|| hyprconfig::read_for_edit(Area::Displays).ok())
+            .flatten();
         match monitorrules::write_rules(&rules, primary) {
             Ok(()) => {
                 self.write_error.take();
                 hypr::request("reload");
                 self.reload();
+                if let Some(restore_text) = restore_text {
+                    DisplayConfirmation::shared().begin(restore_text);
+                }
                 true
             }
             Err(error) => {
@@ -597,7 +645,7 @@ impl Displays {
             .collect();
         let rules = self.build_position_rules(&anchored_positions);
         if !rules.is_empty() {
-            self.write(rules, None);
+            self.write(rules, None, false);
         }
     }
 
@@ -605,7 +653,7 @@ impl Displays {
         if name.is_empty() {
             return false;
         }
-        self.write(Vec::new(), Some(name))
+        self.write(Vec::new(), Some(name), false)
     }
 
     fn build_primary_rules(&self, name: &str) -> Vec<(String, Vec<(String, String)>)> {
@@ -781,6 +829,7 @@ mod tests {
             icc_profiles: Vec::new(),
             write_error: RefCell::new(None),
             listeners: RefCell::new(Vec::new()),
+            reverted_subscription: RefCell::new(None),
         };
         let rules = displays.build_primary_rules("HDMI-A-1");
         let cleared_mirror = ("mirror".to_owned(), String::new());
@@ -820,6 +869,7 @@ mod tests {
             icc_profiles: Vec::new(),
             write_error: RefCell::new(None),
             listeners: RefCell::new(Vec::new()),
+            reverted_subscription: RefCell::new(None),
         };
         let rules = displays.build_primary_rules("HDMI-A-1");
         let names: Vec<&str> = rules.iter().map(|(name, _)| name.as_str()).collect();
@@ -952,5 +1002,45 @@ mod tests {
             order_main_first(&monitors, "DP-1"),
             ["DP-2", "DP-10", "HDMI-A-1", "eDP-1"]
         );
+    }
+
+    #[test]
+    fn choosing_what_a_display_already_runs_needs_no_confirmation() {
+        let displays = Displays {
+            monitors: RefCell::new(vec![monitor(&[], 1920, 1080)]),
+            requested: RefCell::default(),
+            icc_profiles: Vec::new(),
+            write_error: RefCell::new(None),
+            listeners: RefCell::new(Vec::new()),
+            reverted_subscription: RefCell::new(None),
+        };
+        let current_monitor = displays.monitors.borrow()[0].clone();
+        let needs = |keys: &[(&str, &str)]| {
+            let keys: Vec<(String, String)> = keys
+                .iter()
+                .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
+                .collect();
+            let pairs = displays.rule_pairs(&current_monitor, &keys);
+            needs_confirmation(&displays.current_values(&current_monitor, &pairs), &pairs)
+        };
+        for (keys, expected) in [
+            (&[("rate", "60")][..], false),
+            (
+                &[("size", "1920x1080"), ("scale", "1"), ("rate", "60")][..],
+                false,
+            ),
+            (&[("position", "10x0")][..], false),
+            (&[("supports_hdr", "0")][..], false),
+            (&[("vrr", "-1")][..], false),
+            (&[("rate", "30")][..], true),
+            (&[("size", "1280x720")][..], true),
+            (&[("scale", "1.25")][..], true),
+            (&[("transform", "1")][..], true),
+            (&[("cm", "hdr")][..], true),
+            (&[("supports_hdr", "1")][..], true),
+            (&[("vrr", "1")][..], true),
+        ] {
+            assert_eq!(needs(keys), expected, "{keys:?}");
+        }
     }
 }
