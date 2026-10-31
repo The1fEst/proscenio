@@ -1581,5 +1581,7 @@
   "Saved as %1": "已保存为 %1",
   "Open folder": "打开文件夹",
   "Notify after a screenshot": "截图后发送通知",
-  "Custom name": "自定义名称"
+  "Custom name": "自定义名称",
+  "Privacy indicators over fullscreen windows": "全屏窗口上的隐私指示器",
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "每有一个正在使用的麦克风、屏幕共享或摄像头，就在栏所在的位置显示一个圆点"
 }

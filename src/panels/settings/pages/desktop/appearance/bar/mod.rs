@@ -163,6 +163,17 @@ pub fn build(context: &Context) -> Rc<Page> {
         &verbose_switch.button,
         &tr("Shows the date next to the clock and the utility buttons"),
     );
+    let privacy_dots_switch = page.config_switch(
+        &looks_section,
+        "privacy_tip",
+        &tr("Privacy indicators over fullscreen windows"),
+        "/bar/privacyDotsInFullscreen",
+        true,
+    );
+    page.tip(
+        &privacy_dots_switch.button,
+        &tr("Shows a dot where the bar sits for each microphone, screen share or camera in use"),
+    );
     let monitors_section = page.subsection(
         &looks_section,
         &tr("Monitors"),

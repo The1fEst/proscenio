@@ -1581,5 +1581,7 @@
   "Saved as %1": "%1 として保存しました",
   "Open folder": "フォルダを開く",
   "Notify after a screenshot": "スクリーンショットの後に通知する",
-  "Custom name": "カスタム名"
+  "Custom name": "カスタム名",
+  "Privacy indicators over fullscreen windows": "全画面ウィンドウ上のプライバシーインジケーター",
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "使用中のマイク、画面共有、カメラごとに、バーのある位置にドットを表示します"
 }

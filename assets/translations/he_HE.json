@@ -1581,5 +1581,7 @@
   "Saved as %1": "נשמר בשם %1",
   "Open folder": "פתיחת התיקייה",
   "Notify after a screenshot": "הצגת התראה לאחר צילום מסך",
-  "Custom name": "שם מותאם אישית"
+  "Custom name": "שם מותאם אישית",
+  "Privacy indicators over fullscreen windows": "חיווי פרטיות מעל חלונות במסך מלא",
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "מציג נקודה במקום שבו נמצא הסרגל עבור כל מיקרופון, שיתוף מסך או מצלמה שנמצאים בשימוש"
 }

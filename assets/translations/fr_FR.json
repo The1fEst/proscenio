@@ -1581,5 +1581,7 @@
   "Saved as %1": "Enregistrée sous %1",
   "Open folder": "Ouvrir le dossier",
   "Notify after a screenshot": "Notifier après une capture d'écran",
-  "Custom name": "Nom personnalisé"
+  "Custom name": "Nom personnalisé",
+  "Privacy indicators over fullscreen windows": "Indicateurs de confidentialité au-dessus des fenêtres en plein écran",
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Affiche un point à l'emplacement de la barre pour chaque microphone, partage d'écran ou caméra utilisé"
 }

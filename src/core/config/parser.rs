@@ -222,6 +222,7 @@ impl Config {
                 .and_then(Value::as_i64)
                 .unwrap_or(1) as i32,
             verbose: flag(&bar, "verbose", true),
+            should_show_privacy_dots_in_fullscreen: flag(&bar, "privacyDotsInFullscreen", true),
             workspaces_shown: bar
                 .pointer("/workspaces/shown")
                 .and_then(Value::as_i64)
@@ -612,6 +613,15 @@ mod tests {
         assert!(needs_position(weather(true, true)));
         assert!(!needs_position(weather(true, false)));
         assert!(!needs_position(weather(false, true)));
+    }
+
+    #[test]
+    fn privacy_dots_over_fullscreen_windows_are_on_unless_switched_off() {
+        assert!(Config::parse(&json!({})).should_show_privacy_dots_in_fullscreen);
+        let enabled_root = json!({ "bar": { "privacyDotsInFullscreen": true } });
+        assert!(Config::parse(&enabled_root).should_show_privacy_dots_in_fullscreen);
+        let disabled_root = json!({ "bar": { "privacyDotsInFullscreen": false } });
+        assert!(!Config::parse(&disabled_root).should_show_privacy_dots_in_fullscreen);
     }
 
     #[test]

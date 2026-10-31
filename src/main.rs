@@ -973,8 +973,9 @@ fn open_bar(
     window.add_controller(hover);
 
     let reserve = reserve::Reserve::new(app, monitor, edge, RESERVE_NAMESPACE);
-    let privacy_dots =
-        bar::privacydots::PrivacyDots::new(app, monitor, config, &services.device_usage);
+    let privacy_dots = config
+        .should_show_privacy_dots_in_fullscreen
+        .then(|| bar::privacydots::PrivacyDots::new(app, monitor, config, &services.device_usage));
     let show: Rc<dyn Fn()> = Rc::new({
         let states = services.states.clone();
         let fullscreen = services.fullscreen.clone();
@@ -985,12 +986,16 @@ fn open_bar(
             if is_bar_requested && fullscreen.covers(&connector) {
                 reserve.hold(window.exclusive_zone());
                 window.set_visible(false);
-                privacy_dots.set_covered(true);
+                if let Some(privacy_dots) = &privacy_dots {
+                    privacy_dots.set_covered(true);
+                }
                 return;
             }
             window.set_visible(is_bar_requested);
             reserve.release();
-            privacy_dots.set_covered(false);
+            if let Some(privacy_dots) = &privacy_dots {
+                privacy_dots.set_covered(false);
+            }
         }
     });
     scope.keep(services.fullscreen.subscribe({

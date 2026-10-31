@@ -357,7 +357,9 @@ bottom, top left or top right for a vertical bar on the left or right. The dots 
 on the `overlay` layer (namespace `proscenio:privacyDots`) with no input region and an exclusive
 zone of -1, which places them against the screen edges whatever the bar still reserves. They take
 no clicks or focus. They show only on screens whose bar is covered, and appear
-and disappear with the chips.
+and disappear with the chips. With `bar.privacyDotsInFullscreen` off (`true` by default), the
+surface is not created and nothing shows over fullscreen windows; the chips in the bar are
+unaffected.
 
 | Kind | Detected by | Popup rows |
 |---|---|---|
@@ -522,6 +524,7 @@ Every key lives in `~/.config/proscenio/config.toml`. A dotted key is a TOML tab
 | `bar.showBackground` | `true` | Appearance → Bar → Show background |
 | `bar.floatStyleShadow` | `true` | Appearance → Bar → Shadow when floating |
 | `bar.verbose` | `true` | Appearance → Bar → Verbose |
+| `bar.privacyDotsInFullscreen` | `true` | Appearance → Bar → Privacy indicators over fullscreen windows |
 | `bar.screenList` | `[]` | Appearance → Bar → Monitors |
 | `bar.autoHide.enable` | `false` | Appearance → Bar → Automatically hide |
 | `bar.autoHide.pushWindows` | `false` | Appearance → Bar → Push windows away |

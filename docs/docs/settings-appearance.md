@@ -358,8 +358,11 @@ rounded corners.
 | Show background | `bar.showBackground` | on |
 | Shadow when floating | `bar.floatStyleShadow` | on, live only with the background shown and the Float style |
 | Verbose | `bar.verbose` | on |
+| Privacy indicators over fullscreen windows | `bar.privacyDotsInFullscreen` | on |
 
 **Verbose** shows the date next to the clock, and the utility buttons.
+**Privacy indicators over fullscreen windows** shows the [privacy dots](bar.md) where the bar sits
+while a fullscreen window covers it; the chips in the bar stay either way.
 
 **Monitors** has a switch per monitor, labeled with its model and connector name. They write
 `bar.screenList`, the connectors that get a bar; an empty list, which is also what turning every

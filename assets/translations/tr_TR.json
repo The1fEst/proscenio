@@ -1581,5 +1581,7 @@
   "Saved as %1": "%1 olarak kaydedildi",
   "Open folder": "Klasörü aç",
   "Notify after a screenshot": "Ekran görüntüsünden sonra bildirim göster",
-  "Custom name": "Özel ad"
+  "Custom name": "Özel ad",
+  "Privacy indicators over fullscreen windows": "Tam ekran pencerelerin üzerinde gizlilik göstergeleri",
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Kullanımdaki her mikrofon, ekran paylaşımı veya kamera için çubuğun bulunduğu yerde bir nokta gösterir"
 }

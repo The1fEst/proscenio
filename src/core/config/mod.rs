@@ -145,6 +145,7 @@ pub struct Config {
     pub corner_clickless_end: bool,
     pub corner_vertical_offset: i32,
     pub verbose: bool,
+    pub should_show_privacy_dots_in_fullscreen: bool,
     pub workspaces_shown: i32,
     pub workspaces_show_app_icons: bool,
     pub workspaces_always_show_numbers: bool,
