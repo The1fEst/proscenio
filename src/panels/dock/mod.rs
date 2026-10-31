@@ -1,5 +1,7 @@
 mod arrangement;
 mod buttons;
+mod contextmenu;
+mod menuitems;
 pub mod preview;
 mod taskbar;
 
@@ -25,6 +27,7 @@ use crate::ui::widgets::coalesce;
 use crate::ui::widgets::display::text::Shift;
 use arrangement::{Drag, IDLE_DRAG, follow_drag};
 use buttons::{AppButton, overview_button, separator};
+use contextmenu::ContextMenu;
 use taskbar::{WindowList, collect_entries, fetch_windows, is_monitor_idle, targets};
 
 const NAMESPACE: &str = "proscenio:dock";
@@ -108,6 +111,7 @@ struct Dock {
     ignore_patterns: Vec<glib::Regex>,
     root: gtk4::Box,
     preview: Rc<Preview>,
+    menu: Rc<ContextMenu>,
     is_locked: Rc<Cell<bool>>,
     is_covered: Cell<bool>,
     reserve: Reserve,
@@ -250,6 +254,7 @@ pub fn open(
             .collect(),
         root: root.clone(),
         preview: Preview::new(theme, &root),
+        menu: ContextMenu::new(theme, &root),
         is_locked: services.states.is_screen_locked.clone(),
         is_covered: Cell::new(services.fullscreen.covers(&connector)),
         reserve: Reserve::new(app, monitor, Edge::Bottom, RESERVE_NAMESPACE),
@@ -284,6 +289,14 @@ pub fn open(
         }
     }));
     dock.preview.connect_changed({
+        let dock = Rc::downgrade(&dock);
+        move || {
+            if let Some(dock) = dock.upgrade() {
+                dock.place(true);
+            }
+        }
+    });
+    dock.menu.connect_changed({
         let dock = Rc::downgrade(&dock);
         move || {
             if let Some(dock) = dock.upgrade() {
@@ -441,6 +454,7 @@ impl Dock {
         self.is_pinned.get()
             || (self.config.dock_hover_to_reveal && self.is_hovered.get())
             || self.preview.is_requested()
+            || self.menu.is_open()
             || self.is_idle.get()
             || self.is_attention_shown.get()
     }

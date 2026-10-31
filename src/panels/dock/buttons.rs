@@ -5,6 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
+use super::menuitems::{MenuItem, build_items};
 use super::taskbar::{DotStyle, SEPARATOR, Window, choose_dot_styles, targets};
 use super::{Dock, ELEVATION, GAPS_OUT, MOVE_MILLIS, Metrics, ROW_PADDING, refresh_docks};
 use crate::platform::hyprland::hypr;
@@ -70,6 +71,55 @@ impl Dock {
             .unwrap_or(0);
         self.preview
             .enter(&entry.id, center, targets(&entry.windows.borrow()));
+    }
+
+    fn open_menu(&self, entry: &AppButton) {
+        self.preview.leave(&entry.id);
+        let desktop_entry = desktop::find(&entry.id);
+        let actions = desktop_entry
+            .as_ref()
+            .map(desktop::DesktopEntry::actions)
+            .unwrap_or_default();
+        let is_pinned = self
+            .config
+            .dock_pinned
+            .borrow()
+            .iter()
+            .any(|pin| pin.eq_ignore_ascii_case(&entry.id));
+        let items = build_items(
+            &entry.windows.borrow(),
+            &actions,
+            desktop_entry.is_some(),
+            is_pinned,
+        );
+        let id = entry.id.clone();
+        let config = self.config.clone();
+        self.menu
+            .show(&entry.button, items, move |item| match item {
+                MenuItem::Window { address, .. } => hypr::focus_window(address),
+                MenuItem::NewWindow => {
+                    if let Some(desktop_entry) = &desktop_entry {
+                        desktop::launch(desktop_entry);
+                    }
+                }
+                MenuItem::Action { index, .. } => {
+                    if let (Some(desktop_entry), Some(action)) =
+                        (&desktop_entry, actions.get(*index))
+                    {
+                        desktop::launch_action(desktop_entry, action);
+                    }
+                }
+                MenuItem::TogglePin { .. } => {
+                    config.toggle_dock_pin(&id);
+                    refresh_docks();
+                }
+                MenuItem::CloseWindows { addresses } => {
+                    for address in addresses {
+                        hypr::close_window(address);
+                    }
+                }
+                MenuItem::Separator => {}
+            });
     }
 
     pub(super) fn make_button(self: &Rc<Self>, id: &str) -> Rc<AppButton> {
@@ -196,13 +246,11 @@ impl Dock {
         });
         button.connect_alt({
             let dock = Rc::downgrade(self);
-            let id = id.to_owned();
+            let entry = Rc::downgrade(&entry);
             move |_| {
-                let Some(dock) = dock.upgrade() else {
-                    return;
-                };
-                dock.config.toggle_dock_pin(&id);
-                refresh_docks();
+                if let (Some(dock), Some(entry)) = (dock.upgrade(), entry.upgrade()) {
+                    dock.open_menu(&entry);
+                }
             }
         });
 

@@ -1597,5 +1597,7 @@
   "Notify after a screenshot": "Thông báo sau khi chụp ảnh màn hình",
   "Custom name": "Tên tùy chỉnh",
   "Privacy indicators over fullscreen windows": "Chỉ báo quyền riêng tư trên cửa sổ toàn màn hình",
-  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Hiển thị một chấm tại vị trí của thanh cho mỗi micrô, lượt chia sẻ màn hình hoặc camera đang được sử dụng"
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Hiển thị một chấm tại vị trí của thanh cho mỗi micrô, lượt chia sẻ màn hình hoặc camera đang được sử dụng",
+  "New window": "Cửa sổ mới",
+  "Close all windows": "Đóng tất cả cửa sổ"
 }

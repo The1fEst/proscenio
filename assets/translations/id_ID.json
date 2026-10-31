@@ -1597,5 +1597,7 @@
   "Notify after a screenshot": "Beri tahu setelah tangkapan layar",
   "Custom name": "Nama kustom",
   "Privacy indicators over fullscreen windows": "Indikator privasi di atas jendela layar penuh",
-  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Menampilkan titik di tempat bilah berada untuk setiap mikrofon, berbagi layar, atau kamera yang sedang digunakan"
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Menampilkan titik di tempat bilah berada untuk setiap mikrofon, berbagi layar, atau kamera yang sedang digunakan",
+  "New window": "Jendela baru",
+  "Close all windows": "Tutup semua jendela"
 }

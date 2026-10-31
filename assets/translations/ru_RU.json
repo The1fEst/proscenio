@@ -1597,5 +1597,7 @@
   "Notify after a screenshot": "Уведомлять после снимка экрана",
   "Custom name": "Своё название",
   "Privacy indicators over fullscreen windows": "Индикаторы приватности над полноэкранными окнами",
-  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Показывает точку на месте панели для каждого используемого микрофона, демонстрации экрана или камеры"
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Показывает точку на месте панели для каждого используемого микрофона, демонстрации экрана или камеры",
+  "New window": "Новое окно",
+  "Close all windows": "Закрыть все окна"
 }

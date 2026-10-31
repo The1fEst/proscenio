@@ -46,7 +46,7 @@ The list comes from `dock.pinnedApps` and from Hyprland's list of windows:
 |---|---|
 | Click | Launches the app when it has no windows; otherwise focuses its windows one after another, starting from the first each time the pointer comes back to the button |
 | Middle-click | Launches another instance |
-| Right-click | Pins or unpins the app |
+| Right-click | Opens the [context menu](#context-menu) |
 | Drag | Moves the button; see below |
 | Hover | Opens the window previews, when the app has windows |
 | Hold a drag from another app over it for 250 ms | Focuses the app's window when it has one, or opens the window previews when it has several |
@@ -71,6 +71,21 @@ An entry of `dock.pinnedApps` is a window class or a desktop entry ID. Windows j
 class equals it, ignoring case. To launch it, the dock looks for the desktop entry `<id>.desktop`,
 ignoring case, then for an entry whose `StartupWMClass` is the ID. The app starts in a transient
 systemd scope of its own, so it keeps running when the shell restarts.
+
+## Context menu
+
+Right-clicking an app button opens a menu above it. Rules separate its groups, and a group with
+nothing in it is left out:
+
+| Group | Holds |
+|---|---|
+| Windows | One row for each window of the app: its title, or its class when it has none. Clicking the title focuses the window; the close button beside it closes it |
+| Launchers | **New window**, when the app has a desktop entry, which launches the app as a click on a button without windows does, then the entry's `[Desktop Action …]` actions, each with its icon. An action without a name or an `Exec` line is left out |
+| Pin | **Pin** or **Unpin**, as with a drag across the separator |
+| Closing | **Close all windows**, when the app has windows |
+
+Choosing a row closes the menu, and so do Escape and a click anywhere outside it. The dock stays
+shown while the menu is open, and the window previews close when it opens.
 
 ## Showing and hiding
 
@@ -176,5 +191,5 @@ The dock is drawn on the `top` layer. Its layer namespaces, for Hyprland layer r
 | `proscenio:dockReserve` | An invisible surface that keeps a pinned dock's space under a fullscreen window |
 
 The code is in `src/panels/dock/`. `mod.rs` holds the dock window, `buttons.rs` the app buttons,
-`taskbar.rs` the grouping of windows into apps, `arrangement.rs` the drag to reorder and `preview.rs`
-the previews.
+`taskbar.rs` the grouping of windows into apps, `arrangement.rs` the drag to reorder, `preview.rs`
+the previews, `menuitems.rs` the rows of the context menu and `contextmenu.rs` its popup.

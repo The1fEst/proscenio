@@ -1597,5 +1597,7 @@
   "Notify after a screenshot": "Ekran görüntüsünden sonra bildirim göster",
   "Custom name": "Özel ad",
   "Privacy indicators over fullscreen windows": "Tam ekran pencerelerin üzerinde gizlilik göstergeleri",
-  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Kullanımdaki her mikrofon, ekran paylaşımı veya kamera için çubuğun bulunduğu yerde bir nokta gösterir"
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Kullanımdaki her mikrofon, ekran paylaşımı veya kamera için çubuğun bulunduğu yerde bir nokta gösterir",
+  "New window": "Yeni pencere",
+  "Close all windows": "Tüm pencereleri kapat"
 }

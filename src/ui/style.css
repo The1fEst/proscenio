@@ -708,12 +708,14 @@ popover.combo-popover > contents {
 .row-icon { font-size: 19px; color: var(--colOnLayer1); }
 .row-name { font-size: 15px; color: var(--colOnLayer1); }
 .row-note { font-size: 12px; color: var(--colSubtext); }
-popover.tray-menu {
+popover.tray-menu,
+popover.dock-menu {
     background: none;
     padding: 0;
     margin: 0;
 }
-popover.tray-menu > contents {
+popover.tray-menu > contents,
+popover.dock-menu > contents {
     background: none;
     border: none;
     box-shadow: none;

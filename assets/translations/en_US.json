@@ -1597,5 +1597,7 @@
   "Notify after a screenshot": "Notify after a screenshot",
   "Custom name": "Custom name",
   "Privacy indicators over fullscreen windows": "Privacy indicators over fullscreen windows",
-  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Shows a dot where the bar sits for each microphone, screen share or camera in use"
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Shows a dot where the bar sits for each microphone, screen share or camera in use",
+  "New window": "New window",
+  "Close all windows": "Close all windows"
 }

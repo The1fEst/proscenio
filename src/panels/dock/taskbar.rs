@@ -12,7 +12,7 @@ pub(super) const SEPARATOR: &str = "SEPARATOR";
 pub(super) struct Window {
     pub(super) address: String,
     pub(super) class: String,
-    title: String,
+    pub(super) title: String,
     pub(super) is_active: bool,
     pub(super) is_minimized: bool,
     pub(super) is_urgent: bool,

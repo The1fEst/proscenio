@@ -1597,5 +1597,7 @@
   "Notify after a screenshot": "Nach einem Screenshot benachrichtigen",
   "Custom name": "Eigener Name",
   "Privacy indicators over fullscreen windows": "Datenschutzanzeigen über Vollbildfenstern",
-  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Zeigt dort, wo die Leiste sitzt, einen Punkt für jedes verwendete Mikrofon, jede Bildschirmfreigabe oder Kamera"
+  "Shows a dot where the bar sits for each microphone, screen share or camera in use": "Zeigt dort, wo die Leiste sitzt, einen Punkt für jedes verwendete Mikrofon, jede Bildschirmfreigabe oder Kamera",
+  "New window": "Neues Fenster",
+  "Close all windows": "Alle Fenster schließen"
 }
