@@ -9,6 +9,7 @@ pub mod inputdevices;
 pub mod keybinds;
 pub mod lockkeys;
 pub mod monitorrules;
+pub mod settingsmigration;
 pub mod windowrules;
 pub mod workspacegroups;
 pub mod workspacekeys;

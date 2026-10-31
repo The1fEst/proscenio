@@ -10,7 +10,8 @@ use std::rc::Rc;
 
 use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::{Context, Page};
-use crate::platform::hyprland::hyprconfig::{self, Area};
+use crate::platform::hyprland::hyprconfig::Area;
+use crate::platform::hyprland::settingsmigration;
 use crate::ui::widgets::display::text;
 
 pub struct Entry {
@@ -558,8 +559,8 @@ fn area_of(option: &str) -> Option<Area> {
 }
 
 pub fn migrate_settings_files() -> std::io::Result<()> {
-    hyprconfig::split_legacy(area_of)?;
-    hyprconfig::move_misplaced(area_of)
+    settingsmigration::split_legacy(area_of)?;
+    settingsmigration::move_misplaced(area_of)
 }
 
 pub fn ancestors(id: &str) -> Vec<&'static str> {
