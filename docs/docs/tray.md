@@ -33,12 +33,26 @@ program that wants to be the watcher has to go.
 | `IsStatusNotifierHostRegistered` | `true` |
 | `ProtocolVersion` | `0` |
 
+Two registrations of the same object, one under the app's well-known name and one under its
+connection name, make one item.
+
 Each registration and removal emits `StatusNotifierItemRegistered` or
 `StatusNotifierItemUnregistered`, and the bar's tray updates its row from
 `RegisteredStatusNotifierItems`: the bar icons of items that stay are left as they are, and only
 added, removed or moved items change. The overflow button and its popup are rebuilt when the set of
 unpinned items changes. The bar also registers itself as a host, under
 `org.kde.StatusNotifierHost-<pid>`.
+
+### After a restart
+
+Apps register with the watcher once, and some never do it again when the watcher restarts. Three
+seconds after proscenio owns `org.kde.StatusNotifierWatcher`, it lists the session bus and asks
+every connection that has no registered item for the properties of the
+`org.kde.StatusNotifierItem` interface, first at `/StatusNotifierItem`, then at each object under
+`/org/ayatana/NotificationItem`. Each call waits 300 ms for an answer. A connection that answers
+with an `Id` is registered as if it had called `RegisterStatusNotifierItem`, so its icon comes back
+without relaunching the app. Apps that register on their own in those three seconds are not
+registered twice.
 
 ## Pinned and unpinned items
 
@@ -154,6 +168,7 @@ The tray options are on **Appearance → Bar → Tray**, under `[tray]` in
 | Source | Holds |
 |---|---|
 | `src/services/overlay/statusnotifierwatcher.rs` | the `org.kde.StatusNotifierWatcher` service |
+| `src/services/overlay/trayrecovery.rs` | the scan that registers items again after a restart |
 | `src/panels/bar/tray.rs` | the row, the overflow button and popup, item icons and tooltips |
 | `src/panels/bar/traymenu.rs` | the item menu |
 | `src/platform/dbus/dbusmenu.rs` | the `com.canonical.dbusmenu` client |

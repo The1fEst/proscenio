@@ -2,13 +2,15 @@ use gtk4::gio;
 use gtk4::glib::{self, Variant};
 use gtk4::prelude::*;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-const NAME: &str = "org.kde.StatusNotifierWatcher";
+use super::trayrecovery;
+
+pub const NAME: &str = "org.kde.StatusNotifierWatcher";
 const PATH: &str = "/StatusNotifierWatcher";
 const INTERFACE: &str = "org.kde.StatusNotifierWatcher";
-const ITEM_PATH: &str = "/StatusNotifierItem";
+pub const ITEM_PATH: &str = "/StatusNotifierItem";
 const FAILED_ERROR_NAME: &str = "org.freedesktop.DBus.Error.Failed";
 
 const INTROSPECTION: &str = r#"<node>
@@ -35,10 +37,22 @@ const INTROSPECTION: &str = r#"<node>
 
 type Unwatch = Box<dyn FnOnce()>;
 
+struct Item {
+    id: String,
+    owner: String,
+    path: String,
+}
+
 pub struct StatusNotifierWatcher {
     connection: gio::DBusConnection,
-    registered_items: RefCell<Vec<String>>,
+    registered_items: RefCell<Vec<Item>>,
     name_watches: RefCell<HashMap<String, Unwatch>>,
+}
+
+fn is_registered(items: &[Item], owner: &str, path: &str) -> bool {
+    items
+        .iter()
+        .any(|item| item.owner == owner && item.path == path)
 }
 
 impl StatusNotifierWatcher {
@@ -87,7 +101,14 @@ impl StatusNotifierWatcher {
                 "ProtocolVersion" => 0i32.to_variant(),
                 _ => watcher_for_properties
                     .upgrade()
-                    .map(|watcher| watcher.registered_items.borrow().clone())
+                    .map(|watcher| {
+                        watcher
+                            .registered_items
+                            .borrow()
+                            .iter()
+                            .map(|item| item.id.clone())
+                            .collect::<Vec<_>>()
+                    })
                     .unwrap_or_default()
                     .to_variant(),
             })
@@ -96,13 +117,30 @@ impl StatusNotifierWatcher {
             return;
         };
         std::mem::forget(registration);
+        let watcher_for_name = Rc::downgrade(self);
         gio::bus_own_name_on_connection(
             &self.connection,
             NAME,
             gio::BusNameOwnerFlags::REPLACE,
-            |_, _| {},
+            move |_, _| {
+                if let Some(watcher) = watcher_for_name.upgrade() {
+                    trayrecovery::schedule(&watcher);
+                }
+            },
             |_, _| {},
         );
+    }
+
+    pub fn connection(&self) -> &gio::DBusConnection {
+        &self.connection
+    }
+
+    pub fn owners(&self) -> HashSet<String> {
+        self.registered_items
+            .borrow()
+            .iter()
+            .map(|item| item.owner.clone())
+            .collect()
     }
 
     fn register_item(
@@ -116,40 +154,69 @@ impl StatusNotifierWatcher {
         } else {
             (service_or_path.to_owned(), ITEM_PATH.to_owned())
         };
-        let id = format!("{service}{path}");
-        if self.registered_items.borrow().contains(&id) {
-            invocation.return_value(None);
-            return;
-        }
-        self.watch(&service);
         let watcher = Rc::downgrade(self);
-        let connection = self.connection.clone();
         glib::spawn_future_local(async move {
-            let has_owner = connection
-                .call_future(
-                    Some("org.freedesktop.DBus"),
-                    "/org/freedesktop/DBus",
-                    "org.freedesktop.DBus",
-                    "NameHasOwner",
-                    Some(&(service.as_str(),).to_variant()),
-                    None,
-                    gio::DBusCallFlags::NONE,
-                    -1,
-                )
-                .await
-                .ok()
-                .and_then(|reply| reply.child_value(0).get::<bool>())
-                .unwrap_or(false);
             if let Some(watcher) = watcher.upgrade() {
-                if has_owner && !watcher.registered_items.borrow().contains(&id) {
-                    watcher.registered_items.borrow_mut().push(id.clone());
-                    watcher.emit("StatusNotifierItemRegistered", &id);
-                } else if !has_owner {
-                    watcher.unwatch(&service);
-                }
+                watcher.add_item(&service, &path).await;
             }
             invocation.return_value(None);
         });
+    }
+
+    pub async fn add_item(self: &Rc<Self>, service: &str, path: &str) -> bool {
+        let id = format!("{service}{path}");
+        if self
+            .registered_items
+            .borrow()
+            .iter()
+            .any(|item| item.id == id)
+        {
+            return false;
+        }
+        self.watch(service);
+        let Some(owner) = self.read_owner(service).await else {
+            self.unwatch(service);
+            return false;
+        };
+        if is_registered(&self.registered_items.borrow(), &owner, path) {
+            if !self.is_service_used(service) {
+                self.unwatch(service);
+            }
+            return false;
+        }
+        self.registered_items.borrow_mut().push(Item {
+            id: id.clone(),
+            owner,
+            path: path.to_owned(),
+        });
+        self.emit("StatusNotifierItemRegistered", &id);
+        true
+    }
+
+    async fn read_owner(&self, service: &str) -> Option<String> {
+        let reply = self
+            .connection
+            .call_future(
+                Some("org.freedesktop.DBus"),
+                "/org/freedesktop/DBus",
+                "org.freedesktop.DBus",
+                "GetNameOwner",
+                Some(&(service,).to_variant()),
+                None,
+                gio::DBusCallFlags::NONE,
+                -1,
+            )
+            .await
+            .ok()?;
+        reply.child_value(0).str().map(str::to_owned)
+    }
+
+    fn is_service_used(&self, service: &str) -> bool {
+        let prefix = format!("{service}/");
+        self.registered_items
+            .borrow()
+            .iter()
+            .any(|item| item.id.starts_with(&prefix))
     }
 
     fn watch(self: &Rc<Self>, service: &str) {
@@ -185,10 +252,10 @@ impl StatusNotifierWatcher {
         self.unwatch(name);
         let prefix = format!("{name}/");
         let mut removed_ids = Vec::new();
-        self.registered_items.borrow_mut().retain(|id| {
-            let should_keep = !id.starts_with(&prefix);
+        self.registered_items.borrow_mut().retain(|item| {
+            let should_keep = !item.id.starts_with(&prefix);
             if !should_keep {
-                removed_ids.push(id.clone());
+                removed_ids.push(item.id.clone());
             }
             should_keep
         });
@@ -202,5 +269,34 @@ impl StatusNotifierWatcher {
         let _ = self
             .connection
             .emit_signal(None, PATH, INTERFACE, signal, Some(&parameters));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_item(id: &str, owner: &str, path: &str) -> Item {
+        Item {
+            id: id.to_owned(),
+            owner: owner.to_owned(),
+            path: path.to_owned(),
+        }
+    }
+
+    #[test]
+    fn an_item_is_registered_once_per_owner_and_path() {
+        let items = [make_item(
+            "org.example.App/StatusNotifierItem",
+            ":1.5",
+            "/StatusNotifierItem",
+        )];
+        assert!(is_registered(&items, ":1.5", "/StatusNotifierItem"));
+        assert!(!is_registered(&items, ":1.6", "/StatusNotifierItem"));
+        assert!(!is_registered(
+            &items,
+            ":1.5",
+            "/org/ayatana/NotificationItem/app"
+        ));
     }
 }
