@@ -64,11 +64,13 @@ in the icon.
 | Dropped when | The call is answered with |
 |---|---|
 | `replaces_id` is 0 and a notification still in the list, from the same app with the same summary, body and urgency, arrived less than 5 s ago | the ID of that notification |
-| the app already had 20 notifications accepted in the last second, unless this one is critical | the `replaces_id`, when it names a notification in the list; else a new ID that names nothing |
+| the app already had 20 notifications accepted in the last second, unless this one is critical or its `replaces_id` names a notification in the list | a new ID that names nothing |
 
-A call with a `replaces_id` is an update and never a duplicate. A dropped call changes nothing: no
-popup, no unread count, no saved entry. Critical notifications are checked for duplicates
-but never limited by the flood rule. Dropped calls do not count toward the 20.
+A call with a `replaces_id` is an update and never a duplicate. An update of a notification in the
+list is not limited by the flood rule and does not count toward the 20, so the last update of a
+progress notification always arrives. A dropped call changes nothing: no popup, no unread count, no
+saved entry. Critical notifications are checked for duplicates but never limited by the flood rule.
+Dropped calls do not count toward the 20.
 
 ## Storage
 

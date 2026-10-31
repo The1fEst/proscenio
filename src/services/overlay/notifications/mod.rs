@@ -459,8 +459,12 @@ impl Notifications {
         self.listeners.notify();
     }
 
+    fn contains(&self, id: u32) -> bool {
+        id != 0 && self.list.borrow().iter().any(|entry| entry.id == id)
+    }
+
     fn take_id(&self, replaces_id: u32) -> u32 {
-        if replaces_id != 0 && self.list.borrow().iter().any(|held| held.id == replaces_id) {
+        if self.contains(replaces_id) {
             return replaces_id;
         }
         let id = self.next_id.get();

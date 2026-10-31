@@ -199,7 +199,7 @@ impl Notifications {
                 return duplicate;
             }
         }
-        if urgency == URGENCY_CRITICAL {
+        if urgency == URGENCY_CRITICAL || self.contains(replaces_id) {
             return None;
         }
         let mut arrivals = self.recent_arrival_millis.borrow_mut();
@@ -448,6 +448,10 @@ mod tests {
         for _ in 1..FLOOD_LIMIT {
             assert_eq!(reject("Chat", 1, 1000), None);
         }
-        assert_eq!(notifications.reject(1, "Chat", "", "", 1, 1000), Some(1));
+        for _ in 0..FLOOD_LIMIT {
+            assert_eq!(notifications.reject(1, "Chat", "", "", 1, 1000), None);
+        }
+        assert_eq!(reject("Chat", 1, 1000), Some(3));
+        assert_eq!(notifications.reject(99, "Chat", "", "", 1, 1000), Some(4));
     }
 }
