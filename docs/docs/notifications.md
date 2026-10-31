@@ -295,8 +295,8 @@ The `delete_sweep` button under the sidebar's list dismisses every notification.
 ## Notifications from the shell
 
 proscenio sends its own notifications, such as low battery, the Pomodoro timer, screen recordings,
-the microphone, the weather and the wallpaper switcher, with the same `Notify` call on the session
-bus, so they reach whichever server owns the name.
+the microphone when `osd.microphone` is off, the weather and the wallpaper switcher, with the same
+`Notify` call on the session bus, so they reach whichever server owns the name.
 
 It also reports USB devices. When a removable USB device is plugged in or pulled out, it sends
 "USB Device Detected" or "USB Device Removed" naming the vendor and model, read from sysfs or the

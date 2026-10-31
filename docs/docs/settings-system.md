@@ -30,6 +30,12 @@ The rest talk to system services over D-Bus or edit files of their own, as each 
 | Always on one display | `notifications.forceMonitor.enable` | off | |
 | The display, under Placement | `notifications.forceMonitor.name` | | a monitor's connector name |
 | Stays on screen for (ms), under On-screen display | `osd.timeout` | 1000 | 100–3000, in steps of 100 |
+| Caps Lock, under On-screen display | `osd.capsLock` | on | |
+| Num Lock, under On-screen display | `osd.numLock` | on | |
+| Keyboard layout, under On-screen display | `osd.keyboardLayout` | on | |
+| Microphone, under On-screen display | `osd.microphone` | on | |
+| Audio output, under On-screen display | `osd.audioOutput` | on | |
+| Power Profile, under On-screen display | `osd.powerProfile` | on | |
 
 **Do not disturb** is the notification server's own switch: notifications still arrive and are kept
 in the sidebar, but none pops up. **Hide popups while sharing the screen** does the same while an app

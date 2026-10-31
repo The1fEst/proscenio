@@ -132,6 +132,15 @@ pub fn replace_file(path: &Path, text: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+pub fn replace_if_changed(path: &Path, edit: impl FnOnce(&str) -> String) -> std::io::Result<bool> {
+    let text = read_file_for_edit(path)?;
+    let new_text = edit(&text);
+    if new_text == text {
+        return Ok(false);
+    }
+    replace_file(path, &new_text).map(|()| true)
+}
+
 fn resolve_link(path: &Path) -> PathBuf {
     if let Ok(target) = std::fs::canonicalize(path) {
         return target;

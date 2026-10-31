@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Osd {
     Volume,
     Brightness,

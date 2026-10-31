@@ -10,8 +10,11 @@ use std::time::Duration;
 
 use crate::core::config;
 use crate::core::i18n::tr;
+use crate::panels::sidebar::toggles;
 use crate::services::Services;
 use crate::services::hardware::brightness::Change;
+use crate::services::hardware::xkb::LockKey;
+use crate::services::media::audio::Output;
 use crate::services::session::states;
 use crate::ui::anim::{EMPHASIZED_DECEL, Tween};
 use crate::ui::theme::{SharedTheme, pixel_size};
@@ -29,26 +32,75 @@ const RIGHT_PADDING: i32 = 20;
 const VERTICAL_PADDING: i32 = 9;
 const BAR_HEIGHT: i32 = 4;
 const MOVE_MILLIS: f64 = 400.0;
+const NAME_MAX_CHARS: i32 = 24;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Indicator {
     Volume,
     Brightness,
     Gamma,
+    CapsLock,
+    NumLock,
+    KeyboardLayout,
+    Microphone,
+    AudioOutput,
+    PowerProfile,
 }
 
 impl Indicator {
-    fn kind(self) -> states::Osd {
+    fn kind(self) -> Option<states::Osd> {
         match self {
-            Indicator::Volume => states::Osd::Volume,
-            _ => states::Osd::Brightness,
+            Indicator::Volume => Some(states::Osd::Volume),
+            Indicator::Brightness | Indicator::Gamma => Some(states::Osd::Brightness),
+            _ => None,
+        }
+    }
+
+    fn switch(self) -> Option<&'static str> {
+        match self {
+            Indicator::CapsLock => Some(config::OSD_CAPS_LOCK),
+            Indicator::NumLock => Some(config::OSD_NUM_LOCK),
+            Indicator::KeyboardLayout => Some(config::OSD_KEYBOARD_LAYOUT),
+            Indicator::Microphone => Some(config::OSD_MICROPHONE),
+            Indicator::AudioOutput => Some(config::OSD_AUDIO_OUTPUT),
+            Indicator::PowerProfile => Some(config::OSD_POWER_PROFILE),
+            Indicator::Volume | Indicator::Brightness | Indicator::Gamma => None,
+        }
+    }
+
+    fn is_enabled(self) -> bool {
+        self.switch()
+            .is_none_or(|switch| config::value_bool(switch, true))
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum Caption {
+    Key(&'static str),
+    Literal(String),
+}
+
+impl Caption {
+    fn render(&self) -> String {
+        match self {
+            Caption::Key(text) => tr(text),
+            Caption::Literal(text) => text.clone(),
         }
     }
 }
 
+#[derive(Debug, PartialEq)]
+enum Readout {
+    Level,
+    Status(Caption),
+    Empty,
+}
+
+#[derive(Debug, PartialEq)]
 struct Reading {
     icon: &'static str,
-    name: &'static str,
+    name: Caption,
+    readout: Readout,
     value: f64,
     from: f64,
     should_rotate_icon: bool,
@@ -56,6 +108,30 @@ struct Reading {
 }
 
 impl Reading {
+    fn new(icon: &'static str, name: Caption, readout: Readout) -> Self {
+        Reading {
+            icon,
+            name,
+            readout,
+            value: 0.0,
+            from: 0.0,
+            should_rotate_icon: false,
+            should_scale_icon: false,
+        }
+    }
+
+    fn format_readout(&self) -> String {
+        match &self.readout {
+            Readout::Level => percent(self.value),
+            Readout::Status(status) => status.render(),
+            Readout::Empty => String::new(),
+        }
+    }
+
+    fn has_bar(&self) -> bool {
+        self.readout == Readout::Level
+    }
+
     fn icon_size(&self) -> f64 {
         20.0 + 10.0
             * if self.should_scale_icon {
@@ -160,12 +236,14 @@ impl Value {
         icon.set_margin_top(VERTICAL_PADDING);
         icon.set_margin_bottom(VERTICAL_PADDING);
 
-        let name_label = text::styled(&tr(reading.name));
+        let name_label = text::styled(&reading.name.render());
         text::set_color(&name_label, "colOnLayer0");
         name_label.set_xalign(0.0);
+        name_label.set_ellipsize(pango::EllipsizeMode::End);
+        name_label.set_max_width_chars(NAME_MAX_CHARS);
         let name_box = Centered::filling_width(&name_label);
         name_box.set_hexpand(true);
-        let value_label = text::styled(&percent(reading.value));
+        let value_label = text::styled(&reading.format_readout());
         text::set_color(&value_label, "colOnLayer0");
 
         let caption = gtk4::Box::new(gtk4::Orientation::Horizontal, 5);
@@ -185,6 +263,7 @@ impl Value {
             });
         }
         bar.set_value(reading.position());
+        bar.set_visible(reading.has_bar());
 
         let column = gtk4::Box::new(gtk4::Orientation::Vertical, 5);
         column.set_valign(gtk4::Align::Center);
@@ -224,9 +303,10 @@ impl Value {
             layout.set_text(reading.icon);
         }
         self.icon.queue_draw();
-        self.name_label.set_text(&tr(reading.name));
-        self.value_label.set_text(&percent(reading.value));
+        self.name_label.set_text(&reading.name.render());
+        self.value_label.set_text(&reading.format_readout());
         self.bar.set_value(reading.position());
+        self.bar.set_visible(reading.has_bar());
 
         let now = self
             .icon
@@ -313,6 +393,7 @@ pub struct Osd {
     services: Rc<Services>,
     theme: SharedTheme,
     current_indicator: Cell<Indicator>,
+    output: RefCell<Output>,
     message: RefCell<String>,
     hide_timer: RefCell<Option<glib::SourceId>>,
     popup: RefCell<Option<Shown>>,
@@ -325,6 +406,10 @@ impl Osd {
             services: services.clone(),
             theme: theme.clone(),
             current_indicator: Cell::new(Indicator::Volume),
+            output: RefCell::new(Output {
+                description: String::new(),
+                icon: "speaker",
+            }),
             message: RefCell::new(String::new()),
             hide_timer: RefCell::new(None),
             popup: RefCell::new(None),
@@ -340,13 +425,52 @@ impl Osd {
                         Change::Level => Indicator::Brightness,
                         Change::Gamma => Indicator::Gamma,
                     };
-                    osd.message.borrow_mut().clear();
-                    osd.current_indicator.set(indicator);
-                    osd.trigger();
+                    osd.show_indicator(indicator);
                 }
             })
             .detach();
+        services
+            .xkb
+            .on_lock_change({
+                let osd = osd.clone();
+                move |key| {
+                    osd.show_indicator(match key {
+                        LockKey::Caps => Indicator::CapsLock,
+                        LockKey::Num => Indicator::NumLock,
+                    })
+                }
+            })
+            .detach();
+        services
+            .xkb
+            .on_layout_switch({
+                let osd = osd.clone();
+                move |_| osd.show_indicator(Indicator::KeyboardLayout)
+            })
+            .detach();
+        services
+            .power
+            .on_profile_switch({
+                let osd = osd.clone();
+                move |_| osd.show_indicator(Indicator::PowerProfile)
+            })
+            .detach();
         if let Some(audio) = &services.audio {
+            audio
+                .on_microphone_toggle({
+                    let osd = osd.clone();
+                    move || osd.show_indicator(Indicator::Microphone)
+                })
+                .detach();
+            audio
+                .on_output_switch({
+                    let osd = osd.clone();
+                    move |output| {
+                        osd.output.replace(output.clone());
+                        osd.show_indicator(Indicator::AudioOutput);
+                    }
+                })
+                .detach();
             audio
                 .on_sink_change({
                     let osd = osd.clone();
@@ -372,7 +496,7 @@ impl Osd {
             .on_osd_close({
                 let osd = osd.clone();
                 move |kind| {
-                    if osd.current_indicator.get().kind() == kind {
+                    if osd.current_indicator.get().kind() == Some(kind) {
                         osd.hide();
                     }
                 }
@@ -398,6 +522,15 @@ impl Osd {
             })
             .detach();
         osd
+    }
+
+    fn show_indicator(self: &Rc<Self>, indicator: Indicator) {
+        if !indicator.is_enabled() {
+            return;
+        }
+        self.message.borrow_mut().clear();
+        self.current_indicator.set(indicator);
+        self.trigger();
     }
 
     pub fn trigger(self: &Rc<Self>) {
@@ -445,7 +578,8 @@ impl Osd {
                     });
                 Reading {
                     icon: if is_muted { "volume_off" } else { "volume_up" },
-                    name: "Volume",
+                    name: Caption::Key("Volume"),
+                    readout: Readout::Level,
                     value: volume,
                     from: 0.0,
                     should_rotate_icon: false,
@@ -458,7 +592,8 @@ impl Osd {
                 } else {
                     "light_mode"
                 },
-                name: "Brightness",
+                name: Caption::Key("Brightness"),
+                readout: Readout::Level,
                 value: self
                     .services
                     .light
@@ -469,12 +604,31 @@ impl Osd {
             },
             Indicator::Gamma => Reading {
                 icon: "wb_twilight",
-                name: "Gamma",
+                name: Caption::Key("Gamma"),
+                readout: Readout::Level,
                 value: self.services.light.gamma.get() / 100.0,
                 from: crate::services::hardware::brightness::GAMMA_FLOOR / 100.0,
                 should_rotate_icon: false,
                 should_scale_icon: false,
             },
+            Indicator::CapsLock => {
+                build_lock_reading(LockKey::Caps, self.services.xkb.is_lock_on(LockKey::Caps))
+            }
+            Indicator::NumLock => {
+                build_lock_reading(LockKey::Num, self.services.xkb.is_lock_on(LockKey::Num))
+            }
+            Indicator::KeyboardLayout => {
+                build_layout_reading(&self.services.xkb.current_name.borrow())
+            }
+            Indicator::Microphone => {
+                let (volume, is_muted) =
+                    self.services.audio.as_ref().map_or((0.0, false), |audio| {
+                        (audio.source_volume.get(), audio.is_source_muted.get())
+                    });
+                build_microphone_reading(volume, is_muted)
+            }
+            Indicator::AudioOutput => build_output_reading(&self.output.borrow()),
+            Indicator::PowerProfile => build_profile_reading(&self.services.power.profile.borrow()),
         }
     }
 
@@ -568,4 +722,161 @@ fn focused_monitor() -> Option<gdk::Monitor> {
 
 fn percent(value: f64) -> String {
     format!("{}", (value * 100.0).round() as i64)
+}
+
+fn build_lock_reading(key: LockKey, is_on: bool) -> Reading {
+    let (icon, name) = match (key, is_on) {
+        (LockKey::Caps, true) => ("shift_lock", "Caps Lock"),
+        (LockKey::Caps, false) => ("shift_lock_off", "Caps Lock"),
+        (LockKey::Num, _) => ("dialpad", "Num Lock"),
+    };
+    Reading::new(
+        icon,
+        Caption::Key(name),
+        Readout::Status(Caption::Key(if is_on { "On" } else { "Off" })),
+    )
+}
+
+fn build_layout_reading(name: &str) -> Reading {
+    Reading::new(
+        "keyboard",
+        Caption::Literal(name.to_owned()),
+        Readout::Empty,
+    )
+}
+
+fn build_microphone_reading(volume: f64, is_muted: bool) -> Reading {
+    if is_muted {
+        return Reading::new(
+            "mic_off",
+            Caption::Key("Microphone"),
+            Readout::Status(Caption::Key("Muted")),
+        );
+    }
+    Reading {
+        value: volume,
+        ..Reading::new("mic", Caption::Key("Microphone"), Readout::Level)
+    }
+}
+
+fn build_output_reading(output: &Output) -> Reading {
+    Reading::new(
+        output.icon,
+        Caption::Literal(output.description.clone()),
+        Readout::Empty,
+    )
+}
+
+fn build_profile_reading(profile: &str) -> Reading {
+    Reading::new(
+        toggles::profile_icon(profile),
+        Caption::Key(toggles::profile_label(profile)),
+        Readout::Empty,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_lock_shows_its_name_and_whether_it_is_on() {
+        assert_eq!(
+            build_lock_reading(LockKey::Caps, true),
+            Reading::new(
+                "shift_lock",
+                Caption::Key("Caps Lock"),
+                Readout::Status(Caption::Key("On")),
+            )
+        );
+        assert_eq!(
+            build_lock_reading(LockKey::Caps, false),
+            Reading::new(
+                "shift_lock_off",
+                Caption::Key("Caps Lock"),
+                Readout::Status(Caption::Key("Off")),
+            )
+        );
+        assert_eq!(
+            build_lock_reading(LockKey::Num, false),
+            Reading::new(
+                "dialpad",
+                Caption::Key("Num Lock"),
+                Readout::Status(Caption::Key("Off")),
+            )
+        );
+    }
+
+    #[test]
+    fn a_muted_microphone_shows_a_status_and_an_open_one_shows_its_level() {
+        let muted_reading = build_microphone_reading(0.6, true);
+        assert_eq!(muted_reading.icon, "mic_off");
+        assert_eq!(
+            muted_reading.readout,
+            Readout::Status(Caption::Key("Muted"))
+        );
+        assert!(!muted_reading.has_bar());
+
+        let unmuted_reading = build_microphone_reading(0.6, false);
+        assert_eq!(unmuted_reading.icon, "mic");
+        assert!(unmuted_reading.has_bar());
+        assert_eq!(unmuted_reading.format_readout(), "60");
+        assert_eq!(unmuted_reading.position(), 0.6);
+    }
+
+    #[test]
+    fn the_layout_and_the_output_show_only_their_own_name() {
+        let layout = build_layout_reading("Russian");
+        assert_eq!(layout.name, Caption::Literal("Russian".to_owned()));
+        assert_eq!(layout.format_readout(), "");
+        assert!(!layout.has_bar());
+
+        let output = build_output_reading(&Output {
+            description: "Headset".to_owned(),
+            icon: "headphones",
+        });
+        assert_eq!(output.icon, "headphones");
+        assert_eq!(output.name, Caption::Literal("Headset".to_owned()));
+        assert!(!output.has_bar());
+    }
+
+    #[test]
+    fn a_profile_takes_its_icon_and_label_from_the_quick_toggle() {
+        let reading = build_profile_reading("performance");
+        assert_eq!(reading.icon, "local_fire_department");
+        assert_eq!(reading.name, Caption::Key("Performance"));
+        assert!(!reading.has_bar());
+    }
+
+    #[test]
+    fn each_new_kind_has_its_own_switch_and_the_old_ones_have_none() {
+        let with_switch = [
+            Indicator::CapsLock,
+            Indicator::NumLock,
+            Indicator::KeyboardLayout,
+            Indicator::Microphone,
+            Indicator::AudioOutput,
+            Indicator::PowerProfile,
+        ];
+        let switches: Vec<_> = with_switch
+            .iter()
+            .filter_map(|kind| kind.switch())
+            .collect();
+        assert_eq!(switches.len(), with_switch.len());
+        let mut distinct_switches = switches.clone();
+        distinct_switches.sort_unstable();
+        distinct_switches.dedup();
+        assert_eq!(distinct_switches.len(), switches.len());
+        for kind in [Indicator::Volume, Indicator::Brightness, Indicator::Gamma] {
+            assert_eq!(kind.switch(), None, "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn only_volume_and_brightness_can_be_closed_by_the_scroll_areas() {
+        assert_eq!(Indicator::Volume.kind(), Some(states::Osd::Volume));
+        assert_eq!(Indicator::Gamma.kind(), Some(states::Osd::Brightness));
+        assert_eq!(Indicator::CapsLock.kind(), None);
+        assert_eq!(Indicator::PowerProfile.kind(), None);
+    }
 }

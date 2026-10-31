@@ -39,6 +39,22 @@ pub enum Menu {
     WireGuard,
 }
 
+pub fn profile_label(profile: &str) -> &'static str {
+    match profile {
+        "power-saver" => "Power Saver",
+        "performance" => "Performance",
+        _ => "Balanced",
+    }
+}
+
+pub fn profile_icon(profile: &str) -> &'static str {
+    match profile {
+        "power-saver" => "energy_savings_leaf",
+        "performance" => "local_fire_department",
+        _ => "airwave",
+    }
+}
+
 pub fn kind(name: &str) -> Option<&'static str> {
     ALL_KINDS.iter().find(|kind| **kind == name).copied()
 }
@@ -183,18 +199,9 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
             let profile = services.power.profile.borrow().clone();
             Look {
                 name: "Power Profile",
-                status: tr(match profile.as_str() {
-                    "power-saver" => "Power Saver",
-                    "performance" => "Performance",
-                    _ => "Balanced",
-                }),
+                status: tr(profile_label(&profile)),
                 has_status: true,
-                icon: match profile.as_str() {
-                    "power-saver" => "energy_savings_leaf",
-                    "performance" => "local_fire_department",
-                    _ => "airwave",
-                }
-                .to_owned(),
+                icon: profile_icon(&profile).to_owned(),
                 tooltip: tr("Click to cycle through power profiles"),
                 is_toggled: profile != "balanced",
                 is_available: true,

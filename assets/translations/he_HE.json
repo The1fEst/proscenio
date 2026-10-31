@@ -1566,5 +1566,7 @@
   "Caps Lock is on": "Caps Lock פועל",
   "Keep these display settings?": "לשמור את הגדרות הצגים האלה?",
   "The previous settings come back in %1 s unless you keep these.": "ההגדרות הקודמות יחזרו בעוד %1 שנ׳ אלא אם תשמרו את אלה.",
-  "The previous settings could not be restored: %1": "לא ניתן היה לשחזר את ההגדרות הקודמות: %1"
+  "The previous settings could not be restored: %1": "לא ניתן היה לשחזר את ההגדרות הקודמות: %1",
+  "Num Lock": "Num Lock",
+  "Keyboard layout": "פריסת מקלדת"
 }

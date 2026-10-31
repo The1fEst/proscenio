@@ -134,9 +134,10 @@ general {
 | `toggleLightDark` | Switches the palette between light and dark mode |
 
 `micMuteToggle` exists when the shell reached the sound server at start. Whenever the default
-microphone is muted or unmuted, from this shortcut or anywhere else, a short-lived notification says
-so, and with `sounds.microphone` on, the default, the sound theme's `device-removed` or
-`device-added` plays.
+microphone is muted or unmuted, from this shortcut or anywhere else, the [on-screen
+display](osd.md) says so, or a short-lived notification does when `osd.microphone` is off, and
+with `sounds.microphone` on, the default, the sound theme's `device-removed` or `device-added`
+plays.
 
 ## Shortcuts and IPC
 

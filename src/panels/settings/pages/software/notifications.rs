@@ -140,6 +140,50 @@ pub fn build(context: &Context) -> Rc<Page> {
         (100, 3000),
         100,
     );
+    let keyboard_row = page.uniform_row(&osd_section);
+    page.config_switch(
+        &keyboard_row,
+        "shift_lock",
+        &tr("Caps Lock"),
+        config::OSD_CAPS_LOCK,
+        true,
+    );
+    page.config_switch(
+        &keyboard_row,
+        "dialpad",
+        &tr("Num Lock"),
+        config::OSD_NUM_LOCK,
+        true,
+    );
+    page.config_switch(
+        &keyboard_row,
+        "keyboard",
+        &tr("Keyboard layout"),
+        config::OSD_KEYBOARD_LAYOUT,
+        true,
+    );
+    let device_row = page.uniform_row(&osd_section);
+    page.config_switch(
+        &device_row,
+        "mic",
+        &tr("Microphone"),
+        config::OSD_MICROPHONE,
+        true,
+    );
+    page.config_switch(
+        &device_row,
+        "speaker",
+        &tr("Audio output"),
+        config::OSD_AUDIO_OUTPUT,
+        true,
+    );
+    page.config_switch(
+        &device_row,
+        "speed",
+        &tr("Power Profile"),
+        config::OSD_POWER_PROFILE,
+        true,
+    );
     page
 }
 

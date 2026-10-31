@@ -61,7 +61,8 @@ main loop and hands each line to whoever subscribed to `Events`.
 |---|---|
 | `workspace`, `focusedmon`, `createworkspace`, `destroyworkspace`, `moveworkspace`, `changeworkspaceid`, `renameworkspace`, `activespecial`, `openwindow`, `closewindow`, `movewindow`, `activewindow`, `fullscreen`, `monitoradded`, `monitorremoved`, `configreloaded`, with their `v2` forms where they have one | The state snapshot is read again |
 | `urgent` | `src/services/hyprland/urgentwindows.rs` marks the window as wanting attention, and the [dock](dock.md) marks its app; `activewindowv2` for that window, or `closewindow`, clears the mark |
-| `activelayout` | The keyboard layout button changes |
+| `activelayout` | The keyboard layout button changes, and the [on-screen display](osd.md) shows the new layout |
+| `custom` with the data `proscenio-lock-key` | Posted by the lock key binds in [`binds.lua`](#lock-keys); the keyboard's `capsLock` and `numLock` are read from `j/devices`, and the [on-screen display](osd.md) shows a lock that changed |
 | `configreloaded` | The screen rounding is read again, and the shortcut editors read the binds again |
 | `bell` | The screen flashes, when `accessibility.flashOnBell` is on |
 
@@ -139,7 +140,7 @@ files at start writes nothing while any of them cannot be read.
 | `mouse.lua` | Pointer and touchpad options, and gestures |
 | `devices.lua` | Per-device input settings |
 | `apps.lua` | Window rules |
-| `binds.lua` | The workspace number and arrow binds, then the changed shortcuts; see [Workspace groups](#workspace-groups) |
+| `binds.lua` | The workspace number and arrow binds, the lock key binds, then the changed shortcuts; see [Workspace groups](#workspace-groups) and [Lock keys](#lock-keys) |
 | `other.lua` | Anything that belongs to no page |
 
 ### Options
@@ -267,6 +268,25 @@ unplugged, off or mirroring. Displays without one get the next groups: the main 
 type and number, the order the Displays page uses to pick a main display. A display that is off or
 mirrors another one gets no new group. The code is in `src/platform/hyprland/workspacegroups.rs`,
 `src/platform/hyprland/workspacekeys.rs` and `src/services/hyprland/workspacegroups.rs`.
+
+### Lock keys
+
+Hyprland has no event for Caps Lock and Num Lock, so `binds.lua` holds a second block, between the
+lines `-- proscenio lock keys` and `-- end proscenio lock keys`, that binds both keys to a custom
+event:
+
+```lua
+-- proscenio lock keys
+hl.bind("Caps_Lock", hl.dsp.event("proscenio-lock-key"), { release = true, non_consuming = true, ignore_mods = true })
+hl.bind("Num_Lock", hl.dsp.event("proscenio-lock-key"), { release = true, non_consuming = true, ignore_mods = true })
+-- end proscenio lock keys
+```
+
+The binds fire on release without consuming the key, whatever modifiers are held. The shell checks
+the block once when it starts. A missing block is written at the top of the file, a different one
+is replaced where it stands, and Hyprland reloads only when the text changed. The block carries no
+description, so the Shortcuts page neither lists it nor drops it. The code is in
+`src/platform/hyprland/lockkeys.rs` and `src/services/hyprland/lockkeys.rs`.
 
 ### Monitor rules
 

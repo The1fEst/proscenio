@@ -1566,5 +1566,7 @@
   "Caps Lock is on": "Caps Lock açık",
   "Keep these display settings?": "Bu ekran ayarları korunsun mu?",
   "The previous settings come back in %1 s unless you keep these.": "Bunları korumazsanız önceki ayarlar %1 sn içinde geri gelecek.",
-  "The previous settings could not be restored: %1": "Önceki ayarlar geri yüklenemedi: %1"
+  "The previous settings could not be restored: %1": "Önceki ayarlar geri yüklenemedi: %1",
+  "Num Lock": "Num Lock",
+  "Keyboard layout": "Klavye düzeni"
 }

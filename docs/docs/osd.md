@@ -1,14 +1,15 @@
 ---
 title: On-screen display
 sidebar_label: On-screen display
-description: The small indicator that shows volume, brightness or gamma for a moment when one of them changes, and the volume protection message under it.
+description: The small indicator that shows volume, brightness, gamma, the lock keys, the keyboard layout, the microphone, the audio output or the power profile for a moment when one of them changes, and the volume protection message under it.
 ---
 
 # On-screen display
 
-When the volume, the screen brightness or the gamma changes, a small pill appears at the top of the
-screen with an icon, the name, the value in percent and a progress bar, and goes away after a
-second. The source is `src/panels/osd.rs`.
+When the volume, the screen brightness, the gamma, a lock key, the keyboard layout, the microphone
+mute, the default output or the power profile changes, a small pill appears at the top of the
+screen with an icon and a name, usually with a value, and goes away after a second. The source is
+`src/panels/osd.rs`.
 
 ![The volume indicator at 40 percent](/img/screenshots/osd.webp)
 
@@ -20,15 +21,30 @@ second. The source is `src/panels/osd.rs`.
 | A monitor's brightness changes | Brightness |
 | The gamma changes | Gamma |
 | Volume protection steps in | Volume, with the reason under it |
+| Caps Lock or Num Lock is switched | Caps Lock or Num Lock |
+| The keyboard switches to another layout | Keyboard layout |
+| The default microphone is muted or unmuted | Microphone |
+| The default output becomes another device | Audio output |
+| power-profiles-daemon switches to another profile | Power profile |
 
 Volume changes count only after the shell has read the output once, so starting the shell or
-switching the default output does not show it.
+switching the default output does not show it. The same holds for the first layout, the first
+profile and the first lock state the shell reads, and a layout without a name shows nothing.
 
-| Indicator | Icon | Value | Bar |
-|---|---|---|---|
-| Volume | `volume_off` when muted, else `volume_up` | the output volume | 0 to 100% |
-| Brightness | `routine` while night light is on, else `light_mode` | the focused monitor's brightness | 0 to 100% |
-| Gamma | `wb_twilight` | the gamma of the screen's color matrix | 25 to 100% |
+| Indicator | Icon | Name | Value | Bar |
+|---|---|---|---|---|
+| Volume | `volume_off` when muted, else `volume_up` | Volume | the output volume | 0 to 100% |
+| Brightness | `routine` while night light is on, else `light_mode` | Brightness | the focused monitor's brightness | 0 to 100% |
+| Gamma | `wb_twilight` | Gamma | the gamma of the screen's color matrix | 25 to 100% |
+| Caps Lock | `shift_lock` when on, else `shift_lock_off` | Caps Lock | On or Off | none |
+| Num Lock | `dialpad` | Num Lock | On or Off | none |
+| Keyboard layout | `keyboard` | the layout's name, as the bar's layout button tooltip shows it | none | none |
+| Microphone | `mic_off` when muted, else `mic` | Microphone | Muted, or the microphone volume while unmuted | 0 to 100% while unmuted |
+| Audio output | `headphones` for a headphone, headset or hands-free form factor, `tv` for HDMI, `bluetooth_audio` for a Bluetooth device, else `speaker` | the device's description | none | none |
+| Power profile | the icon of the [quick toggle](quick-toggles.md) | Power Saver, Balanced or Performance | none | none |
+
+Only a mute change shows the microphone. A volume change does not, since apps adjust the
+microphone gain on their own all the time.
 
 The brightness icon grows and turns as the level rises: from 20 pixels and upright at 0% to 30
 pixels and upside down at 100%, easing over 400 ms.
@@ -37,6 +53,30 @@ pixels and upside down at 100%, easing over 400 ms.
 brightness scroll areas step the focused monitor's brightness by 5%. Stepping down past 0% dims the
 screen further through its color matrix instead, in 5% steps of gamma down to 25%; stepping up brings
 the gamma back to 100% first, then raises the brightness. That is when the gamma indicator shows.
+
+**Lock keys.** Hyprland has no event for the lock state. A block in `binds.lua` binds `Caps_Lock`
+and `Num_Lock`, non-consuming and on release, with any modifiers held (see
+[Lock keys](hyprland.md#lock-keys)). Each bind posts the custom event `proscenio-lock-key`, which
+makes the shell read `j/devices`; it shows a lock only when
+the main keyboard's `capsLock` or `numLock` differs from the last reading. A lock that the layout
+does not produce as the keysym `Caps_Lock` or `Num_Lock`, for example Caps Lock remapped to Escape
+by an XKB option, shows nothing.
+
+**Microphone.** With `osd.microphone` on, the indicator replaces the notification that says the
+microphone is muted or unmuted; with it off, the notification is sent as before. The alert sound
+under `sounds.microphone` plays either way.
+
+**Switches.** Each of the six new indicators has a switch, all on by default, in the settings app
+under *On-screen display* (see [System settings](settings-system.md)).
+
+| Indicator | Key |
+|---|---|
+| Caps Lock | `osd.capsLock` |
+| Num Lock | `osd.numLock` |
+| Keyboard layout | `osd.keyboardLayout` |
+| Microphone | `osd.microphone` |
+| Audio output | `osd.audioOutput` |
+| Power profile | `osd.powerProfile` |
 
 ## Where and for how long
 

@@ -7,6 +7,7 @@ pub mod hypridle;
 pub mod hyprlockclock;
 pub mod inputdevices;
 pub mod keybinds;
+pub mod lockkeys;
 pub mod monitorrules;
 pub mod windowrules;
 pub mod workspacegroups;

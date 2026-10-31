@@ -4,6 +4,7 @@ pub mod hyprlockclock;
 pub mod hyproptions;
 pub mod hyprstate;
 pub mod idleoptions;
+pub mod lockkeys;
 pub mod screencast;
 pub mod screencolor;
 pub mod urgentwindows;

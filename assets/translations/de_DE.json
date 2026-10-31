@@ -1566,5 +1566,7 @@
   "Caps Lock is on": "Feststelltaste ist aktiv",
   "Keep these display settings?": "Diese Bildschirmeinstellungen behalten?",
   "The previous settings come back in %1 s unless you keep these.": "Die vorherigen Einstellungen kehren in %1 s zurück, wenn du diese nicht behältst.",
-  "The previous settings could not be restored: %1": "Die vorherigen Einstellungen konnten nicht wiederhergestellt werden: %1"
+  "The previous settings could not be restored: %1": "Die vorherigen Einstellungen konnten nicht wiederhergestellt werden: %1",
+  "Num Lock": "Num-Lock",
+  "Keyboard layout": "Tastaturbelegung"
 }

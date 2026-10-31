@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::platform::hyprland::hyprconfig::lua_string;
 
 pub const BEGIN_LINE: &str = "-- proscenio workspace keys";
@@ -71,17 +73,17 @@ fn render_keys(size: i32, starts: &[(String, i32)]) -> String {
         .replace("$COUNT", &size.clamp(1, MAX_KEYS).to_string())
 }
 
+pub fn find_block(lines: &[&str], begin_line: &str, end_line: &str) -> Option<Range<usize>> {
+    let end = lines.iter().position(|line| line.trim_end() == end_line)?;
+    let begin = lines[..end]
+        .iter()
+        .rposition(|line| line.trim_end() == begin_line)?;
+    Some(begin..end + 1)
+}
+
 pub fn with_keys(text: &str, size: i32, starts: &[(String, i32)]) -> String {
     let lines: Vec<&str> = text.lines().collect();
-    let block_range = lines
-        .iter()
-        .position(|line| line.trim_end() == END_LINE)
-        .and_then(|end| {
-            let begin = lines[..end]
-                .iter()
-                .rposition(|line| line.trim_end() == BEGIN_LINE)?;
-            Some(begin..end + 1)
-        });
+    let block_range = find_block(&lines, BEGIN_LINE, END_LINE);
     let mut remaining_lines = lines;
     if let Some(range) = block_range {
         remaining_lines.drain(range);

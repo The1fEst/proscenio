@@ -1566,5 +1566,7 @@
   "Caps Lock is on": "Caps Lock aktif",
   "Keep these display settings?": "Pertahankan pengaturan layar ini?",
   "The previous settings come back in %1 s unless you keep these.": "Pengaturan sebelumnya akan kembali dalam %1 dtk kecuali Anda mempertahankan yang ini.",
-  "The previous settings could not be restored: %1": "Pengaturan sebelumnya tidak dapat dipulihkan: %1"
+  "The previous settings could not be restored: %1": "Pengaturan sebelumnya tidak dapat dipulihkan: %1",
+  "Num Lock": "Num Lock",
+  "Keyboard layout": "Tata letak papan ketik"
 }

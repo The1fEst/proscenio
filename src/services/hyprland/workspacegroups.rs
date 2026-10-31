@@ -150,14 +150,7 @@ fn refocus_displays() {
 }
 
 fn write_if_changed(path: &Path, edit: impl FnOnce(&str) -> String) -> Option<bool> {
-    let result = hyprconfig::read_file_for_edit(path).and_then(|text| {
-        let new_text = edit(&text);
-        if new_text == text {
-            return Ok(false);
-        }
-        hyprconfig::replace_file(path, &new_text).map(|()| true)
-    });
-    result
+    hyprconfig::replace_if_changed(path, edit)
         .inspect_err(|error| {
             eprintln!(
                 "workspace groups: {} could not be written: {error}",

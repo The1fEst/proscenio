@@ -15,7 +15,9 @@ pub struct Power {
     pub profile: Rc<RefCell<String>>,
     pub has_performance: Rc<Cell<bool>>,
     system: Option<gio::DBusConnection>,
+    is_read: Rc<Cell<bool>>,
     listeners: Rc<Listeners>,
+    switch_listeners: Rc<Listeners<String>>,
 }
 
 impl Power {
@@ -24,7 +26,9 @@ impl Power {
             profile: Rc::new(RefCell::new("balanced".to_owned())),
             has_performance: Rc::new(Cell::new(false)),
             system,
+            is_read: Rc::new(Cell::new(false)),
             listeners: Rc::default(),
+            switch_listeners: Rc::default(),
         };
         power.refresh();
         if let Some(system) = &power.system {
@@ -39,6 +43,11 @@ impl Power {
 
     pub fn subscribe(&self, listener: impl Fn() + 'static) -> Subscription {
         self.listeners.add(listener)
+    }
+
+    pub fn on_profile_switch(&self, listener: impl Fn(&str) + 'static) -> Subscription {
+        self.switch_listeners
+            .add_with(move |profile: &String| listener(profile))
     }
 
     pub fn cycle(&self) {
@@ -62,7 +71,14 @@ impl Power {
             if let Some(active_profile) =
                 dbus::string_property(&system, BUS, PATH, BUS, "ActiveProfile").await
             {
-                power.profile.replace(active_profile);
+                let previous_profile = power.profile.replace(active_profile.clone());
+                if is_profile_switch(
+                    power.is_read.replace(true),
+                    &previous_profile,
+                    &active_profile,
+                ) {
+                    power.switch_listeners.notify_with(&active_profile);
+                }
             }
             if let Some(profiles) = dbus::property(&system, BUS, PATH, BUS, "Profiles").await {
                 power.has_performance.set(profiles.iter().any(|entry| {
@@ -104,9 +120,30 @@ fn build_profile_request(profile: &str) -> glib::Variant {
     (BUS, "ActiveProfile", profile.to_variant()).to_variant()
 }
 
+fn is_profile_switch(is_read: bool, previous_profile: &str, next_profile: &str) -> bool {
+    is_read && previous_profile != next_profile
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_first_reading_and_an_unchanged_profile_are_not_switches() {
+        let cases = [
+            (false, "balanced", "performance", false),
+            (true, "balanced", "balanced", false),
+            (true, "balanced", "performance", true),
+            (true, "performance", "power-saver", true),
+        ];
+        for (is_read, previous_profile, next_profile, expected) in cases {
+            assert_eq!(
+                is_profile_switch(is_read, previous_profile, next_profile),
+                expected,
+                "{is_read} {previous_profile} {next_profile}"
+            );
+        }
+    }
 
     #[test]
     fn the_profile_travels_as_a_plain_string_inside_the_value() {

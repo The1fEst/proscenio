@@ -1566,5 +1566,7 @@
   "Caps Lock is on": "Увімкнено Caps Lock",
   "Keep these display settings?": "Залишити ці налаштування дисплеїв?",
   "The previous settings come back in %1 s unless you keep these.": "Через %1 с повернуться попередні налаштування, якщо не залишити ці.",
-  "The previous settings could not be restored: %1": "Не вдалося відновити попередні налаштування: %1"
+  "The previous settings could not be restored: %1": "Не вдалося відновити попередні налаштування: %1",
+  "Num Lock": "Num Lock",
+  "Keyboard layout": "Розкладка клавіатури"
 }

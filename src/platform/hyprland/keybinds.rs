@@ -203,6 +203,7 @@ pub fn store(changes: &[(String, Option<[Option<String>; 2]>)]) -> std::io::Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::platform::hyprland::lockkeys;
     use crate::platform::hyprland::workspacekeys::{self, BEGIN_LINE, END_LINE};
 
     #[test]
@@ -221,6 +222,21 @@ mod tests {
             text
         );
         assert_eq!(with_shortcut(&text, "Workspace: Focus 1", None), keys_text);
+    }
+
+    #[test]
+    fn editing_a_shortcut_keeps_the_lock_keys_block_and_does_not_list_it_as_changed() {
+        let block_text = lockkeys::with_lock_keys("");
+        let keys = [Some("SUPER + Z".to_owned()), None];
+        let text = with_shortcut(&block_text, "Window: Close", Some(&keys));
+        assert_eq!(
+            text,
+            format!("{block_text}shortcut(\"Window: Close\", \"SUPER + Z\", false)\n")
+        );
+        assert!(names(&block_text).is_empty());
+        assert_eq!(names(&text), vec!["Window: Close".to_owned()]);
+        assert_eq!(lockkeys::with_lock_keys(&text), text);
+        assert_eq!(with_shortcut(&text, "Window: Close", None), block_text);
     }
 
     #[test]

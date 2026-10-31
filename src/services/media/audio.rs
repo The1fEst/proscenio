@@ -50,6 +50,12 @@ pub struct Recorder {
     pub source: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Output {
+    pub description: String,
+    pub icon: &'static str,
+}
+
 #[derive(Clone)]
 pub struct Audio {
     pub is_sink_muted: Rc<Cell<bool>>,
@@ -61,6 +67,8 @@ pub struct Audio {
     listeners: Rc<Listeners>,
     watchers: Rc<Listeners>,
     sink_listeners: Rc<Listeners>,
+    output_listeners: Rc<Listeners<Output>>,
+    microphone_listeners: Rc<Listeners>,
     protection_listeners: Rc<Listeners<String>>,
     recorders: Rc<RefCell<Vec<Recorder>>>,
     recorder_listeners: Rc<Listeners>,
@@ -87,6 +95,8 @@ impl Audio {
             listeners: Rc::default(),
             watchers: Rc::default(),
             sink_listeners: Rc::default(),
+            output_listeners: Rc::default(),
+            microphone_listeners: Rc::default(),
             protection_listeners: Rc::default(),
             recorders: Rc::default(),
             recorder_listeners: Rc::default(),
@@ -114,6 +124,14 @@ impl Audio {
 
     pub fn on_sink_change(&self, listener: impl Fn() + 'static) -> Subscription {
         self.sink_listeners.add(listener)
+    }
+
+    pub fn on_output_switch(&self, listener: impl Fn(&Output) + 'static) -> Subscription {
+        self.output_listeners.add_with(listener)
+    }
+
+    pub fn on_microphone_toggle(&self, listener: impl Fn() + 'static) -> Subscription {
+        self.microphone_listeners.add(listener)
     }
 
     pub fn on_protection(&self, listener: impl Fn(&str) + 'static) -> Subscription {
@@ -219,7 +237,22 @@ impl Audio {
                 let sink_name = name.to_owned();
                 introspect.get_sink_info_by_name(name, move |result| {
                     if let ListResult::Item(info) = result {
-                        sink.store_sink(&sink_name, info.mute, info.volume);
+                        let output = Output {
+                            description: info
+                                .description
+                                .as_deref()
+                                .unwrap_or(&sink_name)
+                                .to_owned(),
+                            icon: choose_output_icon(
+                                &info
+                                    .proplist
+                                    .get_str("device.form_factor")
+                                    .unwrap_or_default(),
+                                &info.proplist.get_str("device.bus").unwrap_or_default(),
+                                &sink_name,
+                            ),
+                        };
+                        sink.store_sink(&sink_name, info.mute, info.volume, output);
                     }
                 });
             }
@@ -236,7 +269,7 @@ impl Audio {
                             info.volume,
                         );
                         if info.mute != was_muted && source.is_settled.get() {
-                            announce_microphone(info.mute);
+                            source.announce_microphone(info.mute);
                         }
                     }
                 });
@@ -484,9 +517,19 @@ impl Audio {
         introspect.set_source_volume_by_name(&name, &channels(part), None);
     }
 
-    fn store_sink(&self, name: &str, is_muted: bool, volume: ChannelVolumes) {
+    fn announce_microphone(&self, is_muted: bool) {
+        if config::value_bool(config::OSD_MICROPHONE, true) {
+            self.microphone_listeners.notify();
+        } else {
+            notify_microphone(is_muted);
+        }
+        play_microphone_sound(is_muted);
+    }
+
+    fn store_sink(&self, name: &str, is_muted: bool, volume: ChannelVolumes, output: Output) {
         let part = part(volume);
         let is_new_sink = *self.last_sink_name.borrow() != name;
+        let has_output_switched = is_output_switch(&self.last_sink_name.borrow(), name);
         if is_new_sink {
             self.last_sink_name.replace(name.to_owned());
             self.last_volume.set(part);
@@ -500,6 +543,9 @@ impl Audio {
         self.store(&self.is_sink_muted, is_muted, &self.sink_volume, volume);
         if has_changed {
             self.sink_listeners.notify();
+        }
+        if has_output_switched {
+            self.output_listeners.notify_with(&output);
         }
     }
 
@@ -552,7 +598,7 @@ fn open(mainloop: &Mainloop) -> Option<Context> {
     Some(context)
 }
 
-fn announce_microphone(is_muted: bool) {
+fn notify_microphone(is_muted: bool) {
     let state = tr(if is_muted { "Muted" } else { "Unmuted" });
     let icon = assets::microphone_icon().unwrap_or_default();
     notify::send(&Notification {
@@ -563,6 +609,9 @@ fn announce_microphone(is_muted: bool) {
         is_transient: true,
         ..Default::default()
     });
+}
+
+fn play_microphone_sound(is_muted: bool) {
     if config::value("/sounds/microphone")
         .and_then(|value| value.as_bool())
         .unwrap_or(true)
@@ -706,6 +755,20 @@ fn is_microphone_recorder(is_corked: bool, is_monitor: bool) -> bool {
     !is_corked && !is_monitor
 }
 
+fn is_output_switch(previous_name: &str, next_name: &str) -> bool {
+    !previous_name.is_empty() && previous_name != next_name
+}
+
+fn choose_output_icon(form_factor: &str, bus: &str, name: &str) -> &'static str {
+    match form_factor {
+        "headphone" | "headset" | "handsfree" | "hands-free" => "headphones",
+        "tv" | "hdmi" => "tv",
+        _ if bus == "bluetooth" => "bluetooth_audio",
+        _ if name.contains("hdmi") => "tv",
+        _ => "speaker",
+    }
+}
+
 fn part(volume: ChannelVolumes) -> f64 {
     volume.avg().0 as f64 / Volume::NORMAL.0 as f64
 }
@@ -736,6 +799,47 @@ mod tests {
                 is_microphone_recorder(is_corked, is_monitor),
                 expected,
                 "{is_corked} {is_monitor}"
+            );
+        }
+    }
+
+    #[test]
+    fn only_a_move_off_a_known_default_output_is_a_switch() {
+        let cases = [
+            ("", "alsa_output.speakers", false),
+            ("alsa_output.speakers", "alsa_output.speakers", false),
+            ("alsa_output.speakers", "bluez_output.buds", true),
+        ];
+        for (previous_name, next_name, expected) in cases {
+            assert_eq!(
+                is_output_switch(previous_name, next_name),
+                expected,
+                "{previous_name:?} to {next_name:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_output_icon_follows_the_form_factor_before_the_bus_and_the_name() {
+        let cases = [
+            ("headphone", "usb", "alsa_output.usb", "headphones"),
+            ("headset", "bluetooth", "bluez_output.buds", "headphones"),
+            ("", "bluetooth", "bluez_output.speaker", "bluetooth_audio"),
+            ("tv", "", "alsa_output.pci", "tv"),
+            ("", "pci", "alsa_output.pci.hdmi-stereo", "tv"),
+            (
+                "internal",
+                "pci",
+                "alsa_output.pci.analog-stereo",
+                "speaker",
+            ),
+            ("", "", "", "speaker"),
+        ];
+        for (form_factor, bus, name, expected) in cases {
+            assert_eq!(
+                choose_output_icon(form_factor, bus, name),
+                expected,
+                "{name}"
             );
         }
     }

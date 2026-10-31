@@ -1566,5 +1566,7 @@
   "Caps Lock is on": "大写锁定已开启",
   "Keep these display settings?": "保留这些显示器设置？",
   "The previous settings come back in %1 s unless you keep these.": "除非保留这些设置，否则 %1 秒后将恢复之前的设置。",
-  "The previous settings could not be restored: %1": "无法恢复之前的设置：%1"
+  "The previous settings could not be restored: %1": "无法恢复之前的设置：%1",
+  "Num Lock": "Num Lock",
+  "Keyboard layout": "键盘布局"
 }
