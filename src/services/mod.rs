@@ -93,7 +93,8 @@ impl Services {
         let states = States::new();
         let audio = Audio::new();
         let device_usage = DeviceUsage::new(&events, &hypr, audio.clone());
-        let notifications = Notifications::new(config, session.clone(), &device_usage);
+        let notifications =
+            Notifications::new(config, session.clone(), system.as_ref(), &device_usage);
         let color = ScreenColor::new(&events);
         let location = Location::new(system.clone());
         let desktop_session = Session::new(config, &color, &location);

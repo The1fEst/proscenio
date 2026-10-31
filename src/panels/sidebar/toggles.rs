@@ -9,6 +9,7 @@ use crate::core::scope::Scope;
 use crate::panels::bar::bluetooth;
 use crate::panels::sidebar::quicktoggle::Look;
 use crate::services::Services;
+use crate::services::session::deadline::format_status_at;
 
 const ACTION_DELAY: Duration = Duration::from_millis(300);
 
@@ -37,6 +38,7 @@ pub enum Menu {
     Bluetooth,
     NightLight,
     WireGuard,
+    DoNotDisturb,
 }
 
 pub fn profile_label(profile: &str) -> &'static str {
@@ -65,6 +67,7 @@ pub fn menu(kind: &str) -> Option<Menu> {
         "bluetooth" => Some(Menu::Bluetooth),
         "nightLight" => Some(Menu::NightLight),
         "wireGuard" => Some(Menu::WireGuard),
+        "notifications" => Some(Menu::DoNotDisturb),
         _ => None,
     }
 }
@@ -162,9 +165,13 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
         }
         "notifications" => {
             let is_shown = !services.notifications.is_silent.get();
+            let status = match services.notifications.silent_end_secs() {
+                Some(end_secs) => format_status_at(end_secs),
+                None => tr(if is_shown { "Show" } else { "Silent" }),
+            };
             Look {
                 name: "Notifications",
-                status: tr(if is_shown { "Show" } else { "Silent" }),
+                status,
                 has_status: true,
                 icon: if is_shown {
                     "notifications_active"
@@ -172,7 +179,7 @@ pub fn look(kind: &str, services: &Rc<Services>) -> Look {
                     "notifications_paused"
                 }
                 .to_owned(),
-                tooltip: tr("Show notifications"),
+                tooltip: trf("%1 | Right-click for a timer", &[&tr("Show notifications")]),
                 is_toggled: is_shown,
                 is_available: true,
             }

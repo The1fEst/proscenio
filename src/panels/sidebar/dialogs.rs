@@ -12,6 +12,7 @@ use crate::panels::wifinetwork::{self, NetworkList};
 use crate::services::Services;
 use crate::services::network::net;
 use crate::services::network::wifi::Wifi;
+use crate::services::session::deadline::{DO_NOT_DISTURB_PRESETS, Hold, Preset};
 use crate::services::session::parse_clock_time;
 use crate::ui::theme::{SharedTheme, pixel_size, transparentize};
 use crate::ui::widgets::display::customicon;
@@ -47,7 +48,59 @@ pub fn open(menu: Menu, context: &Context) -> Rc<WindowDialog> {
         Menu::Bluetooth => bluetooth(context),
         Menu::NightLight => night(context),
         Menu::WireGuard => wireguard(context),
+        Menu::DoNotDisturb => {
+            let notifications = context.services.notifications.clone();
+            preset_dialog(
+                context,
+                "Do not disturb",
+                &DO_NOT_DISTURB_PRESETS,
+                move |hold| notifications.silence(hold),
+            )
+        }
     }
+}
+
+fn preset_dialog(
+    context: &Context,
+    heading: &str,
+    presets: &[Preset],
+    on_choose: impl Fn(Hold) + 'static,
+) -> Rc<WindowDialog> {
+    let theme = &context.theme;
+    let dialog = WindowDialog::new(theme, None);
+    dialog.column.add(&title(&tr(heading)), Place::default());
+    dialog.column.add(&separator(), separator_place());
+    let list = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    let on_choose = Rc::new(on_choose);
+    for &preset in presets {
+        let item = list_item(theme, false);
+        item.set_content(
+            &elide(tint(&text::styled(&preset.label()), "colOnSurfaceVariant")),
+            PADDING as i32,
+            ITEM_VERTICAL,
+        );
+        let on_choose = on_choose.clone();
+        let weak = Rc::downgrade(&dialog);
+        item.connect_clicked(move |_| {
+            let hold = glib::DateTime::now_local()
+                .ok()
+                .and_then(|now| preset.resolve(&now));
+            if let Some(hold) = hold {
+                on_choose(hold);
+            }
+            if let Some(dialog) = weak.upgrade() {
+                dialog.dismiss();
+            }
+        });
+        list.append(&item);
+    }
+    dialog.column.add(&list, list_place());
+    dialog.column.add(&separator(), separator_place());
+    let (row, place) = button_row();
+    row.append(&spacer());
+    row.append(&done_button(context, &dialog));
+    dialog.column.add(&row, place);
+    dialog
 }
 
 fn list_place() -> Place {

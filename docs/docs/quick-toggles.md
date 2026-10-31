@@ -80,7 +80,7 @@ a dialog or a settings page.
 | `bluetooth` | Bluetooth | the adapter is powered | powers it on or off | the Bluetooth dialog |
 | `audio` | Audio output | the default output is not muted | mutes or unmutes it | the settings window's Sound page |
 | `mic` | Audio input | the default input is not muted | mutes or unmutes it | the settings window's Sound page |
-| `notifications` | Notifications | Do Not Disturb is off | turns Do Not Disturb on or off | — |
+| `notifications` | Notifications | Do Not Disturb is off | turns Do Not Disturb on or off | the Do Not Disturb dialog |
 | `nightLight` | Night Light | night light is active | turns it on or off | the night light dialog |
 | `darkMode` | Dark Mode | the palette is dark | switches the palette to the other mode | — |
 | `idleInhibitor` | Keep awake | the idle and sleep inhibitor is held | takes or releases it | — |
@@ -103,7 +103,7 @@ The status line of a two-cell tile reads:
 | Bluetooth | the first connected device's name or `Not connected` |
 | Audio output | `Unmuted` or `Muted` |
 | Audio input | `Enabled` or `Muted` |
-| Notifications | `Show` or `Silent` |
+| Notifications | `Show`, `Silent`, or `Until HH:MM` while Do Not Disturb has an end |
 | Night Light | `Active` or `Inactive`, after `Auto, ` while the schedule is on |
 | Dark Mode | `Dark` or `Light` |
 | Power Profile | `Power Saver`, `Balanced` or `Performance` |
@@ -137,7 +137,9 @@ every app playing and every app recording, each with its own volume; see
 ### Notifications
 
 Flips `notifications.silent`, the same flag as the button under the sidebar's notification list
-and the **Do not disturb** switch in the settings window. See [Notifications](notifications.md).
+and the **Do not disturb** switch in the settings window. See [Notifications](notifications.md). The
+secondary action opens a dialog that turns Do Not Disturb on for a set time; see
+[Do Not Disturb](notifications.md#do-not-disturb).
 
 ### Night Light
 
@@ -256,7 +258,7 @@ connection in use.
 
 ## The dialogs
 
-A tile's secondary action can open one of four dialogs. Each is a card that drops in over the
+A tile's secondary action can open one of five dialogs. Each is a card that drops in over the
 sidebar and dims it. A click on the dimmed part, Escape, or **Done** closes it. One dialog is open at
 a time, and closing the sidebar removes it.
 
@@ -316,3 +318,9 @@ the sidebar's brightness slider combines.
 **WireGuard Connections.** Lists every WireGuard connection NetworkManager has, each `Connected` or
 `Disconnected`. A click brings that connection up or down, and the list is read again half a second
 later. **New Connection** closes the sidebar and opens the settings window's Network page.
+
+### Do not disturb
+
+A list of the choices in [Do Not Disturb](notifications.md#do-not-disturb): 15 minutes, 30 minutes,
+1 hour, 3 hours, 8 hours, until 8:00, and until turned off. A click on one turns Do Not Disturb on
+for that time and closes the dialog.

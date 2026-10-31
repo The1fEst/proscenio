@@ -33,7 +33,7 @@ use crate::services::hardware::devicenotifications::DeviceNotifications;
 use crate::services::media::{mpris, recording};
 use crate::services::overlay::notifications;
 use crate::services::overlay::statusnotifierwatcher::{self, StatusNotifierWatcher};
-use crate::services::session::states;
+use crate::services::session::{deadlineipc, states};
 use crate::theming::{colors, switchwall};
 use crate::ui::theme::{self, Theme};
 use crate::ui::{anim, reserve, unload, widgets};
@@ -610,6 +610,7 @@ fn register_ipc(
         let cliphist = services.cliphist.clone();
         move || cliphist.refresh()
     });
+    deadlineipc::register(ipc, services);
 }
 
 fn bind(surfaces: &Rc<RefCell<Vec<Surfaces>>>) {

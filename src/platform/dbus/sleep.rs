@@ -9,6 +9,25 @@ const LOGIN: &str = "org.freedesktop.login1";
 const LOGIN_PATH: &str = "/org/freedesktop/login1";
 const LOGIN_MANAGER: &str = "org.freedesktop.login1.Manager";
 
+pub fn subscribe_to_resume(
+    system: &gio::DBusConnection,
+    on_resume: impl Fn() + 'static,
+) -> gio::SignalSubscription {
+    system.subscribe_to_signal(
+        Some(LOGIN),
+        Some(LOGIN_MANAGER),
+        Some("PrepareForSleep"),
+        Some(LOGIN_PATH),
+        None,
+        gio::DBusSignalFlags::NONE,
+        move |signal| {
+            if signal.parameters.child_value(0).get::<bool>() == Some(false) {
+                on_resume();
+            }
+        },
+    )
+}
+
 pub struct SleepWatcher {
     system: gio::DBusConnection,
     reason: String,

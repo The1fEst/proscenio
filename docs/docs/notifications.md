@@ -193,6 +193,24 @@ arrive and are kept, but they do not pop up and do not count as unread. A transi
 arrives then is dropped at once. A critical notification is the exception: it pops up and counts as
 unread as usual.
 
+Do Not Disturb can also end by itself. A right-click on the Notifications quick toggle opens a
+dialog with these choices:
+
+| Choice | Ends |
+|---|---|
+| For 15 minutes, 30 minutes, 1 hour, 3 hours, 8 hours | that long after the click |
+| Until 8:00 | at the next 8:00, which is today's before 8:00 and tomorrow's from then on; the label writes the time in the `time.format` clock format |
+| Until I turn it off | never; the same as the switch |
+
+While a timed Do Not Disturb runs, the quick toggle's status reads *Until HH:MM* in the `time.format`
+clock format instead of *Silent*. Switching Do Not Disturb off or on in any of the three places
+above clears the end. `notifications.silent` stays the flag; the end is kept in
+`~/.local/state/proscenio/states.json` under `notifications.silentUntil`, as seconds since the Unix
+epoch. A shell that starts before the end carries on until it; one that starts after the end finds
+Do Not Disturb off and sets `notifications.silent` to `false`. One timer is armed for the end and is
+checked again after the computer resumes from sleep. The [IPC](ipc.md) functions of the
+`notifications` target set it from a script.
+
 ## Per-app rules
 
 The Notifications page lists every app that has ever sent a notification, by app name; the names are

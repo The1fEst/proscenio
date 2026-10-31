@@ -118,6 +118,9 @@ the first monitor when there is none.
 | `lock` | `activate` | Locks the session with the [lock screen](lock.md), or with `hyprlock` when `lock.useHyprlock` is on and it is installed |
 | | `focus` | Gives the lock screen the keyboard again, for after resuming |
 | `welcome` | `toggle`, `open`, `close` | The [welcome window](first-run.md) |
+| `notifications` | `toggleDoNotDisturb`, `enableDoNotDisturb`, `disableDoNotDisturb` | [Do Not Disturb](notifications.md#do-not-disturb) on and off, `enableDoNotDisturb` until it is switched off |
+| | `enableDoNotDisturbFor(minutes: string)` | Turns it on for that many minutes; a value that is not a whole number above 0 is ignored |
+| | `enableDoNotDisturbUntil(time: string)` | Turns it on until the next time the clock shows `H:mm` or `HH:mm`, today's or tomorrow's; anything else is ignored |
 | `renderer` | `keep` | Keeps the renderer on trial |
 | | `revert` | Goes back to the renderer before it and restarts the shell |
 | | `reset` | Goes back to Cairo and restarts the shell |

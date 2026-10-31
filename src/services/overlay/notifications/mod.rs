@@ -16,7 +16,9 @@ use self::store::{read_store, write_store};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, persistent};
 use crate::services::media::deviceusage::DeviceUsage;
+use crate::services::session::deadline::{Deadline, Hold};
 
+const SILENT_UNTIL: [&str; 2] = ["notifications", "silentUntil"];
 pub const QUIET_APPS: &str = "/notifications/quietApps";
 pub const FORGOTTEN_APPS: &str = "/notifications/forgottenApps";
 pub const HIDE_WHILE_SHARING: &str = "/notifications/hideWhileSharing";
@@ -123,6 +125,7 @@ pub struct Notifications {
     pub list: Rc<RefCell<Vec<Notification>>>,
     pub unread_count: Rc<Cell<u32>>,
     pub is_silent: Rc<Cell<bool>>,
+    silent_deadline: Rc<Deadline>,
     unread_ids: Rc<RefCell<HashSet<u32>>>,
     next_id: Rc<Cell<u32>>,
     is_inhibited: Rc<Cell<bool>>,
@@ -140,20 +143,45 @@ impl Notifications {
     pub fn new(
         config: &crate::core::config::Config,
         session: Option<gio::DBusConnection>,
+        system: Option<&gio::DBusConnection>,
         device_usage: &DeviceUsage,
     ) -> Self {
         let list = read_store();
         let highest_id = list.iter().map(|entry| entry.id).max().unwrap_or(0);
+        let is_silent = Rc::new(Cell::new(false));
+        let listeners: Rc<Listeners> = Rc::default();
+        let silent_deadline = Deadline::new(SILENT_UNTIL, system, {
+            let is_silent = is_silent.clone();
+            let listeners = listeners.clone();
+            move || {
+                store_silent(&is_silent, false);
+                listeners.notify();
+            }
+        });
+        match silent_deadline.restore(config.notifications_silent) {
+            Some(hold) => {
+                is_silent.set(true);
+                if let Hold::Until(end_secs) = hold {
+                    silent_deadline.start(end_secs);
+                }
+            }
+            None if config.notifications_silent => {
+                silent_deadline.clear();
+                store_silent(&is_silent, false);
+            }
+            None => {}
+        }
         let notifications = Notifications {
             list: Rc::new(RefCell::new(list)),
             unread_count: Rc::new(Cell::new(0)),
-            is_silent: Rc::new(Cell::new(config.notifications_silent)),
+            is_silent,
+            silent_deadline,
             unread_ids: Rc::default(),
             next_id: Rc::new(Cell::new(highest_id + 1)),
             is_inhibited: Rc::new(Cell::new(false)),
             is_sharing: Rc::new(Cell::new(!device_usage.usage().screens.is_empty())),
             connection: session,
-            listeners: Rc::default(),
+            listeners,
             timers: Rc::new(RefCell::new(HashMap::new())),
             drafts: Rc::new(RefCell::new(HashMap::new())),
             applied_image_requests: Rc::default(),
@@ -218,9 +246,22 @@ impl Notifications {
     }
 
     pub fn set_silent(&self, is_silent: bool) {
-        self.is_silent.set(is_silent);
-        crate::core::config::store_flag("notifications", "silent", is_silent);
+        self.silent_deadline.clear();
+        store_silent(&self.is_silent, is_silent);
         self.announce();
+    }
+
+    pub fn silence(&self, hold: Hold) {
+        store_silent(&self.is_silent, true);
+        match hold {
+            Hold::Indefinite => self.silent_deadline.clear(),
+            Hold::Until(end_secs) => self.silent_deadline.start(end_secs),
+        }
+        self.announce();
+    }
+
+    pub fn silent_end_secs(&self) -> Option<i64> {
+        self.silent_deadline.end_secs()
     }
 
     pub fn groups(&self, is_popup_only: bool) -> Vec<Group> {
@@ -560,12 +601,18 @@ pub fn sample_group(reply_flags: &[bool]) -> Group {
     }
 }
 
+fn store_silent(is_silent: &Cell<bool>, value: bool) {
+    is_silent.set(value);
+    config::store_flag("notifications", "silent", value);
+}
+
 #[cfg(test)]
 fn new_detached() -> Notifications {
     Notifications {
         list: Rc::default(),
         unread_count: Rc::default(),
         is_silent: Rc::default(),
+        silent_deadline: Deadline::new(SILENT_UNTIL, None, || {}),
         unread_ids: Rc::default(),
         next_id: Rc::new(Cell::new(1)),
         is_inhibited: Rc::default(),
