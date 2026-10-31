@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use super::{Choice, Page, Parent, Style};
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::controls::{self, ComboBox, ConfigSwitch};
@@ -347,6 +348,33 @@ impl Page {
         }
         parent.add(&selection.root);
         self.keep(selection.clone());
+        selection
+    }
+
+    pub fn add_schedule_selection(
+        &self,
+        parent: &impl Parent,
+        pointer: &'static str,
+    ) -> Rc<Selection> {
+        let choice = |label: &str, icon: &'static str, value: &'static str| Choice {
+            label: label.to_owned(),
+            icon,
+            value: Value::from(value),
+        };
+        let selection = self.selection(
+            parent,
+            vec![
+                choice(&tr("Fixed times"), "schedule", "times"),
+                choice(&tr("Sunset to sunrise"), "wb_twilight", "sun"),
+            ],
+            pointer,
+            Value::from("times"),
+            move |value| config::store_value(pointer, value),
+        );
+        self.tip(
+            &selection.root,
+            &tr("Follows the sun at your location. Until it is known, the times below apply"),
+        );
         selection
     }
 

@@ -28,6 +28,12 @@ pub const NIGHT_FROM: &str = "19:00";
 pub const NIGHT_TO: &str = "06:30";
 pub const NIGHT_TRANSITION_MINUTES: i32 = 30;
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ScheduleMode {
+    Times,
+    Sun,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CornerStyle {
     Hug,
@@ -215,6 +221,7 @@ pub struct Config {
     pub toggle_style: String,
     pub night_temperature: i32,
     pub night_automatic: bool,
+    pub night_schedule: ScheduleMode,
     pub night_from: String,
     pub night_to: String,
     pub night_transition: i32,

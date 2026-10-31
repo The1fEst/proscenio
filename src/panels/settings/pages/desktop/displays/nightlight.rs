@@ -7,6 +7,7 @@ use crate::panels::settings::content::{Context, Page, Style};
 use crate::services::session::parse_clock_time;
 
 const NIGHT_AUTOMATIC: &str = "/light/night/automatic";
+const NIGHT_SCHEDULE: &str = "/light/night/schedule";
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
@@ -19,6 +20,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         NIGHT_AUTOMATIC,
         true,
     );
+    page.add_schedule_selection(&night_section, NIGHT_SCHEDULE);
     let times_row = page.uniform_row(&night_section);
     let from_field = page.text_field(
         &times_row,

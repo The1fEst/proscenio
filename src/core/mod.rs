@@ -12,5 +12,6 @@ pub mod persistent;
 pub mod process;
 pub mod scope;
 pub mod shell;
+pub mod sun;
 pub mod tools;
 pub mod watch;

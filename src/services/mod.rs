@@ -38,6 +38,7 @@ use crate::services::overlay::polkit::Polkit;
 use crate::services::overlay::prompter::Prompter;
 use crate::services::session::Session;
 use crate::services::session::background::BackgroundTasks;
+use crate::services::session::location::Location;
 use crate::services::session::states::States;
 use crate::services::session::timer::Timer;
 use crate::services::session::todo::Todo;
@@ -117,7 +118,7 @@ impl Services {
             bluez: Bluez::new(system.clone()),
             power: Power::new(system.clone()),
             polkit: Polkit::new(system.clone()),
-            session: Session::new(config, &color),
+            session: Session::new(config, &color, &Location::new(system.clone())),
             weather: Weather::new(system.clone()),
             battery: Battery::new(system),
             updates: Updates::new(),

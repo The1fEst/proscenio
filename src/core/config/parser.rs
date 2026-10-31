@@ -3,7 +3,7 @@ use std::cell::{Cell, RefCell};
 
 use super::{
     CHEATSHEET_SUPER_KEY, Config, CornerStyle, DATE_FORMAT, DOCK_PINNED_APPS, NIGHT_FROM, NIGHT_TO,
-    NIGHT_TRANSITION_MINUTES, RegionOptions, TIME_FORMAT,
+    NIGHT_TRANSITION_MINUTES, RegionOptions, ScheduleMode, TIME_FORMAT,
 };
 use crate::core::paths;
 use crate::platform::hyprland::hypr;
@@ -368,6 +368,7 @@ impl Config {
                 .pointer("/light/night/automatic")
                 .and_then(Value::as_bool)
                 .unwrap_or(true),
+            night_schedule: parse_schedule_mode(root.pointer("/light/night/schedule")),
             night_from: root
                 .pointer("/light/night/from")
                 .and_then(Value::as_str)
@@ -449,6 +450,13 @@ fn flag(node: &Value, key: &str, default: bool) -> bool {
     node.get(key).and_then(Value::as_bool).unwrap_or(default)
 }
 
+fn parse_schedule_mode(node: Option<&Value>) -> ScheduleMode {
+    match node.and_then(Value::as_str) {
+        Some("sun") => ScheduleMode::Sun,
+        _ => ScheduleMode::Times,
+    }
+}
+
 fn text(node: &Value, key: &str, default: &str) -> String {
     node.get(key)
         .and_then(Value::as_str)
@@ -502,6 +510,21 @@ mod tests {
         assert!(toggles_of(&empty_list).is_empty());
         let own_list = json!({ "sidebar": { "quickToggles": { "android": { "toggles": [{ "type": "mic" }] } } } });
         assert_eq!(toggles_of(&own_list), [("mic".to_owned(), 1)]);
+    }
+
+    #[test]
+    fn only_the_sun_value_selects_the_sun_schedule() {
+        let mode = |value: Value| {
+            Config::parse(&json!({ "light": { "night": { "schedule": value } } })).night_schedule
+        };
+        assert_eq!(mode(json!("sun")), ScheduleMode::Sun);
+        for other in [json!("times"), json!("Sun"), json!(1), Value::Null] {
+            assert_eq!(mode(other), ScheduleMode::Times);
+        }
+        assert_eq!(
+            Config::parse(&json!({})).night_schedule,
+            ScheduleMode::Times
+        );
     }
 
     #[test]

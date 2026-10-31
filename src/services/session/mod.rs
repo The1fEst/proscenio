@@ -1,6 +1,8 @@
 pub mod accounts;
 pub mod appearance;
 pub mod background;
+pub mod location;
+mod schedule;
 pub mod states;
 pub mod timedate;
 pub mod timer;
@@ -13,11 +15,13 @@ use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::core::config::{self, Config};
+use crate::core::config::{self, Config, ScheduleMode};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process::{self, detach};
 use crate::core::{persistent, watch};
 use crate::services::hyprland::screencolor::{NEUTRAL_TEMPERATURE, ScreenColor};
+use location::Location;
+use schedule::Span;
 
 pub struct Session {
     pub is_night_light_on: Cell<bool>,
@@ -26,6 +30,7 @@ pub struct Session {
     pub is_night_light_automatic: Cell<bool>,
     pub temperature: Cell<i32>,
     color: Rc<ScreenColor>,
+    location: Rc<Location>,
     inhibitor: RefCell<Option<process::Running>>,
     schedule: Schedule,
     listeners: Listeners,
@@ -34,6 +39,7 @@ pub struct Session {
 }
 
 struct Schedule {
+    mode: Cell<ScheduleMode>,
     from: Cell<i32>,
     to: Cell<i32>,
     transition: Cell<i32>,
@@ -79,6 +85,30 @@ fn temperature_at(now: i32, night: &Night) -> Option<i32> {
     let night_mired = 1e6 / night.temperature.max(1000) as f64;
     let kelvin = 1e6 / (day_mired + (night_mired - day_mired) * part);
     Some(((kelvin / KELVIN_STEP).round() * KELVIN_STEP) as i32)
+}
+
+fn compute_scheduled_temperature(
+    span: Span,
+    now: i32,
+    transition: i32,
+    temperature: i32,
+) -> Option<i32> {
+    match span {
+        Span::Never => None,
+        Span::Always => Some(temperature),
+        Span::Between {
+            from_minutes,
+            to_minutes,
+        } => temperature_at(
+            now,
+            &Night {
+                from: from_minutes * 60,
+                to: to_minutes * 60,
+                transition,
+                temperature,
+            },
+        ),
+    }
 }
 
 fn minutes(clock: &str) -> Option<i32> {
@@ -147,7 +177,7 @@ fn has_passed(boundary: i32, override_start_seconds: i64, now: &glib::DateTime) 
 }
 
 impl Session {
-    pub fn new(config: &Config, color: &Rc<ScreenColor>) -> Rc<Self> {
+    pub fn new(config: &Config, color: &Rc<ScreenColor>, location: &Rc<Location>) -> Rc<Self> {
         let (from, to) = parse_night_span(&config.night_from, &config.night_to);
         let session = Rc::new(Session {
             is_night_light_on: Cell::new(false),
@@ -156,8 +186,10 @@ impl Session {
             is_night_light_automatic: Cell::new(config.night_automatic),
             temperature: Cell::new(config.night_temperature),
             color: color.clone(),
+            location: location.clone(),
             inhibitor: RefCell::new(None),
             schedule: Schedule {
+                mode: Cell::new(config.night_schedule),
                 from: Cell::new(from),
                 to: Cell::new(to),
                 transition: Cell::new(config.night_transition),
@@ -201,7 +233,8 @@ impl Session {
         let transition = config.night_transition;
         let has_schedule_changed = (schedule.from.replace(from) != from)
             | (schedule.to.replace(to) != to)
-            | (schedule.transition.replace(transition) != transition);
+            | (schedule.transition.replace(transition) != transition)
+            | (schedule.mode.replace(config.night_schedule) != config.night_schedule);
         let has_automatic_changed = self
             .is_night_light_automatic
             .replace(config.night_automatic)
@@ -231,29 +264,44 @@ impl Session {
         self.re_evaluate();
     }
 
+    fn resolve_night_span(&self) -> Span {
+        let schedule = &self.schedule;
+        let mode = schedule.mode.get();
+        let daylight = (mode == ScheduleMode::Sun)
+            .then(|| self.location.compute_daylight_today())
+            .flatten();
+        Span::resolve(mode, schedule.from.get(), schedule.to.get(), daylight)
+    }
+
     fn re_evaluate(&self) {
         let schedule = &self.schedule;
-        let is_released = match (schedule.manual_override.get(), glib::DateTime::now_local()) {
-            (Some((is_on, override_start_seconds)), Ok(now)) => releases(
-                is_on,
-                schedule.from.get(),
-                schedule.to.get(),
-                schedule.transition.get(),
-            )
-            .iter()
-            .any(|release| has_passed(*release, override_start_seconds, &now)),
+        let span = self.resolve_night_span();
+        let is_released = match (
+            span,
+            schedule.manual_override.get(),
+            glib::DateTime::now_local(),
+        ) {
+            (
+                Span::Between {
+                    from_minutes,
+                    to_minutes,
+                },
+                Some((is_on, override_start_seconds)),
+                Ok(now),
+            ) => releases(is_on, from_minutes, to_minutes, schedule.transition.get())
+                .iter()
+                .any(|release| has_passed(*release, override_start_seconds, &now)),
             _ => false,
         };
         if is_released {
             schedule.manual_override.set(None);
         }
-        let night = Night {
-            from: schedule.from.get() * 60,
-            to: schedule.to.get() * 60,
-            transition: schedule.transition.get() * 60,
-            temperature: self.temperature.get(),
-        };
-        let kelvin = temperature_at(now_seconds(), &night);
+        let kelvin = compute_scheduled_temperature(
+            span,
+            now_seconds(),
+            schedule.transition.get() * 60,
+            self.temperature.get(),
+        );
         let has_kelvin_changed = schedule.scheduled_kelvin.replace(kelvin) != kelvin;
         if schedule.needs_apply.replace(false) || has_kelvin_changed || is_released {
             self.ensure_state();
@@ -507,6 +555,7 @@ fn windows_entry(boot_list: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::sun::Daylight;
 
     #[test]
     fn the_schedule_is_fully_warm_from_its_start_and_eases_out_after_its_end() {
@@ -536,6 +585,41 @@ mod tests {
         };
         assert_eq!(temperature_at(clock(19, 0), &instant), Some(4000));
         assert_eq!(temperature_at(clock(6, 30), &instant), None);
+    }
+
+    #[test]
+    fn the_sun_warms_the_screen_from_sunset_to_sunrise_and_polar_days_and_nights_hold_it() {
+        let clock = |hour: i32, minute: i32| (hour * 60 + minute) * 60;
+        let daylight = Daylight::Cycle {
+            sunrise_minutes: 5 * 60 + 40,
+            sunset_minutes: 20 * 60 + 5,
+        };
+        let span = Span::resolve(ScheduleMode::Sun, 19 * 60, 6 * 60 + 30, Some(daylight));
+        let cases = [
+            (clock(12, 0), None),
+            (clock(20, 4), None),
+            (clock(20, 5), Some(4000)),
+            (clock(2, 0), Some(4000)),
+            (clock(5, 39), Some(4000)),
+            (clock(5, 40), None),
+        ];
+        for (now, expected) in cases {
+            assert_eq!(
+                compute_scheduled_temperature(span, now, 0, 4000),
+                expected,
+                "at {now} s"
+            );
+        }
+        for now in [clock(0, 0), clock(12, 0), clock(23, 59)] {
+            assert_eq!(
+                compute_scheduled_temperature(Span::Never, now, 1800, 4000),
+                None
+            );
+            assert_eq!(
+                compute_scheduled_temperature(Span::Always, now, 1800, 4000),
+                Some(4000)
+            );
+        }
     }
 
     #[test]

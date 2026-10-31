@@ -202,10 +202,20 @@ Hyprland's `hyprland-ctm-control-v1` protocol. Its settings are keys in
 | Control | Key | Default |
 |---|---|---|
 | Automatic schedule | `light.night.automatic` | on |
+| Fixed times, Sunset to sunrise | `light.night.schedule`: `times` or `sun` | `times` |
 | From (HH:mm) | `light.night.from` | `19:00` |
 | To (HH:mm) | `light.night.to` | `06:30` |
 | Color temperature (K) | `light.night.colorTemperature`, 1000 to 6500 in steps of 100 | 5000 |
 | Transition (min) | `light.night.transition`, 0 to 120 in steps of 5 | 30 |
+
+With **Sunset to sunrise** the schedule runs from the day's sunset, which takes the place of From, to
+its sunrise, which takes the place of To. The times come from the position GeoClue gives and are
+worked out again on every tick of the background loop, so a new day, a new position and a wake from
+sleep take effect within one polling interval. The shell asks GeoClue only while the automatic
+schedule and **Sunset to sunrise** are both on, and keeps the last position it received in
+`~/.local/state/proscenio/states.json` under `location`, which it uses at startup until GeoClue
+answers. While no position is known, the From and To times apply. Where the sun stays up all day
+night light stays off, and where it stays down all day it stays on.
 
 The From and To fields are inactive while the schedule is off. They take a 24-hour time such as
 `7:05` or `19:30`, stored as `07:05` and `19:30`; anything else is not stored, and the field shows
