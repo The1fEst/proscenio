@@ -3,3 +3,4 @@ pub mod kde;
 pub mod material;
 pub mod quantize;
 pub mod switchwall;
+pub mod switchwallqueue;

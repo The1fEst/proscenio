@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::core::i18n::tr;
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Choice, Context, Page, Style};
-use crate::theming::{colors, switchwall};
+use crate::theming::{colors, switchwallqueue};
 
 const FIELD_MARGIN: i32 = 8;
 const PERCENT: f64 = 100.0;
@@ -122,7 +122,7 @@ pub(in crate::panels::settings::pages) fn add_palette(page: &Page, parent: &gtk4
         Value::from("auto"),
         |value| {
             config::store_value("/appearance/palette/type", value);
-            switchwall::detach(&["--noswitch"]);
+            switchwallqueue::request(&["--noswitch"]);
         },
     );
 
@@ -133,7 +133,7 @@ pub(in crate::panels::settings::pages) fn add_palette(page: &Page, parent: &gtk4
         || config::value_str("/appearance/palette/accentColor").unwrap_or_default(),
         |text| {
             config::store_value("/appearance/palette/accentColor", Value::from(text.trim()));
-            switchwall::detach(&["--noswitch"]);
+            switchwallqueue::request(&["--noswitch"]);
         },
     );
     accent_field.root.set_margin_start(FIELD_MARGIN);

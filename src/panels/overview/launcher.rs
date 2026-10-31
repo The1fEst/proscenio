@@ -549,13 +549,13 @@ impl Launcher {
     fn builtin(&self, name: &str, arguments: &str) {
         match name {
             "accentcolor" if arguments.is_empty() => {
-                crate::theming::switchwall::detach(&["--noswitch", "--color"]);
+                crate::theming::switchwallqueue::request(&["--noswitch", "--color"]);
             }
             "accentcolor" => {
-                crate::theming::switchwall::detach(&["--noswitch", "--color", arguments])
+                crate::theming::switchwallqueue::request(&["--noswitch", "--color", arguments])
             }
-            "dark" => crate::theming::switchwall::detach(&["--mode", "dark", "--noswitch"]),
-            "light" => crate::theming::switchwall::detach(&["--mode", "light", "--noswitch"]),
+            "dark" => crate::theming::switchwallqueue::request(&["--mode", "dark", "--noswitch"]),
+            "light" => crate::theming::switchwallqueue::request(&["--mode", "light", "--noswitch"]),
             "superpaste" => self.superpaste(arguments),
             "todo" => self.todo.add(arguments),
             "wallpaper" => crate::core::actions::run("wallpaperSelectorToggle"),

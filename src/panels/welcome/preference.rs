@@ -7,7 +7,7 @@ use std::rc::Rc;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::Page;
 use crate::services::session;
-use crate::theming::switchwall;
+use crate::theming::switchwallqueue;
 use crate::ui::theme::{SharedTheme, Theme, mix, queue_draw_all, rounding};
 use crate::ui::widgets::display::paint::Paint;
 use crate::ui::widgets::display::progress::{Colors, ProgressBar};
@@ -190,7 +190,7 @@ pub fn build(page: &Page, previews_dark_mode: bool) -> RippleButton {
     column.append(&Centered::new(&name_label));
     button.set_content(&column, PADDING, PADDING);
     let mode = if previews_dark_mode { "dark" } else { "light" };
-    button.connect_clicked(move |_| switchwall::detach(&["--mode", mode, "--noswitch"]));
+    button.connect_clicked(move |_| switchwallqueue::request(&["--mode", mode, "--noswitch"]));
 
     let show = {
         let (button, progress_bar, check_box, name_label, theme) = (

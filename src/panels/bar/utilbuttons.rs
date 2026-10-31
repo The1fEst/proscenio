@@ -89,7 +89,7 @@ pub fn build(
                 } else {
                     "dark"
                 };
-                crate::theming::switchwall::detach(&["--mode", mode, "--noswitch"]);
+                crate::theming::switchwallqueue::request(&["--mode", mode, "--noswitch"]);
             }
         });
         scope.keep(services.session.subscribe({

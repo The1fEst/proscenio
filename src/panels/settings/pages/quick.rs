@@ -12,7 +12,7 @@ use crate::core::i18n::tr;
 use crate::core::{config, tools};
 use crate::panels::settings::content::{Choice, Context, Page};
 use crate::services::session;
-use crate::theming::switchwall;
+use crate::theming::switchwallqueue;
 use crate::ui::anim::{self, Fader};
 use crate::ui::image;
 use crate::ui::theme::{pixel_size, rounding};
@@ -217,7 +217,7 @@ pub fn choose_wallpaper(page: &Page) -> RippleButton {
         &["Ctrl", &super_key()],
         "T",
     );
-    choose_button.connect_clicked(|_| switchwall::detach(&[]));
+    choose_button.connect_clicked(|_| switchwallqueue::request(&[]));
     let missing_tools = tools::find_missing(&[&tools::KDIALOG]);
     if missing_tools.is_empty() {
         page.tip(&choose_button, &tr("Pick wallpaper image on your system"));
@@ -299,7 +299,7 @@ fn mode_button(page: &Page, is_dark: bool) -> (RippleButton, [gtk4::Label; 2]) {
     column.append(&name_box);
     button.set_content(&column, MODE_PADDING, MODE_PADDING);
     let mode = if is_dark { "dark" } else { "light" };
-    button.connect_clicked(move |_| switchwall::detach(&["--mode", mode, "--noswitch"]));
+    button.connect_clicked(move |_| switchwallqueue::request(&["--mode", mode, "--noswitch"]));
     (button, [icon, name_label])
 }
 

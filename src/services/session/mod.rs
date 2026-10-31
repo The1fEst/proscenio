@@ -415,7 +415,7 @@ impl Session {
         } else {
             "dark"
         };
-        crate::theming::switchwall::detach(&["--mode", mode, "--noswitch"]);
+        crate::theming::switchwallqueue::request(&["--mode", mode, "--noswitch"]);
     }
 
     fn follow_dark_mode(self: &Rc<Self>) {

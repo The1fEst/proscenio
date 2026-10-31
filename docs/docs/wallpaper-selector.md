@@ -110,7 +110,9 @@ The search field has the keyboard when the selector opens.
 
 Choosing a picture runs `proscenio switchwall --mode <light|dark> --image <file>`, which sets the
 wallpaper and regenerates the colors from it. The system file picker runs the same command without
-`--image`, which asks `kdialog` for a file.
+`--image`, which asks `kdialog` for a file. The shell runs one `switchwall` at a time: choosing
+pictures quickly applies the first, then only the last one chosen while it ran; see
+[Colors from the wallpaper](colors.md).
 
 ## Thumbnails
 

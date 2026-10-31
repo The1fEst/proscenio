@@ -2,9 +2,11 @@ use gtk4::gdk_pixbuf::Pixbuf;
 use gtk4::glib;
 use serde_json::Value;
 use std::collections::HashSet;
+use std::fs::File;
 use std::io::Write;
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -16,6 +18,7 @@ use crate::platform::system::appearance;
 use crate::platform::wayland::gbm;
 use crate::services::files::cliphist::escape;
 use crate::services::updates;
+use crate::theming::switchwallqueue::{ColorRequest, Request};
 use crate::theming::{colors, kde};
 
 const SCHEMES: [&str; 8] = [
@@ -46,10 +49,26 @@ const O_NONBLOCK: i32 = 0o4000;
 const APP_NAME: &str = "Wallpaper switcher";
 const THEMING: &str = "/appearance/wallpaperTheming";
 
-pub fn detach(arguments: &[&str]) {
-    let mut command = vec!["switchwall"];
-    command.extend_from_slice(arguments);
-    process::launch_subcommand(&command);
+const LOCK_FILE: &str = "switchwall.lock";
+const MATUGEN_NICE: &str = "15";
+const OFFER_UPSCALE: &str = "--offer-upscale";
+
+static GENERATION_LOCK: OnceLock<File> = OnceLock::new();
+
+fn lock_generation() {
+    let folder = paths::runtime();
+    let _ = std::fs::create_dir_all(&folder);
+    let lock = File::create(folder.join(LOCK_FILE)).and_then(|file| file.lock().map(|()| file));
+    match lock {
+        Ok(file) => {
+            let _ = GENERATION_LOCK.set(file);
+        }
+        Err(error) => eprintln!("[switchwall] Warning: {LOCK_FILE}: {error}"),
+    }
+}
+
+fn is_unchanged(previous_scss: Option<&str>, scss: &str) -> bool {
+    previous_scss == Some(scss)
 }
 
 pub fn run(arguments: &[String]) -> glib::ExitCode {
@@ -62,43 +81,32 @@ pub fn run(arguments: &[String]) -> glib::ExitCode {
 }
 
 fn start(arguments: &[String], jobs: &mut Vec<JoinHandle<()>>) -> glib::ExitCode {
-    let mut image = None;
-    let mut mode = None;
-    let mut scheme = None;
-    let mut keeps_wallpaper = false;
-    let mut rest = arguments.iter().peekable();
-    while let Some(argument) = rest.next() {
-        match argument.as_str() {
-            "--mode" => mode = rest.next().cloned(),
-            "--type" => scheme = rest.next().cloned(),
-            "--color" => match rest.peek().copied().map(String::as_str) {
-                Some(value) if is_hex(value) => {
-                    set_accent(value);
-                    rest.next();
-                }
-                Some("clear") => {
-                    set_accent("");
-                    rest.next();
-                }
-                _ => {
-                    let picked_color =
-                        process::output(&["hyprpicker", "--no-fancy"]).unwrap_or_default();
-                    set_accent(picked_color.split_whitespace().next().unwrap_or_default());
-                }
-            },
-            "--image" => image = rest.next().cloned(),
-            "--noswitch" => {
-                keeps_wallpaper = true;
-                image = config_string("/background/wallpaperPath");
-            }
-            _ => {
-                if image.is_none() {
-                    image = Some(argument.clone());
-                }
-            }
+    if arguments.first().map(String::as_str) == Some(OFFER_UPSCALE) {
+        if let Some(image) = arguments.get(1) {
+            offer_upscale(image);
         }
+        return glib::ExitCode::SUCCESS;
     }
-    let mut image = image.filter(|path| !path.is_empty());
+    let request = Request::parse(arguments);
+    let has_color_argument = request.color.is_some();
+    match &request.color {
+        Some(ColorRequest::Hex(value)) => set_accent(value),
+        Some(ColorRequest::Clear) => set_accent(""),
+        Some(ColorRequest::Pick) => {
+            let picked_color = process::output(&["hyprpicker", "--no-fancy"]).unwrap_or_default();
+            set_accent(picked_color.split_whitespace().next().unwrap_or_default());
+        }
+        None => {}
+    }
+    let keeps_wallpaper = request.keeps_wallpaper;
+    let mode = request.mode;
+    let scheme = request.scheme;
+    let mut image = if keeps_wallpaper {
+        config_string("/background/wallpaperPath")
+    } else {
+        request.image
+    }
+    .filter(|path| !path.is_empty());
 
     let mut color = config_string("/appearance/palette/accentColor").filter(|value| is_hex(value));
     let mut scheme = scheme
@@ -121,7 +129,7 @@ fn start(arguments: &[String], jobs: &mut Vec<JoinHandle<()>>) -> glib::ExitCode
         .filter(|path| !path.is_empty());
     }
 
-    if image.is_some() && !keeps_wallpaper {
+    if image.is_some() && !keeps_wallpaper && !has_color_argument {
         set_accent("");
         color = None;
     }
@@ -154,12 +162,25 @@ fn switch(
     mode: Option<String>,
     scheme: String,
     color: Option<String>,
-    should_offer_upscale: bool,
+    is_new_wallpaper: bool,
     jobs: &mut Vec<JoinHandle<()>>,
 ) -> glib::ExitCode {
-    let mut matugen_command = strings(&["matugen", "--source-color-index", "0"]);
+    lock_generation();
+    let mut matugen_command = strings(&[
+        "nice",
+        "-n",
+        MATUGEN_NICE,
+        "matugen",
+        "--source-color-index",
+        "0",
+    ]);
     let mut generate_arguments;
     if let Some(color) = color {
+        if let Some(image) = image.filter(|_| is_new_wallpaper)
+            && let Err(exit_code) = apply_wallpaper(image, true)
+        {
+            return exit_code;
+        }
         matugen_command.extend(strings(&["color", "hex", &color]));
         generate_arguments = strings(&["--color", &color]);
     } else {
@@ -167,48 +188,9 @@ fn switch(
             println!("Aborted");
             return glib::ExitCode::SUCCESS;
         };
-        if should_offer_upscale {
-            jobs.push(thread::spawn({
-                let image = image.clone();
-                move || offer_upscale(&image)
-            }));
-        }
-        process::run(&["pkill", "-9", "-x", "mpvpaper"]);
-
-        let source = if is_video(&image) {
-            let missing_programs: Vec<&str> = ["mpvpaper", "ffmpeg"]
-                .into_iter()
-                .filter(|program| !process::exists(program))
-                .collect();
-            if !missing_programs.is_empty() {
-                offer_install(&missing_programs);
-                return glib::ExitCode::SUCCESS;
-            }
-            config::store_value("/background/wallpaperPath", Value::from(image.as_str()));
-            for monitor in monitors() {
-                if let Some(name) = monitor.get("name").and_then(Value::as_str) {
-                    process::detach(&["mpvpaper", "-o", VIDEO_OPTIONS, name, &image]);
-                    thread::sleep(Duration::from_millis(100));
-                }
-            }
-            let _ = std::fs::create_dir_all(thumbnails());
-            let name = Path::new(&image).file_name().unwrap_or_default();
-            let mut thumbnail = thumbnails().join(name).into_os_string();
-            thumbnail.push(".jpg");
-            let thumbnail = thumbnail.to_string_lossy().into_owned();
-            process::output(&["ffmpeg", "-y", "-i", &image, "-vframes", "1", &thumbnail]);
-            config::store_value("/background/thumbnailPath", Value::from(thumbnail.as_str()));
-            if !Path::new(&thumbnail).is_file() {
-                println!("Cannot create image to colorgen");
-                write_restore(None);
-                return glib::ExitCode::FAILURE;
-            }
-            write_restore(Some(&image));
-            thumbnail
-        } else {
-            config::store_value("/background/wallpaperPath", Value::from(image.as_str()));
-            write_restore(None);
-            image
+        let source = match apply_wallpaper(image, is_new_wallpaper) {
+            Ok(source) => source,
+            Err(exit_code) => return exit_code,
         };
         matugen_command.extend(strings(&["image", &source]));
         generate_arguments = strings(&["--path", &source]);
@@ -275,7 +257,6 @@ fn switch(
         }
     }
 
-    process::run(&matugen_command);
     let scss = match colors::generate(&generate_arguments, Some(assets::TERMINAL_SCHEME)) {
         Ok(scss) => scss,
         Err(error) => {
@@ -283,8 +264,14 @@ fn switch(
             return glib::ExitCode::FAILURE;
         }
     };
+    let scss_path = paths::generated_dir().join("material_colors.scss");
+    if is_unchanged(std::fs::read_to_string(&scss_path).ok().as_deref(), &scss) {
+        println!("Colors unchanged, skipping matugen and app reloads");
+        return glib::ExitCode::SUCCESS;
+    }
+    process::run(&matugen_command);
     let _ = std::fs::create_dir_all(paths::generated_dir());
-    if let Err(error) = std::fs::write(paths::generated_dir().join("material_colors.scss"), &scss) {
+    if let Err(error) = std::fs::write(&scss_path, &scss) {
         eprintln!("material_colors.scss: {error}");
         return glib::ExitCode::FAILURE;
     }
@@ -295,6 +282,48 @@ fn switch(
     jobs.push(thread::spawn(move || apply_kde(&scheme)));
     jobs.push(thread::spawn(apply_code));
     glib::ExitCode::SUCCESS
+}
+
+fn apply_wallpaper(image: String, should_offer_upscale: bool) -> Result<String, glib::ExitCode> {
+    if should_offer_upscale {
+        process::launch_subcommand(&["switchwall", OFFER_UPSCALE, &image]);
+    }
+    process::run(&["pkill", "-9", "-x", "mpvpaper"]);
+
+    if !is_video(&image) {
+        config::store_value("/background/wallpaperPath", Value::from(image.as_str()));
+        write_restore(None);
+        return Ok(image);
+    }
+    let missing_programs: Vec<&str> = ["mpvpaper", "ffmpeg"]
+        .into_iter()
+        .filter(|program| !process::exists(program))
+        .collect();
+    if !missing_programs.is_empty() {
+        offer_install(&missing_programs);
+        return Err(glib::ExitCode::SUCCESS);
+    }
+    config::store_value("/background/wallpaperPath", Value::from(image.as_str()));
+    for monitor in monitors() {
+        if let Some(name) = monitor.get("name").and_then(Value::as_str) {
+            process::detach(&["mpvpaper", "-o", VIDEO_OPTIONS, name, &image]);
+            thread::sleep(Duration::from_millis(100));
+        }
+    }
+    let _ = std::fs::create_dir_all(thumbnails());
+    let name = Path::new(&image).file_name().unwrap_or_default();
+    let mut thumbnail = thumbnails().join(name).into_os_string();
+    thumbnail.push(".jpg");
+    let thumbnail = thumbnail.to_string_lossy().into_owned();
+    process::output(&["ffmpeg", "-y", "-i", &image, "-vframes", "1", &thumbnail]);
+    config::store_value("/background/thumbnailPath", Value::from(thumbnail.as_str()));
+    if !Path::new(&thumbnail).is_file() {
+        println!("Cannot create image to colorgen");
+        write_restore(None);
+        return Err(glib::ExitCode::FAILURE);
+    }
+    write_restore(Some(&image));
+    Ok(thumbnail)
 }
 
 fn offer_upscale(image: &str) {
@@ -599,7 +628,7 @@ fn config_string(pointer: &str) -> Option<String> {
     config::value(pointer)?.as_str().map(str::to_owned)
 }
 
-fn is_hex(text: &str) -> bool {
+pub(super) fn is_hex(text: &str) -> bool {
     let digits = text.strip_prefix('#').unwrap_or(text);
     digits.len() == 6 && digits.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
@@ -640,6 +669,19 @@ fn strings(items: &[&str]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_identical_colors_are_unchanged() {
+        assert!(is_unchanged(
+            Some("$primary: #112233;\n"),
+            "$primary: #112233;\n"
+        ));
+        assert!(!is_unchanged(
+            Some("$primary: #112233;\n"),
+            "$primary: #112234;\n"
+        ));
+        assert!(!is_unchanged(None, "$primary: #112233;\n"));
+    }
 
     #[test]
     fn the_restore_script_passes_the_video_path_literally() {

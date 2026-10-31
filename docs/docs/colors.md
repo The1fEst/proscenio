@@ -21,6 +21,22 @@ the dark mode buttons of the bar and of the [quick toggles](quick-toggles.md), t
 it in a transient systemd scope of its own (`systemd-run --user --scope`), outside the shell's
 process.
 
+The shell runs one `switchwall` at a time. A request made with nothing running starts at once. A
+request made while one runs waits as the single pending request, and a newer request is merged into
+it, argument by argument:
+
+- A value the newer request sets (`--mode`, `--type`, `--image`, `--color`) wins, and a value only the
+  pending request sets is kept. Choosing a wallpaper and then switching the mode keeps the wallpaper
+  and applies the new mode.
+- `--noswitch` holds only while neither request has an image.
+- A newer image drops a pending accent color, unless the newer request has a `--color` of its own.
+- A request that opens the file picker (no image, no accent color, no `--noswitch`) is not merged:
+  it replaces the pending request, and the next request replaces it.
+
+Each run also holds an exclusive lock on
+`$XDG_RUNTIME_DIR/proscenio/switchwall.lock` while it generates, so a run started from a terminal
+waits for the shell's, and the other way round.
+
 ![The default wallpaper in dark mode](/img/screenshots/desktop-dark.webp)
 
 ![The default wallpaper in light mode](/img/screenshots/desktop-light.webp)
@@ -30,19 +46,21 @@ process.
 | Argument | Effect |
 |---|---|
 | `PATH`, `--image PATH` | The wallpaper to set: an image, or a video ending in `.mp4`, `.webm`, `.mkv`, `.avi` or `.mov` |
-| `--noswitch` | Keeps the current wallpaper, `background.wallpaperPath`, and only recolors |
+| `--noswitch` | Keeps the current wallpaper, `background.wallpaperPath`, and only recolors; a `PATH` given with it is ignored |
 | `--mode dark` / `--mode light` | The mode to switch to. Without it, the mode is dark when `color-scheme` in `org.gnome.desktop.interface` is `prefer-dark`, and light otherwise |
 | `--type SCHEME` | The scheme for this run. Without it, `appearance.palette.type` decides, and without that, `auto` |
 | `--color HEX` | Stores `HEX` (six hex digits, with or without `#`) as the accent color |
 | `--color clear` | Empties the accent color |
 | `--color` | Lets you pick the accent color from the screen with `hyprpicker` |
+| `--offer-upscale PATH` | Only offers to upscale `PATH`, as described under step 1 of What a run does, and changes nothing else; a run for a wallpaper that is smaller than the screen starts it in a scope of its own |
 
 With no wallpaper, no accent color and no `--noswitch`, a `kdialog` file picker asks for the
 wallpaper, starting in `Pictures/Wallpapers/showcase`, else `Pictures/Wallpapers`, else `Pictures`.
 Cancelling it prints `Aborted` and changes nothing.
 
-Choosing a wallpaper clears the accent color. While an accent color is set, the colors come from it
-instead of the wallpaper.
+Choosing a wallpaper clears the accent color, unless the same command has a `--color` argument:
+then the wallpaper is set and the accent color applies. While an accent color is set, the colors come
+from it instead of the wallpaper.
 
 The command exits with 0, or with 1 when the first frame of a video cannot be extracted or the
 palette cannot be written.
@@ -73,18 +91,24 @@ decoded with `djpeg` and 16-bit PNG images with `magick`; other formats go throu
 
 ## What a run does
 
-1. **The wallpaper**, unless the colors come from an accent color. Any running `mpvpaper` stops, the
+1. **The wallpaper**, unless the colors come from an accent color and the command has no new
+   wallpaper. Any running `mpvpaper` stops, the
    path is stored in `background.wallpaperPath`, and a video starts playing; with `--noswitch`, all
    of this happens to the current wallpaper. When a chosen image is smaller than the largest monitor,
    a notification offers to open Upscayl, and to install `upscayl-bin` from the AUR when it is
-   missing.
+   missing. The offer runs in a process of its own, so waiting for an answer holds nothing up.
 2. **The mode.** `color-scheme` in `org.gnome.desktop.interface` becomes `prefer-dark` or
    `prefer-light`, `gtk-theme` becomes `adw-gtk3-dark` or `adw-gtk3`, and the icon theme becomes
    its installed variant for the mode (see [Appearance](settings-appearance.md)).
 3. If `appearance.wallpaperTheming.enableAppsAndShell` is `false`, the run stops here.
-4. **matugen**, with the user's own config and templates.
-5. **The palette**, written to `material_colors.scss`.
-6. **The rest, side by side**: the terminal colors, the Qt color scheme and the code editors' color.
+4. **The palette** is computed. When it is byte-identical to the `material_colors.scss` already on
+   disk, the run prints `Colors unchanged, skipping matugen and app reloads` and stops here: no
+   matugen, no terminal, Qt or editor update, so nothing reloads. Running it again to apply edited
+   matugen templates or a turned-on `enableQtApps` or `enableTerminal` therefore does nothing until
+   the palette changes.
+5. **matugen**, with the user's own config and templates, run at nice level 15.
+6. **The palette**, written to `material_colors.scss`.
+7. **The rest, side by side**: the terminal colors, the Qt color scheme and the code editors' color.
    The command returns once all three are done.
 
 ### Video wallpapers

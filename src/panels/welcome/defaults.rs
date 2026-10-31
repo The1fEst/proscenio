@@ -3,7 +3,7 @@ use gtk4::gio;
 use crate::core::assets;
 use crate::platform::system::appearance::{self, Parts};
 use crate::platform::system::defaultapps;
-use crate::theming::switchwall;
+use crate::theming::switchwallqueue;
 
 const APPS: [(&str, &str); 8] = [
     ("web", "brave-origin.desktop"),
@@ -52,6 +52,6 @@ pub fn apply() {
         appearance::set_cursor(CURSOR_THEME, CURSOR_SIZE);
     });
     if let Some(wallpaper) = assets::default_wallpaper() {
-        switchwall::detach(&["--image", &wallpaper.to_string_lossy()]);
+        switchwallqueue::request(&["--image", &wallpaper.to_string_lossy()]);
     }
 }

@@ -210,7 +210,7 @@ impl Wallpapers {
         if path.is_empty() {
             return;
         }
-        crate::theming::switchwall::detach(&["--mode", mode(is_dark), "--image", &path]);
+        crate::theming::switchwallqueue::request(&["--mode", mode(is_dark), "--image", &path]);
         self.announce(&self.apply_listeners);
     }
 
@@ -227,7 +227,7 @@ impl Wallpapers {
     }
 
     pub fn open_fallback_picker(&self, is_dark: bool) {
-        crate::theming::switchwall::detach(&["--mode", mode(is_dark)]);
+        crate::theming::switchwallqueue::request(&["--mode", mode(is_dark)]);
     }
 
     pub fn generate_thumbnails(self: &Rc<Self>, size: Size) {
