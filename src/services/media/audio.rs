@@ -3,6 +3,7 @@ use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::introspect::Introspector;
 use libpulse_binding::context::subscribe::{Facility, InterestMaskSet};
 use libpulse_binding::context::{Context, FlagSet, State};
+use libpulse_binding::def::PortAvailable;
 use libpulse_binding::volume::{ChannelVolumes, Volume};
 use libpulse_glib_binding::Mainloop;
 use std::cell::{Cell, RefCell};
@@ -18,6 +19,7 @@ use crate::platform::dbus::notify::{self, Notification};
 const HARD_MAX: f64 = 2.0;
 const SETTLE_DELAY: Duration = Duration::from_secs(3);
 const RECONNECT_DELAY: Duration = Duration::from_secs(1);
+const PRO_AUDIO_PROFILE: &str = "pro-audio";
 
 #[derive(Clone, Copy)]
 pub struct Protection {
@@ -41,6 +43,15 @@ pub struct Device {
     pub name: String,
     pub description: String,
     pub nick: String,
+    pub ports: Vec<Port>,
+    pub active_port: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Port {
+    pub name: String,
+    pub description: String,
+    pub availability: PortAvailable,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -472,6 +483,26 @@ impl Audio {
                     name: info.name.as_deref().unwrap_or_default().to_owned(),
                     description: info.description.as_deref().unwrap_or_default().to_owned(),
                     nick: info.proplist.get_str("node.nick").unwrap_or_default(),
+                    ports: filter_usable_ports(
+                        info.ports
+                            .iter()
+                            .map(|port| Port {
+                                name: port.name.as_deref().unwrap_or_default().to_owned(),
+                                description: port
+                                    .description
+                                    .as_deref()
+                                    .unwrap_or_default()
+                                    .to_owned(),
+                                availability: port.available,
+                            })
+                            .collect(),
+                    ),
+                    active_port: info
+                        .active_port
+                        .as_ref()
+                        .and_then(|port| port.name.as_deref())
+                        .unwrap_or_default()
+                        .to_owned(),
                 }),
                 ListResult::End => on_devices(devices.take(), current_name.clone()),
                 ListResult::Error => {}
@@ -486,6 +517,8 @@ impl Audio {
                         name: info.name.as_deref().unwrap_or_default().to_owned(),
                         description: info.description.as_deref().unwrap_or_default().to_owned(),
                         nick: info.proplist.get_str("node.nick").unwrap_or_default(),
+                        ports: Vec::new(),
+                        active_port: String::new(),
                     })
                 }
                 ListResult::End => on_devices(devices.take(), current_name.clone()),
@@ -504,6 +537,13 @@ impl Audio {
         } else {
             context.set_default_source(name, |_| {});
         }
+    }
+
+    pub fn set_sink_port(&self, sink: &str, port: &str) {
+        let Some(mut introspect) = self.introspector() else {
+            return;
+        };
+        introspect.set_sink_port_by_name(sink, port, None);
     }
 
     pub fn set_source_volume(&self, part: f64) {
@@ -659,6 +699,8 @@ pub fn parse_cards(text: &str) -> Vec<Card> {
     let mut is_in_profiles = false;
     let finish = |cards: &mut Vec<Card>, active_profile: &str, known_profiles: &[String]| {
         if let Some(card) = cards.last_mut() {
+            card.profiles
+                .retain(|(_, key)| key != PRO_AUDIO_PROFILE || key == active_profile);
             card.active_profile = if known_profiles
                 .iter()
                 .any(|profile| profile == active_profile)
@@ -751,6 +793,13 @@ pub fn play_system_sound(theme: &str, name: &str) {
     }
 }
 
+fn filter_usable_ports(ports: Vec<Port>) -> Vec<Port> {
+    ports
+        .into_iter()
+        .filter(|port| port.availability != PortAvailable::No)
+        .collect()
+}
+
 fn is_microphone_recorder(is_corked: bool, is_monitor: bool) -> bool {
     !is_corked && !is_monitor
 }
@@ -841,6 +890,43 @@ mod tests {
                 expected,
                 "{name}"
             );
+        }
+    }
+
+    #[test]
+    fn unavailable_ports_are_dropped_and_unknown_ones_kept() {
+        let port = |name: &str, availability| Port {
+            name: name.to_owned(),
+            description: name.to_owned(),
+            availability,
+        };
+        let ports = filter_usable_ports(vec![
+            port("speakers", PortAvailable::Yes),
+            port("headphones", PortAvailable::No),
+            port("line-out", PortAvailable::Unknown),
+        ]);
+        let names: Vec<&str> = ports.iter().map(|port| port.name.as_str()).collect();
+        assert_eq!(names, ["speakers", "line-out"]);
+    }
+
+    #[test]
+    fn cards_leave_out_the_pro_audio_profile_unless_it_is_the_active_one() {
+        let card = |active_profile: &str| {
+            format!(
+                "Card #44\n\tName: alsa_card.pci\n\tProfiles:\n\t\toutput:analog-stereo: Analog Stereo Output (sinks: 1, sources: 0, priority: 6500, available: yes)\n\t\tpro-audio: Pro Audio (sinks: 4, sources: 4, priority: 1, available: yes)\n\tActive Profile: {active_profile}\n"
+            )
+        };
+        for (active_profile, expected) in [
+            ("output:analog-stereo", vec!["output:analog-stereo"]),
+            ("pro-audio", vec!["output:analog-stereo", "pro-audio"]),
+        ] {
+            let cards = parse_cards(&card(active_profile));
+            let keys: Vec<&str> = cards[0]
+                .profiles
+                .iter()
+                .map(|(_, key)| key.as_str())
+                .collect();
+            assert_eq!(keys, expected, "{active_profile}");
         }
     }
 

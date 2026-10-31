@@ -18,7 +18,7 @@ notice saying so.
 
 | Control | Does |
 |---|---|
-| Device | the default output (sink) or input (source); a device whose description starts with its short name shows as "*short name* · *the rest*" |
+| Device | the default output (sink) or input (source); a device whose description starts with its short name shows as "*short name* · *the rest*". An output with two or more available ports, such as Speakers and Headphones on one card, is listed once per port as "*device* · *port*"; picking one switches the sink to that port and makes it the default. Ports that are not available, such as an unplugged jack, are not listed |
 | Volume | the default device's volume, 0 to 100 % |
 | Mute | mutes the default device |
 
@@ -79,5 +79,5 @@ microphone.
 
 One drop-down per sound card, titled with the card's description, lists the card's available
 profiles, the input and output configurations PipeWire can use with it, in the order
-`pactl list cards` gives them. Picking one runs `pactl set-card-profile <card> <profile>`, and the
+`pactl list cards` gives them, except the `pro-audio` profile, which is listed only while it is the active one. Picking one runs `pactl set-card-profile <card> <profile>`, and the
 list is read again afterwards.

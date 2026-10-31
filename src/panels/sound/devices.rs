@@ -4,10 +4,17 @@ use std::rc::Rc;
 use crate::services::media::audio::{Audio, Device};
 use crate::ui::widgets::input::controls::ComboBox;
 
+struct Choice {
+    name: String,
+    port: Option<String>,
+    label: String,
+    is_port_active: bool,
+}
+
 pub struct DevicePicker {
     is_sink: bool,
     audio: Audio,
-    devices: RefCell<Vec<Device>>,
+    choices: RefCell<Vec<Choice>>,
     combo: Rc<ComboBox>,
     on_updated: RefCell<Option<Rc<dyn Fn()>>>,
 }
@@ -17,7 +24,7 @@ impl DevicePicker {
         let picker = Rc::new(DevicePicker {
             is_sink,
             audio: audio.clone(),
-            devices: RefCell::new(Vec::new()),
+            choices: RefCell::new(Vec::new()),
             combo,
             on_updated: RefCell::new(None),
         });
@@ -27,9 +34,14 @@ impl DevicePicker {
                 let Some(picker) = picker.upgrade() else {
                     return;
                 };
-                if let Some(device) = picker.devices.borrow().get(index) {
-                    picker.audio.set_default(picker.is_sink, &device.name);
+                let choices = picker.choices.borrow();
+                let Some(choice) = choices.get(index) else {
+                    return;
+                };
+                if let Some(port) = &choice.port {
+                    picker.audio.set_sink_port(&choice.name, port);
                 }
+                picker.audio.set_default(picker.is_sink, &choice.name);
             }
         });
         picker
@@ -46,16 +58,43 @@ impl DevicePicker {
                 let Some(picker) = picker.upgrade() else {
                     return;
                 };
-                let labels: Vec<String> = devices.iter().map(device_label).collect();
-                let index = resolve_current_index(&devices, &current_name);
+                let choices = list_choices(&devices);
+                let labels: Vec<String> =
+                    choices.iter().map(|choice| choice.label.clone()).collect();
+                let index = resolve_current_index(&choices, &current_name);
                 let has_changed = picker.combo.set_items(&labels, index as i32);
-                picker.devices.replace(devices);
+                picker.choices.replace(choices);
                 let on_updated = picker.on_updated.borrow().clone();
                 if let (true, Some(on_updated)) = (has_changed, on_updated) {
                     on_updated();
                 }
             });
     }
+}
+
+fn list_choices(devices: &[Device]) -> Vec<Choice> {
+    let mut choices = Vec::new();
+    for device in devices {
+        let label = device_label(device);
+        if device.ports.len() < 2 {
+            choices.push(Choice {
+                name: device.name.clone(),
+                port: None,
+                label,
+                is_port_active: true,
+            });
+            continue;
+        }
+        for port in &device.ports {
+            choices.push(Choice {
+                name: device.name.clone(),
+                port: Some(port.name.clone()),
+                label: format!("{label} · {}", port.description),
+                is_port_active: port.name == device.active_port,
+            });
+        }
+    }
+    choices
 }
 
 fn device_label(device: &Device) -> String {
@@ -71,22 +110,46 @@ fn device_label(device: &Device) -> String {
         .unwrap_or_default()
 }
 
-fn resolve_current_index(devices: &[Device], current_name: &str) -> usize {
-    devices
+fn resolve_current_index(choices: &[Choice], current_name: &str) -> usize {
+    choices
         .iter()
-        .position(|device| device.name == current_name)
+        .position(|choice| choice.name == current_name && choice.is_port_active)
+        .or_else(|| {
+            choices
+                .iter()
+                .position(|choice| choice.name == current_name)
+        })
         .unwrap_or(0)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::media::audio::Port;
+    use libpulse_binding::def::PortAvailable;
 
     fn device(name: &str, description: &str, nick: &str) -> Device {
         Device {
             name: name.to_owned(),
             description: description.to_owned(),
             nick: nick.to_owned(),
+            ports: Vec::new(),
+            active_port: String::new(),
+        }
+    }
+
+    fn device_with_ports(name: &str, ports: &[&str], active_port: &str) -> Device {
+        Device {
+            ports: ports
+                .iter()
+                .map(|port| Port {
+                    name: (*port).to_owned(),
+                    description: port.to_uppercase(),
+                    availability: PortAvailable::Yes,
+                })
+                .collect(),
+            active_port: active_port.to_owned(),
+            ..device(name, "Card", "")
         }
     }
 
@@ -110,14 +173,51 @@ mod tests {
     }
 
     #[test]
-    fn the_current_device_is_the_one_named_by_the_server_else_the_first() {
+    fn a_device_with_several_ports_is_listed_once_per_port() {
         let devices = [
-            device("a", "", ""),
-            device("b", "", ""),
+            device_with_ports("a", &["speakers", "headphones"], "headphones"),
+            device_with_ports("b", &["line"], "line"),
             device("c", "", ""),
         ];
-        assert_eq!(resolve_current_index(&devices, "b"), 1);
-        assert_eq!(resolve_current_index(&devices, "missing"), 0);
+        let choices = list_choices(&devices);
+        let listed: Vec<(&str, Option<&str>, &str, bool)> = choices
+            .iter()
+            .map(|choice| {
+                (
+                    choice.name.as_str(),
+                    choice.port.as_deref(),
+                    choice.label.as_str(),
+                    choice.is_port_active,
+                )
+            })
+            .collect();
+        assert_eq!(
+            listed,
+            [
+                ("a", Some("speakers"), "Card · SPEAKERS", false),
+                ("a", Some("headphones"), "Card · HEADPHONES", true),
+                ("b", None, "Card", true),
+                ("c", None, "c", true),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_current_choice_is_the_active_port_of_the_device_named_by_the_server_else_the_first() {
+        let devices = [
+            device("a", "", ""),
+            device_with_ports("b", &["speakers", "headphones"], "headphones"),
+            device("c", "", ""),
+        ];
+        let choices = list_choices(&devices);
+        assert_eq!(resolve_current_index(&choices, "b"), 2);
+        assert_eq!(resolve_current_index(&choices, "c"), 3);
+        let choices_without_active_port = list_choices(&[
+            device("a", "", ""),
+            device_with_ports("b", &["speakers", "headphones"], "line"),
+        ]);
+        assert_eq!(resolve_current_index(&choices_without_active_port, "b"), 1);
+        assert_eq!(resolve_current_index(&choices, "missing"), 0);
         assert_eq!(resolve_current_index(&[], "a"), 0);
     }
 }
