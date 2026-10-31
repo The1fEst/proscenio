@@ -13,7 +13,8 @@ use crate::panels::settings::arrangement::Arrangement;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows;
 use crate::platform::hyprland::hypr;
-use crate::services::hardware::displays::{format_number, rates_of, shown_modes_of};
+use crate::services::hardware::displays::format_number;
+use crate::services::hardware::monitors::{rates_of, shown_modes_of};
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);

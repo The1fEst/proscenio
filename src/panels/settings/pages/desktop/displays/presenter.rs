@@ -10,7 +10,7 @@ use super::{
 };
 use crate::core::i18n::{tr, trf};
 use crate::panels::settings::content::Choice;
-use crate::services::hardware::displays::{Monitor, rates_of, shown_modes_of};
+use crate::services::hardware::monitors::{Monitor, rates_of, shown_modes_of};
 use crate::ui::widgets::input::selection::Selection;
 
 fn position<T: PartialEq>(values: &[T], current: &T) -> i32 {

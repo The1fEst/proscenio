@@ -4,6 +4,7 @@ pub mod devicenotifications;
 pub mod deviceoptions;
 pub mod displayconfirm;
 pub mod displays;
+pub mod monitors;
 pub mod power;
 pub mod shellusage;
 pub mod sysinfo;

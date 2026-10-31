@@ -22,7 +22,8 @@ use crate::panels::settings::pages::quick::{self, bar_position, corner_style};
 use crate::panels::sound::devices::DevicePicker;
 use crate::platform::dbus::notify::{self, Notification};
 use crate::services::Services;
-use crate::services::hardware::displays::{Displays, format_number, rates_of, shown_modes_of};
+use crate::services::hardware::displays::{Displays, format_number};
+use crate::services::hardware::monitors::{rates_of, shown_modes_of};
 use crate::services::hyprland::idleoptions::IdleOptions;
 use crate::ui::theme::{SharedTheme, pixel_size, rounding};
 use crate::ui::widgets::display::text::{self, Family};
@@ -380,7 +381,7 @@ fn displays(page: &Rc<Page>, services: &Rc<Services>) {
         selected_name: RefCell<String>,
     }
     impl State {
-        fn monitor(&self) -> Option<crate::services::hardware::displays::Monitor> {
+        fn monitor(&self) -> Option<crate::services::hardware::monitors::Monitor> {
             let monitors = self.displays.monitors.borrow();
             let selected_name = self.selected_name.borrow();
             monitors

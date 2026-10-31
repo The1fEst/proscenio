@@ -10,7 +10,7 @@ use crate::core::watch::{self, Watch};
 use crate::platform::hyprland::hypr::{self, Events};
 use crate::platform::hyprland::hyprconfig::{self, Area};
 use crate::platform::hyprland::{monitorrules, workspacegroups, workspacekeys};
-use crate::services::hardware::displays::{order_main_first, read_monitors};
+use crate::services::hardware::monitors::{order_main_first, read_monitors};
 
 const SIZE_POINTER: &str = "/bar/workspaces/shown";
 const MONITOR_EVENTS: [&str; 3] = ["configreloaded", "monitoradded", "monitoraddedv2"];

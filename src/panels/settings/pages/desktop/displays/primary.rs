@@ -1,4 +1,4 @@
-use crate::services::hardware::displays::Monitor;
+use crate::services::hardware::monitors::Monitor;
 
 pub(super) fn can_turn_off(monitor: &Monitor, others: &[Monitor]) -> bool {
     monitor.is_disabled || others.iter().any(|other| !other.is_disabled)

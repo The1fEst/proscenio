@@ -4,7 +4,7 @@ use gtk4::{graphene, gsk};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::services::hardware::displays::Monitor;
+use crate::services::hardware::monitors::Monitor;
 use crate::ui::theme::{SharedTheme, pixel_size, rounding};
 use crate::ui::widgets::display::paint::Paint;
 use crate::ui::widgets::display::text;
