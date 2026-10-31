@@ -1,6 +1,7 @@
 pub mod actions;
 pub mod assets;
 pub mod config;
+pub mod frecency;
 pub mod fuzzy;
 pub mod gsettings;
 pub mod i18n;

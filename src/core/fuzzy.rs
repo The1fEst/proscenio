@@ -32,8 +32,15 @@ pub fn prepare(target: &str) -> SearchTarget {
 }
 
 pub fn go(search: &str, targets: &[&SearchTarget]) -> Vec<usize> {
+    go_with_scores(search, targets)
+        .into_iter()
+        .map(|(index, _)| index)
+        .collect()
+}
+
+pub fn go_with_scores(search: &str, targets: &[&SearchTarget]) -> Vec<(usize, f64)> {
     if search.is_empty() {
-        return (0..targets.len()).collect();
+        return (0..targets.len()).map(|index| (index, 0.0)).collect();
     }
     let search = prepare_search(search);
     let mut queue = Queue::default();
@@ -46,10 +53,10 @@ pub fn go(search: &str, targets: &[&SearchTarget]) -> Vec<usize> {
         };
         queue.add(found.score, index);
     }
-    let mut results = vec![0; queue.len()];
+    let mut results = vec![(0, 0.0); queue.len()];
     for slot in results.iter_mut().rev() {
-        if let Some((_, index)) = queue.poll() {
-            *slot = index;
+        if let Some((score, index)) = queue.poll() {
+            *slot = (index, score);
         }
     }
     results

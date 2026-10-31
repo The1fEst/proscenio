@@ -72,6 +72,14 @@ actions, such as "New Window", sit on its row as small buttons. An app that runs
 in `apps.terminal` (`kitty -1` by default) with `-e` and the app's command, each argument passed
 whole. Apps start in a transient systemd scope of their own.
 
+Starting an app, or one of its actions, from the launcher counts a launch for it. An app's frecency
+is its launch count, capped at 10, times a weight for the time since its last launch: 100 within 4
+days, 70 within 14, 50 within 31, 30 within 90 and 10 beyond. The search adds up to 10 points of
+frecency to the fuzzy score, or 0.1 to the Levenshtein score, so between two alike matches the app
+used more and more recently comes first, while a clearly better match stays ahead. With only the app
+prefix typed and the fuzzy search on, the apps are listed by frecency. The counts and last launch times of the 200 apps with
+the highest frecency are kept in `~/.local/state/proscenio/frecency.json`.
+
 ### Math
 
 `qalc -t` evaluates the query, without the math prefix, once no key has been typed for

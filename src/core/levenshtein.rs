@@ -10,6 +10,17 @@ pub fn rank<'a>(
     query: &str,
     scorer: fn(&str, &str) -> f64,
 ) -> Vec<usize> {
+    rank_with_scores(texts, query, scorer)
+        .into_iter()
+        .map(|(index, _)| index)
+        .collect()
+}
+
+pub fn rank_with_scores<'a>(
+    texts: impl Iterator<Item = &'a str>,
+    query: &str,
+    scorer: fn(&str, &str) -> f64,
+) -> Vec<(usize, f64)> {
     let query = query.to_lowercase();
     let mut scores: Vec<(usize, f64)> = texts
         .enumerate()
@@ -17,7 +28,7 @@ pub fn rank<'a>(
         .filter(|(_, score)| *score > THRESHOLD)
         .collect();
     scores.sort_by(|left, right| right.1.total_cmp(&left.1));
-    scores.into_iter().map(|(index, _)| index).collect()
+    scores
 }
 
 fn units(text: &str) -> Vec<u16> {

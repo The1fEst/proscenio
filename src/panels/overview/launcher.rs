@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
+use crate::core::frecency::{self, UsageHistory};
 use crate::core::fuzzy::{self, SearchTarget};
 use crate::core::i18n::{tr, trf};
 use crate::core::levenshtein;
@@ -18,6 +19,8 @@ use crate::services::network::net::Net;
 use crate::services::session::todo::Todo;
 
 const EMOJI_DATA: &str = "### DATA ###";
+const FUZZY_BONUS: f64 = 10.0;
+const LEVENSHTEIN_BONUS: f64 = 0.1;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IconType {
@@ -90,6 +93,7 @@ pub struct Launcher {
     math_generation: Rc<Cell<u64>>,
     apps: Rc<RefCell<Vec<Rc<App>>>>,
     app_names: Rc<RefCell<Vec<SearchTarget>>>,
+    history: Rc<RefCell<UsageHistory>>,
     emojis: Rc<RefCell<Option<Rc<Emojis>>>>,
     emoji_generation: Rc<Cell<u64>>,
     is_emoji_loading: Rc<Cell<bool>>,
@@ -108,6 +112,7 @@ impl Launcher {
             math_generation: Rc::new(Cell::new(0)),
             apps: Rc::new(RefCell::new(Vec::new())),
             app_names: Rc::new(RefCell::new(Vec::new())),
+            history: Rc::default(),
             emojis: Rc::new(RefCell::new(None)),
             emoji_generation: Rc::new(Cell::new(0)),
             is_emoji_loading: Rc::new(Cell::new(false)),
@@ -139,12 +144,14 @@ impl Launcher {
 
     pub fn load(&self) {
         self.reload_apps();
+        self.history.replace(UsageHistory::load());
         self.cliphist.load();
     }
 
     pub fn release(&self) {
         self.apps.replace(Vec::new());
         self.app_names.replace(Vec::new());
+        self.history.replace(UsageHistory::default());
         self.emojis.replace(None);
         self.emoji_generation.set(self.emoji_generation.get() + 1);
         self.is_emoji_loading.set(false);
@@ -355,14 +362,23 @@ impl Launcher {
 
     fn app_results(&self, search: &str) -> Vec<Item> {
         let apps = self.apps.borrow();
-        let indices = if levenshtein::is_enabled() {
+        let (matches, bonus) = if levenshtein::is_enabled() {
             let names = apps.iter().map(|app| app.name.as_str());
-            levenshtein::rank(names, search, levenshtein::score)
+            (
+                levenshtein::rank_with_scores(names, search, levenshtein::score),
+                LEVENSHTEIN_BONUS,
+            )
         } else {
             let names = self.app_names.borrow();
             let references: Vec<&SearchTarget> = names.iter().collect();
-            fuzzy::go(search, &references)
+            (fuzzy::go_with_scores(search, &references), FUZZY_BONUS)
         };
+        let history = self.history.borrow();
+        let now_secs = frecency::now_secs();
+        let indices = order_by_frecency(matches, bonus, |index| {
+            apps.get(index)
+                .map_or(0.0, |app| history.score(&app.entry.id, now_secs))
+        });
         indices
             .into_iter()
             .filter_map(|index| apps.get(index).cloned())
@@ -513,6 +529,7 @@ impl Launcher {
     pub fn execute(&self, run: &Run) {
         match run {
             Run::App(app) => {
+                record_launch(&app.entry.id);
                 if !app.entry.runs_in_terminal() {
                     desktop::launch(&app.entry);
                     return;
@@ -524,6 +541,7 @@ impl Launcher {
             }
             Run::AppAction(app, index) => {
                 if let Some(action) = app.actions.get(*index) {
+                    record_launch(&app.entry.id);
                     desktop::launch_action(&app.entry, action);
                 }
             }
@@ -625,6 +643,25 @@ fn scripts() -> Vec<(String, String)> {
     script_entries
 }
 
+fn record_launch(id: &str) {
+    let mut history = UsageHistory::load();
+    history.record(id, frecency::now_secs());
+    history.save();
+}
+
+fn order_by_frecency(
+    matches: Vec<(usize, f64)>,
+    bonus: f64,
+    look_up_frecency: impl Fn(usize) -> f64,
+) -> Vec<usize> {
+    let mut totals: Vec<(usize, f64)> = matches
+        .into_iter()
+        .map(|(index, score)| (index, score + bonus * look_up_frecency(index)))
+        .collect();
+    totals.sort_by(|first, second| second.1.total_cmp(&first.1));
+    totals.into_iter().map(|(index, _)| index).collect()
+}
+
 fn load_emojis() -> Vec<String> {
     let path = glib::user_config_dir().join("hypr/hyprland/scripts/fuzzel-emoji.sh");
     let Ok(text) = std::fs::read_to_string(path) else {
@@ -672,6 +709,62 @@ mod tests {
         );
         assert_eq!(replace_sudo("sudoku"), "sudoku");
         assert_eq!(replace_sudo("echo sudo"), "echo sudo");
+    }
+
+    const NOW_SECS: u64 = 1_800_000_000;
+    const DAY_SECS: u64 = 86_400;
+
+    fn rank_apps(names: &[&str], query: &str, history: &UsageHistory) -> Vec<usize> {
+        let targets: Vec<SearchTarget> = names
+            .iter()
+            .map(|name| fuzzy::prepare(&format!("{name} ")))
+            .collect();
+        let references: Vec<&SearchTarget> = targets.iter().collect();
+        order_by_frecency(
+            fuzzy::go_with_scores(query, &references),
+            FUZZY_BONUS,
+            |index| history.score(names[index], NOW_SECS),
+        )
+    }
+
+    fn build_history(entries: &[(&str, u32, u64)]) -> UsageHistory {
+        let mut history = UsageHistory::default();
+        for (id, count, age_days) in entries {
+            for _ in 0..*count {
+                history.record(id, NOW_SECS - age_days * DAY_SECS);
+            }
+        }
+        history
+    }
+
+    #[test]
+    fn the_frequently_used_app_wins_between_two_alike_matches() {
+        let names = ["Firefox", "Firewall"];
+        assert_eq!(rank_apps(&names, "fire", &UsageHistory::default()), [0, 1]);
+        let history = build_history(&[("Firewall", 8, 1)]);
+        assert_eq!(rank_apps(&names, "fire", &history), [1, 0]);
+    }
+
+    #[test]
+    fn a_recent_launch_beats_an_equally_frequent_old_one() {
+        let names = ["Firefox", "Firewall"];
+        let history = build_history(&[("Firefox", 6, 120), ("Firewall", 6, 2)]);
+        assert_eq!(rank_apps(&names, "fire", &history), [1, 0]);
+    }
+
+    #[test]
+    fn a_much_better_match_beats_a_frequently_used_weak_one() {
+        let names = ["File Roller", "Fish Shell", "Firefox"];
+        let history = build_history(&[("File Roller", 30, 0)]);
+        assert_eq!(rank_apps(&names, "fir", &history)[0], 2);
+        assert_eq!(rank_apps(&names, "fir", &UsageHistory::default())[0], 2);
+    }
+
+    #[test]
+    fn without_a_search_the_apps_follow_their_frecency() {
+        let names = ["Alpha", "Beta", "Gamma"];
+        let history = build_history(&[("Gamma", 5, 1), ("Beta", 2, 1)]);
+        assert_eq!(rank_apps(&names, "", &history), [2, 1, 0]);
     }
 
     #[test]
