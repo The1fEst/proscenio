@@ -50,11 +50,6 @@ pub fn build(context: &Context) -> Rc<Page> {
         page.notice(&controls, "info", &tr(NO_BLUEZ));
         return page;
     }
-    page.tools_notice(
-        &controls,
-        &[&tools::BLUETOOTHCTL],
-        &tr("pairing a device that asks for confirmation fails"),
-    );
     let bluez = context.services.bluez.clone();
     let setup = Setup::new(&bluez);
 

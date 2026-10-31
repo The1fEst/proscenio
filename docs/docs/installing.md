@@ -174,7 +174,6 @@ settings page it belongs to names it along with the package it comes in.
 
 | Program | Arch package | Without it |
 |---|---|---|
-| `bluetoothctl` | bluez-utils | pairing a device that asks for confirmation fails |
 | `brightnessctl` | brightnessctl | the built-in screen's brightness cannot change |
 | `cava` | cava | the media controls show no audio wave |
 | `cliphist` | cliphist | the launcher's clipboard prefix finds nothing |

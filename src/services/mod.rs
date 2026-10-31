@@ -31,6 +31,7 @@ use crate::services::media::easyeffects::EasyEffects;
 use crate::services::media::mpris::Mpris;
 use crate::services::media::recording::Recording;
 use crate::services::network::bluez::Bluez;
+use crate::services::network::bluezagent::BluezAgent;
 use crate::services::network::net::Net;
 use crate::services::network::warp::Warp;
 use crate::services::overlay::notifications::Notifications;
@@ -61,6 +62,7 @@ pub struct Services {
     pub cliphist: Cliphist,
     pub net: Net,
     pub bluez: Bluez,
+    pub bluez_agent: std::rc::Rc<BluezAgent>,
     pub power: Power,
     pub session: std::rc::Rc<Session>,
     pub battery: Battery,
@@ -98,7 +100,9 @@ impl Services {
         let color = ScreenColor::new(&events);
         let location = Location::new(system.clone());
         let desktop_session = Session::new(config, &color, &location, system.as_ref());
+        let bluez = Bluez::new(system.clone());
         let services = Services {
+            bluez_agent: BluezAgent::new(system.clone(), &bluez),
             dark_mode_schedule: DarkModeSchedule::new(&desktop_session, &location),
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),
@@ -121,7 +125,7 @@ impl Services {
             light: Light::new(&color),
             cliphist: Cliphist::new(),
             net: Net::new(system.clone()),
-            bluez: Bluez::new(system.clone()),
+            bluez,
             power: Power::new(system.clone()),
             polkit: Polkit::new(system.clone()),
             session: desktop_session,

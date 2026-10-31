@@ -5,7 +5,6 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::process;
 use crate::platform::dbus;
 
 pub const BUS: &str = "org.bluez";
@@ -353,7 +352,6 @@ pub struct Setup {
     pub bonding_path: RefCell<Option<String>>,
     pub connecting_path: RefCell<Option<String>>,
     pub refused_paths: RefCell<Vec<String>>,
-    agent: RefCell<Option<process::Running>>,
     listeners: RefCell<Vec<Box<dyn Fn()>>>,
 }
 
@@ -365,7 +363,6 @@ impl Setup {
             bonding_path: RefCell::new(None),
             connecting_path: RefCell::new(None),
             refused_paths: RefCell::new(Vec::new()),
-            agent: RefCell::new(None),
             listeners: RefCell::new(Vec::new()),
         })
     }
@@ -383,23 +380,6 @@ impl Setup {
     fn announce(&self) {
         for listener in self.listeners.borrow().iter() {
             listener();
-        }
-    }
-
-    fn hold_agent(&self, should_hold: bool) {
-        if let Some(mut agent) = self.agent.take() {
-            agent.stop();
-        }
-        if should_hold {
-            let command = [
-                "bluetoothctl",
-                "--agent",
-                "NoInputNoOutput",
-                "--timeout",
-                "86400",
-                "devices",
-            ];
-            self.agent.replace(process::start(process::quiet(&command)));
         }
     }
 
@@ -431,7 +411,6 @@ impl Setup {
     }
 
     pub fn pair(self: &Rc<Self>, path: &str) {
-        self.hold_agent(true);
         self.pairing_path.replace(Some(path.to_owned()));
         self.announce();
         self.bluez.set_discovering(false);
@@ -449,7 +428,6 @@ impl Setup {
                     || setup.is_paired(&path));
             setup.pairing_path.replace(None);
             if !is_paired {
-                setup.hold_agent(false);
                 setup.announce();
                 return;
             }
@@ -469,7 +447,6 @@ impl Setup {
                 glib::timeout_future(RETRY_EVERY).await;
             }
             setup.bonding_path.replace(None);
-            setup.hold_agent(false);
             setup.announce();
         });
     }
@@ -498,14 +475,6 @@ impl Setup {
             }
             setup.announce();
         });
-    }
-}
-
-impl Drop for Setup {
-    fn drop(&mut self) {
-        if let Some(mut agent) = self.agent.take() {
-            agent.stop();
-        }
     }
 }
 

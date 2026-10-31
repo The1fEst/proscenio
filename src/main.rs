@@ -19,8 +19,8 @@ use crate::core::config::Config;
 use crate::core::paths;
 use crate::panels::overview::launcher;
 use crate::panels::{
-    conflicts, displayconfirm, keyringprompt, lock, osd, osk, polkit, regionselector,
-    renderercheck, settings, wallpaperselector, welcome,
+    bluetoothagent, conflicts, displayconfirm, keyringprompt, lock, osd, osk, polkit,
+    regionselector, renderercheck, settings, wallpaperselector, welcome,
 };
 use crate::platform::dbus::ipc;
 use crate::platform::hyprland::hypr;
@@ -135,6 +135,11 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
         app,
         &theme,
         &services.prompter,
+    ));
+    std::mem::forget(bluetoothagent::BluetoothAgentWindow::new(
+        app,
+        &theme,
+        &services.bluez_agent,
     ));
     std::mem::forget(displayconfirm::DisplayConfirmWindows::new(app, &theme));
     conflicts::check(app, &theme);

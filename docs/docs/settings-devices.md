@@ -15,8 +15,7 @@ wireless devices, and **Devices** chooses which input devices Hyprland listens t
 
 The Bluetooth page talks to BlueZ (`org.bluez`) on the system bus. When BlueZ is neither running nor
 ready to start on demand, the page is only a notice; it comes with the bluez package and runs as
-`bluetooth.service`. A second notice appears when `bluetoothctl` (bluez-utils) is missing, since
-pairing a device that asks for confirmation then fails.
+`bluetooth.service`.
 
 | Control | Does |
 |---|---|
@@ -43,10 +42,29 @@ failed connection. Its buttons:
 
 Pair, Connect and Disconnect are inactive while that device is pairing or connecting.
 
-**Pairing** keeps `bluetoothctl --agent NoInputNoOutput` running for its length, so a device that
-asks to confirm a code is answered. It stops discovery, pairs (giving up after 90 seconds), marks the
+**Pairing** stops discovery, calls the device's `Pair` (giving up after 90 seconds), marks the
 device trusted, waits 5 seconds for the bonding link to drop, and then tries to connect up to four
 times, 1.5 seconds apart. **Connecting** stops discovery too and gives up after 15 seconds.
+
+### Pairing requests
+
+For the whole session the shell is BlueZ's default pairing agent (`org.bluez.Agent1` at
+`/dev/fEst/Proscenio/BluezAgent`, capability `KeyboardDisplay`), registered again whenever BlueZ
+restarts. It answers only calls from the owner of `org.bluez`. Each request opens a dialog on the
+focused monitor, titled "Pair with" the device's name, or its address while BlueZ has not listed it:
+
+| Request | Dialog | Answers |
+|---|---|---|
+| PIN code | a field for 1 to 16 letters or digits | OK sends the PIN; Cancel cancels |
+| Passkey | a field for up to six digits, spaces ignored | OK sends the passkey; Cancel cancels |
+| Show a PIN code or passkey | the code to type on the device, passkeys as six digits; it takes the keyboard only when clicked | Close hides it, and BlueZ repeating the same code does not reopen it; it also closes once the device is paired, when BlueZ cancels, or after 90 seconds |
+| Confirm a passkey | the six-digit passkey both sides show | Pair accepts; Cancel rejects |
+| Allow pairing | a question | Allow accepts; Deny rejects |
+| Allow a service | "Allow" the device "to connect?" with the service UUID | Allow accepts; Deny rejects |
+
+Escape and a click outside the dialog act as Cancel or Deny. A rejection answers
+`org.bluez.Error.Rejected` and a cancel `org.bluez.Error.Canceled`. A new request replaces an
+unanswered one, which is canceled.
 
 The sidebar's Bluetooth dialog lists the same devices; its **Details** button opens this page
 ([Sidebar](sidebar.md)).

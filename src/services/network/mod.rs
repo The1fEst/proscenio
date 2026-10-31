@@ -1,4 +1,5 @@
 pub mod bluez;
+pub mod bluezagent;
 pub mod net;
 pub mod nmsettings;
 pub mod warp;
