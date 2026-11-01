@@ -1,7 +1,7 @@
 use gtk4::glib;
 use gtk4::prelude::*;
 use std::cell::RefCell;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 use crate::core::config::{self, Config};
 use crate::core::i18n::tr;
@@ -10,7 +10,7 @@ use crate::panels::settings::pages::connectivity::network::connection::NEW_ENTER
 use crate::panels::sidebar::toggles::Menu;
 use crate::panels::wifinetwork::{self, NetworkList};
 use crate::services::Services;
-use crate::services::network::net;
+use crate::services::network::net::Net;
 use crate::services::network::wifi::Wifi;
 use crate::services::session::deadline::{
     DO_NOT_DISTURB_PRESETS, Hold, KEEP_AWAKE_PRESETS, Preset,
@@ -681,40 +681,41 @@ fn wireguard(context: &Context) -> Rc<WindowDialog> {
     dialog.column.add(&separator(), separator_place());
     footer(context, &dialog, "New Connection", || "network");
 
-    let refresh_slot: Rc<RefCell<Option<Weak<dyn Fn()>>>> = Rc::new(RefCell::new(None));
-    let fill: Rc<dyn Fn()> = {
+    let net = context.services.net.clone();
+    let shown_tunnels: RefCell<Option<Vec<(String, bool)>>> = RefCell::new(None);
+    let fill: Rc<dyn Fn()> = Rc::new({
         let theme = theme.clone();
+        let net = net.clone();
         let list = list.downgrade();
-        let refresh_slot = refresh_slot.clone();
-        Rc::new(move || {
-            let theme = theme.clone();
-            let list = list.clone();
-            let refresh_slot = refresh_slot.clone();
-            net::read_tunnels(move |tunnels| {
-                let Some(list) = list.upgrade() else {
-                    return;
-                };
-                while let Some(child) = list.first_child() {
-                    list.remove(&child);
-                }
-                for (name, is_up) in tunnels {
-                    list.append(&wireguard_item(&theme, &name, is_up, &refresh_slot));
-                }
-            });
-        })
-    };
-    refresh_slot.replace(Some(Rc::downgrade(&fill)));
+        move || {
+            let Some(list) = list.upgrade() else {
+                return;
+            };
+            let tunnels = net.tunnels.borrow().clone();
+            if shown_tunnels.borrow().as_ref() == Some(&tunnels) {
+                return;
+            }
+            while let Some(child) = list.first_child() {
+                list.remove(&child);
+            }
+            for (name, is_up) in &tunnels {
+                list.append(&wireguard_item(&theme, &net, name, *is_up));
+            }
+            shown_tunnels.replace(Some(tunnels));
+        }
+    });
     fill();
+    let weak = Rc::downgrade(&fill);
+    dialog.keep(Rc::new(net.subscribe(move || {
+        if let Some(fill) = weak.upgrade() {
+            fill();
+        }
+    })));
     dialog.keep(Rc::new(fill));
     dialog
 }
 
-fn wireguard_item(
-    theme: &SharedTheme,
-    name: &str,
-    is_up: bool,
-    refresh_slot: &Rc<RefCell<Option<Weak<dyn Fn()>>>>,
-) -> gtk4::Widget {
+fn wireguard_item(theme: &SharedTheme, net: &Net, name: &str, is_up: bool) -> gtk4::Widget {
     let item = list_item(theme, is_up);
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
     let icon = customicon::build("wireguard-symbolic", ICON as i32);
@@ -738,16 +739,7 @@ fn wireguard_item(
     }
     item.set_content(&row, PADDING as i32, ITEM_VERTICAL);
     let name = name.to_owned();
-    let refresh_slot = refresh_slot.clone();
-    item.connect_clicked(move |_| {
-        net::set_tunnel_up(&name, !is_up);
-        let refresh_slot = refresh_slot.clone();
-        glib::timeout_add_local_once(std::time::Duration::from_millis(500), move || {
-            let action = refresh_slot.borrow().as_ref().and_then(Weak::upgrade);
-            if let Some(action) = action {
-                action();
-            }
-        });
-    });
+    let net = net.clone();
+    item.connect_clicked(move |_| net.set_tunnel_up(&name, !is_up));
     item.upcast()
 }

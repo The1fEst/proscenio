@@ -131,7 +131,7 @@ impl Services {
             device_usage,
             light: Light::new(&color, system.clone()),
             cliphist: Cliphist::new(),
-            net: Net::new(system.clone()),
+            net: Net::new(),
             bluez,
             power: Power::new(system.clone()),
             polkit: Polkit::new(system.clone()),

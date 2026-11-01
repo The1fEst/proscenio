@@ -113,14 +113,19 @@ The status line of a two-cell tile reads:
 
 ### Wi-Fi and Ethernet
 
-Both need NetworkManager. The Wi-Fi tile runs `nmcli radio wifi on|off`. Its icon shows the signal
-bars of the access point in use, `wifi_find` while it is not connected, and `signal_wifi_off` with
-the radio off.
+Both need NetworkManager, which the shell talks to on the system bus. It follows NetworkManager's
+signals, so the tiles change as soon as NetworkManager reports a change, at most four times a
+second. The Wi-Fi tile sets NetworkManager's `WirelessEnabled`. Its icon shows the signal bars of the
+access point in use, `wifi_find` while it is not connected, and `signal_wifi_off` with the radio off.
 
-The Ethernet tile works on one wired device: the first one `nmcli` lists as connected, else the first
-disconnected one, else the first unavailable one (no cable). It runs `nmcli device connect` or
-`nmcli device disconnect` on it. Without any wired device the tile is unavailable. Its secondary
-action opens the Network page; see [Network settings](settings-network.md).
+The Ethernet tile works on one wired device: the first one NetworkManager reports as connected, else
+the first disconnected one, else the first unavailable one (no cable). A click activates the
+device's best connection (`ActivateConnection`) or disconnects the device (`Disconnect`). Without
+any wired device the tile is unavailable. Its secondary action opens the Network page; see
+[Network settings](settings-network.md).
+
+While NetworkManager is not running, the Wi-Fi tile's icon is `signal_wifi_off` and the Ethernet
+tile is unavailable; both pick NetworkManager up as soon as it starts.
 
 ### Bluetooth
 
@@ -208,7 +213,7 @@ Available when `warp-cli status` prints anything. A click runs `warp-cli connect
 ### WireGuard
 
 The tile switches one NetworkManager connection, the one named exactly `WireGuard`, with
-`nmcli connection up|down WireGuard`, and is lit while that connection is active. The WireGuard
+`ActivateConnection` or `DeactivateConnection`, and is lit while that connection is active. The WireGuard
 dialog reaches every WireGuard connection, whatever its name. The tile's icon is the WireGuard logo.
 
 ### Screen snip and Color picker
@@ -325,9 +330,10 @@ the sidebar's brightness slider combines.
 
 ### WireGuard
 
-**WireGuard Connections.** Lists every WireGuard connection NetworkManager has, each `Connected` or
-`Disconnected`. A click brings that connection up or down, and the list is read again half a second
-later. **New Connection** closes the sidebar and opens the settings window's Network page.
+**WireGuard Connections.** Lists every WireGuard connection NetworkManager has, sorted by name, each
+`Connected` or `Disconnected`. A click brings that connection up or down, and the list follows
+NetworkManager's changes while the dialog is open. **New Connection** closes the sidebar and opens
+the settings window's Network page.
 
 ### Do not disturb
 

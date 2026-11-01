@@ -1,20 +1,19 @@
 use gtk4::gio;
-use gtk4::glib::{self, Variant, VariantTy, variant::ObjectPath};
+use gtk4::glib::{self, Variant, variant::ObjectPath};
 use gtk4::prelude::*;
 use std::collections::HashMap;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
 use crate::core::i18n::tr;
-use crate::platform::dbus::NO_TIMEOUT;
 use crate::platform::network::nmprofile::{Profile, SECRET_SETTINGS, Settings};
-use crate::services::network::net::{BUS, NmcliOutput, nmcli, split_escaped};
+use crate::services::network::net::{NmcliOutput, nmcli, split_escaped};
+use crate::services::network::networkmanager::calls::{call, call_raw};
 use crate::services::network::wifi::remote_message;
 
 const SETTINGS_PATH: &str = "/org/freedesktop/NetworkManager/Settings";
 const SETTINGS: &str = "org.freedesktop.NetworkManager.Settings";
 const CONNECTION: &str = "org.freedesktop.NetworkManager.Settings.Connection";
-const CALL_TIMEOUT_MILLIS: i32 = 120_000;
 const TO_DISK: u32 = 0x1;
 const NMCLI_NOT_FOUND_EXIT_CODE: i32 = 10;
 const UNKNOWN_CONNECTION_ERROR: &str = "org.freedesktop.NetworkManager.Settings.InvalidConnection";
@@ -41,50 +40,6 @@ impl SavedConnection {
             are_secrets_read,
         }
     }
-}
-
-async fn call(
-    path: &str,
-    interface: &str,
-    method: &str,
-    arguments: Option<Variant>,
-    reply: &str,
-    is_interactive: bool,
-) -> Result<Variant, String> {
-    call_raw(path, interface, method, arguments, reply, is_interactive)
-        .await
-        .map_err(|error| remote_message(&error))
-}
-
-async fn call_raw(
-    path: &str,
-    interface: &str,
-    method: &str,
-    arguments: Option<Variant>,
-    reply: &str,
-    is_interactive: bool,
-) -> Result<Variant, glib::Error> {
-    let system = gio::bus_get_future(gio::BusType::System).await?;
-    let (flags, timeout) = if is_interactive {
-        (
-            gio::DBusCallFlags::ALLOW_INTERACTIVE_AUTHORIZATION,
-            NO_TIMEOUT,
-        )
-    } else {
-        (gio::DBusCallFlags::NONE, CALL_TIMEOUT_MILLIS)
-    };
-    system
-        .call_future(
-            Some(BUS),
-            path,
-            interface,
-            method,
-            arguments.as_ref(),
-            VariantTy::new(reply).ok(),
-            flags,
-            timeout,
-        )
-        .await
 }
 
 fn reports_nothing_stored(error: &glib::Error) -> bool {

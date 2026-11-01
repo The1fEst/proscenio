@@ -1,21 +1,23 @@
 use gtk4::gio;
 use gtk4::glib;
 use std::cell::{Cell, RefCell};
+use std::future::Future;
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::process;
 use crate::platform::dbus;
 use crate::platform::security::pam;
+use crate::services::network::networkmanager::NetworkManager;
+use crate::services::network::networkmanager::calls::{self, NO_OBJECT};
+use crate::services::network::networkmanager::model::{BUS, DeviceKind, Snapshot};
 
-pub const BUS: &str = "org.freedesktop.NetworkManager";
-const ROOT: &str = "/org/freedesktop/NetworkManager";
-const ACTIVE: &str = "org.freedesktop.NetworkManager.Connection.Active";
 const WIREGUARD: &str = "WireGuard";
-const SETTLE_DELAY: std::time::Duration = std::time::Duration::from_millis(200);
+const WIREGUARD_KIND: &str = "wireguard";
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Wired {
+    pub path: String,
     pub device: String,
     pub connection: String,
     pub is_connected: bool,
@@ -32,14 +34,13 @@ pub struct Net {
     pub ssid: Rc<RefCell<String>>,
     pub wired: Rc<RefCell<Wired>>,
     pub is_wireguard_up: Rc<Cell<bool>>,
-    system: Option<gio::DBusConnection>,
-    generation: Rc<Cell<u64>>,
-    is_refresh_queued: Rc<Cell<bool>>,
+    pub tunnels: Rc<RefCell<Vec<(String, bool)>>>,
+    manager: Rc<NetworkManager>,
     listeners: Rc<Listeners>,
 }
 
 impl Net {
-    pub fn new(system: Option<gio::DBusConnection>) -> Self {
+    pub fn new() -> Self {
         let net = Net {
             symbol: Rc::new(RefCell::new("wifi_find".to_owned())),
             name: Rc::new(RefCell::new(String::new())),
@@ -50,30 +51,18 @@ impl Net {
             ssid: Rc::new(RefCell::new(String::new())),
             wired: Rc::default(),
             is_wireguard_up: Rc::new(Cell::new(false)),
-            system,
-            generation: Rc::new(Cell::new(0)),
-            is_refresh_queued: Rc::new(Cell::new(false)),
+            tunnels: Rc::default(),
+            manager: NetworkManager::instance(),
             listeners: Rc::default(),
         };
-        net.refresh();
-        if let Some(system) = &net.system {
-            std::mem::forget(dbus::subscribe_properties_changed(system, BUS, {
+        net.show(&net.manager.snapshot());
+        net.manager
+            .subscribe({
                 let net = net.clone();
-                move || net.queue_refresh()
-            }));
-        }
+                move || net.show(&net.manager.snapshot())
+            })
+            .detach();
         net
-    }
-
-    fn queue_refresh(&self) {
-        if self.is_refresh_queued.replace(true) {
-            return;
-        }
-        let net = self.clone();
-        glib::timeout_add_local_once(SETTLE_DELAY, move || {
-            net.is_refresh_queued.set(false);
-            net.refresh();
-        });
     }
 
     pub fn subscribe(&self, listener: impl Fn() + 'static) -> Subscription {
@@ -81,136 +70,125 @@ impl Net {
     }
 
     pub fn toggle_wifi(&self) {
-        let should_enable = !self.is_wifi_enabled.get();
-        let state = if should_enable { "on" } else { "off" };
-        process::start(process::quiet(&["nmcli", "radio", "wifi", state]));
+        spawn(calls::set_wireless_enabled(!self.is_wifi_enabled.get()));
     }
 
     pub fn toggle_wired(&self) {
-        let wired = self.wired.borrow();
-        if wired.device.is_empty() {
+        let wired = self.wired.borrow().clone();
+        if wired.path.is_empty() {
             return;
         }
-        let action = if wired.is_connected {
-            "disconnect"
+        if wired.is_connected {
+            spawn(async move { calls::disconnect_device(&wired.path).await });
         } else {
-            "connect"
-        };
-        process::start(process::quiet(&["nmcli", "device", action, &wired.device]));
+            spawn(async move {
+                calls::activate_connection(NO_OBJECT, &wired.path, NO_OBJECT)
+                    .await
+                    .map(drop)
+            });
+        }
     }
 
     pub fn toggle_wireguard(&self) {
-        set_tunnel_up(WIREGUARD, !self.is_wireguard_up.get());
+        self.set_tunnel_up(WIREGUARD, !self.is_wireguard_up.get());
     }
 
-    pub fn refresh(&self) {
-        let Some(system) = self.system.clone() else {
-            return;
+    pub fn set_tunnel_up(&self, name: &str, is_up: bool) {
+        let snapshot = self.manager.snapshot();
+        if is_up {
+            let Some(connection) = snapshot.find_settings_connection(name) else {
+                return;
+            };
+            let path = connection.path.clone();
+            spawn(async move {
+                calls::activate_connection(&path, NO_OBJECT, NO_OBJECT)
+                    .await
+                    .map(drop)
+            });
+        } else if let Some(active_connection) = snapshot.find_active_by_id(name) {
+            let path = active_connection.path.clone();
+            spawn(async move { calls::deactivate_connection(&path).await });
+        }
+    }
+
+    fn show(&self, snapshot: &Snapshot) {
+        let (status, wired) = read_devices(snapshot);
+        let is_wifi_enabled = snapshot.is_wireless_enabled;
+        let point = snapshot
+            .wifi_devices()
+            .next()
+            .and_then(|device| device.active_point());
+        let (wifi_symbol, ssid) = match point {
+            _ if !is_wifi_enabled => ("signal_wifi_off".to_owned(), String::new()),
+            Some(point) => (bars(point.strength).to_owned(), point.ssid.clone()),
+            None => ("wifi_find".to_owned(), String::new()),
         };
-        let generation = self.generation.get() + 1;
-        self.generation.set(generation);
-        let net = self.clone();
-        process::read(
-            &["sh", "-c", "nmcli -t -f NAME c show --active | head -1"],
-            move |output| {
-                if net.generation.get() != generation {
-                    return;
-                }
-                net.connection.replace(output.trim_end().to_owned());
-                net.announce();
-            },
-        );
-        let net = self.clone();
-        let command =
-            "nmcli -t -f TYPE,STATE,DEVICE,CONNECTION d status && nmcli -t -f CONNECTIVITY g";
-        process::read(&["sh", "-c", command], move |output| {
-            if net.generation.get() != generation {
-                return;
-            }
-            let (status, wired) = parse_devices(&output);
-            net.wifi_status.replace(status.to_owned());
-            net.wired.replace(wired);
-            net.announce();
-        });
-        let net = self.clone();
-        glib::spawn_future_local(async move {
-            let kind = dbus::string_property(&system, BUS, ROOT, BUS, "PrimaryConnectionType")
-                .await
-                .unwrap_or_default();
-            let is_wifi_enabled = dbus::bool_property(&system, BUS, ROOT, BUS, "WirelessEnabled")
-                .await
-                .unwrap_or(false);
-            let is_wireguard_up = active_names(&system)
-                .await
+        let (symbol, name) = if snapshot.primary_connection_type == WIRED {
+            ("lan".to_owned(), "Ethernet".to_owned())
+        } else if !is_wifi_enabled {
+            (wifi_symbol.clone(), "Off".to_owned())
+        } else if ssid.is_empty() {
+            (wifi_symbol.clone(), "Disconnected".to_owned())
+        } else {
+            (wifi_symbol.clone(), ssid.clone())
+        };
+        let connection = snapshot
+            .main_connection()
+            .map(|main_connection| main_connection.id.clone())
+            .unwrap_or_default();
+        let is_wireguard_up = snapshot.find_active_by_id(WIREGUARD).is_some();
+        let has_changed = [
+            update(&self.connection, connection),
+            update(&self.wifi_status, status.to_owned()),
+            update(&self.wired, wired),
+            update(&self.wifi_symbol, wifi_symbol),
+            update(&self.ssid, ssid),
+            update(&self.symbol, symbol),
+            update(&self.name, name),
+            update(&self.tunnels, list_tunnels(snapshot)),
+            self.is_wifi_enabled.replace(is_wifi_enabled) != is_wifi_enabled,
+            self.is_wireguard_up.replace(is_wireguard_up) != is_wireguard_up,
+        ];
+        if has_changed.contains(&true) {
+            self.listeners.notify();
+        }
+    }
+}
+
+fn update<T: PartialEq>(cell: &RefCell<T>, value: T) -> bool {
+    if *cell.borrow() == value {
+        return false;
+    }
+    cell.replace(value);
+    true
+}
+
+fn spawn(call: impl Future<Output = Result<(), String>> + 'static) {
+    glib::spawn_future_local(async move {
+        if let Err(message) = call.await {
+            eprintln!("network: {message}");
+        }
+    });
+}
+
+fn list_tunnels(snapshot: &Snapshot) -> Vec<(String, bool)> {
+    let mut tunnels: Vec<(String, bool)> = snapshot
+        .settings_connections
+        .iter()
+        .filter(|connection| connection.kind == WIREGUARD_KIND)
+        .map(|connection| {
+            let is_active = snapshot
+                .active_connections
                 .iter()
-                .any(|name| name == WIREGUARD);
-            let (wifi_symbol, ssid) = if !is_wifi_enabled {
-                ("signal_wifi_off".to_owned(), String::new())
-            } else {
-                match access_point(&system).await {
-                    Some((strength, ssid)) => (bars(strength).to_owned(), ssid),
-                    None => ("wifi_find".to_owned(), String::new()),
-                }
-            };
-            let (symbol, name) = if kind == WIRED {
-                ("lan".to_owned(), "Ethernet".to_owned())
-            } else if !is_wifi_enabled {
-                (wifi_symbol.clone(), "Off".to_owned())
-            } else if ssid.is_empty() {
-                (wifi_symbol.clone(), "Disconnected".to_owned())
-            } else {
-                (wifi_symbol.clone(), ssid.clone())
-            };
-            if net.generation.get() != generation {
-                return;
-            }
-            net.is_wifi_enabled.set(is_wifi_enabled);
-            net.is_wireguard_up.set(is_wireguard_up);
-            net.wifi_symbol.replace(wifi_symbol);
-            net.ssid.replace(ssid);
-            net.symbol.replace(symbol);
-            net.name.replace(name);
-            net.announce();
-        });
-    }
-
-    fn announce(&self) {
-        self.listeners.notify();
-    }
+                .any(|active| active.uuid == connection.uuid);
+            (connection.id.clone(), is_active)
+        })
+        .collect();
+    tunnels.sort_by_key(|(name, _)| name.to_lowercase());
+    tunnels
 }
 
-pub fn read_tunnels(on_tunnels: impl Fn(Vec<(String, bool)>) + 'static) {
-    process::read(
-        &[
-            "nmcli",
-            "-t",
-            "-f",
-            "NAME,TYPE,ACTIVE",
-            "connection",
-            "show",
-        ],
-        move |output| {
-            let list = output
-                .lines()
-                .filter_map(|line| {
-                    let fields: Vec<&str> = line.split(':').collect();
-                    let [name, kind, active, ..] = fields.as_slice() else {
-                        return None;
-                    };
-                    (*kind == "wireguard").then(|| ((*name).to_owned(), *active == "yes"))
-                })
-                .collect();
-            on_tunnels(list);
-        },
-    );
-}
-
-pub fn set_tunnel_up(name: &str, is_up: bool) {
-    let state = if is_up { "up" } else { "down" };
-    process::start(process::quiet(&["nmcli", "connection", state, name]));
-}
-
-fn bars(strength: u32) -> &'static str {
+fn bars(strength: u8) -> &'static str {
     match strength {
         84.. => "signal_wifi_4_bar",
         68..=83 => "network_wifi",
@@ -221,41 +199,38 @@ fn bars(strength: u32) -> &'static str {
     }
 }
 
-fn parse_devices(output: &str) -> (&'static str, Wired) {
-    let mut lines: Vec<&str> = output.trim().lines().collect();
-    let connectivity = lines.pop().unwrap_or_default();
+fn read_devices(snapshot: &Snapshot) -> (&'static str, Wired) {
     let mut status = "disconnected";
     let mut wired: Option<(u8, Wired)> = None;
-    for line in lines {
-        let fields = split_escaped(line);
-        let [kind, state, device, connection, ..] = fields.as_slice() else {
-            continue;
-        };
-        match kind.as_str() {
-            "wifi" => {
-                status = if state == "disconnected" {
+    for device in &snapshot.devices {
+        match device.kind {
+            DeviceKind::Wifi => {
+                status = if device.is_disconnected() {
                     "disconnected"
-                } else if state.starts_with("connected") {
-                    if connectivity == "limited" {
+                } else if device.is_connected() {
+                    if snapshot.is_connectivity_limited() {
                         "limited"
                     } else {
                         "connected"
                     }
-                } else if state.starts_with("connecting") {
+                } else if device.is_connecting() {
                     "connecting"
-                } else if state == "unavailable" {
+                } else if device.is_unavailable() {
                     "disabled"
                 } else {
                     status
                 };
             }
-            "ethernet" => {
-                let is_connected = state.starts_with("connected");
-                let rank = match state.as_str() {
-                    _ if is_connected => 2,
-                    "disconnected" => 1,
-                    "unavailable" => 0,
-                    _ => continue,
+            DeviceKind::Ethernet => {
+                let is_connected = device.is_connected();
+                let rank = if is_connected {
+                    2
+                } else if device.is_disconnected() {
+                    1
+                } else if device.is_unavailable() {
+                    0
+                } else {
+                    continue;
                 };
                 if wired
                     .as_ref()
@@ -263,13 +238,17 @@ fn parse_devices(output: &str) -> (&'static str, Wired) {
                 {
                     continue;
                 }
+                let connection = device
+                    .active_connection
+                    .as_deref()
+                    .filter(|_| is_connected)
+                    .and_then(|path| snapshot.active_connection(path))
+                    .map(|active_connection| active_connection.id.clone())
+                    .unwrap_or_default();
                 let candidate = Wired {
-                    device: device.clone(),
-                    connection: if is_connected {
-                        connection.clone()
-                    } else {
-                        String::new()
-                    },
+                    path: device.path.clone(),
+                    device: device.interface.clone(),
+                    connection,
                     is_connected,
                 };
                 wired = Some((rank, candidate));
@@ -278,55 +257,6 @@ fn parse_devices(output: &str) -> (&'static str, Wired) {
         }
     }
     (status, wired.map(|(_, wired)| wired).unwrap_or_default())
-}
-
-async fn active_names(system: &gio::DBusConnection) -> Vec<String> {
-    let Some(paths) = dbus::property(system, BUS, ROOT, BUS, "ActiveConnections").await else {
-        return Vec::new();
-    };
-    let mut names = Vec::new();
-    for path in paths.iter() {
-        let Some(path) = path.get::<glib::variant::ObjectPath>() else {
-            continue;
-        };
-        if let Some(name) = dbus::string_property(system, BUS, path.as_str(), ACTIVE, "Id").await {
-            names.push(name);
-        }
-    }
-    names
-}
-
-fn strength(value: &glib::Variant) -> Option<u32> {
-    value.get::<u8>().map(u32::from)
-}
-
-async fn access_point(system: &gio::DBusConnection) -> Option<(u32, String)> {
-    let device = crate::services::network::wifi::wireless_device(system).await?;
-    let point = dbus::path_property(
-        system,
-        BUS,
-        &device,
-        "org.freedesktop.NetworkManager.Device.Wireless",
-        "ActiveAccessPoint",
-    )
-    .await?;
-    if point == "/" {
-        return None;
-    }
-    let interface = "org.freedesktop.NetworkManager.AccessPoint";
-    let strength = strength(&dbus::property(system, BUS, &point, interface, "Strength").await?)?;
-    let name = dbus::property(system, BUS, &point, interface, "Ssid")
-        .await
-        .map(|raw| {
-            String::from_utf8_lossy(
-                &raw.iter()
-                    .filter_map(|byte| byte.get::<u8>())
-                    .collect::<Vec<u8>>(),
-            )
-            .into_owned()
-        })
-        .unwrap_or_default();
-    Some((strength, name))
 }
 
 pub struct NmcliOutput {
@@ -531,6 +461,9 @@ impl Drop for Connections {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::network::networkmanager::model::{
+        ActiveConnection, Device, SettingsConnection,
+    };
 
     #[test]
     fn a_failed_nmcli_call_is_an_error_and_not_empty_output() {
@@ -547,45 +480,107 @@ mod tests {
         );
     }
 
-    #[test]
-    fn access_point_strength_is_a_byte() {
-        use gtk4::glib::prelude::ToVariant;
-        assert_eq!(strength(&87u8.to_variant()), Some(87));
+    fn new_device(
+        number: u32,
+        kind: DeviceKind,
+        state: u32,
+        active_connection: Option<&str>,
+    ) -> Device {
+        Device {
+            path: format!("/org/freedesktop/NetworkManager/Devices/{number}"),
+            kind,
+            state,
+            interface: format!("if{number}"),
+            active_connection: active_connection.map(str::to_owned),
+            access_points: Vec::new(),
+            active_access_point: None,
+        }
+    }
+
+    fn new_active(path: &str, id: &str, uuid: &str) -> ActiveConnection {
+        ActiveConnection {
+            path: path.to_owned(),
+            id: id.to_owned(),
+            uuid: uuid.to_owned(),
+            kind: String::new(),
+        }
     }
 
     #[test]
     fn devices_give_the_wifi_status_and_the_best_wired_device() {
+        let active_path = "/org/freedesktop/NetworkManager/ActiveConnection/3";
+        let new_wired = |number: u32, connection: &str, is_connected| Wired {
+            path: format!("/org/freedesktop/NetworkManager/Devices/{number}"),
+            device: format!("if{number}"),
+            connection: connection.to_owned(),
+            is_connected,
+        };
         let cases = [
             (
-                "wifi:connected:wlan0:Home\nethernet:disconnected:eno1:\nethernet:unavailable:usb0:\nfull\n",
-                (
-                    "connected",
-                    Wired {
-                        device: "eno1".to_owned(),
-                        connection: String::new(),
-                        is_connected: false,
-                    },
-                ),
+                vec![
+                    new_device(1, DeviceKind::Wifi, 100, None),
+                    new_device(2, DeviceKind::Ethernet, 30, None),
+                    new_device(3, DeviceKind::Ethernet, 20, None),
+                ],
+                4,
+                ("connected", new_wired(2, "", false)),
             ),
             (
-                "ethernet:unavailable:usb0:\nethernet:connected:eno1:Wired connection 1\nwifi:unavailable:wlan0:\nlimited\n",
-                (
-                    "disabled",
-                    Wired {
-                        device: "eno1".to_owned(),
-                        connection: "Wired connection 1".to_owned(),
-                        is_connected: true,
-                    },
-                ),
+                vec![
+                    new_device(1, DeviceKind::Ethernet, 20, None),
+                    new_device(2, DeviceKind::Ethernet, 100, Some(active_path)),
+                    new_device(3, DeviceKind::Wifi, 20, None),
+                ],
+                3,
+                ("disabled", new_wired(2, "Wired connection 1", true)),
             ),
             (
-                "bt:disconnected:F0\\:CD\\:31:\nwifi:connected:wlan0:Cafe\nlimited\n",
+                vec![
+                    new_device(1, DeviceKind::Other, 30, None),
+                    new_device(2, DeviceKind::Wifi, 100, None),
+                    new_device(3, DeviceKind::Ethernet, 10, None),
+                ],
+                3,
                 ("limited", Wired::default()),
             ),
+            (
+                vec![new_device(1, DeviceKind::Wifi, 70, None)],
+                1,
+                ("connecting", Wired::default()),
+            ),
         ];
-        for (output, expected) in cases {
-            assert_eq!(parse_devices(output), expected, "{output}");
+        for (devices, connectivity, expected) in cases {
+            let snapshot = Snapshot {
+                devices,
+                connectivity,
+                active_connections: vec![new_active(active_path, "Wired connection 1", "u1")],
+                ..Snapshot::default()
+            };
+            assert_eq!(read_devices(&snapshot), expected);
         }
+    }
+
+    #[test]
+    fn tunnels_are_the_wireguard_profiles_sorted_by_name() {
+        let new_profile = |number: u32, id: &str, kind: &str| SettingsConnection {
+            path: format!("/org/freedesktop/NetworkManager/Settings/{number}"),
+            id: id.to_owned(),
+            uuid: format!("u{number}"),
+            kind: kind.to_owned(),
+        };
+        let snapshot = Snapshot {
+            settings_connections: vec![
+                new_profile(1, "work", WIREGUARD_KIND),
+                new_profile(2, "Home", WIREGUARD_KIND),
+                new_profile(3, "Ethernet", WIRED),
+            ],
+            active_connections: vec![new_active("/a/1", "work", "u1")],
+            ..Snapshot::default()
+        };
+        assert_eq!(
+            list_tunnels(&snapshot),
+            [("Home".to_owned(), false), ("work".to_owned(), true)]
+        );
     }
 
     #[test]

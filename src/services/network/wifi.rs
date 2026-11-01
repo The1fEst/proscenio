@@ -8,7 +8,8 @@ use std::time::{Duration, Instant};
 
 use crate::core::i18n::tr;
 use crate::platform::dbus;
-use crate::services::network::net::{BUS, nmcli, split_escaped};
+use crate::services::network::net::{nmcli, split_escaped};
+use crate::services::network::networkmanager::model::BUS;
 use crate::services::network::nmsettings;
 
 const ROOT: &str = "/org/freedesktop/NetworkManager";
