@@ -1,49 +1,21 @@
-use gtk4::gio;
-use gtk4::glib::{self, Variant, variant::ObjectPath};
+use gtk4::glib::{self, Variant};
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::core::i18n::tr;
-use crate::platform::dbus;
-use crate::services::network::net::{nmcli, split_escaped};
-use crate::services::network::networkmanager::model::BUS;
+use crate::core::listeners::Subscription;
+use crate::platform::network::nmprofile::WIRELESS;
+use crate::services::network::networkmanager::NetworkManager;
+use crate::services::network::networkmanager::calls::{self, NO_OBJECT};
+use crate::services::network::networkmanager::model::{AccessPointSecurity, Snapshot};
 use crate::services::network::nmsettings;
 
-const ROOT: &str = "/org/freedesktop/NetworkManager";
-const DEVICE: &str = "org.freedesktop.NetworkManager.Device";
-const ACTIVE: &str = "org.freedesktop.NetworkManager.Connection.Active";
-const WIFI_DEVICE: u32 = 2;
-const ACTIVATED: u32 = 2;
-const DEACTIVATED: u32 = 4;
-const SETTLE_DELAY: Duration = Duration::from_millis(200);
-const ACTIVATION_POLL: Duration = Duration::from_millis(500);
-const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(90);
-const CALL_TIMEOUT_MILLIS: i32 = 30_000;
-const SECRETS_REQUIRED: &str = "Secrets were required";
-const WIRELESS: &str = "802-11-wireless";
+pub use crate::services::network::networkmanager::model::AccessPoint;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct AccessPoint {
-    pub ssid: String,
-    pub bssid: String,
-    pub strength: i32,
-    pub frequency: i32,
-    pub is_active: bool,
-    pub security: String,
-}
-
-impl AccessPoint {
-    pub fn is_secure(&self) -> bool {
-        !self.security.is_empty()
-    }
-
-    pub fn is_enterprise(&self) -> bool {
-        self.security.contains("802.1X")
-    }
-}
+const SCAN_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SavedNetwork {
@@ -66,6 +38,7 @@ pub struct State {
     pub hidden_status: Option<Result<(), String>>,
     is_scan_pending: bool,
     was_device_up: Option<bool>,
+    scan_start: Vec<(String, i64)>,
 }
 
 impl State {
@@ -87,36 +60,29 @@ impl State {
 
 pub struct Wifi {
     pub state: RefCell<State>,
-    system: Option<gio::DBusConnection>,
+    manager: Rc<NetworkManager>,
     listeners: RefCell<Vec<Box<dyn Fn()>>>,
-    is_refresh_queued: Cell<bool>,
-    subscription: RefCell<Option<gio::SignalSubscription>>,
+    scan_count: Cell<u64>,
+    subscription: RefCell<Option<Subscription>>,
 }
 
 impl Wifi {
     pub fn new() -> Rc<Self> {
-        let system = gio::bus_get_sync(gio::BusType::System, gio::Cancellable::NONE).ok();
         let wifi = Rc::new(Wifi {
             state: RefCell::new(State::default()),
-            system: system.clone(),
+            manager: NetworkManager::instance(),
             listeners: RefCell::new(Vec::new()),
-            is_refresh_queued: Cell::new(false),
+            scan_count: Cell::new(0),
             subscription: RefCell::new(None),
         });
-        if let Some(system) = &system {
-            let weak = Rc::downgrade(&wifi);
-            wifi.subscription
-                .replace(Some(dbus::subscribe_properties_changed(
-                    system,
-                    BUS,
-                    move || {
-                        if let Some(wifi) = weak.upgrade() {
-                            wifi.queue_refresh();
-                        }
-                    },
-                )));
-        }
-        wifi.refresh();
+        let weak = Rc::downgrade(&wifi);
+        wifi.subscription
+            .replace(Some(wifi.manager.subscribe(move || {
+                if let Some(wifi) = weak.upgrade() {
+                    wifi.show();
+                }
+            })));
+        wifi.show();
         wifi
     }
 
@@ -130,116 +96,100 @@ impl Wifi {
         }
     }
 
-    fn queue_refresh(self: &Rc<Self>) {
-        if self.is_refresh_queued.replace(true) {
-            return;
-        }
-        let weak = Rc::downgrade(self);
-        glib::timeout_add_local_once(SETTLE_DELAY, move || {
-            if let Some(wifi) = weak.upgrade() {
-                wifi.is_refresh_queued.set(false);
-                wifi.refresh();
+    fn show(self: &Rc<Self>) {
+        let snapshot = self.manager.snapshot();
+        let is_device_up = snapshot
+            .wifi_devices()
+            .any(|device| !device.is_unavailable());
+        let (has_changed, should_rescan) = {
+            let mut state = self.state.borrow_mut();
+            let is_available = snapshot.wifi_devices().next().is_some();
+            let networks = list_networks(&snapshot);
+            let saved_networks = list_saved_networks(&snapshot);
+            let is_scan_done = state.is_scanning && has_scanned(&snapshot, &state.scan_start);
+            let has_changed = is_scan_done
+                || state.is_available != is_available
+                || state.is_enabled != snapshot.is_wireless_enabled
+                || state.networks != networks
+                || state.saved_networks != saved_networks;
+            state.is_available = is_available;
+            state.is_enabled = snapshot.is_wireless_enabled;
+            state.networks = networks;
+            state.saved_networks = saved_networks;
+            if is_scan_done {
+                state.is_scanning = false;
             }
-        });
-    }
-
-    pub fn refresh(self: &Rc<Self>) {
-        self.refresh_networks();
-        self.refresh_saved();
-        let weak = Rc::downgrade(self);
-        glib::spawn_future_local(async move {
-            let radio = nmcli(&["radio", "wifi"]).await.stdout;
-            let devices = nmcli(&["-t", "-f", "TYPE,STATE", "device", "status"])
-                .await
-                .stdout;
-            let Some(wifi) = weak.upgrade() else {
-                return;
-            };
-            let radio = radio.trim();
-            let is_device_up = devices
-                .lines()
-                .any(|line| line.starts_with("wifi:") && !line.contains("unavailable"));
-            let should_rescan = {
-                let mut state = wifi.state.borrow_mut();
-                state.is_available = devices.lines().any(|line| line.starts_with("wifi:"));
-                state.is_enabled = radio == "enabled";
-                let has_come_up = state.was_device_up == Some(false) && is_device_up;
-                state.was_device_up = Some(is_device_up);
-                let should_rescan = state.is_scan_pending && has_come_up;
-                if should_rescan {
-                    state.is_scan_pending = false;
-                }
-                should_rescan
-            };
-            wifi.announce();
+            let has_come_up = state.was_device_up == Some(false) && is_device_up;
+            state.was_device_up = Some(is_device_up);
+            let should_rescan = state.is_scan_pending && has_come_up;
             if should_rescan {
-                wifi.rescan();
+                state.is_scan_pending = false;
             }
-        });
-    }
-
-    fn refresh_networks(self: &Rc<Self>) {
-        let weak = Rc::downgrade(self);
-        glib::spawn_future_local(async move {
-            let networks = nmcli(&[
-                "-g",
-                "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY",
-                "device",
-                "wifi",
-                "list",
-                "--rescan",
-                "no",
-            ])
-            .await
-            .stdout;
-            if let Some(wifi) = weak.upgrade() {
-                wifi.state.borrow_mut().networks = parse_networks(&networks);
-                wifi.announce();
-            }
-        });
-    }
-
-    fn refresh_saved(self: &Rc<Self>) {
-        let weak = Rc::downgrade(self);
-        glib::spawn_future_local(async move {
-            let output = nmcli(&[
-                "-t",
-                "-f",
-                "NAME,UUID,TYPE,AUTOCONNECT,ACTIVE",
-                "connection",
-                "show",
-            ])
-            .await
-            .stdout;
-            if let Some(wifi) = weak.upgrade() {
-                wifi.state.borrow_mut().saved_networks = parse_saved_networks(&output);
-                wifi.announce();
-            }
-        });
+            (has_changed, should_rescan)
+        };
+        if has_changed {
+            self.announce();
+        }
+        if should_rescan {
+            self.rescan();
+        }
     }
 
     pub fn set_enabled(self: &Rc<Self>, is_enabled: bool) {
         self.state.borrow_mut().is_scan_pending = is_enabled;
-        self.run_then_refresh(&["radio", "wifi", if is_enabled { "on" } else { "off" }]);
+        spawn(calls::set_wireless_enabled(is_enabled));
     }
 
     pub fn rescan(self: &Rc<Self>) {
-        self.state.borrow_mut().is_scanning = true;
+        let snapshot = self.manager.snapshot();
+        let devices: Vec<(String, i64)> = snapshot
+            .wifi_devices()
+            .filter(|device| !device.is_unavailable())
+            .map(|device| (device.path.clone(), device.last_scan))
+            .collect();
+        let scan_count = self.scan_count.get() + 1;
+        self.scan_count.set(scan_count);
+        {
+            let mut state = self.state.borrow_mut();
+            state.is_scanning = !devices.is_empty();
+            state.scan_start = devices.clone();
+        }
         self.announce();
+        let request_count = Rc::new(Cell::new(devices.len()));
+        for (device, _) in devices {
+            let weak = Rc::downgrade(self);
+            let request_count = request_count.clone();
+            glib::spawn_future_local(async move {
+                let scan_result = calls::request_scan(&device).await;
+                if scan_result.is_ok() {
+                    return;
+                }
+                request_count.set(request_count.get() - 1);
+                if let (0, Some(wifi)) = (request_count.get(), weak.upgrade()) {
+                    wifi.finish_scan(scan_count);
+                }
+            });
+        }
         let weak = Rc::downgrade(self);
-        glib::spawn_future_local(async move {
-            nmcli(&["device", "wifi", "list", "--rescan", "yes"]).await;
+        glib::timeout_add_local_once(SCAN_TIMEOUT, move || {
             if let Some(wifi) = weak.upgrade() {
-                wifi.state.borrow_mut().is_scanning = false;
-                wifi.refresh();
+                wifi.finish_scan(scan_count);
             }
         });
     }
 
+    fn finish_scan(&self, scan_count: u64) {
+        if self.scan_count.get() != scan_count || !self.state.borrow().is_scanning {
+            return;
+        }
+        self.state.borrow_mut().is_scanning = false;
+        self.announce();
+    }
+
     pub fn connect(self: &Rc<Self>, point: &AccessPoint) {
-        {
+        let profile_path = {
             let mut state = self.state.borrow_mut();
-            if point.is_secure() && !state.is_saved(&point.ssid) {
+            if point.security.is_secure() && !state.is_saved(&point.ssid) {
                 state.password_prompt_ssid = Some(point.ssid.clone());
                 drop(state);
                 self.announce();
@@ -247,14 +197,36 @@ impl Wifi {
             }
             state.password_prompt_ssid = None;
             state.target_ssid = Some(point.ssid.clone());
-        }
+            let snapshot = self.manager.snapshot();
+            state
+                .saved_network(&point.ssid)
+                .and_then(|saved| snapshot.find_settings_by_uuid(&saved.uuid))
+                .map(|connection| connection.path.clone())
+        };
         self.announce();
         let weak = Rc::downgrade(self);
-        let ssid = point.ssid.clone();
+        let point = point.clone();
         glib::spawn_future_local(async move {
-            let output = nmcli(&["device", "wifi", "connect", &ssid]).await;
-            let is_refused = !output.is_success || output.stderr.contains(SECRETS_REQUIRED);
-            finish_connecting(&weak, &ssid, is_refused);
+            let has_joined = match profile_path {
+                Some(profile_path) => {
+                    match calls::activate_connection(&profile_path, &point.device, &point.path)
+                        .await
+                    {
+                        Ok(active_connection) => {
+                            calls::wait_for_activation(&active_connection).await
+                        }
+                        Err(_) => false,
+                    }
+                }
+                None => {
+                    let settings =
+                        wireless_settings(&point.ssid, &point.raw_ssid, point.security, "", false);
+                    join_new_network(settings, &point.device, &point.path)
+                        .await
+                        .is_ok()
+                }
+            };
+            finish_connecting(&weak, &point.ssid, !has_joined);
         });
     }
 
@@ -270,25 +242,26 @@ impl Wifi {
         self.announce();
         let weak = Rc::downgrade(self);
         let point = point.clone();
-        let settings = wireless_settings(&point.ssid, &point.security, password, false);
+        let settings = wireless_settings(
+            &point.ssid,
+            &point.raw_ssid,
+            point.security,
+            password,
+            false,
+        );
         let old_uuid = self
             .state
             .borrow()
             .saved_network(&point.ssid)
             .map(|saved| saved.uuid.clone());
-        let system = self.system.clone();
         glib::spawn_future_local(async move {
-            let is_refused = match system {
-                Some(system) => {
-                    let has_joined = add_and_activate(&system, settings).await.is_ok();
-                    if has_joined && let Some(old_uuid) = old_uuid {
-                        nmcli(&["connection", "delete", "uuid", &old_uuid]).await;
-                    }
-                    !has_joined
-                }
-                None => true,
-            };
-            finish_connecting(&weak, &point.ssid, is_refused);
+            let has_joined = join_new_network(settings, &point.device, NO_OBJECT)
+                .await
+                .is_ok();
+            if has_joined && let Some(old_uuid) = old_uuid {
+                let _ = nmsettings::delete(&old_uuid).await;
+            }
+            finish_connecting(&weak, &point.ssid, !has_joined);
         });
     }
 
@@ -308,22 +281,22 @@ impl Wifi {
             return;
         };
         drop(state);
-        self.run_then_refresh(&["connection", "down", "uuid", &uuid]);
+        let snapshot = self.manager.snapshot();
+        let Some(active_connection) = snapshot.find_active_by_uuid(&uuid) else {
+            return;
+        };
+        let path = active_connection.path.clone();
+        spawn(async move { calls::deactivate_connection(&path).await });
     }
 
     pub fn forget(self: &Rc<Self>, uuid: &str) {
-        self.run_then_refresh(&["connection", "delete", "uuid", uuid]);
+        let uuid = uuid.to_owned();
+        spawn(async move { nmsettings::delete(&uuid).await });
     }
 
     pub fn set_autoconnect(self: &Rc<Self>, uuid: &str, should_autoconnect: bool) {
-        let weak = Rc::downgrade(self);
         let uuid = uuid.to_owned();
-        glib::spawn_future_local(async move {
-            let _ = nmsettings::set_autoconnect(&uuid, should_autoconnect).await;
-            if let Some(wifi) = weak.upgrade() {
-                wifi.refresh();
-            }
-        });
+        spawn(async move { nmsettings::set_autoconnect(&uuid, should_autoconnect).await });
     }
 
     pub fn connect_hidden(self: &Rc<Self>, ssid: &str, password: &str) {
@@ -334,60 +307,65 @@ impl Wifi {
         }
         self.announce();
         let weak = Rc::downgrade(self);
-        let settings = wireless_settings(ssid, "", password, true);
-        let old_uuid = self
+        let settings = wireless_settings(
+            ssid,
+            ssid.as_bytes(),
+            AccessPointSecurity::default(),
+            password,
+            true,
+        );
+        let snapshot = self.manager.snapshot();
+        let old_profile = self
             .state
             .borrow()
             .saved_network(ssid)
-            .map(|saved| saved.uuid.clone());
+            .and_then(|saved| snapshot.find_settings_by_uuid(&saved.uuid))
+            .map(|connection| (connection.uuid.clone(), connection.path.clone()));
+        let device = snapshot
+            .wifi_devices()
+            .next()
+            .map(|device| device.path.clone());
         let reuses_profile = password.is_empty();
-        let system = self.system.clone();
         glib::spawn_future_local(async move {
-            let status = match (system, old_uuid) {
-                (_, Some(old_uuid)) if reuses_profile => {
-                    let output = nmcli(&["connection", "up", "uuid", &old_uuid]).await;
-                    if output.is_success {
-                        Ok(())
-                    } else {
-                        Err(tr("Could not connect"))
+            let status = match (device, old_profile) {
+                (_, Some((_, profile_path))) if reuses_profile => {
+                    match calls::activate_connection(&profile_path, NO_OBJECT, NO_OBJECT).await {
+                        Ok(active_connection)
+                            if calls::wait_for_activation(&active_connection).await =>
+                        {
+                            Ok(())
+                        }
+                        _ => Err(tr("Could not connect")),
                     }
                 }
-                (Some(system), old_uuid) => {
-                    let status = add_and_activate(&system, settings).await;
+                (Some(device), old_profile) => {
+                    let status = join_new_network(settings, &device, NO_OBJECT).await;
                     if status.is_ok()
-                        && let Some(old_uuid) = old_uuid
+                        && let Some((old_uuid, _)) = old_profile
                     {
-                        nmcli(&["connection", "delete", "uuid", &old_uuid]).await;
+                        let _ = nmsettings::delete(&old_uuid).await;
                     }
                     status
                 }
                 (None, _) => Err(tr("Could not connect")),
             };
             if let Some(wifi) = weak.upgrade() {
-                {
-                    let mut state = wifi.state.borrow_mut();
-                    state.is_hidden_connecting = false;
-                    state.hidden_status = Some(status);
-                }
-                wifi.refresh();
+                let mut state = wifi.state.borrow_mut();
+                state.is_hidden_connecting = false;
+                state.hidden_status = Some(status);
+                drop(state);
+                wifi.announce();
             }
         });
     }
+}
 
-    fn run_then_refresh(self: &Rc<Self>, arguments: &[&str]) {
-        let weak = Rc::downgrade(self);
-        let arguments: Vec<String> = arguments
-            .iter()
-            .map(|&argument| argument.to_owned())
-            .collect();
-        glib::spawn_future_local(async move {
-            let arguments: Vec<&str> = arguments.iter().map(String::as_str).collect();
-            nmcli(&arguments).await;
-            if let Some(wifi) = weak.upgrade() {
-                wifi.refresh();
-            }
-        });
-    }
+fn spawn(call: impl Future<Output = Result<(), String>> + 'static) {
+    glib::spawn_future_local(async move {
+        if let Err(message) = call.await {
+            eprintln!("wifi: {message}");
+        }
+    });
 }
 
 fn finish_connecting(weak: &Weak<Wifi>, ssid: &str, is_refused: bool) {
@@ -399,15 +377,21 @@ fn finish_connecting(weak: &Weak<Wifi>, ssid: &str, is_refused: bool) {
         state.target_ssid = None;
         state.password_prompt_ssid = is_refused.then(|| ssid.to_owned());
     }
-    wifi.refresh();
+    wifi.announce();
 }
 
-fn wireless_settings(ssid: &str, security: &str, password: &str, is_hidden: bool) -> Variant {
+fn wireless_settings(
+    name: &str,
+    ssid: &[u8],
+    security: AccessPointSecurity,
+    password: &str,
+    is_hidden: bool,
+) -> Variant {
     let mut connection: HashMap<String, Variant> = HashMap::new();
-    connection.insert("id".into(), ssid.to_variant());
+    connection.insert("id".into(), name.to_variant());
     connection.insert("type".into(), WIRELESS.to_variant());
     let mut wireless: HashMap<String, Variant> = HashMap::new();
-    wireless.insert("ssid".into(), ssid.as_bytes().to_variant());
+    wireless.insert("ssid".into(), ssid.to_variant());
     if is_hidden {
         wireless.insert("hidden".into(), true.to_variant());
     }
@@ -416,101 +400,27 @@ fn wireless_settings(ssid: &str, security: &str, password: &str, is_hidden: bool
     settings.insert(WIRELESS.into(), wireless);
     if !password.is_empty() {
         let mut security_settings: HashMap<String, Variant> = HashMap::new();
-        security_settings.insert("key-mgmt".into(), key_management(security).to_variant());
+        security_settings.insert("key-mgmt".into(), security.key_management().to_variant());
         security_settings.insert("psk".into(), password.to_variant());
         settings.insert("802-11-wireless-security".into(), security_settings);
     }
     settings.to_variant()
 }
 
-fn key_management(security: &str) -> &'static str {
-    if security.contains("WPA3") && !security.contains("WPA2") && !security.contains("WPA1") {
-        "sae"
-    } else {
-        "wpa-psk"
-    }
-}
-
-pub async fn wireless_device(system: &gio::DBusConnection) -> Option<String> {
-    let reply = system
-        .call_future(
-            Some(BUS),
-            ROOT,
-            BUS,
-            "GetDevices",
-            None,
-            Some(glib::VariantTy::new("(ao)").unwrap()),
-            gio::DBusCallFlags::NONE,
-            CALL_TIMEOUT_MILLIS,
-        )
-        .await
-        .ok()?;
-    let paths: Vec<ObjectPath> = reply.child_value(0).get()?;
-    for path in paths {
-        let kind = dbus::u32_property(system, BUS, path.as_str(), DEVICE, "DeviceType").await;
-        if kind == Some(WIFI_DEVICE) {
-            return Some(path.as_str().to_owned());
-        }
-    }
-    None
-}
-
-async fn add_and_activate(system: &gio::DBusConnection, settings: Variant) -> Result<(), String> {
-    let make_connect_error = || tr("Could not connect");
-    let device = wireless_device(system)
-        .await
-        .ok_or_else(make_connect_error)?;
-    let device = ObjectPath::try_from(device).map_err(|_| make_connect_error())?;
-    let specific_object = ObjectPath::try_from("/".to_owned()).map_err(|_| make_connect_error())?;
-    let arguments =
-        Variant::tuple_from_iter([settings, device.to_variant(), specific_object.to_variant()]);
-    let reply = system
-        .call_future(
-            Some(BUS),
-            ROOT,
-            BUS,
-            "AddAndActivateConnection",
-            Some(&arguments),
-            Some(glib::VariantTy::new("(oo)").unwrap()),
-            gio::DBusCallFlags::NONE,
-            CALL_TIMEOUT_MILLIS,
-        )
-        .await
-        .map_err(|error| remote_message(&error))?;
-    let has_joined = match reply.child_value(1).get::<ObjectPath>() {
-        Some(active_connection) => wait_for_activation(system, active_connection.as_str()).await,
-        None => false,
-    };
-    if has_joined {
+async fn join_new_network(
+    settings: Variant,
+    device: &str,
+    specific_object: &str,
+) -> Result<(), String> {
+    let (connection, active_connection) =
+        calls::add_and_activate_connection(settings, device, specific_object).await?;
+    if calls::wait_for_activation(&active_connection).await {
         return Ok(());
     }
-    if let Some(connection) = reply.child_value(0).get::<ObjectPath>() {
-        let _ = system
-            .call_future(
-                Some(BUS),
-                connection.as_str(),
-                "org.freedesktop.NetworkManager.Settings.Connection",
-                "Delete",
-                None,
-                None,
-                gio::DBusCallFlags::NONE,
-                CALL_TIMEOUT_MILLIS,
-            )
-            .await;
+    if !connection.is_empty() {
+        let _ = calls::delete_connection(&connection).await;
     }
-    Err(make_connect_error())
-}
-
-async fn wait_for_activation(system: &gio::DBusConnection, active_connection: &str) -> bool {
-    let start = Instant::now();
-    while start.elapsed() < ACTIVATION_TIMEOUT {
-        match dbus::u32_property(system, BUS, active_connection, ACTIVE, "State").await {
-            Some(ACTIVATED) => return true,
-            Some(DEACTIVATED) | None => return false,
-            Some(_) => glib::timeout_future(ACTIVATION_POLL).await,
-        }
-    }
-    false
+    Err(tr("Could not connect"))
 }
 
 pub fn remote_message(error: &glib::Error) -> String {
@@ -522,35 +432,30 @@ pub fn remote_message(error: &glib::Error) -> String {
         .to_owned()
 }
 
-fn parse_networks(text: &str) -> Vec<AccessPoint> {
+fn has_scanned(snapshot: &Snapshot, scan_start: &[(String, i64)]) -> bool {
+    snapshot.wifi_devices().any(|device| {
+        scan_start
+            .iter()
+            .any(|(path, last_scan)| *path == device.path && *last_scan != device.last_scan)
+    })
+}
+
+fn list_networks(snapshot: &Snapshot) -> Vec<AccessPoint> {
     let mut networks: Vec<AccessPoint> = Vec::new();
-    for line in text.lines() {
-        let fields = split_escaped(line);
-        let [active, strength, frequency, ssid, bssid, security, ..] = fields.as_slice() else {
-            continue;
-        };
-        if ssid.is_empty() {
+    for point in snapshot
+        .wifi_devices()
+        .flat_map(|device| device.access_points.iter())
+    {
+        if point.ssid.is_empty() {
             continue;
         }
-        let point = AccessPoint {
-            ssid: ssid.clone(),
-            bssid: bssid.clone(),
-            strength: strength.parse().unwrap_or(0),
-            frequency: frequency
-                .split_whitespace()
-                .next()
-                .and_then(|number| number.parse().ok())
-                .unwrap_or(0),
-            is_active: active == "yes",
-            security: security.clone(),
-        };
         match networks.iter_mut().find(|known| known.ssid == point.ssid) {
-            None => networks.push(point),
+            None => networks.push(point.clone()),
             Some(known) => {
                 let is_better = (point.is_active && !known.is_active)
                     || (!point.is_active && !known.is_active && point.strength > known.strength);
                 if is_better {
-                    *known = point;
+                    *known = point.clone();
                 }
             }
         }
@@ -559,19 +464,16 @@ fn parse_networks(text: &str) -> Vec<AccessPoint> {
     networks
 }
 
-fn parse_saved_networks(text: &str) -> Vec<SavedNetwork> {
-    text.lines()
-        .filter_map(|line| {
-            let fields = split_escaped(line);
-            let [name, uuid, kind, autoconnect, active, ..] = fields.as_slice() else {
-                return None;
-            };
-            (kind == WIRELESS).then(|| SavedNetwork {
-                name: name.clone(),
-                uuid: uuid.clone(),
-                should_autoconnect: autoconnect == "yes",
-                is_active: active == "yes",
-            })
+fn list_saved_networks(snapshot: &Snapshot) -> Vec<SavedNetwork> {
+    snapshot
+        .settings_connections
+        .iter()
+        .filter(|connection| connection.kind == WIRELESS)
+        .map(|connection| SavedNetwork {
+            name: connection.id.clone(),
+            uuid: connection.uuid.clone(),
+            should_autoconnect: connection.should_autoconnect,
+            is_active: snapshot.find_active_by_uuid(&connection.uuid).is_some(),
         })
         .collect()
 }
@@ -579,37 +481,85 @@ fn parse_saved_networks(text: &str) -> Vec<SavedNetwork> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::network::networkmanager::model::{
+        ActiveConnection, Device, DeviceKind, SettingsConnection,
+    };
+
+    fn new_point(ssid: &str, number: u32, strength: u8, is_active: bool) -> AccessPoint {
+        AccessPoint {
+            path: format!("/org/freedesktop/NetworkManager/AccessPoint/{number}"),
+            device: "/org/freedesktop/NetworkManager/Devices/3".to_owned(),
+            ssid: ssid.to_owned(),
+            raw_ssid: ssid.as_bytes().to_vec(),
+            strength,
+            frequency: 2412,
+            is_active,
+            security: AccessPointSecurity::default(),
+        }
+    }
+
+    fn new_wifi_device(access_points: Vec<AccessPoint>, last_scan: i64) -> Device {
+        Device {
+            path: "/org/freedesktop/NetworkManager/Devices/3".to_owned(),
+            kind: DeviceKind::Wifi,
+            state: 100,
+            interface: "wlan0".to_owned(),
+            active_connection: None,
+            access_points,
+            last_scan,
+        }
+    }
 
     #[test]
     fn networks_keep_one_entry_per_name_and_put_the_joined_one_first() {
-        let text = "no:40:2412 MHz:Cafe:AA\\:BB\\:CC\\:DD\\:EE\\:01:\n\
-                    no:70:2437 MHz:Home:AA\\:BB\\:CC\\:DD\\:EE\\:02:WPA2\n\
-                    yes:30:5180 MHz:Cafe:AA\\:BB\\:CC\\:DD\\:EE\\:03:\n\
-                    no:90:2462 MHz:Home:AA\\:BB\\:CC\\:DD\\:EE\\:04:WPA2\n\
-                    no:50:2412 MHz::AA\\:BB\\:CC\\:DD\\:EE\\:05:WPA2";
-        let point =
-            |ssid: &str, bssid: &str, strength, frequency, is_active, security: &str| AccessPoint {
-                ssid: ssid.to_owned(),
-                bssid: bssid.to_owned(),
-                strength,
-                frequency,
-                is_active,
-                security: security.to_owned(),
-            };
+        let snapshot = Snapshot {
+            devices: vec![new_wifi_device(
+                vec![
+                    new_point("Cafe", 1, 40, false),
+                    new_point("Home", 2, 70, false),
+                    new_point("Cafe", 3, 30, true),
+                    new_point("Home", 4, 90, false),
+                    new_point("", 5, 50, false),
+                ],
+                0,
+            )],
+            ..Snapshot::default()
+        };
         assert_eq!(
-            parse_networks(text),
+            list_networks(&snapshot),
             [
-                point("Cafe", "AA:BB:CC:DD:EE:03", 30, 5180, true, ""),
-                point("Home", "AA:BB:CC:DD:EE:04", 90, 2462, false, "WPA2"),
+                new_point("Cafe", 3, 30, true),
+                new_point("Home", 4, 90, false)
             ]
         );
     }
 
     #[test]
     fn saved_networks_are_the_wireless_profiles() {
-        let text = "Wired connection 1:u0:802-3-ethernet:yes:yes\nHome:u1:802-11-wireless:yes:no\nCafe\\: Two:u2:802-11-wireless:no:yes";
+        let new_profile =
+            |number: u32, id: &str, kind: &str, should_autoconnect| SettingsConnection {
+                path: format!("/org/freedesktop/NetworkManager/Settings/{number}"),
+                id: id.to_owned(),
+                uuid: format!("u{number}"),
+                kind: kind.to_owned(),
+                should_autoconnect,
+            };
+        let snapshot = Snapshot {
+            settings_connections: vec![
+                new_profile(0, "Wired connection 1", "802-3-ethernet", true),
+                new_profile(1, "Home", WIRELESS, true),
+                new_profile(2, "Cafe: Two", WIRELESS, false),
+            ],
+            active_connections: vec![ActiveConnection {
+                path: "/org/freedesktop/NetworkManager/ActiveConnection/5".to_owned(),
+                id: "Cafe: Two".to_owned(),
+                uuid: "u2".to_owned(),
+                kind: WIRELESS.to_owned(),
+            }],
+            ..Snapshot::default()
+        };
         assert_eq!(
-            parse_saved_networks(text),
+            list_saved_networks(&snapshot),
             [
                 SavedNetwork {
                     name: "Home".to_owned(),
@@ -625,6 +575,18 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn a_scan_ends_when_the_device_reports_a_newer_one() {
+        let start = [("/org/freedesktop/NetworkManager/Devices/3".to_owned(), 1000)];
+        let new_snapshot = |last_scan| Snapshot {
+            devices: vec![new_wifi_device(Vec::new(), last_scan)],
+            ..Snapshot::default()
+        };
+        assert!(!has_scanned(&new_snapshot(1000), &start));
+        assert!(has_scanned(&new_snapshot(4000), &start));
+        assert!(!has_scanned(&Snapshot::default(), &start));
     }
 
     #[test]
@@ -647,9 +609,68 @@ mod tests {
     }
 
     #[test]
-    fn key_management_is_sae_only_for_networks_that_speak_nothing_older() {
-        assert_eq!(key_management("WPA2"), "wpa-psk");
-        assert_eq!(key_management("WPA2 WPA3"), "wpa-psk");
-        assert_eq!(key_management("WPA3"), "sae");
+    fn a_new_network_gets_the_settings_its_security_needs() {
+        let read_settings = |settings: Variant| {
+            settings
+                .get::<HashMap<String, HashMap<String, Variant>>>()
+                .unwrap()
+        };
+        let wpa2 = AccessPointSecurity {
+            has_privacy: true,
+            wpa_flags: 0,
+            rsn_flags: 0x188,
+        };
+        let wpa3 = AccessPointSecurity {
+            rsn_flags: 0x488,
+            ..wpa2
+        };
+        let open_settings = read_settings(wireless_settings(
+            "Caf\u{fffd}",
+            b"Caf\xe9",
+            AccessPointSecurity::default(),
+            "",
+            false,
+        ));
+        assert_eq!(
+            open_settings,
+            HashMap::from([
+                (
+                    "connection".to_owned(),
+                    HashMap::from([
+                        ("id".to_owned(), "Caf\u{fffd}".to_variant()),
+                        ("type".to_owned(), WIRELESS.to_variant()),
+                    ])
+                ),
+                (
+                    WIRELESS.to_owned(),
+                    HashMap::from([("ssid".to_owned(), b"Caf\xe9".to_variant())])
+                ),
+            ])
+        );
+        for (security, key_management) in [(wpa2, "wpa-psk"), (wpa3, "sae")] {
+            let settings = read_settings(wireless_settings(
+                "Home", b"Home", security, "secret12", false,
+            ));
+            assert_eq!(
+                settings["802-11-wireless-security"],
+                HashMap::from([
+                    ("key-mgmt".to_owned(), key_management.to_variant()),
+                    ("psk".to_owned(), "secret12".to_variant()),
+                ])
+            );
+            assert!(!settings[WIRELESS].contains_key("hidden"));
+        }
+        let hidden_settings = read_settings(wireless_settings(
+            "Attic",
+            b"Attic",
+            AccessPointSecurity::default(),
+            "secret12",
+            true,
+        ));
+        assert_eq!(hidden_settings[WIRELESS]["hidden"], true.to_variant());
+        assert_eq!(
+            hidden_settings["802-11-wireless-security"]["key-mgmt"],
+            "wpa-psk".to_variant()
+        );
     }
 }

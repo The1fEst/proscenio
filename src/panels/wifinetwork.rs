@@ -222,7 +222,7 @@ impl Item {
                 if let Some(item) = weak_item.upgrade() {
                     let point = item.point.borrow().clone();
                     let is_saved = wifi.state.borrow().is_saved(&point.ssid);
-                    if point.is_enterprise() && !is_saved {
+                    if point.security.is_enterprise() && !is_saved {
                         on_enterprise(&point.ssid);
                     } else {
                         wifi.connect(&point);
@@ -268,7 +268,7 @@ impl Item {
         self.forget_button
             .set_visible(self.options.shows_actions && state.is_saved(&point.ssid));
         self.status_label
-            .set_visible(point.is_secure() || point.is_active);
+            .set_visible(point.security.is_secure() || point.is_active);
         self.status_label.set_text(if point.is_active {
             "check"
         } else if is_targeted {
@@ -290,7 +290,7 @@ impl Item {
     }
 }
 
-fn strength_symbol(strength: i32) -> &'static str {
+fn strength_symbol(strength: u8) -> &'static str {
     match strength {
         81.. => "signal_wifi_4_bar",
         61..=80 => "network_wifi_3_bar",

@@ -20,7 +20,7 @@ that notice above its Firewall & Proxy links.
 
 | Control | Does |
 |---|---|
-| Wi-Fi | turns the radio on or off (`nmcli radio wifi on` or `off`) |
+| Wi-Fi | turns the radio on or off (NetworkManager's `WirelessEnabled`) |
 | Saved Networks | opens the subpage of saved Wi-Fi profiles |
 | Connect to Hidden Network… | opens the subpage for joining a network that does not announce its name |
 | Hotspot | opens the subpage that shares this computer's connection |
@@ -28,13 +28,20 @@ that notice above its Firewall & Proxy links.
 Without a Wi-Fi adapter the page says "No Wi-Fi Found", and with the radio off, "Wi-Fi Off".
 
 While the radio is on, **Visible Networks** lists every network in range, with its signal strength
-and a lock for a secured one. The page scans when it opens and every 15 seconds after that
-(`nmcli device wifi list --rescan yes`), with a spinner beside the title while a scan runs.
+and a lock for a secured one. The list follows NetworkManager's access points as they appear, change
+and disappear. The page asks every available Wi-Fi device to scan (`RequestScan`) when it opens and
+every 15 seconds after that, with a spinner beside the title until a device reports a newer scan,
+every request fails, or 10 seconds pass.
 
-- **Clicking a network** joins it. A saved or open network joins with `nmcli device wifi connect`.
-  A secured network that is not saved first asks for its password in the row; the password goes to
-  NetworkManager's `AddAndActivateConnection`, and once the network is joined an older profile with
-  the same name is deleted. When NetworkManager refuses, the row asks for the password again.
+- **Clicking a network** joins it and waits until NetworkManager reports the connection activated
+  or failed. A saved network is brought up from the profile of that name (`ActivateConnection`).
+  An open network without a profile gets a new one
+  (`AddAndActivateConnection`), which is deleted again when joining fails. A secured network that
+  is not saved first asks for its password in the row; the password goes to
+  `AddAndActivateConnection` in a new profile, WPA3 Personal (`sae`) for a network that offers
+  nothing older and WPA & WPA2 Personal (`wpa-psk`) otherwise, and once the network is joined an
+  older profile with the same name is deleted. When NetworkManager refuses, the row asks for the
+  password again.
 - **An enterprise network** (802.1X) that is not saved asks for nothing in the row: the click opens
   the connection editor on a blank WPA & WPA2 Enterprise profile named after it.
 - **Disconnect**, on the joined network, brings its connection down.

@@ -30,6 +30,11 @@ const PREPARE_STATE: u32 = 40;
 const SECONDARIES_STATE: u32 = 90;
 const ACTIVATED_STATE: u32 = 100;
 const LIMITED_CONNECTIVITY: u32 = 3;
+const PRIVACY_FLAG: u32 = 0x1;
+const KEY_MANAGEMENT_PSK: u32 = 0x100;
+const KEY_MANAGEMENT_802_1X: u32 = 0x200;
+const KEY_MANAGEMENT_SAE: u32 = 0x400;
+const KEY_MANAGEMENT_FLAGS: u32 = 0x3f00;
 const LOOPBACK: &str = "loopback";
 
 pub type Properties = HashMap<String, Variant>;
@@ -74,20 +79,59 @@ impl DeviceKind {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AccessPointSecurity {
+    pub has_privacy: bool,
+    pub wpa_flags: u32,
+    pub rsn_flags: u32,
+}
+
+impl AccessPointSecurity {
+    pub fn is_secure(&self) -> bool {
+        let is_wep = self.has_privacy && self.wpa_flags == 0 && self.rsn_flags == 0;
+        is_wep || self.wpa_flags != 0 || self.rsn_flags & KEY_MANAGEMENT_FLAGS != 0
+    }
+
+    pub fn is_enterprise(&self) -> bool {
+        (self.wpa_flags | self.rsn_flags) & KEY_MANAGEMENT_802_1X != 0
+    }
+
+    pub fn key_management(&self) -> &'static str {
+        let is_wpa3_only = self.rsn_flags & KEY_MANAGEMENT_SAE != 0
+            && self.rsn_flags & (KEY_MANAGEMENT_PSK | KEY_MANAGEMENT_802_1X) == 0
+            && self.wpa_flags == 0;
+        if is_wpa3_only { "sae" } else { "wpa-psk" }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AccessPoint {
     pub path: String,
+    pub device: String,
     pub ssid: String,
+    pub raw_ssid: Vec<u8>,
     pub strength: u8,
+    pub frequency: u32,
+    pub is_active: bool,
+    pub security: AccessPointSecurity,
 }
 
 impl AccessPoint {
-    fn from_properties(path: &str, properties: &Properties) -> Self {
+    fn from_properties(path: &str, device: &str, is_active: bool, properties: &Properties) -> Self {
         let raw_ssid: Vec<u8> = read(properties, "Ssid").unwrap_or_default();
         AccessPoint {
             path: path.to_owned(),
+            device: device.to_owned(),
             ssid: String::from_utf8_lossy(&raw_ssid).into_owned(),
+            raw_ssid,
             strength: read(properties, "Strength").unwrap_or(0),
+            frequency: read(properties, "Frequency").unwrap_or(0),
+            is_active,
+            security: AccessPointSecurity {
+                has_privacy: read::<u32>(properties, "Flags").unwrap_or(0) & PRIVACY_FLAG != 0,
+                wpa_flags: read(properties, "WpaFlags").unwrap_or(0),
+                rsn_flags: read(properties, "RsnFlags").unwrap_or(0),
+            },
         }
     }
 }
@@ -100,7 +144,7 @@ pub struct Device {
     pub interface: String,
     pub active_connection: Option<String>,
     pub access_points: Vec<AccessPoint>,
-    pub active_access_point: Option<String>,
+    pub last_scan: i64,
 }
 
 impl Device {
@@ -115,11 +159,18 @@ impl Device {
         }
         let no_properties = Properties::new();
         let wireless = interfaces.get(WIRELESS_DEVICE).unwrap_or(&no_properties);
+        let active_access_point = read_path(wireless, "ActiveAccessPoint");
         let access_points = read_paths(wireless, "AccessPoints")
             .into_iter()
             .filter_map(|point_path| {
                 let point = objects.get(&point_path)?.get(ACCESS_POINT)?;
-                Some(AccessPoint::from_properties(&point_path, point))
+                let is_active = active_access_point.as_deref() == Some(point_path.as_str());
+                Some(AccessPoint::from_properties(
+                    &point_path,
+                    path,
+                    is_active,
+                    point,
+                ))
             })
             .collect();
         Some(Device {
@@ -129,13 +180,12 @@ impl Device {
             interface: read_string(properties, "Interface"),
             active_connection: read_path(properties, "ActiveConnection"),
             access_points,
-            active_access_point: read_path(wireless, "ActiveAccessPoint"),
+            last_scan: read(wireless, "LastScan").unwrap_or(0),
         })
     }
 
     pub fn active_point(&self) -> Option<&AccessPoint> {
-        let path = self.active_access_point.as_deref()?;
-        self.access_points.iter().find(|point| point.path == path)
+        self.access_points.iter().find(|point| point.is_active)
     }
 
     pub fn is_unavailable(&self) -> bool {
@@ -180,6 +230,7 @@ pub struct SettingsConnection {
     pub id: String,
     pub uuid: String,
     pub kind: String,
+    pub should_autoconnect: bool,
 }
 
 impl SettingsConnection {
@@ -189,6 +240,7 @@ impl SettingsConnection {
             id: profile.id(),
             uuid: profile.uuid(),
             kind: profile.kind(),
+            should_autoconnect: profile.is_autoconnect_enabled(),
         }
     }
 }
@@ -283,6 +335,18 @@ impl Snapshot {
             .iter()
             .find(|connection| connection.id == id)
     }
+
+    pub fn find_settings_by_uuid(&self, uuid: &str) -> Option<&SettingsConnection> {
+        self.settings_connections
+            .iter()
+            .find(|connection| connection.uuid == uuid)
+    }
+
+    pub fn find_active_by_uuid(&self, uuid: &str) -> Option<&ActiveConnection> {
+        self.active_connections
+            .iter()
+            .find(|connection| connection.uuid == uuid)
+    }
 }
 
 fn parse_object_number(path: &str) -> u64 {
@@ -294,7 +358,7 @@ fn parse_object_number(path: &str) -> u64 {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::platform::network::nmprofile::CONNECTION;
+    use crate::platform::network::nmprofile::{CONNECTION, WIRELESS};
     use gtk4::prelude::*;
 
     pub fn new_properties(entries: &[(&str, Variant)]) -> Properties {
@@ -427,6 +491,9 @@ pub mod tests {
                 [
                     ("Ssid", ssid.to_variant()),
                     ("Strength", strength.to_variant()),
+                    ("Frequency", 5180u32.to_variant()),
+                    ("Flags", 1u32.to_variant()),
+                    ("RsnFlags", 0x188u32.to_variant()),
                 ],
             )
         };
@@ -441,10 +508,61 @@ pub mod tests {
         let names: Vec<_> = device
             .access_points
             .iter()
-            .map(|point| (point.ssid.as_str(), point.strength))
+            .map(|point| (point.ssid.as_str(), point.strength, point.is_active))
             .collect();
-        assert_eq!(names, [("Café", 40), ("Caf\u{fffd} \u{fffd}", 87)]);
-        assert_eq!(device.active_point().map(|point| point.strength), Some(87));
+        assert_eq!(
+            names,
+            [("Café", 40, false), ("Caf\u{fffd} \u{fffd}", 87, true)]
+        );
+        assert_eq!(
+            device.active_point(),
+            Some(&AccessPoint {
+                path: "/org/freedesktop/NetworkManager/AccessPoint/8".to_owned(),
+                device: device.path.clone(),
+                ssid: "Caf\u{fffd} \u{fffd}".to_owned(),
+                raw_ssid: b"Caf\xe9 \xff".to_vec(),
+                strength: 87,
+                frequency: 5180,
+                is_active: true,
+                security: AccessPointSecurity {
+                    has_privacy: true,
+                    wpa_flags: 0,
+                    rsn_flags: 0x188,
+                },
+            })
+        );
+    }
+
+    #[test]
+    fn access_point_flags_give_the_kind_of_security() {
+        let new_security = |has_privacy, wpa_flags, rsn_flags| AccessPointSecurity {
+            has_privacy,
+            wpa_flags,
+            rsn_flags,
+        };
+        let cases = [
+            (new_security(false, 0, 0), false, false, "wpa-psk"),
+            (new_security(true, 0, 0), true, false, "wpa-psk"),
+            (new_security(true, 0x144, 0), true, false, "wpa-psk"),
+            (new_security(true, 0, 0x188), true, false, "wpa-psk"),
+            (new_security(true, 0, 0x588), true, false, "wpa-psk"),
+            (new_security(true, 0, 0x488), true, false, "sae"),
+            (new_security(true, 0x144, 0x488), true, false, "wpa-psk"),
+            (new_security(true, 0, 0x288), true, true, "wpa-psk"),
+            (new_security(true, 0x244, 0), true, true, "wpa-psk"),
+            (new_security(true, 0, 0x88), false, false, "wpa-psk"),
+        ];
+        for (security, is_secure, is_enterprise, key_management) in cases {
+            assert_eq!(
+                (
+                    security.is_secure(),
+                    security.is_enterprise(),
+                    security.key_management()
+                ),
+                (is_secure, is_enterprise, key_management),
+                "{security:?}"
+            );
+        }
     }
 
     #[test]
@@ -524,9 +642,10 @@ pub mod tests {
             &HashMap::from([(
                 CONNECTION.to_owned(),
                 new_properties(&[
-                    ("id", "WireGuard".to_variant()),
+                    ("id", "Cafe".to_variant()),
                     ("uuid", "u1".to_variant()),
-                    ("type", "wireguard".to_variant()),
+                    ("type", WIRELESS.to_variant()),
+                    ("autoconnect", false.to_variant()),
                 ]),
             )])
             .to_variant(),
@@ -539,9 +658,10 @@ pub mod tests {
             ),
             SettingsConnection {
                 path: "/org/freedesktop/NetworkManager/Settings/1".to_owned(),
-                id: "WireGuard".to_owned(),
+                id: "Cafe".to_owned(),
                 uuid: "u1".to_owned(),
-                kind: "wireguard".to_owned(),
+                kind: WIRELESS.to_owned(),
+                should_autoconnect: false,
             }
         );
     }

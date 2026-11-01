@@ -177,10 +177,7 @@ fn list_tunnels(snapshot: &Snapshot) -> Vec<(String, bool)> {
         .iter()
         .filter(|connection| connection.kind == WIREGUARD_KIND)
         .map(|connection| {
-            let is_active = snapshot
-                .active_connections
-                .iter()
-                .any(|active| active.uuid == connection.uuid);
+            let is_active = snapshot.find_active_by_uuid(&connection.uuid).is_some();
             (connection.id.clone(), is_active)
         })
         .collect();
@@ -493,7 +490,7 @@ mod tests {
             interface: format!("if{number}"),
             active_connection: active_connection.map(str::to_owned),
             access_points: Vec::new(),
-            active_access_point: None,
+            last_scan: 0,
         }
     }
 
@@ -567,6 +564,7 @@ mod tests {
             id: id.to_owned(),
             uuid: format!("u{number}"),
             kind: kind.to_owned(),
+            should_autoconnect: true,
         };
         let snapshot = Snapshot {
             settings_connections: vec![
