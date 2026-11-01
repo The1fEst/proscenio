@@ -115,6 +115,7 @@ the first monitor when there is none.
 | | `toggleMicrophoneMute` | Mutes or unmutes the default microphone, as `micMuteToggle` does in [Global shortcuts](shortcuts.md) |
 | `keyboard` | `cycleLayout` | Switches every keyboard to the next layout, as `xkbLayoutNext` does in [Global shortcuts](shortcuts.md); nothing happens with one layout |
 | `theme` | `toggleLightDark` | Switches between dark and light mode with `proscenio switchwall --noswitch`; see [Colors from the wallpaper](colors.md) |
+| | `setDarkMode`, `setLightMode` | Switches to dark or light mode the same way, instead of toggling |
 | `cliphistService` | `update` | Reads the clipboard history from `cliphist` again |
 | `wallpaperSelector` | `toggle` | The [wallpaper selector](wallpaper-selector.md) |
 | | `random` | Applies a random wallpaper from the selector's folder |

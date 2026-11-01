@@ -601,6 +601,14 @@ fn register_ipc(
         let session = services.session.clone();
         move || session.toggle_dark_mode()
     });
+    ipc.add("theme", "setDarkMode", {
+        let session = services.session.clone();
+        move || session.set_dark_mode(true)
+    });
+    ipc.add("theme", "setLightMode", {
+        let session = services.session.clone();
+        move || session.set_dark_mode(false)
+    });
     ipc.add("audio", "cycleOutput", {
         let audio = services.audio.clone();
         move || {
