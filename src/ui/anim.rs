@@ -201,10 +201,6 @@ impl Fader {
         })
     }
 
-    pub fn is_shown(&self) -> bool {
-        self.tween.get().target() > 0.0
-    }
-
     pub fn show(self: &Rc<Self>, should_show: bool) {
         let Some(widget) = self.widget.upgrade() else {
             return;

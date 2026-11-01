@@ -266,8 +266,7 @@ A left click on the clock opens or closes the [calendar](calendar.md). A left cl
 the clock group that is not a button, such as the battery or the space between widgets, toggles the
 sidebar.
 
-Hovering the clock opens a popup with the full date, the system uptime, and up to five unfinished
-tasks from the calendar's to-do list, numbered, with "… and N more" past five, or "No pending tasks".
+Hovering the clock opens a popup with the full date and the system uptime.
 
 ### Recording indicator
 

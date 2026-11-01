@@ -125,7 +125,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
         ],
     );
     std::mem::forget(DeviceNotifications::start());
-    let launcher = launcher::Launcher::new(&services.cliphist, &services.todo, &services.net);
+    let launcher = launcher::Launcher::new(&services.cliphist, &services.net);
     let osd = osd::Osd::new(app, &services, &theme);
     let region = regionselector::RegionSelector::new(
         app,

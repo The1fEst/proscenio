@@ -47,7 +47,6 @@ use crate::services::session::location::Location;
 use crate::services::session::notes::Notes;
 use crate::services::session::states::States;
 use crate::services::session::timer::Timer;
-use crate::services::session::todo::Todo;
 use crate::services::session::weather::Weather;
 use crate::services::updates::Updates;
 
@@ -75,7 +74,6 @@ pub struct Services {
     pub easyeffects: EasyEffects,
     pub warp: Warp,
     pub weather: std::rc::Rc<Weather>,
-    pub todo: Todo,
     pub notes: std::rc::Rc<Notes>,
     pub agenda: std::rc::Rc<Agenda>,
     pub timer: Timer,
@@ -143,7 +141,6 @@ impl Services {
             updates: Updates::new(),
             easyeffects: EasyEffects::new(),
             warp: Warp::new(),
-            todo: Todo::new(),
             notes: Notes::new(),
             agenda: Agenda::new(session_for_agenda),
             timer: Timer::new(),

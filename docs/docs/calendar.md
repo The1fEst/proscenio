@@ -1,15 +1,14 @@
 ---
 title: Calendar
 sidebar_label: Calendar
-description: The panel the bar's clock opens, with a month view that shows Evolution Data Server events, a to-do list, and a pomodoro timer and stopwatch.
+description: The panel the bar's clock opens, with a month view that shows Evolution Data Server events, and a pomodoro timer and stopwatch.
 ---
 
 # Calendar
 
-Clicking the clock on the [bar](bar.md) opens a panel with a navigation rail on the left and three
-pages: **Calendar**, **To Do** and **Timer**. The source is in `src/panels/calendar/`, with the
-timer in `src/services/session/timer.rs`, the list in `src/services/session/todo.rs` and the events
-in `src/services/session/agenda/`.
+Clicking the clock on the [bar](bar.md) opens a panel with a navigation rail on the left and two
+pages: **Calendar** and **Timer**. The source is in `src/panels/calendar/`, with the timer in
+`src/services/session/timer.rs` and the events in `src/services/session/agenda/`.
 
 ![The calendar panel under the bar's clock](/img/screenshots/calendar.webp)
 
@@ -27,17 +26,15 @@ in `src/services/session/agenda/`.
 The page that was open last is remembered in `~/.local/state/proscenio/states.json` (under
 `$XDG_STATE_HOME` when that is set), so the panel opens on it again, also after a restart. Switching
 pages slides the old one out and the new one in, and resets the page switched to: the calendar
-returns to the current month, the to-do list and the timer to their first tab.
+returns to the current month and the timer to its first tab.
 
 ## Keys
 
 | Key | Page | Action |
 |---|---|---|
 | Ctrl+Page Up, Ctrl+Page Down | any | Previous or next page |
-| Escape | any | Close the panel, or the *Add task* dialog when it is open |
+| Escape | any | Close the panel |
 | Page Up, Page Down | Calendar | Previous or next month |
-| Page Up, Page Down | To Do | *Unfinished* or *Done* |
-| N | To Do | Add a task |
 | Page Up, Page Down | Timer | *Pomodoro* or *Stopwatch* |
 | Space or S | Timer | Start, pause or resume the timer on screen |
 | R | Timer | Reset the timer on screen |
@@ -83,18 +80,6 @@ events and cancelled instances of a series are left out.
 
 With **Calendar events** off (`time.calendarEvents`, on by default), under **Clock & Calendar** on
 **System › Date & Time** (see [System settings](settings-system.md)), the panel never contacts EDS.
-
-## To Do
-
-Two lists, **Unfinished** and **Done**, under a tab bar; drag sideways to move between them. Each
-task is a card with its text, a button that marks it done (or not done again) and a button that
-deletes it. An empty list shows a placeholder.
-
-The round **+** button in the corner, or N, opens *Add task*: type the task and press Enter or
-**Add**. A new task goes to *Unfinished*, and the list switches there.
-
-The tasks are kept in `~/.local/state/proscenio/todo.json`, an array of
-`{"content": "…", "done": false}` objects.
 
 ## Timer
 

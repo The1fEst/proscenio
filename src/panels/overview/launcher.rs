@@ -17,7 +17,6 @@ use crate::platform::dbus::notify::{self, Notification};
 use crate::platform::system::desktop::{self, DesktopAction, DesktopEntry};
 use crate::services::files::cliphist::{self, Cliphist};
 use crate::services::network::net::Net;
-use crate::services::session::todo::Todo;
 
 const EMOJI_DATA: &str = "### DATA ###";
 const FUZZY_BONUS: f64 = 10.0;
@@ -101,13 +100,12 @@ pub struct Launcher {
     is_emoji_loading: Rc<Cell<bool>>,
     dmenu: Rc<RefCell<Sessions>>,
     cliphist: Cliphist,
-    todo: Todo,
     net: Net,
     listeners: Rc<Listeners>,
 }
 
 impl Launcher {
-    pub fn new(cliphist: &Cliphist, todo: &Todo, net: &Net) -> Self {
+    pub fn new(cliphist: &Cliphist, net: &Net) -> Self {
         let launcher = Launcher {
             query: Rc::new(RefCell::new(String::new())),
             math_answer: Rc::new(RefCell::new(String::new())),
@@ -121,7 +119,6 @@ impl Launcher {
             is_emoji_loading: Rc::new(Cell::new(false)),
             dmenu: Rc::default(),
             cliphist: cliphist.clone(),
-            todo: todo.clone(),
             net: net.clone(),
             listeners: Rc::new(Listeners::default()),
         };
@@ -627,7 +624,6 @@ impl Launcher {
             "light" => crate::theming::switchwallqueue::request(&["--mode", "light", "--noswitch"]),
             "notepad" => crate::core::actions::run("notepadToggle"),
             "superpaste" => self.superpaste(arguments),
-            "todo" => self.todo.add(arguments),
             "wallpaper" => crate::core::actions::run("wallpaperSelectorToggle"),
             "wipeclipboard" => self.cliphist.wipe(),
             _ => {}
@@ -658,13 +654,12 @@ impl Launcher {
     }
 }
 
-const BUILTINS: [&str; 8] = [
+const BUILTINS: [&str; 7] = [
     "accentcolor",
     "dark",
     "light",
     "notepad",
     "superpaste",
-    "todo",
     "wallpaper",
     "wipeclipboard",
 ];

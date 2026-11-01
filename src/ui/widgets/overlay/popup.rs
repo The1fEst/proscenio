@@ -171,11 +171,3 @@ pub fn value(icon: &str, label: &str, value: &str) -> (gtk4::Widget, gtk4::Label
 
     (row.upcast(), value_label)
 }
-
-pub fn note(value: &str) -> gtk4::Label {
-    let label = text::styled(value);
-    text::set_color(&label, "colOnSurfaceVariant");
-    label.set_xalign(0.0);
-    label.set_wrap(true);
-    label
-}

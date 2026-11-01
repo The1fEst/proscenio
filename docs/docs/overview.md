@@ -95,7 +95,7 @@ with the clean environment `pkexec` gives.
 ### Actions
 
 An action is shown while its name, with the action prefix in front, starts with the query or the
-query starts with it. Whatever follows the first space is the action's argument: `/todo buy milk`.
+query starts with it. Whatever follows the first space is the action's argument: `/superpaste 4i`.
 
 | Action | Does |
 |---|---|
@@ -103,7 +103,6 @@ query starts with it. Whatever follows the first space is the action's argument:
 | `dark`, `light` | Switches the color scheme, keeping the wallpaper |
 | `notepad` | Opens or closes the [notepad](notepad.md) |
 | `superpaste` | Pastes the last N clipboard entries, oldest first, by copying each and pressing Ctrl+V with `ydotool`; `/superpaste 4i` pastes the last four images |
-| `todo` | Adds a task to the to-do list of the [calendar](calendar.md) |
 | `wallpaper` | Opens the [wallpaper selector](wallpaper-selector.md) |
 | `wipeclipboard` | Deletes the whole clipboard history |
 

@@ -13,7 +13,6 @@ mod schedule;
 pub mod states;
 pub mod timedate;
 pub mod timer;
-pub mod todo;
 pub mod weather;
 
 use gtk4::gio;

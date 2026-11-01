@@ -4,7 +4,6 @@ pub mod month;
 pub mod navrail;
 pub mod pinned;
 pub mod pomodoro;
-pub mod todo;
 
 use gtk4::gdk;
 use gtk4::glib;
@@ -25,13 +24,8 @@ use crate::ui::widgets::layout::centered::Centered;
 use month::Month;
 use navrail::NavRail;
 use pomodoro::TimerPage;
-use todo::TodoPage;
 
-const TABS: [(&str, &str); 3] = [
-    ("calendar_month", "Calendar"),
-    ("done_outline", "To Do"),
-    ("schedule", "Timer"),
-];
+const TABS: [(&str, &str); 2] = [("calendar_month", "Calendar"), ("schedule", "Timer")];
 
 const NAMESPACE: &str = "proscenio:calendarPanel";
 const WIDTH: i32 = 420;
@@ -47,7 +41,6 @@ pub struct Calendar {
     pub window: gtk4::ApplicationWindow,
     grab: Option<Rc<grab::Grab>>,
     month: Rc<Month>,
-    todo_page: Rc<TodoPage>,
     timer_page: Rc<TimerPage>,
     vertical: bool,
     clock: glib::WeakRef<gtk4::Widget>,
@@ -260,21 +253,12 @@ pub fn build(
         .unwrap_or(0);
 
     let month = month::build(theme, &services.agenda, scope);
-    let todo_page = todo::build(theme, &services.todo, scope);
     let timer_page = pomodoro::build(theme, &services.timer, scope);
-    let widgets: Vec<gtk4::Widget> = vec![
-        month.widget.clone(),
-        todo_page.widget.clone(),
-        timer_page.widget.clone(),
-    ];
+    let widgets: Vec<gtk4::Widget> = vec![month.widget.clone(), timer_page.widget.clone()];
     let resets: Vec<Box<dyn Fn()>> = vec![
         Box::new({
             let month = month.clone();
             move || month.reset()
-        }),
-        Box::new({
-            let todo_page = todo_page.clone();
-            move || todo_page.reset()
         }),
         Box::new({
             let timer_page = timer_page.clone();
@@ -366,7 +350,6 @@ pub fn build(
         window: window.clone(),
         grab: grab::Grab::new(&monitor.display()),
         month,
-        todo_page,
         timer_page,
         vertical: config.vertical,
         clock: glib::WeakRef::new(),
@@ -383,30 +366,19 @@ pub fn build(
             };
             let is_control_held = modifiers.contains(gdk::ModifierType::CONTROL_MASK);
             let tab_index = pages.current_index.get();
-            let todo_page = &calendar.todo_page;
             match key {
-                gdk::Key::Escape if tab_index == 1 && todo_page.is_adding() => {
-                    todo_page.close_dialog()
-                }
                 gdk::Key::Escape => calendar.hide(),
                 gdk::Key::Page_Down if is_control_held => pages.step(1),
                 gdk::Key::Page_Up if is_control_held => pages.step(-1),
                 gdk::Key::Page_Down if tab_index == 0 => calendar.month.step(1),
                 gdk::Key::Page_Up if tab_index == 0 => calendar.month.step(-1),
-                gdk::Key::Page_Down if tab_index == 1 && !todo_page.is_adding() => {
-                    todo_page.step(1)
-                }
-                gdk::Key::Page_Up if tab_index == 1 && !todo_page.is_adding() => todo_page.step(-1),
-                gdk::Key::n | gdk::Key::N if tab_index == 1 && !todo_page.is_adding() => {
-                    todo_page.open_dialog()
-                }
-                gdk::Key::Page_Down if tab_index == 2 => calendar.timer_page.step(1),
-                gdk::Key::Page_Up if tab_index == 2 => calendar.timer_page.step(-1),
-                gdk::Key::space | gdk::Key::s | gdk::Key::S if tab_index == 2 => {
+                gdk::Key::Page_Down if tab_index == 1 => calendar.timer_page.step(1),
+                gdk::Key::Page_Up if tab_index == 1 => calendar.timer_page.step(-1),
+                gdk::Key::space | gdk::Key::s | gdk::Key::S if tab_index == 1 => {
                     calendar.timer_page.toggle()
                 }
-                gdk::Key::r | gdk::Key::R if tab_index == 2 => calendar.timer_page.restart(),
-                gdk::Key::l | gdk::Key::L if tab_index == 2 => calendar.timer_page.lap(),
+                gdk::Key::r | gdk::Key::R if tab_index == 1 => calendar.timer_page.restart(),
+                gdk::Key::l | gdk::Key::L if tab_index == 1 => calendar.timer_page.lap(),
                 _ => return glib::Propagation::Proceed,
             }
             glib::Propagation::Stop

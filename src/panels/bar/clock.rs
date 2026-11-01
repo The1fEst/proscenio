@@ -1,12 +1,11 @@
 use gtk4::glib;
 use gtk4::prelude::*;
-use serde_json::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
-use crate::core::i18n::{tr, trf};
+use crate::core::i18n::tr;
 use crate::core::scope::Scope;
 use crate::core::watch;
 use crate::services::session::background::BackgroundTasks;
@@ -36,11 +35,6 @@ pub fn build(
     details.append(&today);
     let (uptime_row, uptime_value) = popup::value("timelapse", &tr("System uptime:"), &uptime());
     details.append(&uptime_row);
-    let tasks = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    tasks.append(&popup::value("checklist", &tr("To Do:"), "").0);
-    let tasks_note = popup::note(&pending_tasks());
-    tasks.append(&tasks_note);
-    details.append(&tasks);
 
     let show: Rc<dyn Fn()> = Rc::new(move || {
         let config = config::current();
@@ -55,7 +49,6 @@ pub fn build(
 
     scope.keep(background.add_scoped("clock details", move || {
         uptime_value.set_text(&uptime());
-        tasks_note.set_text(&pending_tasks());
         Ok(())
     }));
 
@@ -249,41 +242,6 @@ fn uptime() -> String {
             text.push_str(", ");
         }
         text.push_str(&format!("{minutes}m"));
-    }
-    text
-}
-
-fn pending_tasks() -> String {
-    let list = std::fs::read_to_string(crate::services::session::todo::path())
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .and_then(|value| value.as_array().cloned())
-        .unwrap_or_default();
-
-    let unfinished_tasks: Vec<&str> = list
-        .iter()
-        .filter(|item| item.get("done").and_then(Value::as_bool) != Some(true))
-        .filter_map(|item| item.get("content").and_then(Value::as_str))
-        .collect();
-    if unfinished_tasks.is_empty() {
-        return tr("No pending tasks");
-    }
-
-    let mut text = unfinished_tasks
-        .iter()
-        .take(5)
-        .enumerate()
-        .map(|(index, content)| format!("  {}. {content}", index + 1))
-        .collect::<Vec<_>>()
-        .join("\n");
-    if unfinished_tasks.len() > 5 {
-        text.push_str(&format!(
-            "\n  {}",
-            trf(
-                "... and %1 more",
-                &[&(unfinished_tasks.len() - 5).to_string()]
-            )
-        ));
     }
     text
 }

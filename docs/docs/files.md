@@ -13,7 +13,7 @@ The paths below use the defaults; `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_CACH
 | Folder | Holds |
 |---|---|
 | `~/.config/proscenio/` | What you write: the settings, launcher scripts, translations |
-| `~/.local/state/proscenio/` | What the shell remembers: the generated colors, timers, the to-do list |
+| `~/.local/state/proscenio/` | What the shell remembers: the generated colors and timers |
 | `~/.cache/proscenio/` | What can be rebuilt: notification history, images, album art |
 | `$XDG_RUNTIME_DIR/proscenio/` | Scratch files of the running session |
 | `~/.local/share/proscenio/` | The built-in default wallpaper, once written out |
@@ -72,7 +72,6 @@ array of its plural forms. Where both have a string, the catalog's wins.
 | `~/.local/state/proscenio/generated/` | The colors generated from the wallpaper; see [Colors from the wallpaper](colors.md) |
 | `~/.local/state/proscenio/states.json` | Timers and the stopwatch, the idle inhibitor and its end, the end of a timed Do Not Disturb, the calendar's last tab, the remembered screenshot region, the apps that have sent notifications, and the Hyprland instance proscenio last ran in |
 | `~/.local/state/proscenio/frecency.json` | How often and when each app was last started from the launcher; see [Apps](overview.md#apps) |
-| `~/.local/state/proscenio/todo.json` | The to-do list |
 | `~/.local/state/proscenio/notes/` | The notepad's notes, one `<id>.txt` each, and `index.json` with their order and the open tab; see [Notepad](notepad.md#what-is-kept) |
 | `~/.local/state/proscenio/shaders/<filter>.frag` | The color filter shaders the accessibility settings hand to Hyprland's `decoration:screen_shader` |
 | `~/.local/state/proscenio/first_run.txt` | Present once the welcome window has been shown |

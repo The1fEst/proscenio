@@ -568,45 +568,9 @@ entry.search-input > text > selection {
     background-color: var(--colLayer1);
     border-radius: 17px;
 }
-.todo-item {
-    background-color: var(--colLayer2);
-    border-radius: 12px;
-}
 .calendar-event {
     background-color: var(--colLayer2);
     border-radius: 12px;
-}
-.todo-fab {
-    border-radius: 16px;
-    box-shadow: 0 1px 6px 1px var(--colShadow);
-}
-.todo-scrim {
-    background-color: var(--colScrim);
-    border-radius: 12px;
-}
-.todo-dialog {
-    background-color: var(--m3surfaceContainerHigh);
-    border-radius: 17px;
-}
-.todo-field {
-    background: none;
-    border: 2px solid var(--m3outline);
-    border-radius: 8px;
-    min-height: 0;
-    padding: 8px 8px 8px 12px;
-    box-shadow: none;
-    outline: none;
-    color: var(--m3onSurfaceVariant);
-    caret-color: var(--colPrimary);
-}
-.todo-field:focus-within {
-    border-color: var(--colPrimary);
-    color: var(--m3onSurface);
-}
-.todo-field > text > placeholder { color: var(--m3outline); }
-.todo-field > text > selection {
-    background-color: var(--colSecondaryContainer);
-    color: var(--m3onSecondaryContainer);
 }
 .notepad {
     background-color: var(--colLayer0);
