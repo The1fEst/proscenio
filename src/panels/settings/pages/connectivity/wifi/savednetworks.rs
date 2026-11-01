@@ -164,7 +164,14 @@ fn row(
         let theme = page.theme.clone();
         let present = present.clone();
         let uuid = uuid.clone();
-        move |button| qrdialog::open(&theme, present.clone(), uuid.clone(), button)
+        move |button| {
+            qrdialog::open(
+                &theme,
+                present.clone(),
+                qrdialog::Source::Uuid(uuid.clone()),
+                button,
+            )
+        }
     });
     content.append(&share_button);
 

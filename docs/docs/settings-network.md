@@ -111,6 +111,7 @@ cannot join another network while it shares, so the connection to share is usual
 | Password | 8 to 63 characters |
 | Band | Automatic, 2.4 GHz or 5 GHz |
 | Share the connection | starts or stops the hotspot |
+| Share | shown while the hotspot is active; opens the QR code dialog for the stored `Hotspot` profile |
 
 Turning sharing on deletes every profile named `Hotspot` and starts a new one with
 `AddAndActivateConnection` on the first Wi-Fi device that can be an access point: access point mode,
@@ -121,6 +122,11 @@ own. The switch waits until NetworkManager reports the hotspot activated or fail
 brings `Hotspot` down. The switch shows whether that profile is active, and NetworkManager's error,
 or "NetworkManager could not start the hotspot", appears under it when starting fails. The fields
 start from the stored profile and its password, read with `GetSettings` and `GetSecrets`.
+
+**Share** shows the same dialog as a saved network's [Share](#saved-networks), built from the stored
+profile rather than from the fields, so it carries the name and password the running hotspot was
+started with. The code is `WIFI:T:WPA;S:<name>;P:<password>;;`; the hotspot is never hidden, so it
+has no `H:true`. A profile without a readable password shows "This network cannot be put in a code".
 
 ## Network
 

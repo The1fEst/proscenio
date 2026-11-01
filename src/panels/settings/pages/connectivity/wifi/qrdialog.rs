@@ -19,17 +19,22 @@ const QUIET_ZONE: usize = 4;
 const PASSWORD_SPACING: i32 = 8;
 const HIDDEN_CHARACTER: &str = "•";
 
+pub enum Source {
+    Uuid(String),
+    Id(String),
+}
+
 pub fn open(
     theme: &SharedTheme,
     present: Rc<dyn Fn(Rc<WindowDialog>)>,
-    uuid: String,
+    source: Source,
     trigger: &RippleButton,
 ) {
     trigger.set_sensitive(false);
     let trigger = trigger.downgrade();
     let theme = theme.clone();
     glib::spawn_future_local(async move {
-        let share = read_share(&uuid).await;
+        let share = read_share(source).await;
         if let Some(trigger) = trigger.upgrade() {
             trigger.set_sensitive(true);
         }
@@ -37,15 +42,23 @@ pub fn open(
     });
 }
 
-async fn read_share(uuid: &str) -> Result<(NetworkShare, Code), String> {
-    let stored_profile = nmsettings::load(uuid).await?;
+async fn read_share(source: Source) -> Result<(NetworkShare, Code), String> {
+    let uuid = match source {
+        Source::Uuid(uuid) => uuid,
+        Source::Id(id) => nmsettings::find_uuids(&id)
+            .await
+            .into_iter()
+            .next()
+            .ok_or_else(|| tr("This network cannot be put in a code"))?,
+    };
+    let stored_profile = nmsettings::load(&uuid).await?;
     let mut profile = stored_profile.profile;
     let has_password = matches!(
         profile.security(),
         Security::Personal | Security::Wpa3 | Security::Wep
     );
     if has_password && !stored_profile.are_secrets_read {
-        for secrets in nmsettings::fetch_secrets(uuid).await? {
+        for secrets in nmsettings::fetch_secrets(&uuid).await? {
             profile.merge_secrets(&secrets, true);
         }
     }

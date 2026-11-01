@@ -16,7 +16,11 @@ use crate::services::network::networkmanager::NetworkManager;
 use crate::services::network::networkmanager::calls::{self, NO_OBJECT};
 use crate::services::network::nmsettings;
 use crate::ui::widgets::display::text;
+use crate::ui::widgets::input::controls::icon_button;
 use crate::ui::widgets::input::textfield::TextField;
+use crate::ui::widgets::overlay::windowdialog::WindowDialog;
+
+use super::qrdialog;
 
 const CONNECTION: &str = "Hotspot";
 const WPA_CAPABILITY: u32 = 0x10;
@@ -121,6 +125,23 @@ pub fn build(context: &Context) -> Rc<Page> {
         }
     });
 
+    let (code_button, _) = icon_button(&page.theme, "qr_code", false, &tr("Share"));
+    code_button.set_halign(gtk4::Align::Start);
+    code_button.set_visible(false);
+    code_button.connect_clicked({
+        let theme = page.theme.clone();
+        let present: Rc<dyn Fn(Rc<WindowDialog>)> = Rc::new(context.dialog_presenter());
+        move |button| {
+            qrdialog::open(
+                &theme,
+                present.clone(),
+                qrdialog::Source::Id(CONNECTION.to_owned()),
+                button,
+            )
+        }
+    });
+    section.append(&code_button);
+
     let problem_label = text::styled("");
     text::set_color(&problem_label, "colError");
     problem_label.set_xalign(0.0);
@@ -148,6 +169,7 @@ pub fn build(context: &Context) -> Rc<Page> {
                 .iter()
                 .any(|connection| connection.name == CONNECTION && connection.is_active);
             hotspot.is_active.set(is_active);
+            code_button.set_visible(is_active);
             share_switch.refresh();
             share_switch.set_enabled(!hotspot.is_busy.get());
             band_selection.set_current(&Value::from(hotspot.band.borrow().clone()));
@@ -327,6 +349,7 @@ fn build_hotspot_settings(ssid: &str, password: &str, band: &str, capabilities: 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::platform::network::nmprofile::Profile;
 
     #[test]
     fn a_hotspot_shares_the_connection_with_the_strongest_cipher_the_adapter_offers() {
@@ -377,5 +400,15 @@ mod tests {
         let default_cipher_settings =
             read_settings(build_hotspot_settings("Attic", "secret12", "", 0x40));
         assert!(!default_cipher_settings[SECURITY].contains_key("proto"));
+    }
+
+    #[test]
+    fn a_hotspot_profile_is_shared_as_a_wpa_network_that_is_not_hidden() {
+        let profile =
+            Profile::from_variant(&build_hotspot_settings("Attic", "secret12", "a", 0x70)).unwrap();
+        let share = profile.to_network_share().unwrap();
+        assert_eq!(share.ssid, "Attic");
+        assert_eq!(share.password, "secret12");
+        assert_eq!(share.payload, "WIFI:T:WPA;S:Attic;P:secret12;;");
     }
 }
