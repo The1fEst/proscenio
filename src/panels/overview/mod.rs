@@ -1,3 +1,4 @@
+mod dmenu;
 pub mod grid;
 pub mod launcher;
 mod rows;
@@ -49,6 +50,7 @@ pub struct Overview {
     theme: SharedTheme,
     holder: gtk4::Box,
     entry: gtk4::Entry,
+    prompt: gtk4::Label,
     shape: Rc<Cell<Shape>>,
     shape_area: gtk4::DrawingArea,
     symbol: gtk4::Label,
@@ -59,6 +61,9 @@ pub struct Overview {
     current_index: Cell<usize>,
     is_list_focused: Cell<bool>,
     is_opened_with_prefix: Cell<bool>,
+    dmenu_session: Cell<u64>,
+    dmenu_lines: Cell<u32>,
+    is_dmenu_prompt_only: Cell<bool>,
     should_animate_width: Cell<bool>,
     is_list_shown: Cell<bool>,
     width: Cell<Tween>,
@@ -81,6 +86,7 @@ impl Overview {
     }
 
     pub fn open(self: &Rc<Self>) {
+        self.launcher.cancel_dmenu();
         if !self.is_opened_with_prefix.get() {
             self.cancel_search();
         }
@@ -90,6 +96,10 @@ impl Overview {
         self.show_grid(self.query().is_empty());
         self.focus_entry();
         self.run();
+        self.hold_grab();
+    }
+
+    fn hold_grab(self: &Rc<Self>) {
         let (Some(grab), Some(surface)) = (self.grab.as_ref(), self.window.surface()) else {
             return;
         };
@@ -109,6 +119,7 @@ impl Overview {
         }
         self.window.set_visible(false);
         self.grid.close();
+        self.leave_dmenu();
         while let Some(child) = self.list.first_child() {
             self.list.remove(&child);
         }
@@ -144,6 +155,7 @@ impl Overview {
     }
 
     fn toggle_prefixed(self: &Rc<Self>, prefix: &str) {
+        self.launcher.cancel_dmenu();
         if self.window.is_visible() && self.is_opened_with_prefix.get() {
             self.hide();
             return;
@@ -258,9 +270,9 @@ impl Overview {
 
     fn activate(&self, index: usize) {
         let item = self.rows.borrow().get(index).map(|row| row.item.clone());
-        if let Some(item) = item {
-            self.hide();
-            self.launcher.execute(&item.run);
+        match item {
+            Some(item) => self.choose(&item.run),
+            None => self.accept_typed_text(),
         }
     }
 
@@ -341,12 +353,17 @@ impl Overview {
 
     fn refresh_bar(self: &Rc<Self>) {
         let query = self.query();
-        let (shape, icon) = prefix_look(&config::current(), &query);
+        let is_dmenu = self.dmenu_session.get() != 0;
+        let (shape, icon) = if is_dmenu {
+            (Shape::Cookie7Sided, "search")
+        } else {
+            prefix_look(&config::current(), &query)
+        };
         self.shape.set(shape);
         self.shape_area.queue_draw();
         self.symbol.set_text(icon);
         self.show_grid(query.is_empty());
-        let target = if query.is_empty() {
+        let target = if query.is_empty() && !is_dmenu {
             SEARCH_WIDTH_COLLAPSED
         } else {
             SEARCH_WIDTH
@@ -362,7 +379,8 @@ impl Overview {
     }
 
     fn show_grid(&self, is_query_empty: bool) {
-        let is_shown = is_query_empty && self.config.overview_enable;
+        let is_shown =
+            is_query_empty && self.config.overview_enable && self.dmenu_session.get() == 0;
         self.grid.widget.set_visible(is_shown);
         if is_shown && self.window.is_visible() {
             self.grid.open();
@@ -387,13 +405,13 @@ impl Overview {
     }
 
     fn resize(self: &Rc<Self>) {
-        let is_shown = !self.query().is_empty();
+        let is_shown = self.is_list_wanted();
         let was_shown = self.is_list_shown.replace(is_shown);
         self.rule.set_visible(is_shown);
         self.scroller.set_visible(is_shown);
         let width = self.list.width().max(SEARCH_WIDTH as i32);
         let natural_height = self.list.measure(gtk4::Orientation::Vertical, width).1;
-        let target = natural_height.min(LIST_MAX) as f64;
+        let target = natural_height.min(self.list_max()) as f64;
         let mut height = self.height.get();
         if is_shown && self.window.is_visible() {
             if !was_shown {
@@ -408,6 +426,20 @@ impl Overview {
     }
 
     fn on_results_changed(self: &Rc<Self>) {
+        let session = self.dmenu_session.get();
+        let current_session = self.launcher.dmenu_session();
+        if session != current_session {
+            if session != 0 {
+                self.hide();
+                return;
+            }
+            if current_session != 0 {
+                if self.window.is_visible() {
+                    self.hide();
+                }
+                return;
+            }
+        }
         self.refresh_bar();
         self.current_index.set(0);
         self.fill();
@@ -491,6 +523,10 @@ fn prefix_look(config: &Config, query: &str) -> (Shape, &'static str) {
     (Shape::Cookie7Sided, "search")
 }
 
+fn search_placeholder() -> String {
+    tr("Search, calculate or run")
+}
+
 fn now(widget: &impl IsA<gtk4::Widget>) -> i64 {
     widget
         .frame_clock()
@@ -541,7 +577,7 @@ pub fn build(
     let entry = gtk4::Entry::new();
     entry.add_css_class("search-input");
     entry.set_has_frame(false);
-    entry.set_placeholder_text(Some(&tr("Search, calculate or run")));
+    entry.set_placeholder_text(Some(&search_placeholder()));
     entry.set_margin_top(BAR_PADDING);
     entry.set_margin_bottom(BAR_PADDING);
     entry.set_valign(gtk4::Align::Center);
@@ -555,6 +591,11 @@ pub fn build(
         attributes
     });
 
+    let prompt = text::styled_sized("", pixel_size::SMALL);
+    text::set_color(&prompt, "colSubtext");
+    prompt.set_valign(gtk4::Align::Center);
+    prompt.set_visible(false);
+
     let filler = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     filler.set_hexpand(true);
 
@@ -564,6 +605,7 @@ pub fn build(
     bar.set_margin_top(BAR_PADDING);
     bar.set_margin_bottom(BAR_PADDING);
     bar.append(&shape_holder);
+    bar.append(&prompt);
     bar.append(&entry);
     bar.append(&filler);
 
@@ -628,6 +670,7 @@ pub fn build(
         theme: theme.clone(),
         holder: holder.clone(),
         entry: entry.clone(),
+        prompt,
         shape,
         shape_area,
         symbol,
@@ -638,6 +681,9 @@ pub fn build(
         current_index: Cell::new(0),
         is_list_focused: Cell::new(false),
         is_opened_with_prefix: Cell::new(false),
+        dmenu_session: Cell::new(0),
+        dmenu_lines: Cell::new(0),
+        is_dmenu_prompt_only: Cell::new(false),
         should_animate_width: Cell::new(false),
         is_list_shown: Cell::new(false),
         width: Cell::new(Tween::new(

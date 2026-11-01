@@ -71,6 +71,7 @@ The shell exports the interface on the session bus, under its application ID:
 |---|---|---|
 | `Show` | `() → (s targets)` | The text `ipc show` prints |
 | `Call` | `(as arguments) → (s output, s error)` | `arguments` is what follows `call` on the command line; `error` is one of the messages above, or empty |
+| `Dmenu` | `(s prompt, s placeholder, u lines, b promptOnly, as items) → (b accepted, s choice)` | Opens the launcher on the focused monitor with `items` and replies when it closes; `accepted` is false when it was cancelled. The reply waits as long as the launcher is open, so the call needs no timeout. [`proscenio dmenu`](command-line.md#dmenu) makes it |
 
 Any D-Bus client can call it:
 

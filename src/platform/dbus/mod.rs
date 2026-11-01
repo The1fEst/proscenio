@@ -1,4 +1,5 @@
 pub mod dbusmenu;
+pub mod dmenu;
 pub mod fprint;
 pub mod geoclue;
 pub mod ipc;

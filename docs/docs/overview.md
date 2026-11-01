@@ -173,6 +173,19 @@ same rate (at most 30 frames a second per window), never the cursor. A window wh
 three times in a row keeps its last picture, or none. The capturer starts when the grid shows and
 stops when it hides.
 
+## Dmenu mode
+
+[`proscenio dmenu`](command-line.md#dmenu) opens the overview on the focused monitor to pick a line
+from a list another program supplies. The list replaces the results: it shows from the start, with
+the field empty, and the grid, the prefixes and the math, command and app results are gone. The
+prompt, when there is one, stands left of the field, and the placeholder replaces "Search, calculate
+or run". Typing filters the list the way the emoji prefix filters emoji, fuzzily, or by Levenshtein
+distance with `search.sloppy`.
+
+Enter or a click on a row hands that row back to the caller. Enter with nothing matching hands back
+the text in the field. Escape, a click outside, or opening the overview any other way cancels. A
+second `proscenio dmenu` while one is open cancels the first. Dmenu mode records no app usage.
+
 ## Settings
 
 The grid's settings are under **Multitasking › Overview** in the
@@ -199,8 +212,9 @@ once.
 The overview is one surface per monitor on the `top` layer, namespace `proscenio:overview`, that
 takes the keyboard while it is open. `src/panels/overview/mod.rs` draws the field,
 `rows.rs` the results and the clipboard image previews, `launcher.rs` next to them builds the results,
-and `grid/` draws the grid. Results are built 15 rows
-at a time, and more as the list scrolls toward its end.
+`dmenu.rs` the dmenu mode, and `grid/` draws the grid. Results are built 15 rows
+at a time, and more as the list scrolls toward its end, so a list of tens of thousands of lines
+costs one match per keystroke and 15 rows on screen.
 
 Opening the overview loads the app list and the clipboard history; the emoji table loads the first
 time the emoji prefix is typed. Closing it drops all of that, along with the clipboard images, which

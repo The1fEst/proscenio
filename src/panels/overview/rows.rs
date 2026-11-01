@@ -284,8 +284,7 @@ impl Overview {
             let run = row.item.run.clone();
             move |_| {
                 if let Some(overview) = overview.upgrade() {
-                    overview.hide();
-                    overview.launcher.execute(&run);
+                    overview.choose(&run);
                 }
             }
         });

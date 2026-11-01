@@ -13,6 +13,7 @@ without starting the shell.
 |---|---|
 | `proscenio` | Runs the shell |
 | `proscenio ipc …` | Calls the running shell; see [IPC](ipc.md) |
+| `proscenio dmenu …` | Picks a line from standard input in the launcher; see [dmenu](#dmenu) |
 | `proscenio switchwall …` | Sets the wallpaper and recolors; see [Colors from the wallpaper](colors.md) |
 | `proscenio colors …` | Generates a palette or picks a scheme for an image |
 | `proscenio record …` | Starts or stops a screen recording |
@@ -50,6 +51,48 @@ proscenio ipc call <target> <function> [arguments…]
 
 Lists what the running shell offers, or calls one function of it. It exits with 255 when no shell
 runs. [IPC](ipc.md) lists every target.
+
+## dmenu
+
+```bash
+proscenio dmenu [-p PROMPT] [-l LINES] [--placeholder TEXT] [-i] [--prompt-only]
+```
+
+Reads standard input as text, one item per line, shows the items in the
+[launcher](overview.md#dmenu-mode) on the focused monitor and prints the chosen item on standard
+output. The command runs until the launcher closes.
+
+| Option | Meaning |
+|---|---|
+| `-p`, `--prompt TEXT` | A label left of the field; none by default |
+| `-l`, `--lines N` | The number of rows the list shows before it scrolls, within the launcher's 600 pixels; 0, the default, uses all 600 |
+| `--placeholder TEXT` | The text shown in an empty field; none by default |
+| `-i` | Accepted for rofi and dmenu scripts, and does nothing: matching ignores case |
+| `--prompt-only` | Shows only the field, reads no standard input and prints what was typed |
+
+Every option that takes a value also takes the form `--option=value`.
+
+| Exit status | When |
+|---|---|
+| 0 | An item, or the typed text, was chosen and printed |
+| 1 | The launcher was cancelled, or standard input held no item; an unknown option also gives 1, with the usage on stderr |
+| 2 | No shell answered, or it could not take the request; the reason goes to stderr |
+
+Lines end at `\n`; a `\r` before it is dropped, and so is the empty line a final newline leaves.
+Other empty lines are items. Bytes that are not UTF-8, and NUL bytes, become U+FFFD. The items travel in one D-Bus
+message to the shell, so input too large for one message fails with status 2.
+
+Enter chooses the highlighted item, which is the first match until Up or Down moves it. With no match
+it chooses the text in the field, as rofi does. Escape cancels. Only one request is open at a time:
+a second `proscenio dmenu` cancels the first, which then exits with 1, and takes its place. Opening
+the overview another way cancels it too, and so does the command ending before the launcher closes,
+for instance on Ctrl+C.
+
+```bash
+cliphist list | proscenio dmenu -p Clipboard | cliphist decode | wl-copy
+printf '%s\n' Yes No | proscenio dmenu -p 'Delete the file?' -l 2
+name=$(proscenio dmenu --prompt-only -p 'Rename to')
+```
 
 ## switchwall
 

@@ -22,7 +22,7 @@ use crate::panels::{
     bluetoothagent, conflicts, displayconfirm, keyringprompt, lock, osd, osk, polkit,
     regionselector, renderercheck, settings, wallpaperselector, welcome,
 };
-use crate::platform::dbus::ipc;
+use crate::platform::dbus::{dmenu, ipc};
 use crate::platform::hyprland::hypr;
 use crate::platform::system::{locale, readiness};
 use crate::platform::wayland::shortcuts;
@@ -59,6 +59,9 @@ fn main() -> glib::ExitCode {
     }
     if command == Some("ipc") {
         return ipc::client(APP_ID, &arguments[2..]);
+    }
+    if command == Some(dmenu::COMMAND) {
+        return dmenu::run(APP_ID, &arguments[2..]);
     }
     paths::prepare();
     match command {
@@ -633,6 +636,14 @@ fn register_ipc(
     ipc.add("cliphistService", "update", {
         let cliphist = services.cliphist.clone();
         move || cliphist.refresh()
+    });
+    ipc.set_dmenu_handler(move |request, responder| {
+        let pending = Cell::new(Some((request, responder)));
+        run_on_focused(&|screen_surfaces| {
+            if let Some((request, responder)) = pending.take() {
+                screen_surfaces.overview.open_dmenu(request, responder);
+            }
+        });
     });
     deadlineipc::register(ipc, services);
     ipctargets::register(ipc, services);

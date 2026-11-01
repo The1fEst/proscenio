@@ -4,10 +4,13 @@ use gtk4::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use super::dmenu;
+use crate::core::dmenu::{Request, Responder};
+
 pub const USAGE: &str =
     "usage: proscenio ipc show\n       proscenio ipc call <target> <function> [arguments…]\n";
-const PATH: &str = "/dev/fEst/Proscenio";
-const INTERFACE: &str = "dev.fEst.Proscenio.Ipc";
+pub(super) const PATH: &str = "/dev/fEst/Proscenio";
+pub(super) const INTERFACE: &str = "dev.fEst.Proscenio.Ipc";
 const TIMEOUT_MILLIS: i32 = 5000;
 const NO_INSTANCE: u8 = 255;
 const INTROSPECTION: &str = r#"<node>
@@ -19,6 +22,15 @@ const INTROSPECTION: &str = r#"<node>
       <arg name="arguments" type="as" direction="in"/>
       <arg name="output" type="s" direction="out"/>
       <arg name="error" type="s" direction="out"/>
+    </method>
+    <method name="Dmenu">
+      <arg name="prompt" type="s" direction="in"/>
+      <arg name="placeholder" type="s" direction="in"/>
+      <arg name="lines" type="u" direction="in"/>
+      <arg name="promptOnly" type="b" direction="in"/>
+      <arg name="items" type="as" direction="in"/>
+      <arg name="accepted" type="b" direction="out"/>
+      <arg name="choice" type="s" direction="out"/>
     </method>
   </interface>
 </node>"#;
@@ -46,9 +58,14 @@ impl Function {
 #[derive(Default)]
 pub struct Ipc {
     targets: RefCell<Vec<(&'static str, Vec<Function>)>>,
+    dmenu: RefCell<Option<dmenu::Handler>>,
 }
 
 impl Ipc {
+    pub fn set_dmenu_handler(&self, handler: impl Fn(Request, Responder) + 'static) {
+        self.dmenu.replace(Some(Rc::new(handler)));
+    }
+
     pub fn add(&self, target: &'static str, name: &'static str, action: impl Fn() + 'static) {
         self.add_with(target, name, &[], move |_| action());
     }
@@ -89,12 +106,16 @@ impl Ipc {
         let ipc = Rc::downgrade(self);
         let _ = connection
             .register_object(PATH, &interface)
-            .method_call(move |_, _, _, _, method, call, invocation| {
+            .method_call(move |connection, sender, _, _, method, call, invocation| {
                 let Some(ipc) = ipc.upgrade() else {
                     invocation.return_value(None);
                     return;
                 };
                 match method {
+                    dmenu::METHOD => {
+                        let handler = ipc.dmenu.borrow().clone();
+                        dmenu::serve(handler, &connection, sender, &call, invocation);
+                    }
                     "Show" => invocation.return_value(Some(&(ipc.show(),).to_variant())),
                     "Call" => {
                         let arguments =

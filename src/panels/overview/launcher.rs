@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config::{self, Config};
+use crate::core::dmenu::{Reply, Request, Responder, Sessions};
 use crate::core::frecency::{self, UsageHistory};
 use crate::core::fuzzy::{self, SearchTarget};
 use crate::core::i18n::{tr, trf};
@@ -71,6 +72,7 @@ pub enum Run {
     DeleteEntry(String),
     Builtin(&'static str, String),
     Script(String, String),
+    Dmenu(u64, usize),
 }
 
 struct Emojis {
@@ -97,6 +99,7 @@ pub struct Launcher {
     emojis: Rc<RefCell<Option<Rc<Emojis>>>>,
     emoji_generation: Rc<Cell<u64>>,
     is_emoji_loading: Rc<Cell<bool>>,
+    dmenu: Rc<RefCell<Sessions>>,
     cliphist: Cliphist,
     todo: Todo,
     net: Net,
@@ -116,6 +119,7 @@ impl Launcher {
             emojis: Rc::new(RefCell::new(None)),
             emoji_generation: Rc::new(Cell::new(0)),
             is_emoji_loading: Rc::new(Cell::new(false)),
+            dmenu: Rc::default(),
             cliphist: cliphist.clone(),
             todo: todo.clone(),
             net: net.clone(),
@@ -124,7 +128,11 @@ impl Launcher {
         cliphist
             .subscribe({
                 let launcher = launcher.clone();
-                move || launcher.announce()
+                move || {
+                    if launcher.dmenu_session() == 0 {
+                        launcher.announce();
+                    }
+                }
             })
             .detach();
         launcher
@@ -138,8 +146,37 @@ impl Launcher {
         self.listeners.add(listener)
     }
 
-    fn announce(&self) {
+    pub fn announce(&self) {
         self.listeners.notify();
+    }
+
+    pub fn begin_dmenu(&self, request: Request, responder: Responder) -> u64 {
+        if let Some(source) = self.math_timer.borrow_mut().take() {
+            source.remove();
+        }
+        self.math_generation.set(self.math_generation.get() + 1);
+        let on_abandon = responder.on_abandon();
+        let session = self.dmenu.borrow_mut().begin(request, responder);
+        let launcher = self.clone();
+        on_abandon.set(move || {
+            launcher.finish_dmenu(session, Reply::Cancellation);
+            launcher.announce();
+        });
+        session
+    }
+
+    pub fn dmenu_session(&self) -> u64 {
+        self.dmenu.borrow().id()
+    }
+
+    pub fn finish_dmenu(&self, session: u64, reply: Reply) {
+        self.dmenu.borrow_mut().finish(session, reply);
+    }
+
+    pub fn cancel_dmenu(&self) {
+        if self.dmenu.borrow_mut().cancel() {
+            self.announce();
+        }
     }
 
     pub fn load(&self) {
@@ -218,6 +255,7 @@ impl Launcher {
         }
         self.query.replace(query.to_owned());
         let is_special = query.is_empty()
+            || self.dmenu_session() != 0
             || query.starts_with(&self.config().search_clipboard)
             || query.starts_with(&self.config().search_emojis);
         if !is_special {
@@ -227,6 +265,9 @@ impl Launcher {
     }
 
     pub fn clean_one_prefix<'a>(&self, text: &'a str) -> &'a str {
+        if self.dmenu_session() != 0 {
+            return text;
+        }
         let config = self.config();
         for prefix in [
             &config.search_action,
@@ -285,8 +326,21 @@ impl Launcher {
         });
     }
 
+    fn dmenu_results(&self, query: &str) -> Vec<Item> {
+        let sessions = self.dmenu.borrow();
+        let session = sessions.id();
+        sessions
+            .search(query, levenshtein::is_enabled())
+            .into_iter()
+            .filter_map(|index| Some(Item::new(sessions.item(index)?, Run::Dmenu(session, index))))
+            .collect()
+    }
+
     pub fn results(&self) -> Vec<Item> {
         let query = self.query.borrow().clone();
+        if self.dmenu_session() != 0 {
+            return self.dmenu_results(&query);
+        }
         let config = self.config();
         if query.is_empty() {
             return Vec::new();
@@ -550,6 +604,7 @@ impl Launcher {
             Run::CopyEntry(entry) => self.cliphist.copy(entry),
             Run::DeleteEntry(entry) => self.cliphist.delete_entry(entry),
             Run::Builtin(name, arguments) => self.builtin(name, arguments),
+            Run::Dmenu(session, index) => self.dmenu.borrow_mut().accept(*session, *index),
             Run::Script(path, arguments) => {
                 let mut argv = vec![path.as_str()];
                 if !arguments.is_empty() {
