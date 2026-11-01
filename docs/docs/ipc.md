@@ -119,6 +119,8 @@ the first monitor when there is none.
 | | `focus` | Gives the lock screen the keyboard again, for after resuming |
 | `inhibit` | `toggle`, `enable`, `disable` | The idle and sleep inhibitor of the [Keep awake](quick-toggles.md#keep-awake) toggle; `enable` holds it until it is released |
 | | `enableFor(minutes: string)` | Holds it for that many minutes; a value that is not a whole number above 0 is ignored |
+| `nightLight` | `toggle`, `enable`, `disable` | The [Night Light](quick-toggles.md#night-light) toggle, which also overrides its schedule until the schedule next moves away from or arrives at the new state |
+| | `setTemperature(kelvin: string)` | Saves `light.night.colorTemperature`; a value that is not a whole number from 1000 to 6500 is ignored |
 | `welcome` | `toggle`, `open`, `close` | The [welcome window](first-run.md) |
 | `notifications` | `toggleDoNotDisturb`, `enableDoNotDisturb`, `disableDoNotDisturb` | [Do Not Disturb](notifications.md#do-not-disturb) on and off, `enableDoNotDisturb` until it is switched off |
 | | `enableDoNotDisturbFor(minutes: string)` | Turns it on for that many minutes; a value that is not a whole number above 0 is ignored |
