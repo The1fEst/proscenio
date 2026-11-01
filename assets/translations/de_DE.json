@@ -1646,5 +1646,6 @@
   "%1 lines": ["%1 Zeile", "%1 Zeilen"],
   "%1 characters": ["%1 Zeichen", "%1 Zeichen"],
   "Find": "Suchen",
-  "%1 of %2": "%1 von %2"
+  "%1 of %2": "%1 von %2",
+  "Notepad": "Notizblock"
 }

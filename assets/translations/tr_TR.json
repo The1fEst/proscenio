@@ -1646,5 +1646,6 @@
   "%1 lines": ["%1 satır"],
   "%1 characters": ["%1 karakter"],
   "Find": "Bul",
-  "%1 of %2": "%1 / %2"
+  "%1 of %2": "%1 / %2",
+  "Notepad": "Not defteri"
 }

@@ -284,6 +284,7 @@ impl Config {
             util_mic: flag(&util, "showMicToggle", false),
             util_dark_mode: flag(&util, "showDarkModeToggle", true),
             util_power_profile: flag(&util, "showPerformanceProfileToggle", false),
+            util_notepad: flag(&util, "showNotepad", false),
             updates_enable_check: flag(&updates, "enableCheck", true),
             updates_include_flatpak: flag(&updates, "includeFlatpak", true),
             updates_interval: number(&updates, "checkInterval", 120.0) as i32,

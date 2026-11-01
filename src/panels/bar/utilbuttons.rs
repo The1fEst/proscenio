@@ -54,6 +54,12 @@ pub fn build(
         row.append(&button);
     }
 
+    if config.util_notepad {
+        let (button, _) = circle(theme, "edit_note", 0.0);
+        button.connect_clicked(|_| crate::core::actions::run("notepadToggle"));
+        row.append(&button);
+    }
+
     if config.util_mic
         && let Some(audio) = &services.audio
     {

@@ -60,6 +60,7 @@ proscenio runs only on Hyprland, and leans on it in three places:
 | [The background](background.md) | The wallpaper, its parallax, and the clock and weather over it |
 | [Screen corners](screen-corners.md) | Rounded corners and the corner regions that open panels |
 | [Calendar](calendar.md) | The month view, the to-do list, the pomodoro timer and stopwatch |
+| [Notepad](notepad.md) | The panel on the left edge for quick notes in tabs, saved by themselves |
 | [Media controls](media-controls.md) | Player cards colored from the album art |
 | [Volume mixer](volume-mixer.md) | The output device, the master volume and the volume of each app playing sound |
 | [On-screen display](osd.md) | The volume, brightness and gamma indicator |

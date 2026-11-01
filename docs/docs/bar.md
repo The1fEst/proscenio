@@ -289,6 +289,7 @@ A row of round buttons after the clock, shown on wide screens with Verbose on. E
 | Record | `showScreenRecord` | off | runs `proscenio record`: pick a region with `slurp`, record it with `wf-recorder` |
 | Color picker | `showColorPicker` | off | runs `hyprpicker -a`, which copies the picked color |
 | Keyboard toggle | `showKeyboardToggle` | on | shows or hides the [on-screen keyboard](on-screen-keyboard.md) |
+| Notepad | `showNotepad` | off | shows or hides the [notepad](notepad.md) |
 | Mic toggle | `showMicToggle` | off | runs `wpctl set-mute @DEFAULT_SOURCE@ toggle`; the icon shows whether the microphone is muted |
 | Dark/Light toggle | `showDarkModeToggle` | on | switches the [color scheme](colors.md) between dark and light and keeps the wallpaper |
 | Performance profile toggle | `showPerformanceProfileToggle` | off | cycles power saver, balanced and performance; without a performance profile it switches between balanced and power saver |

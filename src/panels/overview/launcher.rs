@@ -625,6 +625,7 @@ impl Launcher {
             }
             "dark" => crate::theming::switchwallqueue::request(&["--mode", "dark", "--noswitch"]),
             "light" => crate::theming::switchwallqueue::request(&["--mode", "light", "--noswitch"]),
+            "notepad" => crate::core::actions::run("notepadToggle"),
             "superpaste" => self.superpaste(arguments),
             "todo" => self.todo.add(arguments),
             "wallpaper" => crate::core::actions::run("wallpaperSelectorToggle"),
@@ -657,10 +658,11 @@ impl Launcher {
     }
 }
 
-const BUILTINS: [&str; 7] = [
+const BUILTINS: [&str; 8] = [
     "accentcolor",
     "dark",
     "light",
+    "notepad",
     "superpaste",
     "todo",
     "wallpaper",

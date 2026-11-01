@@ -66,12 +66,20 @@ pub fn build(context: &Context) -> Rc<Page> {
                 false,
             ),
         ],
-        &[(
-            "videocam",
-            "Record",
-            "/bar/utilButtons/showScreenRecord",
-            false,
-        )],
+        &[
+            (
+                "videocam",
+                "Record",
+                "/bar/utilButtons/showScreenRecord",
+                false,
+            ),
+            (
+                "edit_note",
+                "Notepad",
+                "/bar/utilButtons/showNotepad",
+                false,
+            ),
+        ],
     ];
     for items in rows {
         let row = page.uniform_row(&buttons_section);

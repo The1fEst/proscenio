@@ -1646,5 +1646,6 @@
   "%1 lines": ["%1 ligne", "%1 lignes"],
   "%1 characters": ["%1 caractère", "%1 caractères"],
   "Find": "Rechercher",
-  "%1 of %2": "%1 sur %2"
+  "%1 of %2": "%1 sur %2",
+  "Notepad": "Bloc-notes"
 }

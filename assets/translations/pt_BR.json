@@ -1646,5 +1646,6 @@
   "%1 lines": ["%1 linha", "%1 linhas"],
   "%1 characters": ["%1 caractere", "%1 caracteres"],
   "Find": "Localizar",
-  "%1 of %2": "%1 de %2"
+  "%1 of %2": "%1 de %2",
+  "Notepad": "Bloco de notas"
 }

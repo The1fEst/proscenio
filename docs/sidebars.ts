@@ -24,6 +24,7 @@ const sidebars: SidebarsConfig = {
         'background',
         'screen-corners',
         'calendar',
+        'notepad',
         'media-controls',
         'volume-mixer',
         'osd',

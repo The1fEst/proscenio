@@ -184,6 +184,7 @@ pub struct Config {
     pub util_mic: bool,
     pub util_dark_mode: bool,
     pub util_power_profile: bool,
+    pub util_notepad: bool,
     pub updates_enable_check: bool,
     pub updates_include_flatpak: bool,
     pub updates_interval: i32,

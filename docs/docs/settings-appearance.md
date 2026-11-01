@@ -415,6 +415,7 @@ A link row opens this subpage. Each switch shows one button in the bar:
 | Screen snip | `bar.utilButtons.showScreenSnip` | on |
 | Color picker | `bar.utilButtons.showColorPicker` | off |
 | Keyboard toggle | `bar.utilButtons.showKeyboardToggle` | on |
+| Notepad | `bar.utilButtons.showNotepad` | off |
 | Mic toggle | `bar.utilButtons.showMicToggle` | off |
 | Dark/Light toggle | `bar.utilButtons.showDarkModeToggle` | on |
 | Performance Profile toggle | `bar.utilButtons.showPerformanceProfileToggle` | off |
