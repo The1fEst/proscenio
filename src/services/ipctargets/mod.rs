@@ -2,6 +2,7 @@ mod audio;
 mod brightness;
 mod nightlight;
 mod notifications;
+mod power;
 
 use crate::platform::dbus::ipc::Ipc;
 use crate::services::Services;
@@ -11,6 +12,7 @@ pub fn register(ipc: &Ipc, services: &Services) {
     nightlight::register(ipc, &services.session);
     brightness::register(ipc, &services.light);
     audio::register(ipc, &services.audio);
+    power::register(ipc, &services.power);
 }
 
 fn parse_percent(text: &str) -> Option<u8> {
