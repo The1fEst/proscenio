@@ -272,7 +272,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
         let theme = theme.clone();
         move |arguments| {
             let is_dark_mode = theme.borrow().m3.is_dark_mode;
-            wallpapers.apply(std::path::Path::new(&arguments[0]), is_dark_mode);
+            wallpapers.apply(std::path::Path::new(&arguments[0]), is_dark_mode, None);
         }
     });
     actions::add("lock", "Locks the screen", {

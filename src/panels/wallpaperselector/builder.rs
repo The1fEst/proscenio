@@ -46,6 +46,11 @@ const TOOL_ICON: f64 = 22.0;
 const TOOL_ICON_DROP: i32 = 1;
 const FILTER_WIDTH: i32 = 200;
 const SWEEP_MICROS: f64 = 1_500_000.0;
+const SCOPE_ICONS: [&str; 2] = ["monitor", "select_all"];
+const SCOPE_TIPS: [&str; 2] = [
+    "Applies to this monitor only\nClick to apply to all monitors",
+    "Applies to all monitors\nClick to apply to this monitor only",
+];
 
 const QUICK: Look = Look {
     toggled: |theme| theme.colors.col_secondary_container,
@@ -183,6 +188,10 @@ impl View {
             &random_button,
             &tr("Pick random from this folder"),
         ));
+        let is_per_monitor = config::current().is_wallpaper_per_monitor;
+        let (scope_button, scope_symbol) = tool(theme, SCOPE_ICONS[0]);
+        let scope_tip = tip(theme, &scope_button, &tr(SCOPE_TIPS[0]));
+        tips.push(scope_tip.clone());
         let is_dark_mode = theme.borrow().m3.is_dark_mode;
         let (mode_button, mode_symbol) = tool(
             theme,
@@ -217,6 +226,9 @@ impl View {
         let toolbar_frame = toolbar::frame();
         toolbar_frame.append(&open_button);
         toolbar_frame.append(&random_button);
+        if is_per_monitor {
+            toolbar_frame.append(&scope_button);
+        }
         toolbar_frame.append(&mode_button);
         toolbar_frame.append(&filter_field);
         let (close_button, _, close_tip) =
@@ -315,6 +327,9 @@ impl View {
             entries: RefCell::new(Vec::new()),
             current_index: Cell::new(0),
             wallpaper_path: RefCell::new(PathBuf::new()),
+            monitor: monitor.connector().map(Into::into).unwrap_or_default(),
+            is_per_monitor,
+            applies_to_all: Cell::new(false),
             applies_dark_mode: Cell::new(is_dark_mode),
             filter_field: filter_field.clone(),
             address_bar,
@@ -431,8 +446,24 @@ impl View {
             let view = Rc::downgrade(&view);
             move |_| {
                 if let Some(view) = view.upgrade() {
-                    view.wallpapers.random(view.applies_dark_mode.get());
+                    view.wallpapers
+                        .random(view.applies_dark_mode.get(), view.target());
                 }
+            }
+        });
+        scope_button.connect_clicked({
+            let view = Rc::downgrade(&view);
+            let scope_tip = Rc::downgrade(&scope_tip);
+            move |_| {
+                let (Some(view), Some(scope_tip)) = (view.upgrade(), scope_tip.upgrade()) else {
+                    return;
+                };
+                let applies_to_all = !view.applies_to_all.get();
+                view.applies_to_all.set(applies_to_all);
+                let state = usize::from(applies_to_all);
+                scope_symbol.set_text(SCOPE_ICONS[state]);
+                scope_tip.set_text(&tr(SCOPE_TIPS[state]));
+                view.refresh(false);
             }
         });
         mode_button.connect_clicked({

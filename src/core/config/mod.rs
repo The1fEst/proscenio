@@ -213,6 +213,8 @@ pub struct Config {
     pub tray_filter_passive: bool,
     pub wallpaper: String,
     pub thumbnail: String,
+    pub is_wallpaper_per_monitor: bool,
+    pub monitor_wallpapers: HashMap<String, String>,
     pub hide_when_fullscreen: bool,
     pub parallax_workspace: bool,
     pub parallax_vertical: bool,
@@ -257,6 +259,13 @@ impl Config {
 
     pub fn store_night(key: &str, value: Value) {
         store_at(&["light", "night"], key, value);
+    }
+
+    pub fn wallpaper_for(&self, monitor: &str) -> &str {
+        match self.monitor_wallpapers.get(monitor) {
+            Some(path) if self.is_wallpaper_per_monitor => path,
+            _ => &self.wallpaper,
+        }
     }
 
     pub fn wants_screen(&self, name: &str) -> bool {

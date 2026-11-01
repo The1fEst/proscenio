@@ -239,10 +239,13 @@ disabled.
 | Control | Key | Default |
 |---|---|---|
 | Use system file picker | `wallpaperSelector.useSystemFileDialog` | off |
+| Wallpaper per monitor | `background.perMonitor.enable` | off |
 | Hide when a window is fullscreen | `background.hideWhenFullscreen` | on |
 
 With **Use system file picker** on, the [wallpaper selector](wallpaper-selector.md)'s shortcut opens
-the file picker instead of the selector. Hiding the background under a fullscreen window saves a
+the file picker instead of the selector. With **Wallpaper per monitor** on, the selector sets the
+wallpaper of the monitor it is open on, or of all monitors; see
+[A wallpaper per monitor](background.md#a-wallpaper-per-monitor). Hiding the background under a fullscreen window saves a
 little work while gaming or watching a video.
 
 ### Parallax

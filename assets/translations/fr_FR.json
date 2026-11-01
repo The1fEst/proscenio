@@ -1622,5 +1622,9 @@
   "Scroll the content": "Faites défiler le contenu",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "Suivi du défilement perdu",
-  "Height limit reached": "Limite de hauteur atteinte"
+  "Height limit reached": "Limite de hauteur atteinte",
+  "Wallpaper per monitor": "Fond d'écran par moniteur",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Le sélecteur définit alors le fond d'écran du moniteur sur lequel il est ouvert. Les couleurs viennent du fond d'écran du moniteur principal",
+  "Applies to this monitor only\nClick to apply to all monitors": "S'applique à ce moniteur uniquement\nCliquez pour l'appliquer à tous les moniteurs",
+  "Applies to all monitors\nClick to apply to this monitor only": "S'applique à tous les moniteurs\nCliquez pour l'appliquer à ce moniteur uniquement"
 }

@@ -1622,5 +1622,9 @@
   "Scroll the content": "Role o conteúdo",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "O acompanhamento da rolagem foi perdido",
-  "Height limit reached": "Limite de altura atingido"
+  "Height limit reached": "Limite de altura atingido",
+  "Wallpaper per monitor": "Papel de parede por monitor",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "O seletor passa a definir o papel de parede do monitor em que está aberto. As cores vêm do papel de parede do monitor principal",
+  "Applies to this monitor only\nClick to apply to all monitors": "Aplica-se somente a este monitor\nClique para aplicar a todos os monitores",
+  "Applies to all monitors\nClick to apply to this monitor only": "Aplica-se a todos os monitores\nClique para aplicar somente a este monitor"
 }

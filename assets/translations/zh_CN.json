@@ -1622,5 +1622,9 @@
   "Scroll the content": "请滚动内容",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "无法跟踪滚动",
-  "Height limit reached": "已达到高度上限"
+  "Height limit reached": "已达到高度上限",
+  "Wallpaper per monitor": "每个显示器单独壁纸",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "壁纸选择器随后会设置它所在显示器的壁纸。颜色来自主显示器的壁纸",
+  "Applies to this monitor only\nClick to apply to all monitors": "仅应用于此显示器\n点击以应用于所有显示器",
+  "Applies to all monitors\nClick to apply to this monitor only": "应用于所有显示器\n点击以仅应用于此显示器"
 }

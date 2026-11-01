@@ -1622,5 +1622,9 @@
   "Scroll the content": "Прокручуйте вміст",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "Не вдалося відстежити прокручування",
-  "Height limit reached": "Досягнуто межі висоти"
+  "Height limit reached": "Досягнуто межі висоти",
+  "Wallpaper per monitor": "Шпалери для кожного монітора",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Тоді вибір шпалер задає шпалери монітора, на якому він відкритий. Кольори беруться зі шпалер основного монітора",
+  "Applies to this monitor only\nClick to apply to all monitors": "Лише для цього монітора\nНатисніть, щоб застосувати до всіх моніторів",
+  "Applies to all monitors\nClick to apply to this monitor only": "Для всіх моніторів\nНатисніть, щоб застосувати лише до цього монітора"
 }

@@ -17,8 +17,8 @@ center under the bar, and choosing a picture makes it the wallpaper, recolors th
 | Global shortcut | `proscenio ipc call …` | Does |
 |---|---|---|
 | `wallpaperSelectorToggle` | `wallpaperSelector toggle` | Opens or closes the selector |
-| `wallpaperSelectorRandom` | `wallpaperSelector random` | Picks a random entry of the current folder without opening anything |
-| — | `wallpapers apply <path>` | Makes that file the wallpaper, in the current light or dark mode |
+| `wallpaperSelectorRandom` | `wallpaperSelector random` | Picks a random entry of the current folder without opening anything; with a [wallpaper per monitor](background.md#a-wallpaper-per-monitor), for the focused monitor |
+| — | `wallpapers apply <path>` | Makes that file the wallpaper of every monitor, in the current light or dark mode |
 
 The launcher's `/wallpaper` action opens it too; see [Overview and launcher](overview.md).
 
@@ -50,7 +50,8 @@ Enter goes to the folder typed, a path that does not exist is ignored, and Escap
 **The grid** has four columns. A tile shows the picture's thumbnail, or the icon of a folder or of
 the file's type, and the name under it. The tile under the pointer or the keyboard selection is
 filled with the primary color, and the tile of the current wallpaper with the secondary container
-color. Clicking a folder enters it; clicking a picture applies it.
+color. With a wallpaper per monitor, the current wallpaper is the one of the monitor the selector is
+open on, or the main wallpaper while the toolbar is set to all monitors. Clicking a folder enters it; clicking a picture applies it.
 
 **The toolbar** floats over the bottom of the grid:
 
@@ -58,6 +59,7 @@ color. Clicking a folder enters it; clicking a picture applies it.
 |---|---|
 | System file picker | Opens the system file picker and closes the selector; a right-click also makes the picker the default, turning on `wallpaperSelector.useSystemFileDialog` |
 | Random | Picks a random entry of the current folder |
+| This monitor/all monitors | Shown only with a [wallpaper per monitor](background.md#a-wallpaper-per-monitor). Chooses whether the next wallpaper is set for the monitor the selector is open on, which is the state it starts in, or for all monitors; the icon and the tooltip show the choice |
 | Light/dark | Chooses the mode that the next wallpaper is applied in; it starts at the current one |
 | Search field | Filters the folder |
 | Close | Closes the selector |
@@ -109,8 +111,9 @@ The search field has the keyboard when the selector opens.
 ## Applying a wallpaper
 
 Choosing a picture runs `proscenio switchwall --mode <light|dark> --image <file>`, which sets the
-wallpaper and regenerates the colors from it. The system file picker runs the same command without
-`--image`, which asks `kdialog` for a file. The shell runs one `switchwall` at a time: choosing
+wallpaper and regenerates the colors from it. For one monitor of a wallpaper per monitor it adds
+`--monitor <name>`; the colors are then regenerated only when that monitor is the main display. The
+system file picker runs the same command without `--image`, which asks `kdialog` for a file. The shell runs one `switchwall` at a time: choosing
 pictures quickly applies the first, then only the last one chosen while it ran; see
 [Colors from the wallpaper](colors.md).
 

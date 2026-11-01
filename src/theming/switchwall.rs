@@ -13,7 +13,7 @@ use std::time::Duration;
 use crate::core::i18n::{tr, trf};
 use crate::core::{assets, config, gsettings, paths, process};
 use crate::platform::dbus::notify::{self, Notification};
-use crate::platform::hyprland::hypr;
+use crate::platform::hyprland::{hypr, monitorrules};
 use crate::platform::system::appearance;
 use crate::platform::wayland::gbm;
 use crate::services::files::cliphist::escape;
@@ -48,6 +48,8 @@ const TERMINAL_ALPHA: &str = "100";
 const O_NONBLOCK: i32 = 0o4000;
 const APP_NAME: &str = "Wallpaper switcher";
 const THEMING: &str = "/appearance/wallpaperTheming";
+const PER_MONITOR: &str = "/background/perMonitor/enable";
+const OVERRIDES: &str = "/background/perMonitor/wallpapers";
 
 const LOCK_FILE: &str = "switchwall.lock";
 const MATUGEN_NICE: &str = "15";
@@ -108,6 +110,23 @@ fn start(arguments: &[String], jobs: &mut Vec<JoinHandle<()>>) -> glib::ExitCode
     }
     .filter(|path| !path.is_empty());
 
+    let monitor = request.monitor.filter(|_| {
+        config::value_bool(PER_MONITOR, false)
+            && image.as_deref().is_some_and(|path| !is_video(path))
+    });
+    if let (Some(monitor), Some(image)) = (&monitor, &image)
+        && !keeps_wallpaper
+        && is_secondary_monitor(monitor)
+    {
+        process::launch_subcommand(&["switchwall", OFFER_UPSCALE, image]);
+        lock_generation();
+        config::store_value(
+            &format!("{OVERRIDES}/{monitor}"),
+            Value::from(image.as_str()),
+        );
+        return glib::ExitCode::SUCCESS;
+    }
+
     let mut color = config_string("/appearance/palette/accentColor").filter(|value| is_hex(value));
     let mut scheme = scheme
         .or_else(|| config_string("/appearance/palette/type"))
@@ -154,7 +173,25 @@ fn start(arguments: &[String], jobs: &mut Vec<JoinHandle<()>>) -> glib::ExitCode
         };
     }
 
-    switch(image, mode, scheme, color, !keeps_wallpaper, jobs)
+    let assignment = match (keeps_wallpaper, monitor.as_deref()) {
+        (true, _) => Assignment::Current,
+        (false, Some(monitor)) => Assignment::Monitor(monitor),
+        (false, None) => Assignment::All,
+    };
+    switch(image, mode, scheme, color, assignment, jobs)
+}
+
+#[derive(Clone, Copy)]
+enum Assignment<'a> {
+    Current,
+    All,
+    Monitor(&'a str),
+}
+
+impl Assignment<'_> {
+    fn is_new(self) -> bool {
+        !matches!(self, Assignment::Current)
+    }
 }
 
 fn switch(
@@ -162,7 +199,7 @@ fn switch(
     mode: Option<String>,
     scheme: String,
     color: Option<String>,
-    is_new_wallpaper: bool,
+    assignment: Assignment,
     jobs: &mut Vec<JoinHandle<()>>,
 ) -> glib::ExitCode {
     lock_generation();
@@ -176,8 +213,8 @@ fn switch(
     ]);
     let mut generate_arguments;
     if let Some(color) = color {
-        if let Some(image) = image.filter(|_| is_new_wallpaper)
-            && let Err(exit_code) = apply_wallpaper(image, true)
+        if let Some(image) = image.filter(|_| assignment.is_new())
+            && let Err(exit_code) = apply_wallpaper(image, assignment)
         {
             return exit_code;
         }
@@ -188,7 +225,7 @@ fn switch(
             println!("Aborted");
             return glib::ExitCode::SUCCESS;
         };
-        let source = match apply_wallpaper(image, is_new_wallpaper) {
+        let source = match apply_wallpaper(image, assignment) {
             Ok(source) => source,
             Err(exit_code) => return exit_code,
         };
@@ -284,14 +321,15 @@ fn switch(
     glib::ExitCode::SUCCESS
 }
 
-fn apply_wallpaper(image: String, should_offer_upscale: bool) -> Result<String, glib::ExitCode> {
-    if should_offer_upscale {
+fn apply_wallpaper(image: String, assignment: Assignment) -> Result<String, glib::ExitCode> {
+    if assignment.is_new() {
         process::launch_subcommand(&["switchwall", OFFER_UPSCALE, &image]);
     }
     process::run(&["pkill", "-9", "-x", "mpvpaper"]);
 
     if !is_video(&image) {
         config::store_value("/background/wallpaperPath", Value::from(image.as_str()));
+        release_overrides(assignment);
         write_restore(None);
         return Ok(image);
     }
@@ -304,6 +342,7 @@ fn apply_wallpaper(image: String, should_offer_upscale: bool) -> Result<String, 
         return Err(glib::ExitCode::SUCCESS);
     }
     config::store_value("/background/wallpaperPath", Value::from(image.as_str()));
+    release_overrides(assignment);
     for monitor in monitors() {
         if let Some(name) = monitor.get("name").and_then(Value::as_str) {
             process::detach(&["mpvpaper", "-o", VIDEO_OPTIONS, name, &image]);
@@ -324,6 +363,33 @@ fn apply_wallpaper(image: String, should_offer_upscale: bool) -> Result<String, 
     }
     write_restore(Some(&image));
     Ok(thumbnail)
+}
+
+fn release_overrides(assignment: Assignment) {
+    let pointer = match assignment {
+        Assignment::Current => return,
+        Assignment::All => OVERRIDES.to_owned(),
+        Assignment::Monitor(monitor) => format!("{OVERRIDES}/{monitor}"),
+    };
+    if config::value_bool(PER_MONITOR, false) && config::value(&pointer).is_some() {
+        config::store_value(&pointer, Value::Null);
+    }
+}
+
+fn is_secondary_monitor(monitor: &str) -> bool {
+    let connected: Vec<String> = monitors()
+        .iter()
+        .filter_map(|entry| Some(entry.get("name")?.as_str()?.to_owned()))
+        .collect();
+    find_main_monitor(&monitorrules::read().primary, &connected).is_some_and(|main| main != monitor)
+}
+
+fn find_main_monitor<'a>(primary: &str, connected: &'a [String]) -> Option<&'a str> {
+    connected
+        .iter()
+        .find(|name| *name == primary)
+        .or_else(|| connected.first())
+        .map(String::as_str)
 }
 
 fn offer_upscale(image: &str) {
@@ -681,6 +747,15 @@ mod tests {
             "$primary: #112234;\n"
         ));
         assert!(!is_unchanged(None, "$primary: #112233;\n"));
+    }
+
+    #[test]
+    fn the_main_monitor_is_the_primary_one_or_else_the_first_connected() {
+        let connected = ["DP-1".to_owned(), "HDMI-A-1".to_owned()];
+        assert_eq!(find_main_monitor("HDMI-A-1", &connected), Some("HDMI-A-1"));
+        assert_eq!(find_main_monitor("", &connected), Some("DP-1"));
+        assert_eq!(find_main_monitor("DP-9", &connected), Some("DP-1"));
+        assert_eq!(find_main_monitor("DP-1", &[]), None);
     }
 
     #[test]

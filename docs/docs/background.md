@@ -23,7 +23,8 @@ Most of what follows is set on the **Appearance › Background** page of the set
 - It sits on the bottom layer, reserves no space and takes no input, except over a widget that can
   be dragged.
 - `proscenio --no-background` starts the shell without it (see [Command line](command-line.md)).
-- A change of `background.wallpaperPath` loads the new wallpaper at once.
+- A change of `background.wallpaperPath`, or of `background.perMonitor`, loads the new wallpaper at
+  once.
 
 **Fullscreen windows.** With `background.hideWhenFullscreen` on (the default, *Hide when a window
 is fullscreen*), the background hides while a fullscreen window is on the workspace the monitor
@@ -34,6 +35,34 @@ background always shows.
 played by `mpvpaper`, one instance per monitor, started when the wallpaper is picked (see
 [Wallpaper selector](wallpaper-selector.md)). The background then draws no picture and stays
 transparent over the video; the widgets still show.
+
+## A wallpaper per monitor
+
+With `background.perMonitor.enable` on (default off, *Wallpaper per monitor* on the Background
+page), each monitor can have a wallpaper of its own. The table `background.perMonitor.wallpapers`
+maps a monitor's connector name, as Hyprland names it, to an image:
+
+```toml
+[background.perMonitor]
+enable = true
+
+[background.perMonitor.wallpapers]
+DP-2 = "/home/me/Pictures/Wallpapers/dunes.jpg"
+```
+
+- A monitor with no entry shows `background.wallpaperPath`. With the switch off, the entries stay
+  in the file and are ignored.
+- The [wallpaper selector](wallpaper-selector.md) writes the entries. Choosing a picture for all
+  monitors, or choosing a video, empties the table; choosing one for the main display removes the
+  main display's entry and sets `wallpaperPath`.
+- The colors always come from `wallpaperPath`, which is the main display's wallpaper: the monitor
+  named by `WAYLANDDRV_PRIMARY_MONITOR` in the Hyprland config (set as the main display on the
+  Displays page), or the first monitor Hyprland lists when that is unset or not connected. Choosing
+  a picture for any other monitor changes only that monitor's entry and does not regenerate the
+  colors (see [Colors from the wallpaper](colors.md)).
+- Only images are chosen per monitor. A video wallpaper plays on every monitor.
+- On the lock screen each monitor's background blurs that monitor's own wallpaper.
+- The work safety check below looks at the path each monitor shows.
 
 ## Sizing
 

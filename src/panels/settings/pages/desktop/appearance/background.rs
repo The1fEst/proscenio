@@ -99,6 +99,17 @@ pub fn build(context: &Context) -> Rc<Page> {
         "/wallpaperSelector/useSystemFileDialog",
         false,
     );
+    let per_monitor_switch = page.config_switch(
+        &wallpaper_section,
+        "monitor",
+        &tr("Wallpaper per monitor"),
+        "/background/perMonitor/enable",
+        false,
+    );
+    page.tip(
+        &per_monitor_switch.button,
+        &tr("The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper"),
+    );
     let fullscreen_switch = page.config_switch(
         &wallpaper_section,
         "fullscreen",

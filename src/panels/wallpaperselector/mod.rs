@@ -55,6 +55,9 @@ struct View {
     entries: RefCell<Vec<Entry>>,
     current_index: Cell<usize>,
     wallpaper_path: RefCell<PathBuf>,
+    monitor: String,
+    is_per_monitor: bool,
+    applies_to_all: Cell<bool>,
     applies_dark_mode: Cell<bool>,
     filter_field: gtk4::Entry,
     address_bar: Rc<AddressBar>,
@@ -109,7 +112,11 @@ impl WallpaperSelector {
     }
 
     pub fn random(&self) {
-        self.wallpapers.random(self.is_dark_mode());
+        let monitor = config::current()
+            .is_wallpaper_per_monitor
+            .then(hypr::focused_monitor)
+            .flatten();
+        self.wallpapers.random(self.is_dark_mode(), monitor);
     }
 
     fn is_dark_mode(&self) -> bool {
@@ -165,6 +172,10 @@ impl WallpaperSelector {
 }
 
 impl View {
+    fn target(&self) -> Option<String> {
+        (self.is_per_monitor && !self.applies_to_all.get()).then(|| self.monitor.clone())
+    }
+
     fn handle_key(
         self: &Rc<Self>,
         key: gdk::Key,
@@ -310,11 +321,12 @@ impl View {
                 if is_toggled { 1.0 } else { 0.0 },
             );
         }
-        self.wallpaper_path.replace(PathBuf::from(
-            config::value("/background/wallpaperPath")
-                .and_then(|value| value.as_str().map(str::to_owned))
-                .unwrap_or_default(),
-        ));
+        let config = config::current();
+        self.wallpaper_path
+            .replace(PathBuf::from(match self.target() {
+                Some(monitor) => config.wallpaper_for(&monitor),
+                None => config.wallpaper.as_str(),
+            }));
 
         self.is_reset_pending
             .set(self.is_reset_pending.get() || should_reset);
@@ -501,7 +513,10 @@ impl View {
             return;
         };
         self.filter_field.set_text("");
-        self.wallpapers
-            .select(&entry.path, self.applies_dark_mode.get());
+        self.wallpapers.select(
+            &entry.path,
+            self.applies_dark_mode.get(),
+            self.target().as_deref(),
+        );
     }
 }

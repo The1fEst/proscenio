@@ -1622,5 +1622,9 @@
   "Scroll the content": "Gulir kontennya",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "Pelacakan pengguliran terputus",
-  "Height limit reached": "Batas tinggi tercapai"
+  "Height limit reached": "Batas tinggi tercapai",
+  "Wallpaper per monitor": "Wallpaper per monitor",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Pemilih wallpaper lalu mengatur wallpaper monitor tempat ia dibuka. Warna diambil dari wallpaper monitor utama",
+  "Applies to this monitor only\nClick to apply to all monitors": "Berlaku hanya untuk monitor ini\nKlik untuk menerapkan ke semua monitor",
+  "Applies to all monitors\nClick to apply to this monitor only": "Berlaku untuk semua monitor\nKlik untuk menerapkan hanya ke monitor ini"
 }

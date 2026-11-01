@@ -1622,5 +1622,9 @@
   "Scroll the content": "内容をスクロールしてください",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "スクロールを追跡できなくなりました",
-  "Height limit reached": "高さの上限に達しました"
+  "Height limit reached": "高さの上限に達しました",
+  "Wallpaper per monitor": "モニターごとの壁紙",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "壁紙セレクターは、開いているモニターの壁紙を設定します。色はメインモニターの壁紙から作られます",
+  "Applies to this monitor only\nClick to apply to all monitors": "このモニターのみに適用\nクリックですべてのモニターに適用",
+  "Applies to all monitors\nClick to apply to this monitor only": "すべてのモニターに適用\nクリックでこのモニターのみに適用"
 }

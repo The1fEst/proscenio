@@ -1622,5 +1622,9 @@
   "Scroll the content": "Scroll the content",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "Lost track of the scrolling",
-  "Height limit reached": "Height limit reached"
+  "Height limit reached": "Height limit reached",
+  "Wallpaper per monitor": "Wallpaper per monitor",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper",
+  "Applies to this monitor only\nClick to apply to all monitors": "Applies to this monitor only\nClick to apply to all monitors",
+  "Applies to all monitors\nClick to apply to this monitor only": "Applies to all monitors\nClick to apply to this monitor only"
 }

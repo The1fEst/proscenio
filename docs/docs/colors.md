@@ -23,8 +23,9 @@ it in a transient systemd scope of its own (`systemd-run --user --scope`), outsi
 process.
 
 The shell runs one `switchwall` at a time. A request made with nothing running starts at once. A
-request made while one runs waits as the single pending request, and a newer request is merged into
-it, argument by argument:
+request made while one runs waits, one pending request for each `--monitor` value (none, for a
+request without it), in the order they were first made. A newer request is merged into the pending
+one with the same `--monitor`, argument by argument:
 
 - A value the newer request sets (`--mode`, `--type`, `--image`, `--color`) wins, and a value only the
   pending request sets is kept. Choosing a wallpaper and then switching the mode keeps the wallpaper
@@ -33,6 +34,8 @@ it, argument by argument:
 - A newer image drops a pending accent color, unless the newer request has a `--color` of its own.
 - A request that opens the file picker (no image, no accent color, no `--noswitch`) is not merged:
   it replaces the pending request, and the next request replaces it.
+- A newer image without `--monitor` removes the pending images for single monitors, which it would
+  have emptied anyway.
 
 Each run also holds an exclusive lock on
 `$XDG_RUNTIME_DIR/proscenio/switchwall.lock` while it generates, so a run started from a terminal
@@ -47,6 +50,7 @@ waits for the shell's, and the other way round.
 | Argument | Effect |
 |---|---|
 | `PATH`, `--image PATH` | The wallpaper to set: an image, or a video ending in `.mp4`, `.webm`, `.mkv`, `.avi` or `.mov` |
+| `--monitor NAME` | With `background.perMonitor.enable` on, sets the image for the monitor `NAME` only and, unless `NAME` is the main display (see [The background](background.md#a-wallpaper-per-monitor)), stops there: it stores the image in `background.perMonitor.wallpapers` and, after the upscale offer, generates no colors, applies no mode and keeps the accent color. For the main display it is an ordinary run that also removes the main display's entry. Without the switch, or with a video or `--noswitch`, it is ignored |
 | `--noswitch` | Keeps the current wallpaper, `background.wallpaperPath`, and only recolors; a `PATH` given with it is ignored |
 | `--mode dark` / `--mode light` | The mode to switch to. Without it, the mode is dark when `color-scheme` in `org.gnome.desktop.interface` is `prefer-dark`, and light otherwise |
 | `--type SCHEME` | The scheme for this run. Without it, `appearance.palette.type` decides, and without that, `auto` |
@@ -95,7 +99,8 @@ decoded with `djpeg` and 16-bit PNG images with `magick`; other formats go throu
 1. **The wallpaper**, unless the colors come from an accent color and the command has no new
    wallpaper. Any running `mpvpaper` stops, the
    path is stored in `background.wallpaperPath`, and a video starts playing; with `--noswitch`, all
-   of this happens to the current wallpaper. When a chosen image is smaller than the largest monitor,
+   of this happens to the current wallpaper. With `background.perMonitor.enable` on, a new wallpaper
+   for all monitors also empties `background.perMonitor.wallpapers`. When a chosen image is smaller than the largest monitor,
    a notification offers to open Upscayl, and to install `upscayl-bin` from the AUR when it is
    missing. The offer runs in a process of its own, so waiting for an answer holds nothing up.
 2. **The mode.** `color-scheme` in `org.gnome.desktop.interface` becomes `prefer-dark` or
@@ -334,6 +339,8 @@ window and 20 % for the others.
 | Key in `config.toml` | Default | Meaning |
 |---|---|---|
 | `background.wallpaperPath` | | The wallpaper; `switchwall` writes it |
+| `background.perMonitor.enable` | `false` | A wallpaper per monitor; see [The background](background.md#a-wallpaper-per-monitor) |
+| `background.perMonitor.wallpapers` | empty | A table from a monitor's name to its image; `switchwall --monitor` writes it |
 | `background.thumbnailPath` | | The first frame of a video wallpaper; `switchwall` writes it |
 | `appearance.palette.type` | `auto` | The scheme, one of the `--type` values |
 | `appearance.palette.accentColor` | empty | An accent color that replaces the wallpaper as the source of the colors |

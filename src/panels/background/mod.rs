@@ -258,15 +258,17 @@ pub fn open(
             }
         }
     }));
-    scope.hold(watch::config("/background/wallpaperPath", {
-        let background = Rc::downgrade(&background);
-        move || {
-            if let Some(background) = background.upgrade() {
-                background.reload();
-                background.check_safety();
+    for pointer in ["/background/wallpaperPath", "/background/perMonitor"] {
+        scope.hold(watch::config(pointer, {
+            let background = Rc::downgrade(&background);
+            move || {
+                if let Some(background) = background.upgrade() {
+                    background.reload();
+                    background.check_safety();
+                }
             }
-        }
-    }));
+        }));
+    }
     scope.hold(watch::config("/lock/blur", {
         let background = Rc::downgrade(&background);
         move || {
@@ -371,7 +373,7 @@ impl Background {
 
     fn check_safety(&self) {
         let config = config::current();
-        let wallpaper = config_text("/background/wallpaperPath").to_lowercase();
+        let wallpaper = config.wallpaper_for(&self.monitor).to_lowercase();
         let network = self.net.name.borrow().to_lowercase();
         let is_video = VIDEOS.iter().any(|suffix| wallpaper.ends_with(suffix));
         let is_safety_enforced = config.safety_wallpaper
@@ -386,7 +388,7 @@ impl Background {
     }
 
     fn reload(self: &Rc<Self>) {
-        let wallpaper = config_text("/background/wallpaperPath");
+        let wallpaper = config::current().wallpaper_for(&self.monitor).to_owned();
         let is_video = VIDEOS.iter().any(|suffix| wallpaper.ends_with(suffix));
         if self.source.replace(wallpaper.clone()) == wallpaper && self.image.borrow().is_some() {
             return;
@@ -581,12 +583,6 @@ impl Background {
 
 fn gsk_blur(radius: f64) -> f64 {
     3.0 * (radius + 1.0) / 3.3333
-}
-
-fn config_text(pointer: &str) -> String {
-    config::value(pointer)
-        .and_then(|value| value.as_str().map(str::to_owned))
-        .unwrap_or_default()
 }
 
 fn contains_any(text: &str, keywords: &[String]) -> bool {

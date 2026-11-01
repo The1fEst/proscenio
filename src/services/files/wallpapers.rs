@@ -197,24 +197,24 @@ impl Wallpapers {
         self.announce(&self.change_listeners);
     }
 
-    pub fn select(&self, path: &Path, is_dark: bool) {
+    pub fn select(&self, path: &Path, is_dark: bool, monitor: Option<&str>) {
         if path.is_dir() {
             self.set_directory(&path.to_string_lossy());
             return;
         }
-        self.apply(path, is_dark);
+        self.apply(path, is_dark, monitor);
     }
 
-    pub fn apply(&self, path: &Path, is_dark: bool) {
+    pub fn apply(&self, path: &Path, is_dark: bool, monitor: Option<&str>) {
         let path = path.to_string_lossy();
         if path.is_empty() {
             return;
         }
-        crate::theming::switchwallqueue::request(&["--mode", mode(is_dark), "--image", &path]);
+        crate::theming::switchwallqueue::request(&build_image_arguments(&path, is_dark, monitor));
         self.announce(&self.apply_listeners);
     }
 
-    pub fn random(self: &Rc<Self>, is_dark: bool) {
+    pub fn random(self: &Rc<Self>, is_dark: bool, monitor: Option<String>) {
         let wallpapers = self.clone();
         glib::spawn_future_local(async move {
             let pictures = keep_pictures(wallpapers.entries().await);
@@ -222,7 +222,7 @@ impl Wallpapers {
                 return;
             }
             let index = glib::random_int_range(0, pictures.len() as i32) as usize;
-            wallpapers.select(&pictures[index].path, is_dark);
+            wallpapers.select(&pictures[index].path, is_dark, monitor.as_deref());
         });
     }
 
@@ -384,6 +384,20 @@ fn mode(is_dark: bool) -> &'static str {
     if is_dark { "dark" } else { "light" }
 }
 
+fn build_image_arguments<'a>(
+    path: &'a str,
+    is_dark: bool,
+    monitor: Option<&'a str>,
+) -> Vec<&'a str> {
+    let mut arguments = vec!["--mode", mode(is_dark), "--image", path];
+    arguments.extend(
+        monitor
+            .into_iter()
+            .flat_map(|monitor| ["--monitor", monitor]),
+    );
+    arguments
+}
+
 fn matches(name: &str, terms: &[&str]) -> bool {
     let lowercase_name = name.to_lowercase();
     let Some((stem, extension)) = lowercase_name.rsplit_once('.') else {
@@ -456,6 +470,18 @@ mod tests {
             .collect();
         std::fs::remove_dir_all(&root).unwrap();
         assert_eq!(names, ["beach.png"]);
+    }
+
+    #[test]
+    fn a_wallpaper_for_one_monitor_names_that_monitor() {
+        assert_eq!(
+            build_image_arguments("/a.png", true, Some("DP-2")),
+            ["--mode", "dark", "--image", "/a.png", "--monitor", "DP-2"]
+        );
+        assert_eq!(
+            build_image_arguments("/a.png", false, None),
+            ["--mode", "light", "--image", "/a.png"]
+        );
     }
 
     #[test]

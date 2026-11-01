@@ -1622,5 +1622,9 @@
   "Scroll the content": "Scorri il contenuto",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "Scorrimento non più seguito",
-  "Height limit reached": "Limite di altezza raggiunto"
+  "Height limit reached": "Limite di altezza raggiunto",
+  "Wallpaper per monitor": "Sfondo per monitor",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Il selettore imposta allora lo sfondo del monitor su cui è aperto. I colori derivano dallo sfondo del monitor principale",
+  "Applies to this monitor only\nClick to apply to all monitors": "Si applica solo a questo monitor\nClic per applicarlo a tutti i monitor",
+  "Applies to all monitors\nClick to apply to this monitor only": "Si applica a tutti i monitor\nClic per applicarlo solo a questo monitor"
 }

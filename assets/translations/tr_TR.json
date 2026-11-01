@@ -1622,5 +1622,9 @@
   "Scroll the content": "İçeriği kaydırın",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "Kaydırma takibi kaybedildi",
-  "Height limit reached": "Yükseklik sınırına ulaşıldı"
+  "Height limit reached": "Yükseklik sınırına ulaşıldı",
+  "Wallpaper per monitor": "Monitör başına duvar kâğıdı",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Duvar kâğıdı seçici o zaman açık olduğu monitörün duvar kâğıdını ayarlar. Renkler ana monitörün duvar kâğıdından gelir",
+  "Applies to this monitor only\nClick to apply to all monitors": "Yalnızca bu monitöre uygulanır\nTüm monitörlere uygulamak için tıklayın",
+  "Applies to all monitors\nClick to apply to this monitor only": "Tüm monitörlere uygulanır\nYalnızca bu monitöre uygulamak için tıklayın"
 }

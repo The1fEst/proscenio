@@ -345,6 +345,11 @@ impl Config {
             tray_filter_passive: flag(&tray, "filterPassive", true),
             wallpaper: text(&background, "wallpaperPath", ""),
             thumbnail: text(&background, "thumbnailPath", ""),
+            is_wallpaper_per_monitor: root
+                .pointer("/background/perMonitor/enable")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            monitor_wallpapers: read_monitor_wallpapers(root),
             hide_when_fullscreen: flag(&background, "hideWhenFullscreen", true),
             parallax_workspace: flag(&parallax, "enableWorkspace", true),
             parallax_vertical: flag(&parallax, "vertical", false),
@@ -452,6 +457,21 @@ fn read_aliases(root: &Value) -> HashMap<String, String> {
                 .filter_map(|(name, alias)| {
                     let alias = alias.as_str()?.trim();
                     (!alias.is_empty()).then(|| (name.clone(), alias.to_owned()))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn read_monitor_wallpapers(root: &Value) -> HashMap<String, String> {
+    root.pointer("/background/perMonitor/wallpapers")
+        .and_then(Value::as_object)
+        .map(|wallpapers| {
+            wallpapers
+                .iter()
+                .filter_map(|(monitor, path)| {
+                    let path = path.as_str()?.trim();
+                    (!path.is_empty()).then(|| (monitor.clone(), path.to_owned()))
                 })
                 .collect()
         })
@@ -694,5 +714,28 @@ mod tests {
         );
         assert_eq!(strings_or(Some(&json!(["home"])), &defaults), ["home"]);
         assert_eq!(strings_or(None, &defaults), ["cafe", "guest"]);
+    }
+
+    #[test]
+    fn a_monitor_takes_its_own_wallpaper_only_while_per_monitor_wallpapers_are_on() {
+        let root = |is_enabled: bool| {
+            json!({ "background": {
+                "wallpaperPath": "/main.png",
+                "perMonitor": {
+                    "enable": is_enabled,
+                    "wallpapers": { "DP-2": " /side.png ", "DP-3": "  ", "DP-4": 7 },
+                },
+            } })
+        };
+        let enabled = Config::parse(&root(true));
+        assert_eq!(enabled.wallpaper_for("DP-2"), "/side.png");
+        for monitor in ["DP-1", "DP-3", "DP-4"] {
+            assert_eq!(enabled.wallpaper_for(monitor), "/main.png", "{monitor}");
+        }
+        let disabled = Config::parse(&root(false));
+        assert_eq!(disabled.wallpaper_for("DP-2"), "/main.png");
+        let unset = Config::parse(&json!({ "background": { "wallpaperPath": "/main.png" } }));
+        assert!(!unset.is_wallpaper_per_monitor);
+        assert_eq!(unset.wallpaper_for("DP-2"), "/main.png");
     }
 }

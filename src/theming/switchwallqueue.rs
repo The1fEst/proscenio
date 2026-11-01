@@ -1,5 +1,6 @@
 use gtk4::glib;
 use std::cell::RefCell;
+use std::collections::VecDeque;
 
 use crate::core::process;
 use crate::theming::switchwall::is_hex;
@@ -18,6 +19,7 @@ pub(super) enum ColorRequest {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct Request {
     pub(super) image: Option<String>,
+    pub(super) monitor: Option<String>,
     pub(super) mode: Option<String>,
     pub(super) scheme: Option<String>,
     pub(super) color: Option<ColorRequest>,
@@ -49,6 +51,7 @@ impl Request {
                     });
                 }
                 "--image" => request.image = rest.next().map(str::to_owned),
+                "--monitor" => request.monitor = rest.next().map(str::to_owned),
                 "--noswitch" => request.keeps_wallpaper = true,
                 _ => {
                     if request.image.is_none() {
@@ -59,6 +62,7 @@ impl Request {
         }
         if request.keeps_wallpaper {
             request.image = None;
+            request.monitor = None;
         }
         request
     }
@@ -76,6 +80,7 @@ impl Request {
         Self {
             keeps_wallpaper: (self.keeps_wallpaper || newer.keeps_wallpaper) && image.is_none(),
             image,
+            monitor: self.monitor,
             mode: newer.mode.or(self.mode),
             scheme: newer.scheme.or(self.scheme),
             color: if replaces_color {
@@ -92,6 +97,7 @@ impl Request {
             ("--mode", &self.mode),
             ("--type", &self.scheme),
             ("--image", &self.image),
+            ("--monitor", &self.monitor),
         ] {
             if let Some(value) = value {
                 arguments.extend([flag.to_owned(), value.clone()]);
@@ -117,16 +123,24 @@ impl Request {
 #[derive(Default)]
 struct RequestQueue {
     is_running: bool,
-    pending_request: Option<Request>,
+    pending_requests: VecDeque<Request>,
 }
 
 impl RequestQueue {
     fn submit(&mut self, request: Request) -> Option<Request> {
         if self.is_running {
-            self.pending_request = Some(match self.pending_request.take() {
-                Some(pending) => pending.merge(request),
-                None => request,
-            });
+            if request.image.is_some() && request.monitor.is_none() {
+                self.pending_requests
+                    .retain(|pending| pending.monitor.is_none() || pending.image.is_none());
+            }
+            match self
+                .pending_requests
+                .iter_mut()
+                .find(|pending| pending.monitor == request.monitor)
+            {
+                Some(pending) => *pending = std::mem::take(pending).merge(request),
+                None => self.pending_requests.push_back(request),
+            }
             return None;
         }
         self.is_running = true;
@@ -134,8 +148,9 @@ impl RequestQueue {
     }
 
     fn finish(&mut self) -> Option<Request> {
-        self.is_running = self.pending_request.is_some();
-        self.pending_request.take()
+        let next = self.pending_requests.pop_front();
+        self.is_running = next.is_some();
+        next
     }
 }
 
@@ -259,6 +274,7 @@ mod tests {
             vec!["--mode", "light", "--noswitch", "--color", "#abcdef"],
             vec!["--noswitch", "--color", "clear"],
             vec!["--noswitch", "--color"],
+            vec!["--image", "/a.png", "--monitor", "DP-2"],
             vec![],
         ] {
             let request = parse_request(&arguments);
@@ -280,7 +296,7 @@ mod tests {
         let mut queue = RequestQueue::default();
         assert_eq!(queue.submit(recolor("a")), Some(recolor("a")));
         assert!(queue.is_running);
-        assert_eq!(queue.pending_request, None);
+        assert!(queue.pending_requests.is_empty());
     }
 
     #[test]
@@ -288,7 +304,56 @@ mod tests {
         let mut queue = RequestQueue::default();
         queue.submit(recolor("a"));
         assert_eq!(queue.submit(recolor("b")), None);
-        assert_eq!(queue.pending_request, Some(recolor("b")));
+        assert_eq!(queue.pending_requests, [recolor("b")]);
+    }
+
+    #[test]
+    fn requests_for_different_monitors_wait_apart_and_run_in_order() {
+        let mut queue = RequestQueue::default();
+        queue.submit(recolor("a"));
+        let first = parse_request(&["--image", "/a.png", "--monitor", "DP-1"]);
+        let second = parse_request(&["--image", "/b.png", "--monitor", "DP-2"]);
+        queue.submit(first.clone());
+        queue.submit(second.clone());
+        assert_eq!(queue.finish(), Some(first));
+        assert_eq!(queue.finish(), Some(second));
+        assert_eq!(queue.finish(), None);
+        assert!(!queue.is_running);
+    }
+
+    #[test]
+    fn a_newer_image_for_a_monitor_replaces_the_pending_one_for_that_monitor_only() {
+        let mut queue = RequestQueue::default();
+        queue.submit(recolor("a"));
+        queue.submit(parse_request(&["--image", "/a.png", "--monitor", "DP-1"]));
+        queue.submit(parse_request(&["--image", "/b.png", "--monitor", "DP-2"]));
+        queue.submit(parse_request(&["--image", "/c.png", "--monitor", "DP-1"]));
+        assert_eq!(
+            queue.pending_requests,
+            [
+                parse_request(&["--image", "/c.png", "--monitor", "DP-1"]),
+                parse_request(&["--image", "/b.png", "--monitor", "DP-2"]),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_newer_image_for_all_monitors_drops_the_older_images_for_single_monitors() {
+        let mut queue = RequestQueue::default();
+        queue.submit(recolor("a"));
+        queue.submit(parse_request(&["--image", "/a.png"]));
+        queue.submit(parse_request(&["--image", "/b.png", "--monitor", "DP-1"]));
+        queue.submit(parse_request(&["--image", "/c.png"]));
+        assert_eq!(
+            queue.pending_requests,
+            [parse_request(&["--image", "/c.png"])]
+        );
+    }
+
+    #[test]
+    fn a_request_that_keeps_the_wallpaper_has_no_monitor() {
+        let request = parse_request(&["--noswitch", "--monitor", "DP-1"]);
+        assert_eq!(request.monitor, None);
     }
 
     #[test]

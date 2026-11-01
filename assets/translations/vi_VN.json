@@ -1622,5 +1622,9 @@
   "Scroll the content": "Cuộn nội dung",
   "%1 px": "%1 px",
   "Lost track of the scrolling": "Mất dấu thao tác cuộn",
-  "Height limit reached": "Đã đạt giới hạn chiều cao"
+  "Height limit reached": "Đã đạt giới hạn chiều cao",
+  "Wallpaper per monitor": "Hình nền theo từng màn hình",
+  "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Trình chọn hình nền khi đó đặt hình nền cho màn hình mà nó đang mở. Màu sắc lấy từ hình nền của màn hình chính",
+  "Applies to this monitor only\nClick to apply to all monitors": "Chỉ áp dụng cho màn hình này\nNhấn để áp dụng cho mọi màn hình",
+  "Applies to all monitors\nClick to apply to this monitor only": "Áp dụng cho mọi màn hình\nNhấn để chỉ áp dụng cho màn hình này"
 }
