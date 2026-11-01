@@ -345,9 +345,24 @@ pub fn strftime_from_qt(pattern: &str) -> String {
     strftime_pattern
 }
 
+pub fn strip_seconds(pattern: &str) -> String {
+    pattern
+        .replace(":%-S", "")
+        .replace(":%S", "")
+        .replace("%-S", "")
+        .replace("%S", "")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn time_patterns_drop_the_seconds_of_the_shell_time_format() {
+        assert_eq!(strip_seconds(&strftime_from_qt("HH:mm:ss")), "%H:%M");
+        assert_eq!(strip_seconds(&strftime_from_qt("h:mm:ss AP")), "%-I:%M %p");
+        assert_eq!(strip_seconds(&strftime_from_qt("HH:mm")), "%H:%M");
+    }
 
     #[test]
     fn vertical_time_splits_into_padded_parts_with_a_smaller_am_pm() {

@@ -299,14 +299,6 @@ fn format_moment(moment: Moment, format: &str) -> String {
     .unwrap_or_default()
 }
 
-fn strip_seconds(pattern: &str) -> String {
-    pattern
-        .replace(":%-S", "")
-        .replace(":%S", "")
-        .replace("%-S", "")
-        .replace("%S", "")
-}
-
 fn format_degrees(temperature: forecast::Temperature, uses_uscs: bool) -> String {
     format!("{}°", temperature.degrees(uses_uscs))
 }
@@ -322,9 +314,9 @@ fn build_hourly_entries(
     now: Moment,
     uses_uscs: bool,
 ) -> Vec<HourlyEntry> {
-    let time_format = strip_seconds(&crate::panels::bar::clock::strftime_from_qt(
-        &config::current().time_format,
-    ));
+    let time_format = crate::panels::bar::clock::strip_seconds(
+        &crate::panels::bar::clock::strftime_from_qt(&config::current().time_format),
+    );
     forecast
         .select_upcoming_slots(now, HOURLY_COUNT)
         .into_iter()
@@ -434,14 +426,6 @@ mod tests {
         assert_eq!(build_daily_entries(&forecast, false)[0].maximum, "20°");
         assert_eq!(build_daily_entries(&forecast, true)[0].maximum, "68°");
         assert_eq!(build_daily_entries(&forecast, true)[0].minimum, "32°");
-    }
-
-    #[test]
-    fn slot_times_drop_the_seconds_of_the_shell_time_format() {
-        let convert = crate::panels::bar::clock::strftime_from_qt;
-        assert_eq!(strip_seconds(&convert("HH:mm:ss")), "%H:%M");
-        assert_eq!(strip_seconds(&convert("h:mm:ss AP")), "%-I:%M %p");
-        assert_eq!(strip_seconds(&convert("HH:mm")), "%H:%M");
     }
 
     #[test]

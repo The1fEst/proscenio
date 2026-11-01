@@ -40,6 +40,7 @@ use crate::services::overlay::notifications::Notifications;
 use crate::services::overlay::polkit::Polkit;
 use crate::services::overlay::prompter::Prompter;
 use crate::services::session::Session;
+use crate::services::session::agenda::Agenda;
 use crate::services::session::background::BackgroundTasks;
 use crate::services::session::darkmode::DarkModeSchedule;
 use crate::services::session::location::Location;
@@ -74,6 +75,7 @@ pub struct Services {
     pub warp: Warp,
     pub weather: std::rc::Rc<Weather>,
     pub todo: Todo,
+    pub agenda: std::rc::Rc<Agenda>,
     pub timer: Timer,
     pub mpris: Mpris,
     pub xkb: Xkb,
@@ -93,6 +95,7 @@ impl Services {
         let system = gio::bus_get_sync(gio::BusType::System, gio::Cancellable::NONE).ok();
         let session = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE).ok();
         let mpris = Mpris::new(session.clone());
+        let session_for_agenda = session.clone();
         let events = Events::default();
         let hypr = HyprState::new(&events);
         let states = States::new();
@@ -139,6 +142,7 @@ impl Services {
             easyeffects: EasyEffects::new(),
             warp: Warp::new(),
             todo: Todo::new(),
+            agenda: Agenda::new(session_for_agenda),
             timer: Timer::new(),
             mpris,
         };

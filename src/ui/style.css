@@ -572,6 +572,10 @@ entry.search-input > text > selection {
     background-color: var(--colLayer2);
     border-radius: 12px;
 }
+.calendar-event {
+    background-color: var(--colLayer2);
+    border-radius: 12px;
+}
 .todo-fab {
     border-radius: 16px;
     box-shadow: 0 1px 6px 1px var(--colShadow);

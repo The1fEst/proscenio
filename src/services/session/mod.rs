@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod agenda;
 pub mod appearance;
 pub mod background;
 pub mod darkmode;

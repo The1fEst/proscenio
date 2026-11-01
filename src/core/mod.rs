@@ -5,6 +5,7 @@ pub mod frecency;
 pub mod fuzzy;
 pub mod gsettings;
 pub mod i18n;
+pub mod icalendar;
 pub mod levenshtein;
 pub mod listeners;
 pub mod paths;

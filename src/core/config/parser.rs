@@ -273,6 +273,7 @@ impl Config {
                 .and_then(Value::as_u64)
                 .unwrap_or(3000) as u32,
             time_second_precision: flag(&time, "secondPrecision", false),
+            should_show_calendar_events: flag(&time, "calendarEvents", true),
             date_with_year_format: text(&time, "dateWithYearFormat", "dd/MM/yyyy"),
             util_screen_snip: flag(&util, "showScreenSnip", true),
             util_screen_record: flag(&util, "showScreenRecord", false),
@@ -643,6 +644,14 @@ mod tests {
         assert!(Config::parse(&enabled_root).should_show_privacy_dots_in_fullscreen);
         let disabled_root = json!({ "bar": { "privacyDotsInFullscreen": false } });
         assert!(!Config::parse(&disabled_root).should_show_privacy_dots_in_fullscreen);
+    }
+
+    #[test]
+    fn calendar_events_are_on_unless_the_config_turns_them_off() {
+        let parse = |root: Value| Config::parse(&root).should_show_calendar_events;
+        assert!(parse(json!({})));
+        assert!(parse(json!({ "time": { "calendarEvents": true } })));
+        assert!(!parse(json!({ "time": { "calendarEvents": false } })));
     }
 
     #[test]

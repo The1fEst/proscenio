@@ -1611,5 +1611,8 @@
   "Normal urgency": "Звичайна терміновість",
   "Critical urgency": "Критична терміновість",
   "Headset media buttons": "Медіакнопки гарнітури",
-  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service запущено, і він реєструє дублікати Bluetooth-програвачів. Вимкніть його командою %1"
+  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service запущено, і він реєструє дублікати Bluetooth-програвачів. Вимкніть його командою %1",
+  "No events": "Немає подій",
+  "All day": "Увесь день",
+  "No title": "Без назви"
 }

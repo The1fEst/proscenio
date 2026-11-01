@@ -167,6 +167,14 @@ works without it.
 | AccountsService | the Users page |
 | GeoClue | locating the weather when no city is set; the forecast itself comes from wttr.in |
 
+## Services on the session bus
+
+Optional; without it the feature does not appear.
+
+| Service | What needs it |
+|---|---|
+| Evolution Data Server (`evolution-data-server`) | the events in the [calendar panel](calendar.md); GNOME Calendar stores its events there |
+
 ## Programs called on demand
 
 proscenio runs these when a feature needs them. A missing one disables only that feature, and the

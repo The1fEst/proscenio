@@ -1,14 +1,15 @@
 ---
 title: Calendar
 sidebar_label: Calendar
-description: The panel the bar's clock opens, with a month view, a to-do list, and a pomodoro timer and stopwatch.
+description: The panel the bar's clock opens, with a month view that shows Evolution Data Server events, a to-do list, and a pomodoro timer and stopwatch.
 ---
 
 # Calendar
 
 Clicking the clock on the [bar](bar.md) opens a panel with a navigation rail on the left and three
 pages: **Calendar**, **To Do** and **Timer**. The source is in `src/panels/calendar/`, with the
-timer in `src/services/session/timer.rs` and the list in `src/services/session/todo.rs`.
+timer in `src/services/session/timer.rs`, the list in `src/services/session/todo.rs` and the events
+in `src/services/session/agenda/`.
 
 ![The calendar panel under the bar's clock](/img/screenshots/calendar.webp)
 
@@ -48,6 +49,38 @@ A month grid of six weeks, starting on Monday, with today filled in the primary 
 of the neighboring months dimmed. The header shows the month and year; the two chevrons, the mouse
 wheel and Page Up / Page Down move a month at a time. When the grid is away from the current month,
 the title starts with `•`, and clicking it jumps back to today's month.
+
+### Events
+
+The events come from [Evolution Data Server](installing.md) (EDS), the store GNOME Calendar keeps its
+events in, so both show the same ones. The panel lists every calendar that is enabled and selected
+in EDS, with the color it has there. Without EDS, or without a selected calendar, the events
+section does not appear.
+
+A day with events has up to three dots under its number, one for each distinct calendar color.
+Clicking a day selects it, with a lighter fill than today's; the selection starts on today, and
+the jump back to today's month resets it. Under the grid, the selected day's weekday and date head
+a list of its events, scrollable and empty with *No events*. Each event is a card with a bar in
+its calendar's color, the title, and a second line with *All day* or the start and end in the
+`time.format` pattern, followed by the first line of the location. An event that crosses midnight
+is on both days, cut at midnight, and on a day it covers completely it reads *All day*. All-day
+events come first, then the others by start time.
+
+The panel asks EDS for the six weeks of the grid each time the month changes. EDS is started
+through D-Bus activation when the panel opens and released when it closes, and the calendar list is
+read again on each opening. While the panel is open, changes made in GNOME Calendar or by a sync
+show up within a moment.
+
+Recurring events are expanded by the panel: `FREQ` of `DAILY`, `WEEKLY`, `MONTHLY` or `YEARLY`
+with `INTERVAL`, `COUNT`, `UNTIL`, `WKST`, `BYDAY` (with ordinals such as `2TU` or `-1FR` for
+monthly and yearly rules), `BYMONTHDAY` and `BYMONTH`, together with `EXDATE`, single-value `RDATE`
+and instances moved with `RECURRENCE-ID`. A rule with anything else (`HOURLY` or finer, `BYSETPOS`,
+`BYWEEKNO`, `BYYEARDAY`, `BYHOUR`, `BYMINUTE`, `BYSECOND`, or a yearly `BYDAY` without `BYMONTH`)
+shows only its first event. Times in a time zone the system does not know, such as a Windows zone
+name, count as local time. Cancelled events are left out.
+
+With `time.calendarEvents` set to `false` in `config.toml` the panel never contacts EDS. It is on
+by default.
 
 ## To Do
 

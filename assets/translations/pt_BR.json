@@ -1611,5 +1611,8 @@
   "Normal urgency": "Urgência normal",
   "Critical urgency": "Urgência crítica",
   "Headset media buttons": "Botões de mídia do headset",
-  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service está em execução e registra players Bluetooth duplicados. Desative com %1"
+  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service está em execução e registra players Bluetooth duplicados. Desative com %1",
+  "No events": "Sem eventos",
+  "All day": "Dia inteiro",
+  "No title": "Sem título"
 }

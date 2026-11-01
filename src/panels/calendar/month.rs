@@ -1,9 +1,13 @@
 use gtk4::glib;
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
+use super::events::{self, Dots};
 use crate::core::i18n::tr;
+use crate::core::scope::Scope;
+use crate::services::session::agenda::civil::days_from_civil;
+use crate::services::session::agenda::{Agenda, Window};
 use crate::ui::theme::{SharedTheme, pixel_size, rounding};
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::ripple::{Look, RippleButton};
@@ -19,20 +23,48 @@ const HEADER_HEIGHT: i32 = 30;
 const HEADER_PADDING: i32 = 10;
 const MARGIN: i32 = 10;
 const DISABLED_OPACITY: f64 = 0.4;
+const DOTS_MARGIN: i32 = 4;
+
+type ShowSlot = Rc<RefCell<Option<Weak<dyn Fn()>>>>;
 
 struct Day {
     number: i32,
     place: i32,
+    days: i64,
+}
+
+struct DayCell {
+    button: RippleButton,
+    label: gtk4::Label,
+    dots: Dots,
 }
 
 pub struct Month {
     pub widget: gtk4::Widget,
     shift: Rc<Cell<i32>>,
     today: Rc<RefCell<glib::DateTime>>,
+    selection: Rc<Cell<Option<i64>>>,
+    window: Rc<Cell<Window>>,
+    agenda: Rc<Agenda>,
+    is_following_agenda: Rc<Cell<bool>>,
     show: Rc<dyn Fn()>,
 }
 
 impl Month {
+    pub fn follow_agenda(&self) {
+        if self.is_following_agenda.replace(true) {
+            return;
+        }
+        (self.show)();
+        self.agenda.activate(self.window.get());
+    }
+
+    pub fn unfollow_agenda(&self) {
+        if self.is_following_agenda.replace(false) {
+            self.agenda.deactivate();
+        }
+    }
+
     pub fn set_today(&self, now: &glib::DateTime) {
         let day = |date: &glib::DateTime| (date.year(), date.day_of_year());
         if day(&self.today.borrow()) == day(now) {
@@ -44,6 +76,7 @@ impl Month {
 
     pub fn reset(&self) {
         self.shift.set(0);
+        self.selection.set(None);
         (self.show)();
     }
 
@@ -53,8 +86,13 @@ impl Month {
     }
 }
 
-pub fn build(theme: &SharedTheme) -> Rc<Month> {
+pub fn build(theme: &SharedTheme, agenda: &Rc<Agenda>, scope: &Scope) -> Rc<Month> {
     let shift = Rc::new(Cell::new(0i32));
+    let selection: Rc<Cell<Option<i64>>> = Rc::default();
+    let window = Rc::new(Cell::new(Window {
+        first_day: 0,
+        end_day: 0,
+    }));
     let today = Rc::new(RefCell::new(
         glib::DateTime::now_local().expect("local time"),
     ));
@@ -98,26 +136,67 @@ pub fn build(theme: &SharedTheme) -> Rc<Month> {
     column.append(&header);
     column.append(&names);
 
-    let mut days: Vec<(RippleButton, gtk4::Label)> = Vec::with_capacity(ROWS * COLUMNS);
+    let cell_days: Rc<Vec<Cell<i64>>> =
+        Rc::new((0..ROWS * COLUMNS).map(|_| Cell::new(0)).collect());
+    let show_slot = ShowSlot::default();
+    let mut cells: Vec<DayCell> = Vec::with_capacity(ROWS * COLUMNS);
     for _ in 0..ROWS {
         let line = gtk4::Box::new(gtk4::Orientation::Horizontal, SPACING);
         line.set_halign(gtk4::Align::Center);
         for _ in 0..COLUMNS {
             let label = text::styled("");
             label.add_css_class("color-fade");
+            let dots = Dots::new(theme);
+            dots.widget.set_margin_bottom(DOTS_MARGIN);
+            let content = gtk4::Overlay::new();
+            content.set_child(Some(&Centered::new(&label)));
+            content.add_overlay(&dots.widget);
             let button = RippleButton::new(theme);
             button.set_radius(rounding::SMALL as f64);
             button.set_size_request(CELL, CELL);
-            button.set_content(&Centered::new(&label), 0, 0);
+            button.set_content(&content, 0, 0);
+            button.connect_down({
+                let index = cells.len();
+                let cell_days = cell_days.clone();
+                let selection = selection.clone();
+                let show_slot = show_slot.clone();
+                move || {
+                    selection.set(Some(cell_days[index].get()));
+                    let show = show_slot.borrow().as_ref().and_then(Weak::upgrade);
+                    if let Some(show) = show {
+                        show();
+                    }
+                }
+            });
             line.append(&button);
-            days.push((button, label));
+            cells.push(DayCell {
+                button,
+                label,
+                dots,
+            });
         }
         column.append(&line);
     }
 
+    let event_list = events::build_list(theme);
+    event_list.widget.set_margin_bottom(MARGIN);
+    column.append(&event_list.widget);
+
+    let is_following_agenda = Rc::new(Cell::new(false));
     let show: Rc<dyn Fn()> = {
+        let is_following_agenda = is_following_agenda.clone();
         let shift = shift.clone();
         let today = today.clone();
+        let selection = selection.clone();
+        let window = window.clone();
+        let agenda = agenda.clone();
+        let cell_days = cell_days.clone();
+        let selected_look = Look {
+            background: |theme| theme.colors.col_secondary_container,
+            hover: |theme| theme.colors.col_secondary_container_hover,
+            ripple: |theme| theme.colors.col_secondary_container_active,
+            ..Look::default()
+        };
         Rc::new(move || {
             let months = shift.get();
             let view_date = shift_month(&today.borrow(), months);
@@ -128,22 +207,66 @@ pub fn build(theme: &SharedTheme) -> Rc<Month> {
                 .unwrap_or_default();
             title.set_text(&format!("{mark}{month}"));
 
-            for (index, cell) in layout(&view_date, months == 0).iter().enumerate() {
-                let (button, label) = &days[index];
-                label.set_text(&cell.number.to_string());
-                button.set_toggled(cell.place == 1);
+            let grid = layout(&view_date, months == 0);
+            let grid_window = Window {
+                first_day: grid[0].days,
+                end_day: grid[0].days + (ROWS * COLUMNS) as i64,
+            };
+            window.set(grid_window);
+            if is_following_agenda.get() {
+                agenda.set_window(grid_window);
+            }
+            let now = today.borrow();
+            let today_days = days_from_civil(
+                now.year() as i64,
+                now.month() as i64,
+                now.day_of_month() as i64,
+            );
+            let selected_day = resolve_selection(
+                selection.get(),
+                today_days,
+                grid_window,
+                days_from_civil(view_date.year() as i64, view_date.month() as i64, 1),
+            );
+
+            for (index, day) in grid.iter().enumerate() {
+                let cell = &cells[index];
+                cell_days[index].set(day.days);
+                cell.label.set_text(&day.number.to_string());
+                let is_selected = day.days == selected_day && day.place != 1;
+                cell.button.set_toggled(day.place == 1);
+                cell.button.set_look(if is_selected {
+                    selected_look
+                } else {
+                    Look::default()
+                });
                 text::set_color(
-                    label,
-                    match cell.place {
-                        1 => "m3onPrimary",
-                        0 => "colOnLayer1",
+                    &cell.label,
+                    match (day.place, is_selected) {
+                        (1, _) => "m3onPrimary",
+                        (_, true) => "colOnSecondaryContainer",
+                        (0, _) => "colOnLayer1",
                         _ => "colOutlineVariant",
                     },
                 );
+                cell.dots.set(&agenda.occurrences_on(day.days));
             }
+
+            event_list.show(selected_day, &agenda.occurrences_on(selected_day));
+            event_list.widget.set_visible(agenda.is_available());
         })
     };
     show();
+    show_slot.replace(Some(Rc::downgrade(&show)));
+    scope.keep(agenda.subscribe({
+        let show = show.clone();
+        let is_following_agenda = is_following_agenda.clone();
+        move || {
+            if is_following_agenda.get() {
+                show();
+            }
+        }
+    }));
 
     let hover_controller = gtk4::EventControllerMotion::new();
     hover_controller.connect_enter({
@@ -161,6 +284,10 @@ pub fn build(theme: &SharedTheme) -> Rc<Month> {
         widget: column.clone().upcast(),
         shift,
         today,
+        selection,
+        window,
+        agenda: agenda.clone(),
+        is_following_agenda,
         show,
     });
 
@@ -279,8 +406,9 @@ fn layout(view_date: &glib::DateTime, should_mark_day: bool) -> Vec<Day> {
         (previous_month - (first - 1), previous_month)
     };
 
+    let first_days = days_from_civil(year as i64, month as i64, 1) - first as i64;
     let mut cells = Vec::with_capacity(ROWS * COLUMNS);
-    for _ in 0..ROWS * COLUMNS {
+    for index in 0..ROWS * COLUMNS {
         cells.push(Day {
             number: fill,
             place: match (difference == 0, fill == day && should_mark_day) {
@@ -288,6 +416,7 @@ fn layout(view_date: &glib::DateTime, should_mark_day: bool) -> Vec<Day> {
                 (true, false) => 0,
                 (false, _) => -1,
             },
+            days: first_days + index as i64,
         });
         fill += 1;
         if fill > length {
@@ -303,9 +432,55 @@ fn layout(view_date: &glib::DateTime, should_mark_day: bool) -> Vec<Day> {
     cells
 }
 
+fn resolve_selection(
+    selection: Option<i64>,
+    today_days: i64,
+    window: Window,
+    month_first_days: i64,
+) -> i64 {
+    let day = selection.unwrap_or(today_days);
+    if (window.first_day..window.end_day).contains(&day) {
+        day
+    } else {
+        month_first_days
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::session::agenda::civil::civil_from_days;
+
+    #[test]
+    fn every_cell_knows_the_day_it_shows() {
+        for (year, month, first_cell) in [(2026, 11, (2026, 10, 26)), (2026, 6, (2026, 6, 1))] {
+            let view_date =
+                glib::DateTime::new(&glib::TimeZone::local(), year, month, 1, 0, 0, 0.0)
+                    .expect("date");
+            let grid = layout(&view_date, false);
+            let (first_year, first_month, first_day) = first_cell;
+            assert_eq!(
+                grid[0].days,
+                days_from_civil(first_year, first_month, first_day)
+            );
+            for day in &grid {
+                assert_eq!(civil_from_days(day.days).2, day.number as i64);
+                assert_eq!(civil_from_days(day.days).1 == month as i64, day.place != -1);
+            }
+        }
+    }
+
+    #[test]
+    fn a_selection_outside_the_grid_falls_back_to_the_first_of_the_viewed_month() {
+        let window = Window {
+            first_day: 100,
+            end_day: 142,
+        };
+        assert_eq!(resolve_selection(Some(120), 105, window, 110), 120);
+        assert_eq!(resolve_selection(None, 105, window, 110), 105);
+        assert_eq!(resolve_selection(Some(99), 105, window, 110), 110);
+        assert_eq!(resolve_selection(None, 200, window, 110), 110);
+    }
 
     #[test]
     fn the_month_marks_the_day_it_is_given_and_steps_from_it() {

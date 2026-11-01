@@ -166,6 +166,7 @@ pub struct Config {
     pub weather_interval: i32,
     pub update_interval: u32,
     pub time_second_precision: bool,
+    pub should_show_calendar_events: bool,
     pub date_with_year_format: String,
     pub util_screen_snip: bool,
     pub util_screen_record: bool,

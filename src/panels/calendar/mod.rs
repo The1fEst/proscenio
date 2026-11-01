@@ -1,3 +1,4 @@
+pub mod events;
 pub mod laps;
 pub mod month;
 pub mod navrail;
@@ -199,6 +200,7 @@ impl Calendar {
             }
         }
         self.window.set_visible(true);
+        self.month.follow_agenda();
         let (Some(grab), Some(surface)) = (self.grab.as_ref(), self.window.surface()) else {
             return;
         };
@@ -215,6 +217,7 @@ impl Calendar {
             grab.release();
         }
         self.window.set_visible(false);
+        self.month.unfollow_agenda();
     }
 
     fn center_on(&self, anchor: &impl IsA<gtk4::Widget>) -> i32 {
@@ -256,7 +259,7 @@ pub fn build(
         .map(|tab| (tab as usize).min(TABS.len() - 1))
         .unwrap_or(0);
 
-    let month = month::build(theme);
+    let month = month::build(theme, &services.agenda, scope);
     let todo_page = todo::build(theme, &services.todo, scope);
     let timer_page = pomodoro::build(theme, &services.timer, scope);
     let widgets: Vec<gtk4::Widget> = vec![

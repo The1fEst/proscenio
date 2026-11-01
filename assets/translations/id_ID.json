@@ -1611,5 +1611,8 @@
   "Normal urgency": "Urgensi normal",
   "Critical urgency": "Urgensi kritis",
   "Headset media buttons": "Tombol media headset",
-  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service sedang berjalan dan mendaftarkan pemutar Bluetooth ganda. Matikan dengan %1"
+  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service sedang berjalan dan mendaftarkan pemutar Bluetooth ganda. Matikan dengan %1",
+  "No events": "Tidak ada acara",
+  "All day": "Sepanjang hari",
+  "No title": "Tanpa judul"
 }
