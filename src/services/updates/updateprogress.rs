@@ -27,12 +27,14 @@ pub enum Step {
         built_count: u32,
         count: u32,
     },
+    Flatpak,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
     Repositories,
     Aur,
+    Flatpak,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -57,6 +59,7 @@ impl Part {
 pub struct UpdateProgress {
     repositories: Part,
     aur: Part,
+    flatpak: Part,
     phase: Phase,
     download_bytes: u64,
     packages_to_build: u32,
@@ -66,20 +69,35 @@ pub struct UpdateProgress {
 }
 
 impl UpdateProgress {
-    pub fn system(repository_count: usize, aur_count: usize, has_aur: bool) -> Self {
+    pub fn system(
+        repository_count: usize,
+        aur_count: usize,
+        has_aur: bool,
+        flatpak_count: usize,
+    ) -> Self {
         let (repository_weight, aur_weight) = match (has_aur, repository_count > 0, aur_count > 0) {
             (false, _, _) => (1.0, 0.0),
             (true, true, false) => (0.9, 0.1),
             (true, false, true) => (0.1, 0.9),
             _ => (0.5, 0.5),
         };
+        let (package_weight, flatpak_weight) =
+            match (flatpak_count > 0, repository_count + aur_count > 0) {
+                (false, _) => (1.0, 0.0),
+                (true, true) => (0.9, 0.1),
+                (true, false) => (0.0, 1.0),
+            };
         UpdateProgress {
             repositories: Part {
-                weight: repository_weight,
+                weight: repository_weight * package_weight,
                 ..Part::default()
             },
             aur: Part {
-                weight: aur_weight,
+                weight: aur_weight * package_weight,
+                ..Part::default()
+            },
+            flatpak: Part {
+                weight: flatpak_weight,
                 ..Part::default()
             },
             phase: Phase::Repositories,
@@ -97,7 +115,8 @@ impl UpdateProgress {
 
     pub fn fraction(&mut self) -> f64 {
         let fraction = self.repositories.weight * self.repositories.fraction()
-            + self.aur.weight * self.aur.fraction();
+            + self.aur.weight * self.aur.fraction()
+            + self.flatpak.weight * self.flatpak.fraction();
         self.displayed_fraction = self.displayed_fraction.max(fraction.min(1.0));
         self.displayed_fraction
     }
@@ -105,6 +124,14 @@ impl UpdateProgress {
     pub fn finish(&mut self) {
         self.repositories.is_done = true;
         self.aur.is_done = true;
+        self.flatpak.is_done = true;
+    }
+
+    pub fn start_flatpak(&mut self) {
+        self.repositories.is_done = true;
+        self.aur.is_done = true;
+        self.phase = Phase::Flatpak;
+        self.step = Step::Flatpak;
     }
 
     pub fn start_aur(&mut self) {
@@ -118,6 +145,7 @@ impl UpdateProgress {
         let part = match phase {
             Phase::Repositories => &mut self.repositories,
             Phase::Aur => &mut self.aur,
+            Phase::Flatpak => return,
         };
         match event {
             Event::Stage(Stage::Synchronize) => self.step = Step::Checking,
@@ -159,9 +187,10 @@ impl UpdateProgress {
                 name,
                 percent,
             } => {
-                let install_start = match phase {
-                    Phase::Repositories => DOWNLOAD,
-                    Phase::Aur => BUILD,
+                let install_start = if phase == Phase::Repositories {
+                    DOWNLOAD
+                } else {
+                    BUILD
                 };
                 let install_fraction = (index.saturating_sub(1) as f64 + *percent as f64 / 100.0)
                     / (*count).max(1) as f64;
@@ -249,15 +278,52 @@ mod tests {
     fn the_bar_is_shared_by_the_sources_that_have_packages() {
         let weights =
             |progress: UpdateProgress| (progress.repositories.weight, progress.aur.weight);
-        assert_eq!(weights(UpdateProgress::system(159, 3, true)), (0.5, 0.5));
-        assert_eq!(weights(UpdateProgress::system(159, 0, true)), (0.9, 0.1));
-        assert_eq!(weights(UpdateProgress::system(0, 3, true)), (0.1, 0.9));
-        assert_eq!(weights(UpdateProgress::system(159, 3, false)), (1.0, 0.0));
+        assert_eq!(weights(UpdateProgress::system(159, 3, true, 0)), (0.5, 0.5));
+        assert_eq!(weights(UpdateProgress::system(159, 0, true, 0)), (0.9, 0.1));
+        assert_eq!(weights(UpdateProgress::system(0, 3, true, 0)), (0.1, 0.9));
+        assert_eq!(
+            weights(UpdateProgress::system(159, 3, false, 0)),
+            (1.0, 0.0)
+        );
+    }
+
+    #[test]
+    fn flatpak_takes_a_tenth_of_the_bar_after_the_packages_or_all_of_it_alone() {
+        let progress = UpdateProgress::system(159, 0, true, 2);
+        assert!(is_close(progress.repositories.weight, 0.81));
+        assert!(is_close(progress.aur.weight, 0.09));
+        assert!(is_close(progress.flatpak.weight, 0.1));
+        let alone = UpdateProgress::system(0, 0, true, 2);
+        assert_eq!((alone.repositories.weight, alone.aur.weight), (0.0, 0.0));
+        assert_eq!(alone.flatpak.weight, 1.0);
+    }
+
+    #[test]
+    fn the_bar_waits_for_flatpak_after_the_packages_and_ends_with_it() {
+        let mut progress = UpdateProgress::system(2, 0, false, 1);
+        progress.handle_event(&Event::Done {
+            is_ok: true,
+            message: String::new(),
+        });
+        assert!(is_close(progress.fraction(), 0.9));
+        progress.start_flatpak();
+        assert_eq!(progress.step(), &Step::Flatpak);
+        progress.handle_event(&package(1, 2, 50));
+        assert_eq!(progress.step(), &Step::Flatpak);
+        assert!(is_close(progress.fraction(), 0.9));
+        progress.finish();
+        assert!(is_close(progress.fraction(), 1.0));
+
+        let mut alone = UpdateProgress::system(0, 0, false, 1);
+        assert!(is_close(alone.fraction(), 0.0));
+        alone.start_flatpak();
+        alone.finish();
+        assert!(is_close(alone.fraction(), 1.0));
     }
 
     #[test]
     fn the_repositories_move_through_check_download_install_and_hooks() {
-        let mut progress = UpdateProgress::system(4, 0, true);
+        let mut progress = UpdateProgress::system(4, 0, true, 0);
         progress.handle_event(&Event::Stage(Stage::Synchronize));
         progress.handle_event(&Event::Download {
             received_bytes: 50,
@@ -313,7 +379,7 @@ mod tests {
 
     #[test]
     fn cached_packages_skip_the_download_part() {
-        let mut progress = UpdateProgress::system(2, 0, false);
+        let mut progress = UpdateProgress::system(2, 0, false, 0);
         progress.handle_event(&Event::Transaction {
             package_count: 2,
             download_bytes: 0,
@@ -323,7 +389,7 @@ mod tests {
 
     #[test]
     fn aur_packages_are_built_then_installed_through_the_session() {
-        let mut progress = UpdateProgress::system(0, 2, true);
+        let mut progress = UpdateProgress::system(0, 2, true, 0);
         progress.handle_event(&Event::Transaction {
             package_count: 0,
             download_bytes: 0,
@@ -364,7 +430,7 @@ mod tests {
 
     #[test]
     fn the_bar_never_moves_back() {
-        let mut progress = UpdateProgress::system(2, 0, false);
+        let mut progress = UpdateProgress::system(2, 0, false, 0);
         progress.handle_event(&Event::Transaction {
             package_count: 2,
             download_bytes: 0,

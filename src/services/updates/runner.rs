@@ -5,6 +5,7 @@ use std::io::Write;
 use std::process::{ChildStdin, Stdio};
 use std::rc::Rc;
 
+use super::flatpak::build_update_commands;
 use super::manager::{aur_query, aur_upgrade, package_manager};
 use super::output::{
     decode_events, elapsed_text, exit_code, stage_text, visible_text, watch_output,
@@ -15,6 +16,7 @@ use crate::core::i18n::trf;
 use crate::core::{paths, process};
 use crate::services::updates::updateprogress::UpdateProgress;
 
+const FAILED_STATUS: i32 = 1 << 8;
 const MERGED_OUTPUT: &str = "exec 2>&1; exec \"$@\"";
 const SHELL_UPDATE: &str = "exec 2>&1
 set -e
@@ -109,6 +111,16 @@ impl Updates {
     }
 
     pub(super) fn start_session(&self, job: Job, review: Review) -> bool {
+        if review.is_flatpak_only() {
+            self.progress.replace(Some(UpdateProgress::system(
+                0,
+                0,
+                false,
+                review.flatpak_updates.len(),
+            )));
+            self.run_flatpak_after(&review, 0);
+            return true;
+        }
         let Some(manager) = package_manager() else {
             return false;
         };
@@ -153,11 +165,11 @@ impl Updates {
         let pid = glib::Pid(child.id() as i32);
         watch_output(stdout, pid, on_bytes, move |code| {
             let status = if code == 0 && !session.is_ok.get() {
-                1 << 8
+                FAILED_STATUS
             } else {
                 code
             };
-            updates.end(status);
+            updates.run_flatpak_after(&session.review, status);
         });
         true
     }
@@ -240,6 +252,7 @@ impl Updates {
             changes.len(),
             aur_names.len(),
             has_aur,
+            session.review.flatpak_updates.len(),
         )));
         session.includes_aur.set(has_aur && !aur_names.is_empty());
         session.aur_names.replace(aur_names);
@@ -338,6 +351,46 @@ impl Updates {
                 session.is_ok.set(false);
                 session.close();
             }
+        }
+    }
+
+    fn run_flatpak_after(&self, review: &Review, status: i32) {
+        let commands = build_update_commands(&review.flatpak_updates);
+        if status != 0 || commands.is_empty() {
+            self.end(status);
+            return;
+        }
+        if let Some(progress) = self.progress.borrow_mut().as_mut() {
+            progress.start_flatpak();
+        }
+        self.output_listeners.notify();
+        self.run_flatpak(commands, true);
+    }
+
+    fn run_flatpak(&self, mut commands: Vec<Vec<String>>, is_ok: bool) {
+        if commands.is_empty() {
+            self.end(if is_ok { 0 } else { FAILED_STATUS });
+            return;
+        }
+        let command = commands.remove(0);
+        let line: Vec<String> = ["bash", "-c", MERGED_OUTPUT, "bash"]
+            .into_iter()
+            .map(str::to_owned)
+            .chain(command.iter().cloned())
+            .collect();
+        let updates = self.clone();
+        let child_pid = self.run_logged(
+            &command.join(" "),
+            &line,
+            &[],
+            |_| {},
+            move |status| {
+                updates.run_flatpak(commands, is_ok && status == 0);
+            },
+        );
+        if child_pid.is_none() {
+            self.push_log("Could not start Flatpak");
+            self.end(FAILED_STATUS);
         }
     }
 }

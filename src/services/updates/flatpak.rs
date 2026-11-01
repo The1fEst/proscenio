@@ -80,6 +80,28 @@ pub(super) async fn list_updates() -> Vec<FlatpakUpdate> {
     updates
 }
 
+pub(super) fn build_update_commands(updates: &[FlatpakUpdate]) -> Vec<Vec<String>> {
+    INSTALLATIONS
+        .into_iter()
+        .filter(|installation| {
+            updates
+                .iter()
+                .any(|update| update.installation == *installation)
+        })
+        .map(|installation| {
+            [
+                PROGRAM,
+                "update",
+                "--noninteractive",
+                "--assumeyes",
+                installation.flag(),
+            ]
+            .map(str::to_owned)
+            .to_vec()
+        })
+        .collect()
+}
+
 fn build_query(installation: Installation) -> [&'static str; 5] {
     [
         PROGRAM,
@@ -214,5 +236,23 @@ mod tests {
                 ]
             );
         }
+    }
+
+    #[test]
+    fn only_the_installations_with_updates_are_updated_the_user_one_first() {
+        let user = build_update("org.a.App", "1", Installation::User);
+        let system = build_update("org.b.App", "2", Installation::System);
+        fn build_command(flag: &str) -> [&str; 5] {
+            ["flatpak", "update", "--noninteractive", "--assumeyes", flag]
+        }
+        assert!(build_update_commands(&[]).is_empty());
+        assert_eq!(
+            build_update_commands(std::slice::from_ref(&system)),
+            [build_command("--system")]
+        );
+        assert_eq!(
+            build_update_commands(&[system, user.clone(), user]),
+            [build_command("--user"), build_command("--system")]
+        );
     }
 }

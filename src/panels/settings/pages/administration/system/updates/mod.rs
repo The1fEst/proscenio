@@ -216,6 +216,7 @@ fn step_text(step: &Step) -> String {
             "Building %1 (%2 of %3)",
             &[name, &(built_count + 1).to_string(), &count.to_string()],
         ),
+        Step::Flatpak => tr("Updating…"),
     }
 }
 

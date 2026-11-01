@@ -25,6 +25,10 @@ impl Review {
     pub fn count(&self) -> usize {
         self.changes.len() + self.aur_packages.len() + self.flatpak_updates.len()
     }
+
+    pub fn is_flatpak_only(&self) -> bool {
+        self.changes.is_empty() && self.aur_packages.is_empty() && !self.flatpak_updates.is_empty()
+    }
 }
 
 fn choose_commit_notice(is_loaded: bool, commit_count: usize) -> Option<Notice> {
@@ -210,13 +214,16 @@ mod tests {
         };
         let mut review = Review::default();
         assert_eq!(review.count(), 0);
+        assert!(!review.is_flatpak_only());
         review.flatpak_updates = vec![build_flatpak_update("org.a.App")];
         assert_eq!(review.count(), 1);
+        assert!(review.is_flatpak_only());
         review.changes = vec![Change::new("linux", "1-1", "2-1")];
         review.aur_packages = vec!["foo 1-1 -> 2-1".to_owned()];
         review
             .flatpak_updates
             .push(build_flatpak_update("org.b.App"));
         assert_eq!(review.count(), 4);
+        assert!(!review.is_flatpak_only());
     }
 }

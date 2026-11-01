@@ -243,7 +243,7 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 
 | Section | Row under the title | Update runs |
 |---|---|---|
-| System | **Packages**: how many packages can be upgraded, from the repositories, from AUR and, with Flatpak installed, from Flatpak; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `/usr/lib/proscenio/proscenio-packages plan ~/.cache/proscenio/pacman` lists the upgrade without a password; after the list is confirmed, `pkexec /usr/lib/proscenio/proscenio-packages session` upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
+| System | **Packages**: how many packages can be upgraded, from the repositories, from AUR and, with Flatpak installed, from Flatpak; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `/usr/lib/proscenio/proscenio-packages plan ~/.cache/proscenio/pacman` lists the upgrade without a password; after the list is confirmed, `pkexec /usr/lib/proscenio/proscenio-packages session` upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo`; then, when Flatpak updates are pending, `flatpak update --noninteractive --assumeyes --user` and `flatpak update --noninteractive --assumeyes --system`, each only when its installation has an update, as the user (see below) |
 | Shell | **Commits**: how many commits `main` is ahead | after the commits are listed and confirmed, downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm` in a root session of `proscenio-packages`, then restarts `proscenio.service` |
 
 ![The Packages subpage listing the pending packages with their old and new versions](/img/screenshots/settings-system-update-packages.webp)
@@ -282,6 +282,13 @@ user who opened it that descends from the `paru`, `yay` or build the shell start
 and holds at most 8 unanswered connections. An install of package files goes through libalpm; any
 other call runs `/usr/bin/pacman` in the session. The session ends with the update.
 
+The Flatpak commands run once the session has ended, only when the packages succeeded, as the user:
+`--user` needs no authorization, and `--system` asks polkit through Flatpak's own system helper,
+which the shell's [polkit agent](polkit.md) answers. Their output follows the packages' in the log,
+and the progress bar ends with them. A command that fails does not keep the other from running.
+When only Flatpak updates are pending, no session opens and no `proscenio-packages` password is
+asked for.
+
 **Update** under System refreshes before it installs anything, without a password.
 `proscenio-packages plan` synchronizes the private copy of the package databases, the one the
 [check](sidebar.md#updates) keeps in `~/.cache/proscenio/pacman`, and plans the upgrade there as the
@@ -293,10 +300,11 @@ dependency has its new version alone, and a package the transaction removes read
 place of a new version. Under **AUR** come the packages `paru -Qua` or `yay -Qua` lists, and under
 **Flatpak** the updates `flatpak remote-ls --updates` lists, queried at the same time as the AUR
 listing. The rows have the same copy and open-in-new buttons as the Packages page.
-**Update N packages** asks for the password and installs the list; N counts the dependencies and
-removals as well, so it can be more than the count on the **Packages** row. **Cancel**, Escape, a
-click outside the dialog and closing the Settings window end the update before any password is
-asked for, and so does closing the window while the refresh runs. When the refresh finds no package and no Flatpak update, no dialog opens and the
+**Update N packages** asks for the password, unless only Flatpak updates are listed, and installs
+the list; N counts the dependencies and removals as well, so it can be more than the count on the
+**Packages** row. **Cancel**, Escape, a click outside the dialog and closing the Settings window end
+the update before any password is asked for, and so does closing the window while the refresh runs.
+When the refresh finds no package and no Flatpak update, no dialog opens and the
 output below reads **Up to date**. When the AUR listing fails, the update stops there and the
 output reads **Could not check for updates**; so it does when the plan fails, such as with no
 network, and the log names the error. Either message stays until the next check or update.
