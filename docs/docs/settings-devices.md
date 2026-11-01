@@ -20,6 +20,12 @@ ready to start on demand, the page is only a notice; it comes with the bluez pac
 | Control | Does |
 |---|---|
 | Bluetooth | powers the adapter on or off (its `Powered` property) |
+| Headset media buttons | lets the buttons of a Bluetooth headset control the active player (`bluetooth.mediaButtons`, default on; see [Headset media buttons](#headset-media-buttons)) |
+
+While the headset buttons are on and the user unit `mpris-proxy.service` is active, a warning under
+the switch says that it registers duplicate Bluetooth players and gives the command that turns it
+off, `systemctl --user disable --now mpris-proxy.service`. The page checks the unit when it opens
+and whenever the switch changes.
 
 Without an adapter the page says "No Bluetooth Found", and with it powered off, "Bluetooth Turned
 Off".

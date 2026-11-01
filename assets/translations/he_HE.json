@@ -1609,5 +1609,7 @@
   "Default urgency": "דחיפות ברירת מחדל",
   "Low urgency": "דחיפות נמוכה",
   "Normal urgency": "דחיפות רגילה",
-  "Critical urgency": "דחיפות קריטית"
+  "Critical urgency": "דחיפות קריטית",
+  "Headset media buttons": "לחצני המדיה של האוזניות",
+  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service פועל ורושם נגני Bluetooth כפולים. אפשר לכבות אותו עם %1"
 }

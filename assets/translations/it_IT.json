@@ -1609,5 +1609,7 @@
   "Default urgency": "Urgenza predefinita",
   "Low urgency": "Urgenza bassa",
   "Normal urgency": "Urgenza normale",
-  "Critical urgency": "Urgenza critica"
+  "Critical urgency": "Urgenza critica",
+  "Headset media buttons": "Tasti multimediali delle cuffie",
+  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service è in esecuzione e registra lettori Bluetooth duplicati. Disattivalo con %1"
 }

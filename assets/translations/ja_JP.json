@@ -1609,5 +1609,7 @@
   "Default urgency": "緊急度: 既定",
   "Low urgency": "緊急度: 低",
   "Normal urgency": "緊急度: 通常",
-  "Critical urgency": "緊急度: 重大"
+  "Critical urgency": "緊急度: 重大",
+  "Headset media buttons": "ヘッドセットのメディアボタン",
+  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service が動作中で、Bluetooth プレーヤーを重複して登録します。%1 で無効にしてください"
 }

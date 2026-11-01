@@ -1,14 +1,16 @@
-use gtk4::glib;
 use gtk4::prelude::*;
+use gtk4::{gio, glib};
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::core::i18n::tr;
+use crate::core::config;
+use crate::core::i18n::{tr, trf};
 use crate::core::tools;
 use crate::panels::notifications::list::Placeholder;
 use crate::panels::settings::content::{Context, Page};
+use crate::platform::dbus;
 use crate::services::network::bluez::{Bluez, Device, Setup, friendly_order};
 use crate::ui::shapes::Shape;
 use crate::ui::theme::pixel_size;
@@ -25,6 +27,11 @@ const ROW_SPACING: i32 = 10;
 const SEARCHING_MARGIN: i32 = 8;
 const DISCOVERY_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const BLUEZ: &str = "org.bluez";
+const MPRIS_PROXY_UNIT: &str = "mpris-proxy.service";
+const MPRIS_PROXY_DISABLE_COMMAND: &str = "systemctl --user disable --now mpris-proxy.service";
+const SYSTEMD: &str = "org.freedesktop.systemd1";
+const SYSTEMD_PATH: &str = "/org/freedesktop/systemd1";
+const SYSTEMD_TIMEOUT_MILLIS: i32 = 2000;
 const NO_BLUEZ: &str = "BlueZ is not on the system bus, so there is no Bluetooth. It comes with the bluez package and runs as bluetooth.service.";
 
 struct Looking {
@@ -65,6 +72,39 @@ pub fn build(context: &Context) -> Rc<Page> {
         let bluez = bluez.clone();
         move || bluez.is_powered.get()
     });
+    page.config_switch(
+        &controls,
+        "headphones",
+        &tr("Headset media buttons"),
+        config::BLUETOOTH_MEDIA_BUTTONS,
+        true,
+    );
+    let proxy_notice = page.notice(
+        &controls,
+        "warning",
+        &trf(
+            "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1",
+            &[MPRIS_PROXY_DISABLE_COMMAND],
+        ),
+    );
+    proxy_notice.set_visible(false);
+    let show_proxy_notice = {
+        let session = context.services.session_bus.clone();
+        move || {
+            proxy_notice.set_visible(false);
+            let is_on = || config::value_bool(config::BLUETOOTH_MEDIA_BUTTONS, true);
+            let Some(session) = session.clone().filter(|_| is_on()) else {
+                return;
+            };
+            let proxy_notice = proxy_notice.clone();
+            glib::spawn_future_local(async move {
+                let is_proxy_active = is_mpris_proxy_active(&session).await;
+                proxy_notice.set_visible(is_proxy_active && is_on());
+            });
+        }
+    };
+    show_proxy_notice();
+    page.watch(config::BLUETOOTH_MEDIA_BUTTONS, show_proxy_notice);
 
     let missing_placeholder = placeholder(
         &page,
@@ -192,6 +232,39 @@ pub fn build(context: &Context) -> Rc<Page> {
     page.keep(discovery);
     page.keep(setup);
     page
+}
+
+async fn is_mpris_proxy_active(session: &gio::DBusConnection) -> bool {
+    let Ok(reply) = session
+        .call_future(
+            Some(SYSTEMD),
+            SYSTEMD_PATH,
+            "org.freedesktop.systemd1.Manager",
+            "GetUnit",
+            Some(&(MPRIS_PROXY_UNIT,).to_variant()),
+            None,
+            gio::DBusCallFlags::NONE,
+            SYSTEMD_TIMEOUT_MILLIS,
+        )
+        .await
+    else {
+        return false;
+    };
+    let Some(unit) = reply
+        .try_child_value(0)
+        .and_then(|value| value.get::<glib::variant::ObjectPath>())
+    else {
+        return false;
+    };
+    dbus::string_property(
+        session,
+        SYSTEMD,
+        unit.as_str(),
+        "org.freedesktop.systemd1.Unit",
+        "ActiveState",
+    )
+    .await
+    .is_some_and(|state| state == "active")
 }
 
 fn placeholder(page: &Page, title: &str, description: &str) -> gtk4::CenterBox {

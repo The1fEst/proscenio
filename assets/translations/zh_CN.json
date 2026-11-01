@@ -1609,5 +1609,7 @@
   "Default urgency": "默认紧急度",
   "Low urgency": "低紧急度",
   "Normal urgency": "普通紧急度",
-  "Critical urgency": "严重紧急度"
+  "Critical urgency": "严重紧急度",
+  "Headset media buttons": "耳机媒体按键",
+  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service 正在运行，会注册重复的蓝牙播放器。使用 %1 将其关闭"
 }

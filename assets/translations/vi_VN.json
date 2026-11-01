@@ -1609,5 +1609,7 @@
   "Default urgency": "Mức khẩn cấp mặc định",
   "Low urgency": "Mức khẩn cấp thấp",
   "Normal urgency": "Mức khẩn cấp bình thường",
-  "Critical urgency": "Mức khẩn cấp nghiêm trọng"
+  "Critical urgency": "Mức khẩn cấp nghiêm trọng",
+  "Headset media buttons": "Nút đa phương tiện của tai nghe",
+  "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service đang chạy và đăng ký trùng các trình phát Bluetooth. Tắt bằng %1"
 }
