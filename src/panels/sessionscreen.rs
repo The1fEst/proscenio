@@ -119,8 +119,12 @@ pub fn build(
         window: window.downgrade(),
     });
 
-    let mut entries: Vec<(&str, &str)> = ACTIONS.to_vec();
-    entries.push(FIRMWARE);
+    let can_set_boot_next = boot::can_set_boot_next();
+    let entries: Vec<(&str, &str)> = ACTIONS
+        .into_iter()
+        .filter(|(_, label)| can_set_boot_next || *label != REBOOT_INTO)
+        .chain([FIRMWARE])
+        .collect();
     let reboot_into_index = entries.iter().position(|(_, label)| *label == REBOOT_INTO);
     let mut actions = Vec::new();
     for (index, (icon, label)) in entries.iter().enumerate() {

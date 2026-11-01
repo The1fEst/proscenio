@@ -50,11 +50,13 @@ stopping the shell does not cut it short.
 
 ### Reboot into…
 
-**Reboot into…** replaces the grid with a list of the labeled boot entries that `efibootmgr`
-prints, inactive ones included, since the firmware boots those as the next boot all the same. Each
-row shows the entry's label and its four-digit number; the entry the machine booted from says
-"Running now". The rows follow `BootOrder`, and entries missing from it come after, as
-`efibootmgr` lists them. When exactly one label contains "Windows Boot Manager", that entry is
+The button shows only when the machine booted through UEFI (`/sys/firmware/efi` exists) and
+`efibootmgr` is installed; without them, the grid has seven buttons.
+
+It replaces the grid with a list of the labeled boot entries that `efibootmgr` prints, inactive
+ones included, since the firmware boots those as the next boot all the same. Each row shows the
+entry's label and its four-digit number; the entry the machine booted from says "Running now".
+The rows follow `BootOrder`, and entries missing from it come after, as `efibootmgr` lists them. When exactly one label contains "Windows Boot Manager", that entry is
 first, so Enter twice reboots into Windows.
 
 Picking a row closes every window, sets `BootNext` to that entry's number with

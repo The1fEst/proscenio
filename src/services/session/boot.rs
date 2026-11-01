@@ -27,6 +27,10 @@ pub struct BootEntry {
     pub is_current: bool,
 }
 
+pub fn can_set_boot_next() -> bool {
+    std::path::Path::new("/sys/firmware/efi").is_dir() && crate::core::process::exists("efibootmgr")
+}
+
 pub fn parse_boot_list(text: &str) -> Vec<BootEntry> {
     let mut current = None;
     let mut order = Vec::new();
