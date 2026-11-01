@@ -192,6 +192,15 @@ impl Services {
                 Ok(())
             }
         });
+        if self.light.has_keyboard_backlight() {
+            background.add("keyboard backlight", {
+                let light = self.light.clone();
+                move || {
+                    light.follow_keyboard_backlight();
+                    Ok(())
+                }
+            });
+        }
         background.add_every("weather", Weather::period, {
             let weather = self.weather.clone();
             move || {

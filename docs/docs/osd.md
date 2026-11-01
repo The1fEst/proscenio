@@ -1,13 +1,13 @@
 ---
 title: On-screen display
 sidebar_label: On-screen display
-description: The small indicator that shows volume, brightness, gamma, the lock keys, the keyboard layout, the microphone, the audio output or the power profile for a moment when one of them changes, and the volume protection message under it.
+description: The small indicator that shows volume, brightness, gamma, keyboard brightness, the lock keys, the keyboard layout, the microphone, the audio output or the power profile for a moment when one of them changes, and the volume protection message under it.
 ---
 
 # On-screen display
 
-When the volume, the screen brightness, the gamma, a lock key, the keyboard layout, the microphone
-mute, the default output or the power profile changes, a small pill appears at the top of the
+When the volume, the screen brightness, the gamma, the keyboard brightness, a lock key, the keyboard
+layout, the microphone mute, the default output or the power profile changes, a small pill appears at the top of the
 screen with an icon and a name, usually with a value, and goes away after a second. The source is
 `src/panels/osd.rs`.
 
@@ -20,6 +20,7 @@ screen with an icon and a name, usually with a value, and goes away after a seco
 | The default output's volume or mute changes | Volume |
 | A monitor's brightness changes | Brightness |
 | The gamma changes | Gamma |
+| The keyboard backlight's level changes, on a machine that has one | Keyboard brightness |
 | Volume protection steps in | Volume, with the reason under it |
 | Caps Lock or Num Lock is switched | Caps Lock or Num Lock |
 | The keyboard switches to another layout | Keyboard layout |
@@ -36,6 +37,7 @@ profile and the first lock state the shell reads, and a layout without a name sh
 | Volume | `volume_off` when muted, else `volume_up` | Volume | the output volume | 0 to 100% |
 | Brightness | `routine` while night light is on, else `light_mode` | Brightness | the focused monitor's brightness | 0 to 100% |
 | Gamma | `wb_twilight` | Gamma | the gamma of the screen's color matrix | 25 to 100% |
+| Keyboard brightness | `backlight_high` | Keyboard brightness | the keyboard backlight's level | 0 to 100% |
 | Caps Lock | `shift_lock` when on, else `shift_lock_off` | Caps Lock | On or Off | none |
 | Num Lock | `dialpad` | Num Lock | On or Off | none |
 | Keyboard layout | `keyboard` | the layout's name, as the bar's layout button tooltip shows it | none | none |

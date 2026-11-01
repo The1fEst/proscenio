@@ -24,6 +24,14 @@ pub enum Change {
     Read,
     Level,
     Gamma,
+    KeyboardLevel,
+}
+
+struct KeyboardBacklight {
+    device: Device,
+    max: u32,
+    brightness: Cell<u32>,
+    pending_writes: Cell<u32>,
 }
 
 enum Control {
@@ -50,6 +58,7 @@ pub struct Light {
     system: Option<gio::DBusConnection>,
     backlight: Option<Rc<Device>>,
     pending_backlight_writes: Rc<Cell<u32>>,
+    keyboard_backlight: Option<Rc<KeyboardBacklight>>,
     writer: Rc<RefCell<Option<process::Running>>>,
     generation: Rc<Cell<u64>>,
     listeners: Rc<Listeners<Change>>,
@@ -57,6 +66,7 @@ pub struct Light {
 
 impl Light {
     pub fn new(color: &Rc<ScreenColor>, system: Option<gio::DBusConnection>) -> Self {
+        let class_root = Path::new(backlight::SYSFS_CLASS);
         let light = Light {
             screens: Rc::default(),
             names: Rc::default(),
@@ -64,8 +74,19 @@ impl Light {
             color: color.clone(),
             backlight: system
                 .as_ref()
-                .and_then(|_| backlight::find_screen_backlight(Path::new(backlight::SYSFS_CLASS)))
+                .and_then(|_| backlight::find_screen_backlight(class_root))
                 .map(Rc::new),
+            keyboard_backlight: system
+                .as_ref()
+                .and_then(|_| backlight::find_keyboard_backlight(class_root))
+                .and_then(|device| {
+                    Some(Rc::new(KeyboardBacklight {
+                        max: device.read_max_brightness()?,
+                        brightness: Cell::new(device.read_brightness()?),
+                        pending_writes: Cell::new(0),
+                        device,
+                    }))
+                }),
             system,
             pending_backlight_writes: Rc::default(),
             writer: Rc::default(),
@@ -358,6 +379,53 @@ impl Light {
         self.gamma.set(percent);
         self.color.set_gamma(percent);
         self.announce(Change::Gamma);
+    }
+
+    pub fn has_keyboard_backlight(&self) -> bool {
+        self.keyboard_backlight.is_some()
+    }
+
+    pub fn keyboard_level(&self) -> f64 {
+        self.keyboard_backlight.as_ref().map_or(0.0, |keyboard| {
+            f64::from(keyboard.brightness.get()) / f64::from(keyboard.max)
+        })
+    }
+
+    pub fn set_keyboard_level(&self, part: f64) {
+        let (Some(keyboard), Some(system)) = (&self.keyboard_backlight, &self.system) else {
+            return;
+        };
+        let brightness = (part.clamp(0.0, 1.0) * f64::from(keyboard.max)).round() as u32;
+        if brightness == keyboard.brightness.get() {
+            return;
+        }
+        keyboard.brightness.set(brightness);
+        keyboard
+            .pending_writes
+            .set(keyboard.pending_writes.get() + 1);
+        let keyboard_backlight = keyboard.clone();
+        keyboard.device.set_brightness(system, brightness, move || {
+            let pending_writes = &keyboard_backlight.pending_writes;
+            pending_writes.set(pending_writes.get() - 1);
+        });
+        self.announce(Change::KeyboardLevel);
+    }
+
+    pub fn follow_keyboard_backlight(&self) {
+        let Some(keyboard) = &self.keyboard_backlight else {
+            return;
+        };
+        if keyboard.pending_writes.get() > 0 {
+            return;
+        }
+        let Some(brightness) = keyboard.device.read_brightness() else {
+            return;
+        };
+        if brightness == keyboard.brightness.get() {
+            return;
+        }
+        keyboard.brightness.set(brightness);
+        self.announce(Change::KeyboardLevel);
     }
 }
 

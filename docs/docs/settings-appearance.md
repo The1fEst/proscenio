@@ -466,7 +466,7 @@ A link row opens this subpage. See [Sidebar](sidebar.md).
 | Quick toggles | Classic or Android | `sidebar.quickToggles.style` | Android (`android`) | |
 | Quick toggles | Columns | `sidebar.quickToggles.android.columns` | 5 | 1–8, Android only |
 | Sliders | Enable | `sidebar.quickSliders.enable` | off | |
-| Sliders | Brightness | `sidebar.quickSliders.showBrightness` | on | |
+| Sliders | Brightness | `sidebar.quickSliders.showBrightness` | on | also the keyboard brightness slider, where there is a keyboard backlight |
 | Sliders | Volume | `sidebar.quickSliders.showVolume` | on | |
 | Sliders | Microphone | `sidebar.quickSliders.showMic` | off | |
 | Corner open | Enable | `sidebar.cornerOpen.enable` | on | |

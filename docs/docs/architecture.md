@@ -213,6 +213,7 @@ are zero while their feature is off, so switching the feature on runs the task o
 | `night light schedule` | Works out the night light temperature for the moment, through the transitions and, with Sunset to sunrise, the day's sunset and sunrise, and sends it when it changes |
 | `dark mode schedule` | While `appearance.darkMode.automatic` is on, works out whether the schedule says dark mode and runs `switchwall --mode` when that has changed and the current mode differs |
 | `warp` | Reads `warp-cli status` once WARP is found |
+| `keyboard backlight` | Added only on a machine with a keyboard backlight; reads its `brightness` and tells the sidebar and the on-screen display when it changed |
 | `weather` | Fetches the weather every `bar.weather.fetchInterval` minutes (10) while `bar.weather.enable` is on |
 | `updates` | Counts available updates every `updates.checkInterval` minutes (120) while `updates.enableCheck` is on |
 | `trim` | Trims the heap, as above |

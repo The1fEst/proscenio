@@ -353,6 +353,19 @@ fn sliders(
         group.append(&slider.area);
     }
 
+    if config.slider_brightness && services.light.has_keyboard_backlight() {
+        let light = services.light.clone();
+        let slider = Slider::new(theme, "backlight_high", None, Vec::new());
+        slider.set(light.keyboard_level());
+        scope.keep(light.subscribe({
+            let slider = slider.clone();
+            let light = light.clone();
+            move |_| slider.set(light.keyboard_level())
+        }));
+        slider.on_moved(move |value| light.set_keyboard_level(value));
+        group.append(&slider.area);
+    }
+
     if let Some(audio) = &services.audio {
         if config.slider_volume {
             let slider = Slider::new(theme, "volume_up", None, Vec::new());

@@ -1,7 +1,7 @@
 ---
 title: The sidebar
 sidebar_label: Sidebar
-description: The panel on the right edge of the screen — how it opens and closes, the system button row, the brightness, volume and microphone sliders, and the notification list it ends with.
+description: The panel on the right edge of the screen — how it opens and closes, the system button row, the brightness, keyboard brightness, volume and microphone sliders, and the notification list it ends with.
 ---
 
 # The sidebar
@@ -75,7 +75,7 @@ On the right, four buttons:
 
 ## Quick sliders
 
-A group of up to three sliders under the system row. It is off by default and appears only when it
+A group of up to four sliders under the system row. It is off by default and appears only when it
 is enabled and at least one slider is picked:
 
 ```toml
@@ -112,6 +112,16 @@ back up sets gamma to 100 % again. A `wb_twilight` icon marks the split. The too
 backlight percentage, or `Gamma` and its percentage in the lower part. When gamma is below 100 %
 while the backlight is above zero, as the night light dialog's two sliders can leave it, the handle
 shows the gamma and a dot on the track marks the backlight level.
+
+### Keyboard brightness
+
+On a machine with a keyboard backlight, a second slider with the `backlight_high` icon follows the
+brightness slider and shows with it under `showBrightness`. It sets the LED in `/sys/class/leds`
+whose name ends in `:kbd_backlight`, the first by name, from off to its `max_brightness`, through
+logind's `SetBrightness` as well. The LED sends no udev event when its level changes, so the shell
+reads `brightness` again on every tick of the background loop, every `resources.updateInterval`
+milliseconds (3000 by default), and a change made outside the shell reaches the slider and the
+[on-screen display](osd.md) on the next tick.
 
 ### Volume and microphone
 

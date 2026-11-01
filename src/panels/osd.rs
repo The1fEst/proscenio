@@ -39,6 +39,7 @@ enum Indicator {
     Volume,
     Brightness,
     Gamma,
+    KeyboardBacklight,
     CapsLock,
     NumLock,
     KeyboardLayout,
@@ -64,7 +65,10 @@ impl Indicator {
             Indicator::Microphone => Some(config::OSD_MICROPHONE),
             Indicator::AudioOutput => Some(config::OSD_AUDIO_OUTPUT),
             Indicator::PowerProfile => Some(config::OSD_POWER_PROFILE),
-            Indicator::Volume | Indicator::Brightness | Indicator::Gamma => None,
+            Indicator::Volume
+            | Indicator::Brightness
+            | Indicator::Gamma
+            | Indicator::KeyboardBacklight => None,
         }
     }
 
@@ -424,6 +428,7 @@ impl Osd {
                         Change::Read => return,
                         Change::Level => Indicator::Brightness,
                         Change::Gamma => Indicator::Gamma,
+                        Change::KeyboardLevel => Indicator::KeyboardBacklight,
                     };
                     osd.show_indicator(indicator);
                 }
@@ -611,6 +616,9 @@ impl Osd {
                 should_rotate_icon: false,
                 should_scale_icon: false,
             },
+            Indicator::KeyboardBacklight => {
+                build_keyboard_backlight_reading(self.services.light.keyboard_level())
+            }
             Indicator::CapsLock => {
                 build_lock_reading(LockKey::Caps, self.services.xkb.is_lock_on(LockKey::Caps))
             }
@@ -775,9 +783,34 @@ fn build_profile_reading(profile: &str) -> Reading {
     )
 }
 
+fn build_keyboard_backlight_reading(level: f64) -> Reading {
+    Reading {
+        value: level,
+        ..Reading::new(
+            "backlight_high",
+            Caption::Key("Keyboard brightness"),
+            Readout::Level,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_keyboard_backlight_shows_its_level_on_a_bar() {
+        let reading = build_keyboard_backlight_reading(0.5);
+        assert_eq!(reading.name, Caption::Key("Keyboard brightness"));
+        assert!(reading.has_bar());
+        assert_eq!(
+            (
+                reading.format_readout(),
+                Indicator::KeyboardBacklight.kind()
+            ),
+            ("50".to_owned(), None)
+        );
+    }
 
     #[test]
     fn a_lock_shows_its_name_and_whether_it_is_on() {

@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 pub const SYSFS_CLASS: &str = "/sys/class";
 pub const BACKLIGHT: &str = "backlight";
 const BACKLIGHT_TYPES: [&str; 3] = ["firmware", "platform", "raw"];
+const LEDS: &str = "leds";
+const KEYBOARD_FUNCTION: &str = "kbd_backlight";
 const LOGIN: &str = "org.freedesktop.login1";
 const SESSION_PATH: &str = "/org/freedesktop/login1/session/auto";
 const SESSION: &str = "org.freedesktop.login1.Session";
@@ -79,6 +81,18 @@ pub fn find_screen_backlight(class_root: &Path) -> Option<Device> {
             (rank, name.clone())
         })
         .map(|name| Device::new(BACKLIGHT, &directory, name))
+}
+
+pub fn find_keyboard_backlight(class_root: &Path) -> Option<Device> {
+    let directory = class_root.join(LEDS);
+    list_names(&directory)
+        .into_iter()
+        .filter(|name| {
+            name.rsplit_once(':')
+                .is_some_and(|(_, function)| function == KEYBOARD_FUNCTION)
+        })
+        .min()
+        .map(|name| Device::new(LEDS, &directory, name))
 }
 
 fn list_names(directory: &Path) -> Vec<String> {
@@ -191,6 +205,29 @@ mod tests {
                 device.read_max_brightness()
             ),
             (Some(120), None)
+        );
+    }
+
+    #[test]
+    fn only_a_led_whose_function_is_kbd_backlight_is_the_keyboard_backlight() {
+        let root = ClassRoot::new("leds");
+        root.add(LEDS, "input3::capslock", &[("brightness", "0")]);
+        root.add(LEDS, "tpacpi::kbd_backlight_extra", &[("brightness", "0")]);
+        assert_eq!(find_keyboard_backlight(&root.0), None);
+        root.add(
+            LEDS,
+            "tpacpi::kbd_backlight",
+            &[("brightness", "1"), ("max_brightness", "2")],
+        );
+        root.add(LEDS, "rgb:kbd_backlight", &[("brightness", "0")]);
+        let device = find_keyboard_backlight(&root.0).unwrap();
+        assert_eq!(
+            (
+                device.name.as_str(),
+                device.subsystem,
+                device.read_brightness()
+            ),
+            ("rgb:kbd_backlight", LEDS, Some(0))
         );
     }
 }
