@@ -1,5 +1,8 @@
 mod confirmation;
 mod editor;
+mod findbar;
+mod matches;
+mod symbolbutton;
 mod tabs;
 
 use gtk4::gdk;
@@ -13,9 +16,10 @@ use crate::core::scope::Scope;
 use crate::platform::wayland::grab;
 use crate::services::Services;
 use crate::services::session::notes::Notes;
-use crate::ui::theme::SharedTheme;
+use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::overlay::windowdialog::WindowDialog;
 use editor::Editor;
+use findbar::FindBar;
 use tabs::Tabs;
 
 const NAMESPACE: &str = "proscenio:notepad";
@@ -23,6 +27,7 @@ const WIDTH: i32 = 480;
 const GAP: i32 = 5;
 const ELEVATION: i32 = 10;
 const PADDING: i32 = 10;
+const FIND_BUTTON_SIZE: i32 = 32;
 
 pub struct Notepad {
     pub window: gtk4::ApplicationWindow,
@@ -30,6 +35,7 @@ pub struct Notepad {
     notes: Rc<Notes>,
     editor: Rc<Editor>,
     tabs: Rc<Tabs>,
+    find: Rc<FindBar>,
     overlay: gtk4::Overlay,
     theme: SharedTheme,
     dialog: RefCell<Option<Rc<WindowDialog>>>,
@@ -79,13 +85,19 @@ impl Notepad {
             dialog.remove_from(&self.overlay);
         }
         self.tabs.cancel_rename();
+        self.find.hide();
         self.notes.flush();
         self.window.set_visible(false);
     }
 
-    fn refresh(&self) {
+    fn open_find(self: &Rc<Self>) {
+        self.find.open(self.editor.selected_line().as_deref());
+    }
+
+    fn refresh(self: &Rc<Self>) {
         self.tabs.refresh();
         self.editor.refresh();
+        self.find.set_buffer(self.editor.text_buffer());
         let active = self.notes.active_id();
         if self.last_active_id.replace(active) != active && self.window.is_visible() {
             self.editor.focus();
@@ -177,13 +189,50 @@ pub fn build(
         }),
     );
 
-    let column = gtk4::Box::new(gtk4::Orientation::Vertical, PADDING);
+    let find = FindBar::new(
+        theme,
+        Rc::new({
+            let editor = Rc::downgrade(&editor);
+            move |range| {
+                if let Some(editor) = editor.upgrade() {
+                    editor.select(range);
+                }
+            }
+        }),
+        Rc::new({
+            let editor = Rc::downgrade(&editor);
+            move || {
+                if let Some(editor) = editor.upgrade() {
+                    editor.focus();
+                }
+            }
+        }),
+    );
+
+    let find_button = symbolbutton::build(theme, "search", pixel_size::HUGE, FIND_BUTTON_SIZE);
+    find_button.connect_clicked({
+        let owner = owner.clone();
+        move |_| {
+            if let Some(notepad) = owner.borrow().upgrade() {
+                notepad.open_find();
+            }
+        }
+    });
+
+    let header = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    header.append(&tabs.widget);
+    header.append(&find_button);
+
+    let column = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     column.add_css_class("notepad");
     column.set_margin_top(GAP);
     column.set_margin_bottom(GAP);
     column.set_margin_start(GAP);
     column.set_margin_end(ELEVATION);
-    column.append(&tabs.widget);
+    header.set_margin_bottom(PADDING);
+    tabs.widget.set_hexpand(true);
+    column.append(&header);
+    column.append(&find.widget);
     column.append(&editor.widget);
 
     let overlay = gtk4::Overlay::new();
@@ -211,6 +260,7 @@ pub fn build(
         notes: notes.clone(),
         editor,
         tabs,
+        find,
         overlay,
         theme: theme.clone(),
         dialog: RefCell::new(None),
@@ -250,7 +300,9 @@ pub fn build(
             let is_control_held = modifiers.contains(gdk::ModifierType::CONTROL_MASK);
             match key {
                 gdk::Key::Escape if notepad.tabs.is_renaming() => notepad.tabs.cancel_rename(),
+                gdk::Key::Escape if notepad.find.is_open() => notepad.find.close(),
                 gdk::Key::Escape => notepad.hide(),
+                gdk::Key::f | gdk::Key::F if is_control_held => notepad.open_find(),
                 gdk::Key::Page_Down if is_control_held => notepad.step_tab(1),
                 gdk::Key::Page_Up if is_control_held => notepad.step_tab(-1),
                 gdk::Key::n | gdk::Key::N if is_control_held => notepad.notes.create(),

@@ -1644,5 +1644,7 @@
   "This note is larger than %1 MB and was not opened.": "Ghi chú này lớn hơn %1 MB nên không được mở.",
   "This note could not be read.": "Không thể đọc ghi chú này.",
   "%1 lines": ["%1 dòng"],
-  "%1 characters": ["%1 ký tự"]
+  "%1 characters": ["%1 ký tự"],
+  "Find": "Tìm",
+  "%1 of %2": "%1/%2"
 }

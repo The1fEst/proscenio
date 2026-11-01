@@ -3,17 +3,17 @@ use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use super::symbolbutton;
 use crate::core::i18n::tr;
 use crate::services::session::notes::{Notes, Summary};
 use crate::ui::theme::{SharedTheme, pixel_size, rounding, transparentize};
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::ripple::{Look, RippleButton};
-use crate::ui::widgets::layout::centered::Centered;
 
 const HEIGHT: i32 = 34;
 const PADDING: i32 = 10;
 const SPACING: i32 = 4;
-const BUTTON_SIZE: i32 = 26;
+const ADD_SIZE: i32 = 32;
 const CLOSE_SIZE: i32 = 22;
 const LABEL_CHARS: i32 = 16;
 const ENTRY_CHARS: i32 = 14;
@@ -67,13 +67,7 @@ impl Tabs {
         });
         scroll.add_controller(wheel);
 
-        let add_symbol = text::symbol("add", pixel_size::HUGE as f64);
-        text::set_color(&add_symbol, "colOnLayer1");
-        let add_button = RippleButton::new(theme);
-        add_button.set_radius(rounding::FULL as f64);
-        add_button.set_size_request(BUTTON_SIZE + 6, BUTTON_SIZE + 6);
-        add_button.set_valign(gtk4::Align::Center);
-        add_button.set_content(&Centered::integral(&add_symbol), 0, 0);
+        let add_button = symbolbutton::build(theme, "add", pixel_size::HUGE, ADD_SIZE);
         add_button.connect_clicked({
             let notes = notes.clone();
             move |_| notes.create()
@@ -196,13 +190,7 @@ impl Tabs {
         stack.add_named(&entry, Some("entry"));
         stack.set_visible_child_name("label");
 
-        let close_symbol = text::symbol("close", pixel_size::LARGE as f64);
-        text::set_color(&close_symbol, "colOnLayer1");
-        let close_button = RippleButton::new(&self.theme);
-        close_button.set_radius(rounding::FULL as f64);
-        close_button.set_size_request(CLOSE_SIZE, CLOSE_SIZE);
-        close_button.set_valign(gtk4::Align::Center);
-        close_button.set_content(&Centered::integral(&close_symbol), 0, 0);
+        let close_button = symbolbutton::build(&self.theme, "close", pixel_size::LARGE, CLOSE_SIZE);
         close_button.connect_clicked({
             let on_close = self.on_close.clone();
             move |_| on_close(id)

@@ -1,6 +1,7 @@
 use gtk4::glib;
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
+use std::ops::Range;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -13,6 +14,7 @@ use crate::ui::widgets::display::text;
 const MARGIN: i32 = 10;
 const FOOTER_MARGIN: i32 = 6;
 const MEGABYTE: u64 = 1024 * 1024;
+const MAX_PREFILL_CHARS: usize = 100;
 const WARNING_DURATION: Duration = Duration::from_millis(1500);
 
 struct Binding {
@@ -152,6 +154,32 @@ impl Editor {
                 text::set_color(&editor.counts, "colSubtext");
             }
         });
+    }
+
+    pub fn text_buffer(&self) -> Option<gtk4::TextBuffer> {
+        let binding = self.binding.borrow();
+        let (buffer, _) = binding.as_ref()?.connection.as_ref()?;
+        Some(buffer.clone())
+    }
+
+    pub fn selected_line(&self) -> Option<String> {
+        let buffer = self.text_buffer()?;
+        let (start, end) = buffer.selection_bounds()?;
+        let selection = buffer.text(&start, &end, false);
+        (selection.chars().count() <= MAX_PREFILL_CHARS && !selection.contains('\n'))
+            .then(|| selection.to_string())
+    }
+
+    pub fn select(&self, range: Range<usize>) {
+        let Some(buffer) = self.text_buffer() else {
+            return;
+        };
+        buffer.select_range(
+            &buffer.iter_at_offset(range.start as i32),
+            &buffer.iter_at_offset(range.end as i32),
+        );
+        self.view
+            .scroll_to_mark(&buffer.get_insert(), 0.1, false, 0.0, 0.0);
     }
 
     pub fn focus(&self) {

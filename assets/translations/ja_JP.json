@@ -1644,5 +1644,7 @@
   "This note is larger than %1 MB and was not opened.": "このメモは %1 MB を超えているため開けませんでした。",
   "This note could not be read.": "このメモを読み込めませんでした。",
   "%1 lines": ["%1行"],
-  "%1 characters": ["%1文字"]
+  "%1 characters": ["%1文字"],
+  "Find": "検索",
+  "%1 of %2": "%1 / %2"
 }

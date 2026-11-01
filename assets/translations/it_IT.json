@@ -1644,5 +1644,7 @@
   "This note is larger than %1 MB and was not opened.": "Questa nota supera %1 MB e non è stata aperta.",
   "This note could not be read.": "Impossibile leggere questa nota.",
   "%1 lines": ["%1 riga", "%1 righe"],
-  "%1 characters": ["%1 carattere", "%1 caratteri"]
+  "%1 characters": ["%1 carattere", "%1 caratteri"],
+  "Find": "Cerca",
+  "%1 of %2": "%1 di %2"
 }

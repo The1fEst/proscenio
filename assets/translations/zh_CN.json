@@ -1644,5 +1644,7 @@
   "This note is larger than %1 MB and was not opened.": "这条笔记超过 %1 MB，未能打开。",
   "This note could not be read.": "无法读取这条笔记。",
   "%1 lines": ["%1 行"],
-  "%1 characters": ["%1 个字符"]
+  "%1 characters": ["%1 个字符"],
+  "Find": "查找",
+  "%1 of %2": "%1 / %2"
 }

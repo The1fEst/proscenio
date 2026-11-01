@@ -1644,5 +1644,7 @@
   "This note is larger than %1 MB and was not opened.": "הפתק הזה גדול מ-%1 MB ולא נפתח.",
   "This note could not be read.": "לא ניתן לקרוא את הפתק הזה.",
   "%1 lines": ["%1 שורה", "%1 שורות"],
-  "%1 characters": ["%1 תו", "%1 תווים"]
+  "%1 characters": ["%1 תו", "%1 תווים"],
+  "Find": "חיפוש",
+  "%1 of %2": "%1 מתוך %2"
 }
