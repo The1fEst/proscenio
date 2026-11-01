@@ -212,18 +212,14 @@ impl Services {
         background.add_every("weather", Weather::period, {
             let weather = self.weather.clone();
             move || {
-                if crate::core::config::current().weather_enable {
-                    weather.fetch();
-                }
+                weather.fetch();
                 Ok(())
             }
         });
         background.add_every("updates", Updates::period, {
             let updates = self.updates.clone();
             move || {
-                if crate::core::config::current().updates_enable_check {
-                    updates.refresh();
-                }
+                updates.refresh();
                 Ok(())
             }
         });

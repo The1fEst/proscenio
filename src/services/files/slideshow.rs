@@ -2,7 +2,6 @@ use gtk4::gdk;
 use gtk4::gio;
 use gtk4::glib;
 use gtk4::prelude::*;
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -19,8 +18,7 @@ pub fn start(
     is_paused: impl Fn() -> bool + 'static,
 ) {
     let wallpapers = wallpapers.clone();
-    let was_run = Cell::new(false);
-    background.add_every(
+    background.add_every_from_now(
         "wallpaper slideshow",
         || {
             let config = config::current();
@@ -32,8 +30,7 @@ pub fn start(
             Duration::from_secs(minutes * 60)
         },
         move || {
-            let is_first_run = !was_run.replace(true);
-            if is_first_run || !config::current().is_slideshow_enabled || is_paused() {
+            if is_paused() {
                 return Ok(());
             }
             advance(&wallpapers);

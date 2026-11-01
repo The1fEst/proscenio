@@ -116,10 +116,15 @@ fn start(arguments: &[String], jobs: &mut Vec<JoinHandle<()>>) -> glib::ExitCode
     });
     if let (Some(monitor), Some(image)) = (&monitor, &image)
         && !keeps_wallpaper
-        && is_secondary_monitor(monitor)
+        && is_secondary_monitor(
+            monitor,
+            &monitorrules::read().primary,
+            &list_connected_monitors(),
+        )
     {
         process::launch_subcommand(&["switchwall", OFFER_UPSCALE, image]);
         lock_generation();
+        process::run(&["pkill", "-9", "-f", &build_video_pattern(monitor)]);
         config::store_value(
             &format!("{OVERRIDES}/{monitor}"),
             Value::from(image.as_str()),
@@ -371,17 +376,24 @@ fn release_overrides(assignment: Assignment) {
         Assignment::All => OVERRIDES.to_owned(),
         Assignment::Monitor(monitor) => format!("{OVERRIDES}/{monitor}"),
     };
-    if config::value_bool(PER_MONITOR, false) && config::value(&pointer).is_some() {
+    if config::value(&pointer).is_some() {
         config::store_value(&pointer, Value::Null);
     }
 }
 
-fn is_secondary_monitor(monitor: &str) -> bool {
-    let connected: Vec<String> = monitors()
+fn build_video_pattern(monitor: &str) -> String {
+    format!("^mpvpaper -o {VIDEO_OPTIONS} {monitor} ")
+}
+
+fn list_connected_monitors() -> Vec<String> {
+    monitors()
         .iter()
         .filter_map(|entry| Some(entry.get("name")?.as_str()?.to_owned()))
-        .collect();
-    find_main_monitor(&monitorrules::read().primary, &connected).is_some_and(|main| main != monitor)
+        .collect()
+}
+
+fn is_secondary_monitor(monitor: &str, primary: &str, connected: &[String]) -> bool {
+    find_main_monitor(primary, connected) != Some(monitor)
 }
 
 fn find_main_monitor<'a>(primary: &str, connected: &'a [String]) -> Option<&'a str> {
@@ -756,6 +768,33 @@ mod tests {
         assert_eq!(find_main_monitor("", &connected), Some("DP-1"));
         assert_eq!(find_main_monitor("DP-9", &connected), Some("DP-1"));
         assert_eq!(find_main_monitor("DP-1", &[]), None);
+    }
+
+    #[test]
+    fn a_monitor_is_secondary_unless_it_is_known_to_be_the_main_one() {
+        let connected = ["DP-1".to_owned(), "HDMI-A-1".to_owned()];
+        assert!(!is_secondary_monitor("HDMI-A-1", "HDMI-A-1", &connected));
+        assert!(is_secondary_monitor("DP-1", "HDMI-A-1", &connected));
+        assert!(!is_secondary_monitor("DP-1", "", &connected));
+        assert!(is_secondary_monitor("DP-1", "HDMI-A-1", &[]));
+        assert!(is_secondary_monitor("DP-1", "DP-1", &[]));
+    }
+
+    #[test]
+    fn the_video_pattern_matches_the_player_of_one_monitor_only() {
+        let line =
+            |monitor: &str, video: &str| format!("mpvpaper -o {VIDEO_OPTIONS} {monitor} {video}");
+        let matches = |monitor: &str, line: &str| {
+            glib::Regex::match_simple(
+                build_video_pattern(monitor),
+                line,
+                glib::RegexCompileFlags::DEFAULT,
+                glib::RegexMatchFlags::DEFAULT,
+            )
+        };
+        assert!(matches("DP-2", &line("DP-2", "/v/a.mp4")));
+        assert!(!matches("DP-2", &line("DP-20", "/v/a.mp4")));
+        assert!(!matches("DP-2", &line("HDMI-A-1", "/v/DP-2 b.mp4")));
     }
 
     #[test]

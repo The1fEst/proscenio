@@ -50,7 +50,7 @@ waits for the shell's, and the other way round.
 | Argument | Effect |
 |---|---|
 | `PATH`, `--image PATH` | The wallpaper to set: an image, or a video ending in `.mp4`, `.webm`, `.mkv`, `.avi` or `.mov` |
-| `--monitor NAME` | With `background.perMonitor.enable` on, sets the image for the monitor `NAME` only and, unless `NAME` is the main display (see [The background](background.md#a-wallpaper-per-monitor)), stops there: it stores the image in `background.perMonitor.wallpapers` and, after the upscale offer, generates no colors, applies no mode and keeps the accent color. For the main display it is an ordinary run that also removes the main display's entry. Without the switch, or with a video or `--noswitch`, it is ignored |
+| `--monitor NAME` | With `background.perMonitor.enable` on, sets the image for the monitor `NAME` only and, unless `NAME` is the main display (see [The background](background.md#a-wallpaper-per-monitor)), stops there: it stores the image in `background.perMonitor.wallpapers` and, after the upscale offer, generates no colors, applies no mode, keeps the accent color and stops the `mpvpaper` of that monitor only. For the main display it is an ordinary run that also removes the main display's entry. While Hyprland cannot say which monitor is the main display, every `NAME` is treated as another monitor. Without the switch, with an empty `NAME`, or with a video or `--noswitch`, it is ignored |
 | `--noswitch` | Keeps the current wallpaper, `background.wallpaperPath`, and only recolors; a `PATH` given with it is ignored |
 | `--mode dark` / `--mode light` | The mode to switch to. Without it, the mode is dark when `color-scheme` in `org.gnome.desktop.interface` is `prefer-dark`, and light otherwise |
 | `--type SCHEME` | The scheme for this run. Without it, `appearance.palette.type` decides, and without that, `auto` |
@@ -99,8 +99,8 @@ decoded with `djpeg` and 16-bit PNG images with `magick`; other formats go throu
 1. **The wallpaper**, unless the colors come from an accent color and the command has no new
    wallpaper. Any running `mpvpaper` stops, the
    path is stored in `background.wallpaperPath`, and a video starts playing; with `--noswitch`, all
-   of this happens to the current wallpaper. With `background.perMonitor.enable` on, a new wallpaper
-   for all monitors also empties `background.perMonitor.wallpapers`. When a chosen image is smaller than the largest monitor,
+   of this happens to the current wallpaper. A new wallpaper for all monitors also empties
+   `background.perMonitor.wallpapers`, with `background.perMonitor.enable` on or off. When a chosen image is smaller than the largest monitor,
    a notification offers to open Upscayl, and to install `upscayl-bin` from the AUR when it is
    missing. The offer runs in a process of its own, so waiting for an answer holds nothing up.
 2. **The mode.** `color-scheme` in `org.gnome.desktop.interface` becomes `prefer-dark` or

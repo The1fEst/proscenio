@@ -24,6 +24,12 @@ impl Task {
         };
         now.duration_since(last_run) >= period()
     }
+
+    fn is_off(&self) -> bool {
+        self.period
+            .as_ref()
+            .is_some_and(|period| period().is_zero())
+    }
 }
 
 #[derive(Default)]
@@ -51,7 +57,7 @@ impl BackgroundTasks {
     }
 
     pub fn add(&self, name: &'static str, run: impl Fn() -> Result<(), String> + 'static) {
-        self.push(name, None, Box::new(run));
+        self.push(name, None, None, Box::new(run));
     }
 
     pub fn add_every(
@@ -60,7 +66,21 @@ impl BackgroundTasks {
         period: impl Fn() -> Duration + 'static,
         run: impl Fn() -> Result<(), String> + 'static,
     ) {
-        self.push(name, Some(Box::new(period)), Box::new(run));
+        self.push(name, Some(Box::new(period)), None, Box::new(run));
+    }
+
+    pub fn add_every_from_now(
+        &self,
+        name: &'static str,
+        period: impl Fn() -> Duration + 'static,
+        run: impl Fn() -> Result<(), String> + 'static,
+    ) {
+        self.push(
+            name,
+            Some(Box::new(period)),
+            Some(Instant::now()),
+            Box::new(run),
+        );
     }
 
     pub fn add_scoped(
@@ -68,19 +88,25 @@ impl BackgroundTasks {
         name: &'static str,
         run: impl Fn() -> Result<(), String> + 'static,
     ) -> Subscription {
-        let id = self.push(name, None, Box::new(run));
+        let id = self.push(name, None, None, Box::new(run));
         let tasks: Weak<BackgroundTasks> = Rc::downgrade(self);
         Subscription::new(tasks, id)
     }
 
-    fn push(&self, name: &'static str, period: Option<Period>, run: Run) -> u64 {
+    fn push(
+        &self,
+        name: &'static str,
+        period: Option<Period>,
+        last_run: Option<Instant>,
+        run: Run,
+    ) -> u64 {
         let id = self.next_id.get();
         self.next_id.set(id + 1);
         self.tasks.borrow_mut().push(Rc::new(Task {
             id,
             name,
             period,
-            last_run: Cell::new(None),
+            last_run: Cell::new(last_run),
             run,
         }));
         id
@@ -99,7 +125,14 @@ impl BackgroundTasks {
 
     fn run_due(&self, now: Instant) {
         let tasks: Vec<Rc<Task>> = self.tasks.borrow().clone();
-        for task in tasks.iter().filter(|task| task.is_due(now)) {
+        for task in tasks.iter() {
+            if task.is_off() {
+                task.last_run.set(Some(now));
+                continue;
+            }
+            if !task.is_due(now) {
+                continue;
+            }
             task.last_run.set(Some(now));
             if let Err(error) = (task.run)() {
                 eprintln!("background: {} failed: {error}", task.name);
@@ -150,6 +183,63 @@ mod tests {
             })
             .collect();
         assert_eq!(runs, vec![1, 1, 1, 2, 2, 3]);
+    }
+
+    #[test]
+    fn a_task_added_from_now_waits_one_period_before_its_first_run() {
+        let tasks = BackgroundTasks::default();
+        let run_count = Rc::new(Cell::new(0));
+        tasks.add_every_from_now("slideshow", || Duration::from_secs(600), {
+            let run_count = run_count.clone();
+            move || {
+                run_count.set(run_count.get() + 1);
+                Ok(())
+            }
+        });
+        let start = Instant::now();
+        let runs: Vec<i32> = [0, 3, 597, 600, 1200]
+            .iter()
+            .map(|seconds| {
+                tasks.run_due(start + Duration::from_secs(*seconds));
+                run_count.get()
+            })
+            .collect();
+        assert_eq!(runs, vec![0, 0, 0, 1, 2]);
+    }
+
+    #[test]
+    fn a_task_with_a_zero_period_is_off_and_its_clock_restarts_every_tick() {
+        let tasks = BackgroundTasks::default();
+        let run_count = Rc::new(Cell::new(0));
+        let period = Rc::new(Cell::new(Duration::ZERO));
+        tasks.add_every(
+            "slideshow",
+            {
+                let period = period.clone();
+                move || period.get()
+            },
+            {
+                let run_count = run_count.clone();
+                move || {
+                    run_count.set(run_count.get() + 1);
+                    Ok(())
+                }
+            },
+        );
+        let start = Instant::now();
+        for seconds in [0, 3, 3600] {
+            tasks.run_due(start + Duration::from_secs(seconds));
+        }
+        assert_eq!(run_count.get(), 0);
+        period.set(Duration::from_secs(600));
+        let runs: Vec<i32> = [3601, 4199, 4200]
+            .iter()
+            .map(|seconds| {
+                tasks.run_due(start + Duration::from_secs(*seconds));
+                run_count.get()
+            })
+            .collect();
+        assert_eq!(runs, vec![0, 0, 1]);
     }
 
     #[test]

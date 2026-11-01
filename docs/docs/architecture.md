@@ -203,7 +203,9 @@ a `Result`; an error is logged as `background: <name> failed: …` and the loop 
 
 A task may carry a period. It then runs on the first tick at least that long after its last run, so
 slow tasks share the loop without running every few seconds. Periods are read on every tick too, and
-are zero while their feature is off, so switching the feature on runs the task on the next tick.
+are zero while their feature is off: the task then does not run and its clock restarts on every
+tick, so switching the feature on runs it one period later. A task with a period first runs on the
+first tick, except one added to count from the start, which waits one period.
 
 | Task | Does |
 |---|---|

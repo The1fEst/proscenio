@@ -55,7 +55,7 @@ struct View {
     entries: RefCell<Vec<Entry>>,
     current_index: Cell<usize>,
     wallpaper_path: RefCell<PathBuf>,
-    monitor: String,
+    monitor: Option<String>,
     is_per_monitor: bool,
     applies_to_all: Cell<bool>,
     applies_dark_mode: Cell<bool>,
@@ -177,7 +177,9 @@ impl WallpaperSelector {
 
 impl View {
     fn target(&self) -> Option<String> {
-        (self.is_per_monitor && !self.applies_to_all.get()).then(|| self.monitor.clone())
+        self.monitor
+            .clone()
+            .filter(|_| self.is_per_monitor && !self.applies_to_all.get())
     }
 
     fn handle_key(

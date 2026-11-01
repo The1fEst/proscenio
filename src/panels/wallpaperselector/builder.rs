@@ -188,7 +188,8 @@ impl View {
             &random_button,
             &tr("Pick random from this folder"),
         ));
-        let is_per_monitor = config::current().is_wallpaper_per_monitor;
+        let connector: Option<String> = monitor.connector().map(Into::into);
+        let is_per_monitor = config::current().is_wallpaper_per_monitor && connector.is_some();
         let (scope_button, scope_symbol) = tool(theme, SCOPE_ICONS[0]);
         let scope_tip = tip(theme, &scope_button, &tr(SCOPE_TIPS[0]));
         tips.push(scope_tip.clone());
@@ -327,7 +328,7 @@ impl View {
             entries: RefCell::new(Vec::new()),
             current_index: Cell::new(0),
             wallpaper_path: RefCell::new(PathBuf::new()),
-            monitor: monitor.connector().map(Into::into).unwrap_or_default(),
+            monitor: connector,
             is_per_monitor,
             applies_to_all: Cell::new(false),
             applies_dark_mode: Cell::new(is_dark_mode),

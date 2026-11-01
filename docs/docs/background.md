@@ -53,14 +53,17 @@ DP-2 = "/home/me/Pictures/Wallpapers/dunes.jpg"
 - A monitor with no entry shows `background.wallpaperPath`. With the switch off, the entries stay
   in the file and are ignored.
 - The [wallpaper selector](wallpaper-selector.md) writes the entries. Choosing a picture for all
-  monitors, or choosing a video, empties the table; choosing one for the main display removes the
-  main display's entry and sets `wallpaperPath`.
+  monitors, or choosing a video, empties the table, also with the switch off; choosing one for the
+  main display removes the main display's entry and sets `wallpaperPath`.
 - The colors always come from `wallpaperPath`, which is the main display's wallpaper: the monitor
   named by `WAYLANDDRV_PRIMARY_MONITOR` in the Hyprland config (set as the main display on the
   Displays page), or the first monitor Hyprland lists when that is unset or not connected. Choosing
   a picture for any other monitor changes only that monitor's entry and does not regenerate the
   colors (see [Colors from the wallpaper](colors.md)).
-- Only images are chosen per monitor. A video wallpaper plays on every monitor.
+- Only images are chosen per monitor. A video wallpaper plays on every monitor, and choosing a
+  picture for a monitor other than the main display stops the video on that monitor only.
+- When Hyprland cannot be asked which monitor is the main display, a pick for a named monitor is
+  stored as that monitor's entry and leaves `wallpaperPath` and the colors alone.
 - On the lock screen each monitor's background blurs that monitor's own wallpaper.
 - The work safety check below looks at the path each monitor shows.
 

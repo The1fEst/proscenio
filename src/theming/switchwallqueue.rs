@@ -51,7 +51,12 @@ impl Request {
                     });
                 }
                 "--image" => request.image = rest.next().map(str::to_owned),
-                "--monitor" => request.monitor = rest.next().map(str::to_owned),
+                "--monitor" => {
+                    request.monitor = rest
+                        .next()
+                        .filter(|name| !name.is_empty())
+                        .map(str::to_owned)
+                }
                 "--noswitch" => request.keeps_wallpaper = true,
                 _ => {
                     if request.image.is_none() {
@@ -348,6 +353,12 @@ mod tests {
             queue.pending_requests,
             [parse_request(&["--image", "/c.png"])]
         );
+    }
+
+    #[test]
+    fn a_request_naming_no_monitor_has_none() {
+        let request = parse_request(&["--image", "/a.png", "--monitor", ""]);
+        assert_eq!(request.monitor, None);
     }
 
     #[test]
