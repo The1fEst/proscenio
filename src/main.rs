@@ -29,6 +29,7 @@ use crate::platform::wayland::shortcuts;
 use crate::screens::{Screens, Surfaces};
 use crate::services::Services;
 use crate::services::hardware::devicenotifications::DeviceNotifications;
+use crate::services::ipctargets;
 use crate::services::media::{mpris, recording};
 use crate::services::overlay::notifications;
 use crate::services::overlay::statusnotifierwatcher::{self, StatusNotifierWatcher};
@@ -612,6 +613,7 @@ fn register_ipc(
         move || cliphist.refresh()
     });
     deadlineipc::register(ipc, services);
+    ipctargets::register(ipc, services);
 }
 
 fn bind(surfaces: &Rc<RefCell<Vec<Surfaces>>>) {

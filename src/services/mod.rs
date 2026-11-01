@@ -1,6 +1,7 @@
 pub mod files;
 pub mod hardware;
 pub mod hyprland;
+pub mod ipctargets;
 pub mod media;
 pub mod network;
 pub mod overlay;

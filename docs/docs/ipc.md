@@ -123,6 +123,9 @@ the first monitor when there is none.
 | `notifications` | `toggleDoNotDisturb`, `enableDoNotDisturb`, `disableDoNotDisturb` | [Do Not Disturb](notifications.md#do-not-disturb) on and off, `enableDoNotDisturb` until it is switched off |
 | | `enableDoNotDisturbFor(minutes: string)` | Turns it on for that many minutes; a value that is not a whole number above 0 is ignored |
 | | `enableDoNotDisturbUntil(time: string)` | Turns it on until the next time the clock shows `H:mm` or `HH:mm`, today's or tomorrow's; anything else is ignored |
+| | `dismissAll` | Dismisses every notification, as the `delete_sweep` button of the [sidebar](sidebar.md) does |
+| | `dismissLatest` | Dismisses the newest notification that is still a popup; nothing happens with no popup |
+| | `hidePopups` | Ends every popup at once: each notification stays in the sidebar's list, and a transient one is removed |
 | `renderer` | `keep` | Keeps the renderer on trial |
 | | `revert` | Goes back to the renderer before it and restarts the shell |
 | | `reset` | Goes back to Cairo and restarts the shell |

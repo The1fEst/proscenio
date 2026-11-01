@@ -293,6 +293,15 @@ impl Notifications {
         groups
     }
 
+    pub fn latest_popup_id(&self) -> Option<u32> {
+        self.list
+            .borrow()
+            .iter()
+            .filter(|entry| entry.is_popup)
+            .max_by_key(|entry| (entry.time_millis, entry.id))
+            .map(|entry| entry.id)
+    }
+
     pub fn hold(&self, ids: &[u32]) {
         for id in ids {
             self.stop_timer(*id);
@@ -638,6 +647,29 @@ mod tests {
         assert!(notifications.is_sharing.get());
         notifications.set_sharing(false);
         assert!(!notifications.is_sharing.get());
+    }
+
+    #[test]
+    fn the_latest_popup_is_the_newest_one_still_on_screen() {
+        let notifications = new_detached();
+        assert_eq!(notifications.latest_popup_id(), None);
+        notifications
+            .list
+            .replace(sample_group(&[false, false, false]).notifications);
+        let set_times = |times: [i64; 3], popups: [bool; 3]| {
+            for (index, entry) in notifications.list.borrow_mut().iter_mut().enumerate() {
+                entry.time_millis = times[index];
+                entry.is_popup = popups[index];
+            }
+        };
+        set_times([10, 30, 20], [true; 3]);
+        assert_eq!(notifications.latest_popup_id(), Some(2));
+        set_times([10, 30, 20], [true, false, true]);
+        assert_eq!(notifications.latest_popup_id(), Some(3));
+        set_times([10, 10, 10], [true; 3]);
+        assert_eq!(notifications.latest_popup_id(), Some(3));
+        set_times([10, 30, 20], [false; 3]);
+        assert_eq!(notifications.latest_popup_id(), None);
     }
 
     #[test]
