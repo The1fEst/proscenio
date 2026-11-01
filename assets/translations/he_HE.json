@@ -1616,5 +1616,11 @@
   "All day": "כל היום",
   "No title": "ללא כותרת",
   "Calendar events": "אירועי לוח שנה",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "מציג בחלונית לוח השנה את האירועים של Evolution Data Server, שבו משתמש יומן GNOME"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "מציג בחלונית לוח השנה את האירועים של Evolution Data Server, שבו משתמש יומן GNOME",
+  "Scrolling capture": "צילום גלילה",
+  "Scroll region: copy (LMB) or annotate (RMB)": "אזור לגלילה: העתקה (לחצן שמאלי) או הוספת הערות (לחצן ימני)",
+  "Scroll the content": "גללו את התוכן",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "המעקב אחר הגלילה אבד",
+  "Height limit reached": "הגובה המרבי הושג"
 }

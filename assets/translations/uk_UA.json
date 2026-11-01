@@ -1616,5 +1616,11 @@
   "All day": "Увесь день",
   "No title": "Без назви",
   "Calendar events": "Події календаря",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Показує на панелі календаря події з Evolution Data Server, яким користується GNOME Календар"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Показує на панелі календаря події з Evolution Data Server, яким користується GNOME Календар",
+  "Scrolling capture": "Знімок із прокручуванням",
+  "Scroll region: copy (LMB) or annotate (RMB)": "Область прокручування: копіювати (ЛКМ) або розмітити (ПКМ)",
+  "Scroll the content": "Прокручуйте вміст",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "Не вдалося відстежити прокручування",
+  "Height limit reached": "Досягнуто межі висоти"
 }

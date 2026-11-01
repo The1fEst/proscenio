@@ -1616,5 +1616,11 @@
   "All day": "Sepanjang hari",
   "No title": "Tanpa judul",
   "Calendar events": "Acara kalender",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Menampilkan acara dari Evolution Data Server, yang dipakai GNOME Calendar, di panel kalender"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Menampilkan acara dari Evolution Data Server, yang dipakai GNOME Calendar, di panel kalender",
+  "Scrolling capture": "Tangkapan gulir",
+  "Scroll region: copy (LMB) or annotate (RMB)": "Area yang digulir: salin (klik kiri) atau beri anotasi (klik kanan)",
+  "Scroll the content": "Gulir kontennya",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "Pelacakan pengguliran terputus",
+  "Height limit reached": "Batas tinggi tercapai"
 }

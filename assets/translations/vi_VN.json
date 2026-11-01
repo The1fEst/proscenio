@@ -1616,5 +1616,11 @@
   "All day": "Cả ngày",
   "No title": "Không có tiêu đề",
   "Calendar events": "Sự kiện lịch",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Hiển thị trong bảng lịch các sự kiện của Evolution Data Server mà GNOME Calendar sử dụng"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Hiển thị trong bảng lịch các sự kiện của Evolution Data Server mà GNOME Calendar sử dụng",
+  "Scrolling capture": "Chụp cuộn",
+  "Scroll region: copy (LMB) or annotate (RMB)": "Vùng cuộn: chép (chuột trái) hoặc chú thích (chuột phải)",
+  "Scroll the content": "Cuộn nội dung",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "Mất dấu thao tác cuộn",
+  "Height limit reached": "Đã đạt giới hạn chiều cao"
 }

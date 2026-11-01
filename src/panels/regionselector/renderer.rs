@@ -97,8 +97,9 @@ impl Selection {
     fn draw_rect(&self, snapshot: &gtk4::Snapshot, colors: &Colors) {
         let (width, height) = self.size;
         let [x, y, region_width, region_height] = self.region.get();
-        let is_breathing = self.phase.get() == Phase::Post;
-        if !is_breathing {
+        let phase = self.phase.get();
+        let is_breathing = phase == Phase::Post;
+        if phase == Phase::Select {
             for bounds in [
                 rect(0.0, 0.0, width, y.max(0.0)),
                 rect(0.0, y + region_height, width, height - y - region_height),

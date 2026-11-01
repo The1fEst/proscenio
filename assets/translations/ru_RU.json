@@ -1616,5 +1616,11 @@
   "All day": "Весь день",
   "No title": "Без названия",
   "Calendar events": "События календаря",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Показывает в панели календаря события из Evolution Data Server, которым пользуется GNOME Календарь"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Показывает в панели календаря события из Evolution Data Server, которым пользуется GNOME Календарь",
+  "Scrolling capture": "Снимок с прокруткой",
+  "Scroll region: copy (LMB) or annotate (RMB)": "Область прокрутки: копировать (ЛКМ) или разметить (ПКМ)",
+  "Scroll the content": "Прокручивайте содержимое",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "Не удалось отследить прокрутку",
+  "Height limit reached": "Достигнут предел высоты"
 }

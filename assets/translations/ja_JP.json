@@ -1616,5 +1616,11 @@
   "All day": "終日",
   "No title": "タイトルなし",
   "Calendar events": "カレンダーの予定",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "GNOME カレンダーが使う Evolution Data Server の予定をカレンダーパネルに表示します"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "GNOME カレンダーが使う Evolution Data Server の予定をカレンダーパネルに表示します",
+  "Scrolling capture": "スクロールキャプチャ",
+  "Scroll region: copy (LMB) or annotate (RMB)": "スクロールする範囲：コピー（左クリック）または注釈（右クリック）",
+  "Scroll the content": "内容をスクロールしてください",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "スクロールを追跡できなくなりました",
+  "Height limit reached": "高さの上限に達しました"
 }

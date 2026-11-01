@@ -1616,5 +1616,11 @@
   "All day": "Tutto il giorno",
   "No title": "Senza titolo",
   "Calendar events": "Eventi del calendario",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Mostra nel pannello del calendario gli eventi di Evolution Data Server, usato da GNOME Calendario"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Mostra nel pannello del calendario gli eventi di Evolution Data Server, usato da GNOME Calendario",
+  "Scrolling capture": "Cattura con scorrimento",
+  "Scroll region: copy (LMB) or annotate (RMB)": "Regione da scorrere: copia (tasto sinistro) o annota (tasto destro)",
+  "Scroll the content": "Scorri il contenuto",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "Scorrimento non più seguito",
+  "Height limit reached": "Limite di altezza raggiunto"
 }

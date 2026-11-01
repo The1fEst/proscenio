@@ -39,13 +39,14 @@ impl Selection {
 
     fn update_action(self: &Rc<Self>) {
         let action = self.action();
-        if self.action.replace(action) == action {
+        let description = guide_description(action, self.mode.get());
+        let is_same_action = self.action.replace(action) == action;
+        let is_same_description = self.guide.description.replace(description) == description;
+        if is_same_action && is_same_description {
             return;
         }
         (self.guide.set_symbol)(guide_symbol(action));
-        self.guide
-            .description_label
-            .set_text(&tr(guide_description(action)));
+        self.guide.description_label.set_text(&tr(description));
         self.show_description();
     }
 
@@ -264,7 +265,7 @@ impl Selection {
         let drag = std::mem::take(&mut *self.drag.borrow_mut());
         if drag.points.iter().all(|point| *point == drag.start) {
             if let Some([x, y, width, height]) = self.target_bounds.get() {
-                let padding = if self.mode.get() == Mode::Window {
+                let padding = if matches!(self.mode.get(), Mode::Window | Mode::Scroll) {
                     0.0
                 } else {
                     self.config.region.selection_padding
@@ -321,13 +322,13 @@ impl Selection {
         let region = [x, y, width, height];
         self.region.set(region);
         self.remember(region);
+        if self.mode.get() == Mode::Scroll {
+            self.begin_scroll();
+            return;
+        }
 
         let options = &self.config.region;
-        let save_dir = if options.save.get() {
-            options.save_path.clone()
-        } else {
-            String::new()
-        };
+        let save_dir = self.save_dir();
         let has_shadow = self.mode.get() == Mode::Window;
         let crop = Crop {
             x: x * self.scale,
@@ -386,6 +387,15 @@ impl Selection {
         self.animate();
         if let Some(selector) = self.selector.upgrade() {
             selector.handle_recording_start(&self.screen);
+        }
+    }
+
+    pub(super) fn save_dir(&self) -> String {
+        let options = &self.config.region;
+        if options.save.get() {
+            options.save_path.clone()
+        } else {
+            String::new()
         }
     }
 
@@ -478,8 +488,11 @@ pub(super) fn guide_symbol(action: Action) -> &'static str {
     }
 }
 
-pub(super) fn guide_description(action: Action) -> &'static str {
+pub(super) fn guide_description(action: Action, mode: Mode) -> &'static str {
     match action {
+        Action::Copy | Action::Edit if mode == Mode::Scroll => {
+            "Scroll region: copy (LMB) or annotate (RMB)"
+        }
         Action::Copy | Action::Edit => "Copy region (LMB) or annotate (RMB)",
         Action::Record | Action::RecordWithSound => "Record region",
     }

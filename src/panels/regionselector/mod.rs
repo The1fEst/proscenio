@@ -1,8 +1,11 @@
 mod interaction;
 pub mod notification;
 mod options;
+mod ppm;
 mod renderer;
 pub mod screenshot;
+mod scroll;
+mod stitcher;
 mod targets;
 
 use gtk4::gdk;
@@ -35,6 +38,7 @@ use crate::ui::widgets::overlay::tooltip::Tooltip;
 use interaction::{guide_description, guide_symbol};
 use options::options_menu;
 use screenshot::Action;
+use scroll::Scroll;
 use targets::{Target, targets};
 
 const NAMESPACE: &str = "proscenio:regionSelector";
@@ -80,6 +84,7 @@ pub enum Mode {
     Window,
     Region,
     Shape,
+    Scroll,
     RecordScreen,
     RecordRegion,
 }
@@ -98,11 +103,11 @@ impl Mode {
     }
 
     fn picks_region(self) -> bool {
-        matches!(self, Mode::Window | Mode::Region)
+        matches!(self, Mode::Window | Mode::Region | Mode::Scroll)
     }
 }
 
-const MODES: [(Mode, &str, &str); 6] = [
+const MODES: [(Mode, &str, &str); 7] = [
     (Mode::Screen, "fullscreen", "Whole screen"),
     (
         Mode::Window,
@@ -111,6 +116,7 @@ const MODES: [(Mode, &str, &str); 6] = [
     ),
     (Mode::Region, "activity_zone", "As it is on screen"),
     (Mode::Shape, "gesture", "A drawn shape"),
+    (Mode::Scroll, "swap_vert", "Scrolling capture"),
     (Mode::RecordScreen, "screen_record", "Record the screen"),
     (Mode::RecordRegion, "screenshot_region", "Record a region"),
 ];
@@ -127,6 +133,7 @@ fn mode_index(mode: Mode) -> usize {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Phase {
     Select,
+    Scroll,
     Post,
 }
 
@@ -144,6 +151,7 @@ struct Guide {
     background: Paint,
     set_symbol: Rc<dyn Fn(&str)>,
     description_label: gtk4::Label,
+    description: Cell<&'static str>,
     width_tween: Cell<Tween>,
     fade: Cell<Tween>,
     hide_timer: RefCell<Option<glib::SourceId>>,
@@ -174,6 +182,7 @@ struct Selection {
     paint: Paint,
     layer: gtk4::Fixed,
     guide: Guide,
+    scroll: Scroll,
     screen: String,
     size: (f64, f64),
     scale: f64,
@@ -303,6 +312,11 @@ impl RegionSelector {
 
     fn handle_recording_start(&self, screen: &str) {
         self.recording_screen.replace(screen.to_owned());
+        self.close_others(screen);
+        self.recording.watch();
+    }
+
+    fn close_others(&self, screen: &str) {
         let other_selections: Vec<Rc<Selection>> = {
             let mut selections = self.selections.borrow_mut();
             let (recording_selections, other_selections) = selections
@@ -314,7 +328,6 @@ impl RegionSelector {
         for selection in other_selections {
             close(&selection);
         }
-        self.recording.watch();
     }
 
     fn prepare(&self, selection: &Rc<Selection>) {
@@ -374,7 +387,8 @@ impl RegionSelector {
         let symbol = text::symbol(guide_symbol(Action::Copy), GUIDE_ICON);
         text::set_color(&symbol, "colOnPrimary");
         let (symbol_holder, set_symbol) = text::animate_change(&symbol);
-        let description_label = text::styled(&tr(guide_description(Action::Copy)));
+        let description = guide_description(Action::Copy, self.mode.get());
+        let description_label = text::styled(&tr(description));
         text::set_color(&description_label, "colOnPrimary");
         description_label.set_margin_start(GUIDE_SPACING - GUIDE_TEXT_INSET);
         let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -458,6 +472,8 @@ impl RegionSelector {
         overlay.set_child(Some(&paint));
         overlay.add_overlay(&layer);
         overlay.add_overlay(&holder);
+        let scroll = Scroll::new(&self.theme);
+        overlay.add_overlay(scroll.widget());
 
         let window = gtk4::ApplicationWindow::builder()
             .application(&self.app)
@@ -503,10 +519,12 @@ impl RegionSelector {
                 background,
                 set_symbol,
                 description_label,
+                description: Cell::new(description),
                 width_tween: Cell::new(Tween::new(0.0, MOVE_MILLIS, EXPRESSIVE_DEFAULT)),
                 fade: Cell::new(Tween::new(1.0, FAST_MILLIS, EXPRESSIVE_EFFECTS)),
                 hide_timer: RefCell::new(None),
             },
+            scroll,
             path: screenshot::temp_path(&screen),
             screen,
             size: (geometry.width() as f64, geometry.height() as f64),
@@ -569,13 +587,14 @@ impl RegionSelector {
                 }
             }
         });
+        selection.connect_scroll_buttons();
         let action = selection.action();
         selection.action.set(action);
         (selection.guide.set_symbol)(guide_symbol(action));
         selection
             .guide
             .description_label
-            .set_text(&tr(guide_description(action)));
+            .set_text(&tr(guide_description(action, selection.mode.get())));
         let mut width_tween = selection.guide.width_tween.get();
         width_tween.jump(selection.guide_width(true));
         selection.guide.width_tween.set(width_tween);
@@ -644,8 +663,13 @@ impl RegionSelector {
                 let Some(selection) = selection.upgrade() else {
                     return glib::Propagation::Proceed;
                 };
+                let is_scrolling = selection.phase.get() == Phase::Scroll;
                 match key {
                     gdk::Key::Escape => selection.dismiss(),
+                    gdk::Key::Return | gdk::Key::KP_Enter if is_scrolling => {
+                        selection.finish_scroll()
+                    }
+                    gdk::Key::space if is_scrolling => {}
                     gdk::Key::space => {
                         let next_mode = if selection.mode.get() == Mode::Window {
                             Mode::Region
@@ -673,6 +697,7 @@ fn close(selection: &Rc<Selection>) {
         let _ = std::fs::remove_file(&selection.path);
     }
     selection.screenshot_texture.replace(None);
+    selection.scroll.end();
     selection.window.destroy();
     crate::ui::unload::trim();
 }

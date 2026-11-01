@@ -1616,5 +1616,11 @@
   "All day": "全天",
   "No title": "无标题",
   "Calendar events": "日历日程",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "在日历面板中显示 GNOME 日历所用的 Evolution Data Server 中的日程"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "在日历面板中显示 GNOME 日历所用的 Evolution Data Server 中的日程",
+  "Scrolling capture": "滚动截图",
+  "Scroll region: copy (LMB) or annotate (RMB)": "滚动区域：复制（左键）或标注（右键）",
+  "Scroll the content": "请滚动内容",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "无法跟踪滚动",
+  "Height limit reached": "已达到高度上限"
 }

@@ -54,7 +54,6 @@ pub fn command(
         " \\( +clone -alpha extract -draw \"fill black polygon 0,0 0,{radius} {radius},0 fill white circle {radius},{radius} {radius},0\" \\( +clone -flip \\) -compose Multiply -composite \\( +clone -flop \\) -compose Multiply -composite \\) -alpha off -compose CopyOpacity -composite -compose Over"
     );
     let shadow_filter = " \\( +clone -background black -shadow 75x28+0+22 \\) +swap -background none -layers merge +repage";
-    let is_transparent = radius > 0.0 || crop.has_shadow;
     let crop_base = format!(
         "magick '{path}' -crop {width}x{height}+{x}+{y} +repage{}{}",
         if radius > 0.0 {
@@ -64,7 +63,7 @@ pub fn command(
         },
         if crop.has_shadow { shadow_filter } else { "" },
     );
-    let crop_to_stdout = format!("{crop_base} {}", if is_transparent { "png:-" } else { "-" });
+    let crop_to_stdout = format!("{crop_base} png:-");
     let cleanup = format!("rm '{path}'");
     let executable = escape(executable);
     match action {
@@ -163,6 +162,34 @@ mod tests {
             build(Action::Record, "", true),
         ] {
             assert!(!script.contains("screenshot-notify"), "{script}");
+        }
+    }
+
+    #[test]
+    fn every_action_that_takes_the_image_asks_for_png_whatever_the_source_format() {
+        let crop = Crop {
+            x: 0.0,
+            y: 0.0,
+            width: 1.0,
+            height: 1.0,
+            has_shadow: false,
+            radius: 0.0,
+        };
+        for (action, save_dir) in [
+            (Action::Copy, ""),
+            (Action::Copy, "/pictures"),
+            (Action::Edit, ""),
+        ] {
+            let script = command(
+                &crop,
+                Path::new("/run/image-DP-1"),
+                action,
+                save_dir,
+                "",
+                "/usr/bin/proscenio",
+                true,
+            );
+            assert!(script.contains("+repage png:- |"), "{script}");
         }
     }
 

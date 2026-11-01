@@ -1616,5 +1616,11 @@
   "All day": "Tüm gün",
   "No title": "Başlıksız",
   "Calendar events": "Takvim etkinlikleri",
-  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "GNOME Takvim'in kullandığı Evolution Data Server'daki etkinlikleri takvim panelinde gösterir"
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "GNOME Takvim'in kullandığı Evolution Data Server'daki etkinlikleri takvim panelinde gösterir",
+  "Scrolling capture": "Kaydırmalı yakalama",
+  "Scroll region: copy (LMB) or annotate (RMB)": "Kaydırılacak bölge: kopyala (sol tık) veya işaretle (sağ tık)",
+  "Scroll the content": "İçeriği kaydırın",
+  "%1 px": "%1 px",
+  "Lost track of the scrolling": "Kaydırma takibi kaybedildi",
+  "Height limit reached": "Yükseklik sınırına ulaşıldı"
 }
