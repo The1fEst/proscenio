@@ -1,16 +1,12 @@
-use gtk4::gio;
 use gtk4::glib;
 use std::cell::{Cell, RefCell};
 use std::future::Future;
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
-use crate::core::process;
-use crate::platform::dbus;
-use crate::platform::security::pam;
 use crate::services::network::networkmanager::NetworkManager;
 use crate::services::network::networkmanager::calls::{self, NO_OBJECT};
-use crate::services::network::networkmanager::model::{BUS, DeviceKind, Snapshot};
+use crate::services::network::networkmanager::model::{DeviceKind, LOOPBACK, Snapshot};
 
 const WIREGUARD: &str = "WireGuard";
 const WIREGUARD_KIND: &str = "wireguard";
@@ -256,63 +252,6 @@ fn read_devices(snapshot: &Snapshot) -> (&'static str, Wired) {
     (status, wired.map(|(_, wired)| wired).unwrap_or_default())
 }
 
-pub struct NmcliOutput {
-    pub is_success: bool,
-    pub exit_code: Option<i32>,
-    pub stdout: String,
-    pub stderr: String,
-}
-
-impl NmcliOutput {
-    pub fn into_stdout(self) -> Result<String, String> {
-        if self.is_success {
-            return Ok(self.stdout);
-        }
-        Err(self.stderr.trim().trim_start_matches("Error: ").to_owned())
-    }
-}
-
-pub async fn nmcli(arguments: &[&str]) -> NmcliOutput {
-    let mut command = process::command(&["nmcli"]);
-    command.args(arguments).env("LANG", "C").env("LC_ALL", "C");
-    let Some(output) = process::capture(command).await else {
-        return NmcliOutput {
-            is_success: false,
-            exit_code: None,
-            stdout: String::new(),
-            stderr: String::new(),
-        };
-    };
-    NmcliOutput {
-        is_success: output.status.success(),
-        exit_code: output.status.code(),
-        stdout: String::from_utf8(output.stdout).unwrap_or_else(|error| {
-            let mut bytes = error.into_bytes();
-            let text = String::from_utf8_lossy(&bytes).into_owned();
-            pam::wipe(&mut bytes);
-            text
-        }),
-        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-    }
-}
-
-pub fn split_escaped(line: &str) -> Vec<String> {
-    let mut fields = vec![String::new()];
-    let mut characters = line.chars();
-    while let Some(character) = characters.next() {
-        match character {
-            '\\' => {
-                if let Some(escaped) = characters.next() {
-                    fields.last_mut().unwrap().push(escaped);
-                }
-            }
-            ':' => fields.push(String::new()),
-            other => fields.last_mut().unwrap().push(other),
-        }
-    }
-    fields
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Connection {
     pub name: String,
@@ -327,25 +266,26 @@ pub const VPN_KINDS: [&str; 4] = ["vpn", "wireguard", "tun", "ip-tunnel"];
 pub const VIRTUAL_KINDS: [&str; 3] = ["vlan", "bridge", "bond"];
 pub const WIRED: &str = "802-3-ethernet";
 
-pub fn parse_connections(text: &str) -> Vec<Connection> {
-    let mut connections: Vec<Connection> = text
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .filter_map(|line| {
-            let fields = split_escaped(line);
-            if fields.len() < 4 || fields[2] == "loopback" {
-                return None;
+fn list_connections(snapshot: &Snapshot) -> Vec<Connection> {
+    let mut connections: Vec<Connection> = snapshot
+        .settings_connections
+        .iter()
+        .filter(|connection| connection.kind != LOOPBACK)
+        .map(|connection| {
+            let active_connection = snapshot.find_active_by_uuid(&connection.uuid);
+            let device = active_connection
+                .and_then(|active_connection| active_connection.devices.first())
+                .and_then(|path| snapshot.devices.iter().find(|device| device.path == *path))
+                .map(|device| device.interface.clone())
+                .unwrap_or_default();
+            Connection {
+                name: connection.id.clone(),
+                uuid: connection.uuid.clone(),
+                kind: connection.kind.clone(),
+                is_active: active_connection.is_some(),
+                device,
+                is_port: connection.is_port,
             }
-            Some(Connection {
-                name: fields[0].clone(),
-                uuid: fields[1].clone(),
-                kind: fields[2].clone(),
-                is_active: fields[3] == "yes",
-                device: fields.get(4).cloned().unwrap_or_default(),
-                is_port: fields
-                    .get(5)
-                    .is_some_and(|port| !port.is_empty() && port != "--"),
-            })
         })
         .collect();
     connections.sort_by_key(|connection| connection.name.to_lowercase());
@@ -354,36 +294,28 @@ pub fn parse_connections(text: &str) -> Vec<Connection> {
 
 pub struct Connections {
     pub list: RefCell<Vec<Connection>>,
+    manager: Rc<NetworkManager>,
     listeners: RefCell<Vec<Box<dyn Fn()>>>,
-    refresh_timer: Cell<Option<glib::SourceId>>,
-    subscription: RefCell<Option<gio::SignalSubscription>>,
+    subscription: RefCell<Option<Subscription>>,
 }
 
 impl Connections {
-    const SETTLE_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
-
     pub fn new() -> Rc<Self> {
+        let manager = NetworkManager::instance();
         let connections = Rc::new(Connections {
-            list: RefCell::new(Vec::new()),
+            list: RefCell::new(list_connections(&manager.snapshot())),
+            manager,
             listeners: RefCell::new(Vec::new()),
-            refresh_timer: Cell::new(None),
             subscription: RefCell::new(None),
         });
-        if let Ok(system) = gio::bus_get_sync(gio::BusType::System, gio::Cancellable::NONE) {
-            let weak = Rc::downgrade(&connections);
-            connections
-                .subscription
-                .replace(Some(dbus::subscribe_properties_changed(
-                    &system,
-                    BUS,
-                    move || {
-                        if let Some(connections) = weak.upgrade() {
-                            connections.queue_refresh();
-                        }
-                    },
-                )));
-        }
-        connections.refresh();
+        let weak = Rc::downgrade(&connections);
+        connections
+            .subscription
+            .replace(Some(connections.manager.subscribe(move || {
+                if let Some(connections) = weak.upgrade() {
+                    connections.show();
+                }
+            })));
         connections
     }
 
@@ -391,66 +323,31 @@ impl Connections {
         self.listeners.borrow_mut().push(Box::new(listener));
     }
 
-    pub fn set_active(self: &Rc<Self>, uuid: &str, is_active: bool) {
-        let weak = Rc::downgrade(self);
-        let uuid = uuid.to_owned();
-        glib::spawn_future_local(async move {
-            nmcli(&[
-                "connection",
-                if is_active { "up" } else { "down" },
-                "uuid",
-                &uuid,
-            ])
-            .await;
-            if let Some(connections) = weak.upgrade() {
-                connections.queue_refresh();
-            }
-        });
-    }
-
-    fn queue_refresh(self: &Rc<Self>) {
-        if let Some(source) = self.refresh_timer.take() {
-            source.remove();
-        }
-        let weak = Rc::downgrade(self);
-        self.refresh_timer.set(Some(glib::timeout_add_local_once(
-            Self::SETTLE_DELAY,
-            move || {
-                if let Some(connections) = weak.upgrade() {
-                    connections.refresh_timer.set(None);
-                    connections.refresh();
-                }
-            },
-        )));
-    }
-
-    fn refresh(self: &Rc<Self>) {
-        let weak = Rc::downgrade(self);
-        glib::spawn_future_local(async move {
-            let output = nmcli(&[
-                "-t",
-                "-f",
-                "NAME,UUID,TYPE,ACTIVE,DEVICE,PORT",
-                "connection",
-                "show",
-            ])
-            .await
-            .stdout;
-            let Some(connections) = weak.upgrade() else {
+    pub fn set_active(&self, uuid: &str, is_active: bool) {
+        let snapshot = self.manager.snapshot();
+        if is_active {
+            let Some(connection) = snapshot.find_settings_by_uuid(uuid) else {
                 return;
             };
-            connections.list.replace(parse_connections(&output));
-            for listener in connections.listeners.borrow().iter() {
-                listener();
-            }
-        });
+            let path = connection.path.clone();
+            spawn(async move {
+                calls::activate_connection(&path, NO_OBJECT, NO_OBJECT)
+                    .await
+                    .map(drop)
+            });
+        } else if let Some(active_connection) = snapshot.find_active_by_uuid(uuid) {
+            let path = active_connection.path.clone();
+            spawn(async move { calls::deactivate_connection(&path).await });
+        }
     }
-}
 
-impl Drop for Connections {
-    fn drop(&mut self) {
-        if let Some(source) = self.refresh_timer.take() {
-            source.remove();
+    fn show(&self) {
+        let list = list_connections(&self.manager.snapshot());
+        if !update(&self.list, list) {
+            return;
+        }
+        for listener in self.listeners.borrow().iter() {
+            listener();
         }
     }
 }
@@ -461,21 +358,6 @@ mod tests {
     use crate::services::network::networkmanager::model::{
         ActiveConnection, Device, SettingsConnection,
     };
-
-    #[test]
-    fn a_failed_nmcli_call_is_an_error_and_not_empty_output() {
-        let new_output = |is_success| NmcliOutput {
-            is_success,
-            exit_code: Some(if is_success { 0 } else { 8 }),
-            stdout: String::new(),
-            stderr: "Error: NetworkManager is not running.\n".to_owned(),
-        };
-        assert_eq!(new_output(true).into_stdout(), Ok(String::new()));
-        assert_eq!(
-            new_output(false).into_stdout(),
-            Err("NetworkManager is not running.".to_owned())
-        );
-    }
 
     fn new_device(
         number: u32,
@@ -491,6 +373,7 @@ mod tests {
             active_connection: active_connection.map(str::to_owned),
             access_points: Vec::new(),
             last_scan: 0,
+            wireless_capabilities: 0,
         }
     }
 
@@ -500,6 +383,18 @@ mod tests {
             id: id.to_owned(),
             uuid: uuid.to_owned(),
             kind: String::new(),
+            devices: vec!["/org/freedesktop/NetworkManager/Devices/2".to_owned()],
+        }
+    }
+
+    fn new_profile(number: u32, id: &str, kind: &str, is_port: bool) -> SettingsConnection {
+        SettingsConnection {
+            path: format!("/org/freedesktop/NetworkManager/Settings/{number}"),
+            id: id.to_owned(),
+            uuid: format!("u{number}"),
+            kind: kind.to_owned(),
+            should_autoconnect: true,
+            is_port,
         }
     }
 
@@ -559,18 +454,11 @@ mod tests {
 
     #[test]
     fn tunnels_are_the_wireguard_profiles_sorted_by_name() {
-        let new_profile = |number: u32, id: &str, kind: &str| SettingsConnection {
-            path: format!("/org/freedesktop/NetworkManager/Settings/{number}"),
-            id: id.to_owned(),
-            uuid: format!("u{number}"),
-            kind: kind.to_owned(),
-            should_autoconnect: true,
-        };
         let snapshot = Snapshot {
             settings_connections: vec![
-                new_profile(1, "work", WIREGUARD_KIND),
-                new_profile(2, "Home", WIREGUARD_KIND),
-                new_profile(3, "Ethernet", WIRED),
+                new_profile(1, "work", WIREGUARD_KIND, false),
+                new_profile(2, "Home", WIREGUARD_KIND, false),
+                new_profile(3, "Ethernet", WIRED, false),
             ],
             active_connections: vec![new_active("/a/1", "work", "u1")],
             ..Snapshot::default()
@@ -583,9 +471,33 @@ mod tests {
 
     #[test]
     fn connections_leave_out_loopback_and_come_sorted_by_name() {
-        let text = "lo:u0:loopback:yes:lo:\nWired connection 1:u1:802-3-ethernet:yes:eth0:\nOffice\\: VPN:u2:vpn:no::\nbr0 port eth1:u3:802-3-ethernet:no::bridge\n";
+        let snapshot = Snapshot {
+            devices: vec![
+                new_device(1, DeviceKind::Other, 100, None),
+                new_device(2, DeviceKind::Ethernet, 100, None),
+            ],
+            settings_connections: vec![
+                new_profile(0, "lo", LOOPBACK, false),
+                new_profile(1, "Wired connection 1", WIRED, false),
+                new_profile(2, "Office: VPN", "vpn", false),
+                new_profile(3, "br0 port eth1", WIRED, true),
+            ],
+            active_connections: vec![
+                new_active(
+                    "/org/freedesktop/NetworkManager/ActiveConnection/1",
+                    "lo",
+                    "u0",
+                ),
+                new_active(
+                    "/org/freedesktop/NetworkManager/ActiveConnection/2",
+                    "Wired connection 1",
+                    "u1",
+                ),
+            ],
+            ..Snapshot::default()
+        };
         assert_eq!(
-            parse_connections(text),
+            list_connections(&snapshot),
             [
                 Connection {
                     name: "br0 port eth1".to_owned(),
@@ -608,7 +520,7 @@ mod tests {
                     uuid: "u1".to_owned(),
                     kind: WIRED.to_owned(),
                     is_active: true,
-                    device: "eth0".to_owned(),
+                    device: "if2".to_owned(),
                     is_port: false,
                 },
             ]

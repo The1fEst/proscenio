@@ -10,11 +10,13 @@ Two pages of the [settings window](settings.md) deal with networks. **Wi-Fi** jo
 and shares a connection as a hotspot; **Network** lists wired connections, VPNs and virtual
 interfaces, edits any NetworkManager profile, and leads to the proxy and firewall settings.
 
-Everything about connections goes through NetworkManager: `nmcli` lists, switches and deletes them,
-and its D-Bus interface reads and writes whole profiles and their passwords. Without `nmcli` (from
-the networkmanager package) or without NetworkManager on the system bus, Saved Networks, Hotspot and
-the connection editor show only a notice saying which one is missing, and the Network page shows
-that notice above its Firewall & Proxy links.
+Everything about connections goes through NetworkManager's D-Bus interface on the system bus. The
+shell keeps one copy of NetworkManager's devices, access points, active connections and profiles,
+read with `GetManagedObjects` and `GetSettings` and kept current from NetworkManager's signals, so
+every page follows a change as soon as NetworkManager reports it, at most four times a second. Calls
+that change something let polkit ask for a password. Only **Import from a file…** runs `nmcli`.
+Without NetworkManager on the system bus, Saved Networks, Hotspot and the connection editor show only
+a notice saying so, and the Network page shows that notice above its Firewall & Proxy links.
 
 ## Wi-Fi
 
@@ -110,11 +112,15 @@ cannot join another network while it shares, so the connection to share is usual
 | Band | Automatic, 2.4 GHz or 5 GHz |
 | Share the connection | starts or stops the hotspot |
 
-Turning sharing on deletes the old profile named `Hotspot` and runs
-`nmcli device wifi hotspot con-name Hotspot ssid <name> password <password>`, adding `band bg` or
-`band a` for a chosen band. Turning it off brings `Hotspot` down. The switch shows whether that
-profile is active, and NetworkManager's error appears under it when starting fails. The fields start
-from the stored profile, read with `nmcli -s`.
+Turning sharing on deletes every profile named `Hotspot` and starts a new one with
+`AddAndActivateConnection` on the first Wi-Fi device that can be an access point: access point mode,
+the name and password with WPA2 (`wpa-psk` with CCMP, or TKIP on an adapter without WPA2, and
+protected management frames off), band `bg`
+or `a` for a chosen band, the connection shared over IPv4 and IPv6 left off, and no joining on its
+own. The switch waits until NetworkManager reports the hotspot activated or failed. Turning it off
+brings `Hotspot` down. The switch shows whether that profile is active, and NetworkManager's error,
+or "NetworkManager could not start the hotspot", appears under it when starting fails. The fields
+start from the stored profile and its password, read with `GetSettings` and `GetSecrets`.
 
 ## Network
 
@@ -130,8 +136,8 @@ Three sections list NetworkManager's connections, sorted by name:
 
 A card shows the connection's name over "Connected · *device*" or "Not connected", an **Edit**
 button that opens the connection editor, and a switch that brings the connection up or down
-(`nmcli connection up` or `down`) and then shows what NetworkManager reports. The lists follow
-NetworkManager's changes, refreshed half a second after the last one.
+(`ActivateConnection` or `DeactivateConnection`) and then shows what NetworkManager reports. The
+lists follow NetworkManager's changes as they happen.
 
 Each add button opens the connection editor on a blank profile of that type.
 
@@ -140,7 +146,8 @@ Each add button opens the connection editor on a blank profile of that type.
 - **Import from a file…** asks `kdialog` for a WireGuard `.conf` or an OpenVPN `.ovpn` file and
   imports it with `nmcli connection import`, then opens the editor on the imported connection. An
   `.ovpn` file needs the OpenVPN plugin. NetworkManager's message appears under the buttons when the
-  import fails. Without `kdialog` the button is disabled.
+  import fails. Without `kdialog`, or without `nmcli` (from the networkmanager package), the button
+  is disabled, with a tooltip naming the missing program.
 
 The page ends with **Firewall & Proxy**: a link row to the Firewall subpage, whose second line reads
 On, Off or Not installed, and one to the Proxy subpage, whose second line names the proxy mode. This
@@ -152,8 +159,8 @@ section shows even when NetworkManager is not running.
 
 The Connection subpage edits one NetworkManager profile. It opens from a card's **Edit** button, the
 add buttons, an import, or an enterprise Wi-Fi network; its header shows the profile's name. Opened
-without a profile, as a search result does, it edits the first active connection, or says there is
-nothing to edit.
+without a profile, as a search result does, it edits NetworkManager's primary connection, else the
+first active one other than loopback, or says there is nothing to edit.
 
 A blank profile is named "Wired connection", "WireGuard", "OpenVPN", "VLAN", "Bridge" or "Bond", or
 after the network for enterprise Wi-Fi, with " 2", " 3" and so on added when the name is taken.
@@ -296,8 +303,9 @@ slashes.
 Link-local and Disabled show only the method. Addresses and routes are written as `address-data` and
 `route-data`, and DNS servers as `dns`, or as `dns-data` for servers that are not plain addresses.
 
-Parsing and writing profiles lives in `src/platform/network/nmprofile/`, the D-Bus calls in
-`src/services/network/nmsettings.rs`.
+Parsing and writing profiles lives in `src/platform/network/nmprofile/`, the profile and secret calls
+in `src/services/network/nmsettings.rs`, and the shared NetworkManager state with its signals and the
+activation calls in `src/services/network/networkmanager/`.
 
 ### Proxy
 

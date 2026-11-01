@@ -319,6 +319,20 @@ impl Profile {
         profile
     }
 
+    pub fn is_port(&self) -> bool {
+        ["port-type", "slave-type"]
+            .iter()
+            .any(|key| !self.string(CONNECTION, key).is_empty())
+    }
+
+    pub fn controller(&self) -> String {
+        ["controller", "master"]
+            .iter()
+            .map(|key| self.string(CONNECTION, key))
+            .find(|controller| !controller.is_empty())
+            .unwrap_or_default()
+    }
+
     pub fn normalized(&self) -> Profile {
         let mut profile = self.clone();
         for family in [Family::V4, Family::V6] {
@@ -513,5 +527,14 @@ mod tests {
         assert_eq!(port.string(CONNECTION, "slave-type"), BOND);
         assert!(!port.settings.contains_key("ipv4"));
         assert_eq!(port.problem(false), None);
+        assert!(port.is_port());
+        assert_eq!(port.controller(), "bond0");
+        assert!(!bond.is_port());
+
+        let mut controller_keyed_port = Profile::new(WIRED, "br0 port eth2");
+        controller_keyed_port.put(CONNECTION, "controller", "br0".to_variant());
+        controller_keyed_port.put(CONNECTION, "port-type", BRIDGE.to_variant());
+        assert!(controller_keyed_port.is_port());
+        assert_eq!(controller_keyed_port.controller(), "br0");
     }
 }

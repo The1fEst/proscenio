@@ -42,13 +42,6 @@ const OPENVPN_PLUGIN: &str = "/usr/lib/NetworkManager/VPN/nm-openvpn-service.nam
 type Open = Rc<dyn Fn(&str)>;
 
 pub fn check_manager_running(page: &Page, parent: &impl Parent) -> bool {
-    if !page.tools_notice(
-        parent,
-        &[&tools::NMCLI],
-        &tr("connections are not listed or switched"),
-    ) {
-        return false;
-    }
     if tools::has_system_service(NETWORK_MANAGER) {
         return true;
     }
@@ -118,17 +111,24 @@ pub fn build(context: &Context) -> Rc<Page> {
         move || import_file(open.clone(), problem_label.clone())
     });
     vpn_buttons.append(&import_button);
-    let missing_tools = tools::find_missing(&[&tools::KDIALOG]);
-    if missing_tools.is_empty() {
-        page.tip(
-            &import_button,
-            &tr("A WireGuard .conf file, or an OpenVPN .ovpn file with networkmanager-openvpn installed"),
-        );
-    } else {
+    let missing_pickers = tools::find_missing(&[&tools::KDIALOG]);
+    let missing_importers = tools::find_missing(&[&tools::NMCLI]);
+    if !missing_pickers.is_empty() {
         import_button.set_sensitive(false);
         page.tip(
             &import_button,
-            &tools::missing_message(&missing_tools, &tr("there is no file picker")),
+            &tools::missing_message(&missing_pickers, &tr("there is no file picker")),
+        );
+    } else if !missing_importers.is_empty() {
+        import_button.set_sensitive(false);
+        page.tip(
+            &import_button,
+            &tools::missing_message(&missing_importers, &tr("VPN files cannot be imported")),
+        );
+    } else {
+        page.tip(
+            &import_button,
+            &tr("A WireGuard .conf file, or an OpenVPN .ovpn file with networkmanager-openvpn installed"),
         );
     }
     vpn_section.append(&vpn_buttons);

@@ -31,11 +31,12 @@ const SECONDARIES_STATE: u32 = 90;
 const ACTIVATED_STATE: u32 = 100;
 const LIMITED_CONNECTIVITY: u32 = 3;
 const PRIVACY_FLAG: u32 = 0x1;
+const ACCESS_POINT_CAPABILITY: u32 = 0x40;
 const KEY_MANAGEMENT_PSK: u32 = 0x100;
 const KEY_MANAGEMENT_802_1X: u32 = 0x200;
 const KEY_MANAGEMENT_SAE: u32 = 0x400;
 const KEY_MANAGEMENT_FLAGS: u32 = 0x3f00;
-const LOOPBACK: &str = "loopback";
+pub const LOOPBACK: &str = "loopback";
 
 pub type Properties = HashMap<String, Variant>;
 pub type Objects = HashMap<String, HashMap<String, Properties>>;
@@ -145,6 +146,7 @@ pub struct Device {
     pub active_connection: Option<String>,
     pub access_points: Vec<AccessPoint>,
     pub last_scan: i64,
+    pub wireless_capabilities: u32,
 }
 
 impl Device {
@@ -181,7 +183,12 @@ impl Device {
             active_connection: read_path(properties, "ActiveConnection"),
             access_points,
             last_scan: read(wireless, "LastScan").unwrap_or(0),
+            wireless_capabilities: read(wireless, "WirelessCapabilities").unwrap_or(0),
         })
+    }
+
+    pub fn can_host_access_point(&self) -> bool {
+        self.wireless_capabilities & ACCESS_POINT_CAPABILITY != 0
     }
 
     pub fn active_point(&self) -> Option<&AccessPoint> {
@@ -211,6 +218,7 @@ pub struct ActiveConnection {
     pub id: String,
     pub uuid: String,
     pub kind: String,
+    pub devices: Vec<String>,
 }
 
 impl ActiveConnection {
@@ -220,6 +228,7 @@ impl ActiveConnection {
             id: read_string(properties, "Id"),
             uuid: read_string(properties, "Uuid"),
             kind: read_string(properties, "Type"),
+            devices: read_paths(properties, "Devices"),
         }
     }
 }
@@ -231,6 +240,7 @@ pub struct SettingsConnection {
     pub uuid: String,
     pub kind: String,
     pub should_autoconnect: bool,
+    pub is_port: bool,
 }
 
 impl SettingsConnection {
@@ -241,6 +251,7 @@ impl SettingsConnection {
             uuid: profile.uuid(),
             kind: profile.kind(),
             should_autoconnect: profile.is_autoconnect_enabled(),
+            is_port: profile.is_port(),
         }
     }
 }
@@ -483,6 +494,8 @@ pub mod tests {
                     "ActiveAccessPoint",
                     new_path("/org/freedesktop/NetworkManager/AccessPoint/8"),
                 ),
+                ("WirelessCapabilities", 0x70u32.to_variant()),
+                ("LastScan", 4200i64.to_variant()),
             ],
         );
         let new_point = |number: u32, ssid: &[u8], strength: u8| {
@@ -514,6 +527,8 @@ pub mod tests {
             names,
             [("Café", 40, false), ("Caf\u{fffd} \u{fffd}", 87, true)]
         );
+        assert!(device.can_host_access_point());
+        assert_eq!(device.last_scan, 4200);
         assert_eq!(
             device.active_point(),
             Some(&AccessPoint {
@@ -605,6 +620,7 @@ pub mod tests {
                     ("Id", id.to_variant()),
                     ("Uuid", format!("u{number}").to_variant()),
                     ("Type", kind.to_variant()),
+                    ("Devices", new_paths(&[&format!("{ROOT}/Devices/{number}")])),
                 ],
             );
         }
@@ -628,12 +644,9 @@ pub mod tests {
         );
         assert_eq!(find_main_id(&objects).as_deref(), Some("Cafe"));
         let snapshot = Snapshot::new(&objects, &HashMap::new());
-        assert_eq!(
-            snapshot
-                .find_active_by_id("Office")
-                .map(|connection| connection.uuid.as_str()),
-            Some("u10")
-        );
+        let office = snapshot.find_active_by_uuid("u10").unwrap();
+        assert_eq!(office.id, "Office");
+        assert_eq!(office.devices, [format!("{ROOT}/Devices/10")]);
     }
 
     #[test]
@@ -662,6 +675,7 @@ pub mod tests {
                 uuid: "u1".to_owned(),
                 kind: WIRELESS.to_owned(),
                 should_autoconnect: false,
+                is_port: false,
             }
         );
     }

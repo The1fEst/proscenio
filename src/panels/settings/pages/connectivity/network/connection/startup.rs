@@ -2,7 +2,7 @@ use super::{BOND_MODES, NEW, NEW_ENTERPRISE, NEW_OPENVPN};
 use crate::core::i18n::tr;
 use crate::platform::network::nmprofile::wireless::Security;
 use crate::platform::network::nmprofile::{self, BOND, BRIDGE, Profile, VLAN, WIREGUARD, WIRELESS};
-use crate::services::network::net::nmcli;
+use crate::services::network::networkmanager::NetworkManager;
 use crate::services::network::nmsettings;
 
 pub(super) struct Start {
@@ -13,21 +13,17 @@ pub(super) struct Start {
     pub(super) ports: Vec<(String, String)>,
 }
 
-async fn find_primary() -> Option<String> {
-    nmcli(&["-t", "-f", "UUID,TYPE", "connection", "show", "--active"])
-        .await
-        .stdout
-        .lines()
-        .filter_map(|line| line.split_once(':'))
-        .find(|(_, kind)| *kind != "loopback")
-        .map(|(uuid, _)| uuid.to_owned())
+fn find_primary() -> Option<String> {
+    NetworkManager::instance()
+        .snapshot()
+        .main_connection()
+        .map(|connection| connection.uuid.clone())
 }
 
 pub(super) async fn start(argument: Option<String>) -> Result<Start, String> {
     let target = match argument {
         Some(target) => target,
         None => find_primary()
-            .await
             .ok_or_else(|| tr("No connection is active, so there is nothing to edit"))?,
     };
     if let Some(ssid) = target.strip_prefix(NEW_ENTERPRISE) {
@@ -81,7 +77,7 @@ pub(super) async fn start(argument: Option<String>) -> Result<Start, String> {
             _ => {}
         }
         return Ok(Start {
-            devices: nmsettings::devices("ethernet").await,
+            devices: nmsettings::list_ethernet_devices(),
             profile,
             is_new: true,
             are_secrets_read: true,
@@ -96,7 +92,7 @@ pub(super) async fn start(argument: Option<String>) -> Result<Start, String> {
         Vec::new()
     };
     Ok(Start {
-        devices: nmsettings::devices("ethernet").await,
+        devices: nmsettings::list_ethernet_devices(),
         profile,
         is_new: false,
         are_secrets_read: saved_connection.are_secrets_read,

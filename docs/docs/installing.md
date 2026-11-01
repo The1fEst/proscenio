@@ -197,7 +197,7 @@ settings page it belongs to names it along with the package it comes in.
 | `kitty` | kitty | the default terminal command opens nothing |
 | `matugen` | matugen | nothing follows the wallpaper: the shell keeps its built-in palette, since its own colors come from a matugen template too (see [Colors](colors.md)) |
 | `mpvpaper`, `ffmpeg` | mpvpaper, ffmpeg | a video cannot be the wallpaper |
-| `nmcli` | networkmanager | connections are not listed or switched |
+| `nmcli` | networkmanager | VPN files cannot be imported |
 | `pactl` | libpulse | `proscenio record --sound` finds no output to record |
 | `paplay` | libpulse | alert sounds, notification sounds included, stay silent |
 | `paru` or `yay` | paru or yay (AUR) | the update count leaves out AUR packages, since `pacman` counts the repositories only |

@@ -1,22 +1,27 @@
-use gtk4::glib;
+use gtk4::glib::{self, Variant};
 use gtk4::prelude::*;
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::pin::Pin;
 use std::rc::{Rc, Weak};
 
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Choice, Context, Page, Style};
 use crate::panels::settings::pages::connectivity::network::check_manager_running;
+use crate::platform::network::nmprofile::{SECURITY, WIRELESS};
 use crate::platform::security::pam;
-use crate::services::network::net::{Connections, nmcli};
+use crate::services::network::net::Connections;
+use crate::services::network::networkmanager::NetworkManager;
+use crate::services::network::networkmanager::calls::{self, NO_OBJECT};
+use crate::services::network::nmsettings;
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::textfield::TextField;
 
 const CONNECTION: &str = "Hotspot";
-const SSID: &str = "802-11-wireless.ssid";
-const PSK: &str = "802-11-wireless-security.psk";
-const BAND: &str = "802-11-wireless.band";
+const WPA_CAPABILITY: u32 = 0x10;
+const RSN_CAPABILITY: u32 = 0x20;
+const DISABLED_PMF: i32 = 1;
 const LABEL_START: i32 = 2;
 const STATUS_START: i32 = 8;
 const PASSWORD_LENGTH: (usize, usize) = (8, 63);
@@ -169,38 +174,33 @@ impl Hotspot {
     fn read(self: &Rc<Self>, name_field: Weak<TextField>, password_field: Weak<TextField>) {
         let hotspot = Rc::downgrade(self);
         glib::spawn_future_local(async move {
-            let properties = [SSID, PSK, BAND].join(",");
-            let reply = nmcli(&[
-                "-s",
-                "-t",
-                "-m",
-                "multiline",
-                "-f",
-                &properties,
-                "connection",
-                "show",
-                "id",
-                CONNECTION,
-            ])
-            .await;
-            if let Some(hotspot) = hotspot.upgrade() {
-                if reply.is_success {
-                    let fields = parse_fields(&reply.stdout);
-                    let read_field = |key: &str| fields.get(key).copied().unwrap_or_default();
-                    if let Some(name_field) = name_field
-                        .upgrade()
-                        .filter(|_| !read_field(SSID).is_empty())
-                    {
-                        name_field.set_text(read_field(SSID));
-                    }
-                    if let Some(password_field) = password_field.upgrade() {
-                        password_field.set_text(read_field(PSK));
-                    }
-                    hotspot.band.replace(read_field(BAND).to_owned());
+            let saved_connection = match nmsettings::find_uuids(CONNECTION).await.first() {
+                Some(uuid) => nmsettings::load(uuid).await.ok(),
+                None => None,
+            };
+            let Some(hotspot) = hotspot.upgrade() else {
+                return;
+            };
+            if let Some(saved_connection) = saved_connection {
+                let profile = saved_connection.profile;
+                let ssid = profile.ssid();
+                if let Some(name_field) = name_field.upgrade().filter(|_| !ssid.is_empty()) {
+                    name_field.set_text(&ssid);
                 }
-                hotspot.announce();
+                if let Some(password_field) = password_field.upgrade() {
+                    let psk = profile.psk();
+                    password_field.set_text(&psk);
+                    pam::wipe(&mut psk.into_bytes());
+                }
+                let band = profile
+                    .settings
+                    .get(WIRELESS)
+                    .and_then(|wireless| wireless.get("band"))
+                    .and_then(|band| band.str().map(str::to_owned))
+                    .unwrap_or_default();
+                hotspot.band.replace(band);
             }
-            pam::wipe(&mut reply.stdout.into_bytes());
+            hotspot.announce();
         });
     }
 
@@ -223,36 +223,36 @@ impl Hotspot {
         self.problem.replace(None);
         self.announce();
         let hotspot = Rc::downgrade(self);
-        let (ssid, password, band) = (
-            ssid.to_owned(),
-            password.to_owned(),
-            self.band.borrow().clone(),
-        );
-        glib::spawn_future_local(async move {
-            let reply = if is_on {
-                nmcli(&["connection", "delete", "id", CONNECTION]).await;
-                let mut arguments = vec![
-                    "device", "wifi", "hotspot", "con-name", CONNECTION, "ssid", &ssid, "password",
-                    &password,
-                ];
-                if !band.is_empty() {
-                    arguments.extend(["band", band.as_str()]);
+        let snapshot = NetworkManager::instance().snapshot();
+        let call: Pin<Box<dyn Future<Output = Result<(), String>>>> = if is_on {
+            let device = snapshot
+                .wifi_devices()
+                .find(|device| device.can_host_access_point())
+                .map(|device| (device.path.clone(), device.wireless_capabilities));
+            let settings = device.as_ref().map(|(_, capabilities)| {
+                build_hotspot_settings(ssid, password, &self.band.borrow(), *capabilities)
+            });
+            Box::pin(start_hotspot(device.map(|(path, _)| path), settings))
+        } else {
+            let active_connection = snapshot
+                .find_active_by_id(CONNECTION)
+                .map(|active_connection| active_connection.path.clone());
+            Box::pin(async move {
+                match active_connection {
+                    Some(active_connection) => {
+                        calls::deactivate_connection(&active_connection).await
+                    }
+                    None => Ok(()),
                 }
-                nmcli(&arguments).await
-            } else {
-                nmcli(&["connection", "down", "id", CONNECTION]).await
-            };
+            })
+        };
+        glib::spawn_future_local(async move {
+            let call_result = call.await;
             let Some(hotspot) = hotspot.upgrade() else {
                 return;
             };
             hotspot.is_busy.set(false);
-            if !reply.is_success {
-                let message = reply
-                    .stderr
-                    .lines()
-                    .find(|line| !line.trim().is_empty())
-                    .map(|line| line.trim_start_matches("Error: ").to_owned())
-                    .unwrap_or_else(|| tr("NetworkManager could not start the hotspot"));
+            if let Err(message) = call_result {
                 hotspot.problem.replace(Some(message));
             }
             hotspot.announce();
@@ -260,11 +260,68 @@ impl Hotspot {
     }
 }
 
-fn parse_fields(output: &str) -> HashMap<&str, &str> {
-    output
-        .lines()
-        .filter_map(|line| line.split_once(':'))
-        .collect()
+async fn start_hotspot(device: Option<String>, settings: Option<Variant>) -> Result<(), String> {
+    for uuid in nmsettings::find_uuids(CONNECTION).await {
+        let _ = nmsettings::delete(&uuid).await;
+    }
+    let (Some(device), Some(settings)) = (device, settings) else {
+        return Err(tr("NetworkManager could not start the hotspot"));
+    };
+    let (_, active_connection) =
+        calls::add_and_activate_connection(settings, &device, NO_OBJECT).await?;
+    if calls::wait_for_activation(&active_connection).await {
+        return Ok(());
+    }
+    Err(tr("NetworkManager could not start the hotspot"))
+}
+
+fn build_hotspot_settings(ssid: &str, password: &str, band: &str, capabilities: u32) -> Variant {
+    let new_entry = |key: &str, value: Variant| (key.to_owned(), value);
+    let mut wireless = HashMap::from([
+        new_entry("ssid", ssid.as_bytes().to_variant()),
+        new_entry("mode", "ap".to_variant()),
+    ]);
+    if !band.is_empty() {
+        wireless.insert("band".to_owned(), band.to_variant());
+    }
+    let mut security = HashMap::from([
+        new_entry("key-mgmt", "wpa-psk".to_variant()),
+        new_entry("psk", password.to_variant()),
+        new_entry("pmf", DISABLED_PMF.to_variant()),
+    ]);
+    let ciphers = if capabilities & RSN_CAPABILITY != 0 {
+        Some(("rsn", "ccmp"))
+    } else if capabilities & WPA_CAPABILITY != 0 {
+        Some(("wpa", "tkip"))
+    } else {
+        None
+    };
+    if let Some((protocol, cipher)) = ciphers {
+        security.insert("proto".to_owned(), vec![protocol].to_variant());
+        security.insert("pairwise".to_owned(), vec![cipher].to_variant());
+        security.insert("group".to_owned(), vec![cipher].to_variant());
+    }
+    let settings: HashMap<String, HashMap<String, Variant>> = HashMap::from([
+        (
+            "connection".to_owned(),
+            HashMap::from([
+                new_entry("id", CONNECTION.to_variant()),
+                new_entry("type", WIRELESS.to_variant()),
+                new_entry("autoconnect", false.to_variant()),
+            ]),
+        ),
+        (WIRELESS.to_owned(), wireless),
+        (SECURITY.to_owned(), security),
+        (
+            "ipv4".to_owned(),
+            HashMap::from([new_entry("method", "shared".to_variant())]),
+        ),
+        (
+            "ipv6".to_owned(),
+            HashMap::from([new_entry("method", "ignore".to_variant())]),
+        ),
+    ]);
+    settings.to_variant()
 }
 
 #[cfg(test)]
@@ -272,16 +329,53 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fields_are_read_by_name_with_their_values_whole() {
+    fn a_hotspot_shares_the_connection_with_the_strongest_cipher_the_adapter_offers() {
+        let read_settings = |settings: Variant| {
+            settings
+                .get::<HashMap<String, HashMap<String, Variant>>>()
+                .unwrap()
+        };
+        let settings = read_settings(build_hotspot_settings("Attic", "secret12", "a", 0x70));
         assert_eq!(
-            parse_fields(
-                "802-11-wireless.ssid:Cafe:Guest\n802-11-wireless-security.psk:pa:ss\\word1\n802-11-wireless.band:a\n"
-            ),
-            HashMap::from([(SSID, "Cafe:Guest"), (PSK, "pa:ss\\word1"), (BAND, "a")])
+            settings["connection"],
+            HashMap::from([
+                ("id".to_owned(), "Hotspot".to_variant()),
+                ("type".to_owned(), WIRELESS.to_variant()),
+                ("autoconnect".to_owned(), false.to_variant()),
+            ])
         );
         assert_eq!(
-            parse_fields("802-11-wireless.ssid:Cafe\n802-11-wireless.band:a\n"),
-            HashMap::from([(SSID, "Cafe"), (BAND, "a")])
+            settings[WIRELESS],
+            HashMap::from([
+                ("ssid".to_owned(), b"Attic".to_variant()),
+                ("mode".to_owned(), "ap".to_variant()),
+                ("band".to_owned(), "a".to_variant()),
+            ])
         );
+        assert_eq!(
+            settings[SECURITY],
+            HashMap::from([
+                ("key-mgmt".to_owned(), "wpa-psk".to_variant()),
+                ("psk".to_owned(), "secret12".to_variant()),
+                ("pmf".to_owned(), 1i32.to_variant()),
+                ("proto".to_owned(), vec!["rsn"].to_variant()),
+                ("pairwise".to_owned(), vec!["ccmp"].to_variant()),
+                ("group".to_owned(), vec!["ccmp"].to_variant()),
+            ])
+        );
+        assert_eq!(settings["ipv4"]["method"], "shared".to_variant());
+        assert_eq!(settings["ipv6"]["method"], "ignore".to_variant());
+
+        let wpa_settings = read_settings(build_hotspot_settings("Attic", "secret12", "", 0x50));
+        assert!(!wpa_settings[WIRELESS].contains_key("band"));
+        assert_eq!(wpa_settings[SECURITY]["proto"], vec!["wpa"].to_variant());
+        assert_eq!(
+            wpa_settings[SECURITY]["pairwise"],
+            vec!["tkip"].to_variant()
+        );
+
+        let default_cipher_settings =
+            read_settings(build_hotspot_settings("Attic", "secret12", "", 0x40));
+        assert!(!default_cipher_settings[SECURITY].contains_key("proto"));
     }
 }

@@ -6,16 +6,18 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use crate::core::i18n::tr;
+use crate::core::process;
+use crate::platform::dbus;
 use crate::platform::network::nmprofile::{Profile, SECRET_SETTINGS, Settings};
-use crate::services::network::net::{NmcliOutput, nmcli, split_escaped};
-use crate::services::network::networkmanager::calls::{call, call_raw};
+use crate::services::network::networkmanager::NetworkManager;
+use crate::services::network::networkmanager::calls::{self, NO_OBJECT, call, call_raw};
+use crate::services::network::networkmanager::model::{ACTIVE_CONNECTION, BUS, DeviceKind, ROOT};
 use crate::services::network::wifi::remote_message;
 
 const SETTINGS_PATH: &str = "/org/freedesktop/NetworkManager/Settings";
 const SETTINGS: &str = "org.freedesktop.NetworkManager.Settings";
 const CONNECTION: &str = "org.freedesktop.NetworkManager.Settings.Connection";
 const TO_DISK: u32 = 0x1;
-const NMCLI_NOT_FOUND_EXIT_CODE: i32 = 10;
 const UNKNOWN_CONNECTION_ERROR: &str = "org.freedesktop.NetworkManager.Settings.InvalidConnection";
 const NOTHING_STORED_ERRORS: [&str; 2] = [
     "org.freedesktop.NetworkManager.AgentManager.NoSecrets",
@@ -204,24 +206,30 @@ pub async fn delete(uuid: &str) -> Result<(), String> {
 }
 
 pub async fn is_active(uuid: &str) -> bool {
-    nmcli(&["-t", "-f", "UUID", "connection", "show", "--active"])
+    let Ok(system) = gio::bus_get_future(gio::BusType::System).await else {
+        return false;
+    };
+    let paths: Vec<ObjectPath> = dbus::property(&system, BUS, ROOT, BUS, "ActiveConnections")
         .await
-        .stdout
-        .lines()
-        .any(|line| line == uuid)
+        .and_then(|paths| paths.get())
+        .unwrap_or_default();
+    for path in paths {
+        let active_uuid =
+            dbus::string_property(&system, BUS, path.as_str(), ACTIVE_CONNECTION, "Uuid").await;
+        if active_uuid.as_deref() == Some(uuid) {
+            return true;
+        }
+    }
+    false
 }
 
 pub async fn reactivate(uuid: &str) -> Result<(), String> {
-    let output = nmcli(&["connection", "up", "uuid", uuid]).await;
-    if output.is_success {
+    let path = path_of(uuid).await?;
+    let active_connection = calls::activate_connection(&path, NO_OBJECT, NO_OBJECT).await?;
+    if calls::wait_for_activation(&active_connection).await {
         return Ok(());
     }
-    Err(output
-        .stderr
-        .lines()
-        .find(|line| !line.trim().is_empty())
-        .map(|line| line.trim_start_matches("Error: ").to_owned())
-        .unwrap_or_else(|| tr("Could not connect")))
+    Err(tr("Could not connect"))
 }
 
 pub async fn set_autoconnect(uuid: &str, should_autoconnect: bool) -> Result<(), String> {
@@ -237,99 +245,109 @@ pub async fn set_autoconnect(uuid: &str, should_autoconnect: bool) -> Result<(),
     Ok(())
 }
 
-pub async fn devices(kind: &str) -> Vec<String> {
-    nmcli(&["-t", "-f", "DEVICE,TYPE", "device"])
-        .await
-        .stdout
-        .lines()
-        .filter_map(|line| {
-            let fields = split_escaped(line);
-            (fields.get(1).map(String::as_str) == Some(kind)).then(|| fields[0].clone())
-        })
+pub fn list_ethernet_devices() -> Vec<String> {
+    NetworkManager::instance()
+        .snapshot()
+        .devices
+        .iter()
+        .filter(|device| device.kind == DeviceKind::Ethernet)
+        .map(|device| device.interface.clone())
         .collect()
 }
 
-pub async fn ports(controller: &[String]) -> Result<Vec<(String, String)>, String> {
-    let listing = nmcli(&["-t", "-f", "UUID,PORT", "connection", "show"])
+async fn list_profiles() -> Result<Vec<Profile>, String> {
+    let reply = call(
+        SETTINGS_PATH,
+        SETTINGS,
+        "ListConnections",
+        None,
+        "(ao)",
+        false,
+    )
+    .await?;
+    let paths: Vec<ObjectPath> = reply.child_value(0).get().unwrap_or_default();
+    let mut profiles = Vec::new();
+    for path in paths {
+        let Ok(reply) = call_raw(
+            path.as_str(),
+            CONNECTION,
+            "GetSettings",
+            None,
+            "(a{sa{sv}})",
+            false,
+        )
         .await
-        .into_stdout()?;
-    let port_uuids: Vec<String> = listing
-        .lines()
-        .map(split_escaped)
-        .filter_map(|fields| match fields.as_slice() {
-            [uuid, port, ..] if !port.is_empty() && port != "--" => Some(uuid.clone()),
-            _ => None,
-        })
-        .collect();
-    if port_uuids.is_empty() {
-        return Ok(Vec::new());
-    }
-    let mut arguments = vec![
-        "-g",
-        "connection.uuid,connection.master,connection.interface-name",
-        "connection",
-        "show",
-    ];
-    for uuid in &port_uuids {
-        arguments.extend(["uuid", uuid.as_str()]);
-    }
-    let details = read_port_details(nmcli(&arguments).await)?;
-    Ok(parse_port_details(&details, &port_uuids, controller))
-}
-
-fn read_port_details(output: NmcliOutput) -> Result<String, String> {
-    if output.exit_code == Some(NMCLI_NOT_FOUND_EXIT_CODE) {
-        return Ok(output.stdout);
-    }
-    output.into_stdout()
-}
-
-fn parse_port_details(
-    details: &str,
-    port_uuids: &[String],
-    controller: &[String],
-) -> Vec<(String, String)> {
-    let unescape = |line: &str| split_escaped(line).concat();
-    let mut lines = details.lines();
-    let mut port_connections = Vec::new();
-    while let Some(uuid) = lines.next() {
-        if !port_uuids.iter().any(|known| known == uuid) {
+        else {
             continue;
-        }
-        let (Some(master), Some(device)) = (lines.next(), lines.next()) else {
-            break;
         };
-        let master = unescape(master);
-        if !master.is_empty() && controller.contains(&master) {
-            port_connections.push((uuid.to_owned(), unescape(device)));
-        }
+        profiles.extend(Profile::from_variant(&reply.child_value(0)));
     }
-    port_connections
+    Ok(profiles)
+}
+
+pub async fn ports(controller: &[String]) -> Result<Vec<(String, String)>, String> {
+    Ok(find_ports(&list_profiles().await?, controller))
+}
+
+fn find_ports(profiles: &[Profile], controller: &[String]) -> Vec<(String, String)> {
+    profiles
+        .iter()
+        .filter(|profile| {
+            let profile_controller = profile.controller();
+            profile.is_port()
+                && !profile_controller.is_empty()
+                && controller.contains(&profile_controller)
+        })
+        .map(|profile| (profile.uuid(), profile.interface()))
+        .collect()
+}
+
+pub async fn find_uuids(id: &str) -> Vec<String> {
+    list_profiles()
+        .await
+        .unwrap_or_default()
+        .iter()
+        .filter(|profile| profile.id() == id)
+        .map(Profile::uuid)
+        .collect()
 }
 
 pub async fn names_and_interfaces() -> (Vec<String>, Vec<String>) {
-    let output = nmcli(&["-t", "-f", "NAME,UUID", "connection", "show"]).await;
-    let mut names = Vec::new();
-    let mut arguments = vec!["-g", "connection.interface-name", "connection", "show"];
-    let rows: Vec<Vec<String>> = output.stdout.lines().map(split_escaped).collect();
-    for fields in &rows {
-        if let [name, uuid, ..] = fields.as_slice() {
-            names.push(name.clone());
-            arguments.extend(["uuid", uuid.as_str()]);
-        }
-    }
-    let interfaces = nmcli(&arguments)
-        .await
-        .stdout
-        .lines()
-        .filter(|line| !line.is_empty())
-        .map(str::to_owned)
+    let profiles = list_profiles().await.unwrap_or_default();
+    let names = profiles.iter().map(Profile::id).collect();
+    let interfaces = profiles
+        .iter()
+        .map(Profile::interface)
+        .filter(|interface| !interface.is_empty())
         .collect();
     (names, interfaces)
 }
 
+struct NmcliOutput {
+    is_success: bool,
+    stdout: String,
+    stderr: String,
+}
+
+async fn run_nmcli(arguments: &[&str]) -> NmcliOutput {
+    let mut command = process::command(&["nmcli"]);
+    command.args(arguments).env("LANG", "C").env("LC_ALL", "C");
+    let Some(output) = process::capture(command).await else {
+        return NmcliOutput {
+            is_success: false,
+            stdout: String::new(),
+            stderr: String::new(),
+        };
+    };
+    NmcliOutput {
+        is_success: output.status.success(),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+    }
+}
+
 pub async fn import(kind: &str, file: &str) -> Result<String, String> {
-    let output = nmcli(&["connection", "import", "type", kind, "file", file]).await;
+    let output = run_nmcli(&["connection", "import", "type", kind, "file", file]).await;
     if !output.is_success {
         return Err(output
             .stderr
@@ -349,7 +367,7 @@ fn imported_uuid(output: &str) -> Option<String> {
 pub async fn generate_key() -> Option<String> {
     let mut command = Command::new("wg");
     command.arg("genkey").stdin(Stdio::null());
-    crate::core::process::capture_text(command)
+    process::capture_text(command)
         .await
         .map(|key| key.trim().to_owned())
         .filter(|key| !key.is_empty())
@@ -418,49 +436,29 @@ mod tests {
     }
 
     #[test]
-    fn port_details_of_many_connections_are_read_from_one_listing() {
-        let port_uuids = [
-            "uuid-a",
-            "uuid-gone",
-            "uuid-b",
-            "uuid-c",
-            "uuid-d",
-            "uuid-e",
-        ]
-        .map(str::to_owned);
+    fn ports_are_the_port_profiles_of_the_controller() {
+        use crate::platform::network::nmprofile::{BOND, BRIDGE, WIRED};
+        let new_port = |uuid: &str, controller: &str, kind: &str, device: &str| {
+            let mut port = Profile::new_port(controller, kind, device);
+            let mut connection = port.settings["connection"].clone();
+            connection.insert("uuid".to_owned(), uuid.to_variant());
+            port.settings.insert("connection".to_owned(), connection);
+            port
+        };
+        let profiles = [
+            new_port("uuid-a", "br0", BRIDGE, "eth0:1"),
+            new_port("uuid-e", "", BRIDGE, "eth4"),
+            new_port("uuid-d", "bond0", BOND, "eth3"),
+            new_port("uuid-b", "uuid-bridge", BRIDGE, ""),
+            Profile::new(WIRED, "br0"),
+        ];
         let controller = ["br0".to_owned(), "uuid-bridge".to_owned(), String::new()];
-        let details = concat!(
-            "uuid-a\nbr0\neth0\\:1\n\n",
-            "uuid-e\n\neth4\n\n",
-            "uuid-c\nuuid-b\neth2\n\n",
-            "uuid-d\nbond0\neth3\n\n",
-            "uuid-b\nuuid-bridge\n\n",
-        );
         assert_eq!(
-            parse_port_details(details, &port_uuids, &controller),
+            find_ports(&profiles, &controller),
             [
                 ("uuid-a".to_owned(), "eth0:1".to_owned()),
                 ("uuid-b".to_owned(), String::new()),
             ]
-        );
-    }
-
-    #[test]
-    fn a_vanished_port_connection_leaves_the_others_listed() {
-        let details = "uuid-a\nbr0\neth0\n";
-        let new_output = |exit_code, stdout: &str| NmcliOutput {
-            is_success: exit_code == 0,
-            exit_code: Some(exit_code),
-            stdout: stdout.to_owned(),
-            stderr: "Error: uuid-gone - no such connection profile.\n".to_owned(),
-        };
-        assert_eq!(
-            read_port_details(new_output(10, details)),
-            Ok(details.to_owned())
-        );
-        assert_eq!(
-            read_port_details(new_output(8, "")),
-            Err("uuid-gone - no such connection profile.".to_owned())
         );
     }
 

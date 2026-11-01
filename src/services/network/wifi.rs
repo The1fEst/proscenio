@@ -507,6 +507,7 @@ mod tests {
             active_connection: None,
             access_points,
             last_scan,
+            wireless_capabilities: 0,
         }
     }
 
@@ -543,6 +544,7 @@ mod tests {
                 uuid: format!("u{number}"),
                 kind: kind.to_owned(),
                 should_autoconnect,
+                is_port: false,
             };
         let snapshot = Snapshot {
             settings_connections: vec![
@@ -555,6 +557,7 @@ mod tests {
                 id: "Cafe: Two".to_owned(),
                 uuid: "u2".to_owned(),
                 kind: WIRELESS.to_owned(),
+                devices: Vec::new(),
             }],
             ..Snapshot::default()
         };
