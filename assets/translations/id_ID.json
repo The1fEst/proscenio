@@ -1632,5 +1632,8 @@
   "Order": "Urutan",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Mengganti wallpaper dengan gambar dari folder pemilih wallpaper. Dengan wallpaper per monitor, setiap monitor mendapat gambarnya sendiri",
   "Running now": "Sedang berjalan",
-  "No boot entries": "Tidak ada entri boot"
+  "No boot entries": "Tidak ada entri boot",
+  "Share": "Bagikan",
+  "Scan to join this network": "Pindai untuk bergabung ke jaringan ini",
+  "This network cannot be put in a code": "Jaringan ini tidak dapat dijadikan kode"
 }

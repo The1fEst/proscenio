@@ -1,5 +1,6 @@
 pub mod hiddennetwork;
 pub mod hotspot;
+mod qrdialog;
 pub mod savednetworks;
 
 use gtk4::glib;

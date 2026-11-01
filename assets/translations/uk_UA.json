@@ -1632,5 +1632,8 @@
   "Order": "Порядок",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Змінює шпалери на зображення з теки вибору шпалер. Якщо шпалери задано для кожного монітора, кожен монітор отримує своє зображення",
   "Running now": "Запущена зараз",
-  "No boot entries": "Немає записів завантаження"
+  "No boot entries": "Немає записів завантаження",
+  "Share": "Поділитися",
+  "Scan to join this network": "Скануйте, щоб приєднатися до цієї мережі",
+  "This network cannot be put in a code": "Цю мережу не можна записати в код"
 }

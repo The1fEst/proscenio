@@ -1632,5 +1632,8 @@
   "Order": "Order",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture",
   "Running now": "Running now",
-  "No boot entries": "No boot entries"
+  "No boot entries": "No boot entries",
+  "Share": "Share",
+  "Scan to join this network": "Scan to join this network",
+  "This network cannot be put in a code": "This network cannot be put in a code"
 }

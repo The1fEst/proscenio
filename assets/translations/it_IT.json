@@ -1632,5 +1632,8 @@
   "Order": "Ordine",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Cambia lo sfondo con un'immagine della cartella del selettore. Con uno sfondo per monitor, ogni monitor ottiene la propria",
   "Running now": "In esecuzione",
-  "No boot entries": "Nessuna voce di avvio"
+  "No boot entries": "Nessuna voce di avvio",
+  "Share": "Condividi",
+  "Scan to join this network": "Scansiona per unirti a questa rete",
+  "This network cannot be put in a code": "Questa rete non può essere messa in un codice"
 }

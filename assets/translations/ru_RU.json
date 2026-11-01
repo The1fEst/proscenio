@@ -1632,5 +1632,8 @@
   "Order": "Порядок",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Меняет обои на картинку из папки выбора обоев. Если обои заданы для каждого монитора, у каждого монитора своя картинка",
   "Running now": "Запущена сейчас",
-  "No boot entries": "Нет загрузочных записей"
+  "No boot entries": "Нет загрузочных записей",
+  "Share": "Поделиться",
+  "Scan to join this network": "Отсканируйте, чтобы подключиться к этой сети",
+  "This network cannot be put in a code": "Эту сеть нельзя записать в код"
 }

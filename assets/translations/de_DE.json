@@ -1632,5 +1632,8 @@
   "Order": "Reihenfolge",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Wechselt das Hintergrundbild zu einem Bild aus dem Ordner der Hintergrundauswahl. Mit einem Hintergrundbild pro Monitor bekommt jeder Monitor ein eigenes Bild",
   "Running now": "Läuft gerade",
-  "No boot entries": "Keine Booteinträge"
+  "No boot entries": "Keine Booteinträge",
+  "Share": "Teilen",
+  "Scan to join this network": "Zum Beitreten dieses Netzwerks scannen",
+  "This network cannot be put in a code": "Dieses Netzwerk lässt sich nicht als Code darstellen"
 }

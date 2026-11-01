@@ -1632,5 +1632,8 @@
   "Order": "סדר",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "מחליף את הרקע בתמונה מהתיקייה של בורר הרקעים. עם רקע לכל צג, כל צג מקבל תמונה משלו",
   "Running now": "פועל כעת",
-  "No boot entries": "אין רשומות אתחול"
+  "No boot entries": "אין רשומות אתחול",
+  "Share": "שיתוף",
+  "Scan to join this network": "סרקו כדי להתחבר לרשת הזו",
+  "This network cannot be put in a code": "אי אפשר להציג את הרשת הזו בקוד"
 }

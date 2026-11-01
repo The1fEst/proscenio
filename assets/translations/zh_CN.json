@@ -1632,5 +1632,8 @@
   "Order": "顺序",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "将壁纸换成壁纸选择器所在文件夹中的图片。启用每个显示器单独壁纸时，每个显示器使用各自的图片",
   "Running now": "当前运行",
-  "No boot entries": "没有启动项"
+  "No boot entries": "没有启动项",
+  "Share": "分享",
+  "Scan to join this network": "扫描以加入此网络",
+  "This network cannot be put in a code": "无法将此网络转换为二维码"
 }

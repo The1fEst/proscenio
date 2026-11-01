@@ -1632,5 +1632,8 @@
   "Order": "Thứ tự",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Đổi hình nền thành một ảnh trong thư mục của trình chọn hình nền. Với hình nền theo từng màn hình, mỗi màn hình có ảnh riêng",
   "Running now": "Đang chạy",
-  "No boot entries": "Không có mục khởi động"
+  "No boot entries": "Không có mục khởi động",
+  "Share": "Chia sẻ",
+  "Scan to join this network": "Quét để vào mạng này",
+  "This network cannot be put in a code": "Không thể đưa mạng này vào mã"
 }

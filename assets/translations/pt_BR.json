@@ -1632,5 +1632,8 @@
   "Order": "Ordem",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Troca o papel de parede por uma imagem da pasta do seletor. Com papel de parede por monitor, cada monitor recebe a sua",
   "Running now": "Em execução",
-  "No boot entries": "Nenhuma entrada de inicialização"
+  "No boot entries": "Nenhuma entrada de inicialização",
+  "Share": "Compartilhar",
+  "Scan to join this network": "Escaneie para entrar nesta rede",
+  "This network cannot be put in a code": "Esta rede não pode ser colocada em um código"
 }

@@ -51,7 +51,29 @@ network's name over "Connected", "Joins on its own" or "Only when chosen", and h
 |---|---|
 | Automatic | joins the network whenever it is in range (`connection.autoconnect`); one password prompt covers several toggles |
 | Edit | opens the profile in the connection editor |
+| Share | opens a dialog with a QR code that phones scan to join the network |
 | Forget | deletes the profile |
+
+**Share** reads the profile's password with `GetSecrets`, asking polkit for authorization only when
+NetworkManager does not hand the password over without it. The dialog shows the network's name, the
+code, "Scan to join this network", and the password behind an eye button that shows and hides it.
+The code is drawn dark on light, with a 4-module margin, in every theme. An open network has no
+password line.
+
+The code holds `WIFI:T:<type>;S:<name>;P:<password>;H:true;;`. The type is `WPA` for WPA & WPA2 and
+for WPA3 Personal, `WEP` for the WEP key the profile transmits with, and `nopass` for an open
+network, which has no `P:` field; `H:true` appears only for a hidden network. A backslash goes
+before each `\`, `;`, `,`, `:` and `"` in the name and the password. A name or password made only
+of hexadecimal digits goes in double quotes, so that scanners do not read it as hexadecimal bytes;
+a raw key (64 digits for WPA, 10 or 26 for WEP) stays bare. A network with enterprise security, a
+WEP passphrase, a password that NetworkManager does not hold (a secret agent's), or a name that is
+not text shows "This network cannot be put in a code" instead of a code. A refused or canceled
+polkit prompt shows NetworkManager's message.
+
+The encoder is in `src/core/qr/`: QR Code Model 2, byte mode, error correction level M, versions 1
+to 40 picked by size, all eight masks scored by the standard penalty rules. The profile's share is
+built in `src/platform/network/nmprofile/wireless.rs`, the dialog in
+`src/panels/settings/pages/connectivity/wifi/qrdialog.rs`.
 
 ### Connect to Hidden Network
 

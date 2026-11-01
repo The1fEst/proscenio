@@ -1632,5 +1632,8 @@
   "Order": "Ordre",
   "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Remplace le fond d'écran par une image du dossier du sélecteur. Avec un fond d'écran par moniteur, chaque moniteur reçoit la sienne",
   "Running now": "En cours d’exécution",
-  "No boot entries": "Aucune entrée de démarrage"
+  "No boot entries": "Aucune entrée de démarrage",
+  "Share": "Partager",
+  "Scan to join this network": "Scannez pour rejoindre ce réseau",
+  "This network cannot be put in a code": "Ce réseau ne peut pas être mis dans un code"
 }

@@ -14,6 +14,9 @@ use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::controls::{ConfigSwitch, icon_button};
 use crate::ui::widgets::layout::centered::Centered;
 use crate::ui::widgets::layout::row::Row;
+use crate::ui::widgets::overlay::windowdialog::WindowDialog;
+
+use super::qrdialog;
 
 const PLACEHOLDER_HEIGHT: i32 = 220;
 const ROW_HEIGHT: i32 = 56;
@@ -34,6 +37,7 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
     let wifi = Wifi::new();
     let open: Rc<dyn Fn(&str)> = Rc::new(context.subpage_opener_with("connection"));
+    let present: Rc<dyn Fn(Rc<WindowDialog>)> = Rc::new(context.dialog_presenter());
 
     let placeholder = Placeholder::build(
         &page.theme,
@@ -75,7 +79,7 @@ pub fn build(context: &Context) -> Rc<Page> {
             let mut items = owned_items.borrow_mut();
             items.clear();
             for network in &saved_networks {
-                items.extend(row(&page, &wifi, &open, &rows, network));
+                items.extend(row(&page, &wifi, &open, &present, &rows, network));
             }
         }
     };
@@ -89,6 +93,7 @@ fn row(
     page: &Page,
     wifi: &Rc<Wifi>,
     open: &Rc<dyn Fn(&str)>,
+    present: &Rc<dyn Fn(Rc<WindowDialog>)>,
     parent: &gtk4::Box,
     network: &SavedNetwork,
 ) -> Vec<Box<dyn Any>> {
@@ -153,6 +158,16 @@ fn row(
     let edit_tip = page.unkept_tip(&edit_control, &tr("Edit"));
     content.append(&edit_control);
 
+    let (share_button, _) = icon_button(&page.theme, "qr_code", false, "");
+    let share_tip = page.unkept_tip(&share_button, &tr("Share"));
+    share_button.connect_clicked({
+        let theme = page.theme.clone();
+        let present = present.clone();
+        let uuid = uuid.clone();
+        move |button| qrdialog::open(&theme, present.clone(), uuid.clone(), button)
+    });
+    content.append(&share_button);
+
     let (forget_button, _) = icon_button(&page.theme, "delete", true, &tr("Forget"));
     forget_button.connect_clicked({
         let wifi = Rc::downgrade(wifi);
@@ -169,5 +184,6 @@ fn row(
         Box::new(automatic_switch),
         Box::new(automatic_tip),
         Box::new(edit_tip),
+        Box::new(share_tip),
     ]
 }
