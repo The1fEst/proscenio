@@ -188,6 +188,7 @@ settings page it belongs to names it along with the package it comes in.
 | `djpeg` | libjpeg-turbo | the shell cannot read colors from a JPEG wallpaper |
 | `easyeffects` | easyeffects | the EasyEffects toggle does nothing |
 | `efibootmgr` | efibootmgr | the session screen has no **Reboot into…** button |
+| `flatpak` | flatpak | the update count leaves out Flatpak apps, and the Flatpak setting and lists do not appear |
 | `gnome-keyring-daemon` | gnome-keyring | unlocking leaves the keyring as it is |
 | `grim`, `magick`, `wl-copy`, `satty` | grim, imagemagick, wl-clipboard, satty | screenshots and the snip actions fail |
 | `hypridle` | hypridle | the session never blanks, locks or suspends on its own |

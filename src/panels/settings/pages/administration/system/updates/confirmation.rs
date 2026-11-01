@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use super::shellcommits::commit_row;
-use super::updatepackages::package_row;
+use super::updatepackages::{flatpak_row, package_row};
 use crate::core::i18n::{tr, trn};
 use crate::services::updates::packages::{build_aur_page_url, version_change};
 use crate::services::updates::{Commit, Job, Review, Updates};
@@ -142,6 +142,12 @@ fn fill_packages(list: &gtk4::Box, theme: &SharedTheme, review: &Review) {
             needs_reboot(name),
             build_aur_page_url(name).as_deref(),
         ));
+    }
+    if !review.flatpak_updates.is_empty() {
+        list.append(&build_section_header(&tr("Flatpak")));
+    }
+    for update in &review.flatpak_updates {
+        list.append(&flatpak_row(theme, update));
     }
 }
 

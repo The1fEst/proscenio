@@ -4,6 +4,7 @@ use std::iter::once;
 use crate::core::i18n::{self, tr};
 use crate::core::shell;
 use crate::panels::settings::pages::{self, PAGES, SUBPAGES};
+use crate::services::updates::flatpak;
 
 const TRAIL_SEPARATOR: &str = " › ";
 
@@ -32,6 +33,11 @@ struct Entry {
 
 pub struct Index {
     translations: HashMap<&'static str, Vec<String>>,
+    is_flatpak_installed: bool,
+}
+
+fn is_listed(title: &str, is_flatpak_installed: bool) -> bool {
+    is_flatpak_installed || !title.contains("Flatpak")
 }
 
 fn page_name(id: &str) -> &'static str {
@@ -62,6 +68,7 @@ impl Index {
     pub fn new() -> Self {
         Index {
             translations: i18n::every_translation(&keys()),
+            is_flatpak_installed: flatpak::is_installed(),
         }
     }
 
@@ -122,6 +129,7 @@ impl Index {
         let settings = SETTINGS
             .iter()
             .filter(|setting| !page_name(setting.page).is_empty())
+            .filter(|setting| is_listed(setting.title, self.is_flatpak_installed))
             .map(|setting| {
                 let trail: Vec<&'static str> = once(page_name(setting.page))
                     .chain(setting.path.iter().copied())
@@ -233,6 +241,15 @@ mod tests {
         assert!(titles("volume").contains(&"Sound".to_owned()));
         assert!(titles("  ").is_empty());
         assert!(titles("nothing like this").is_empty());
+    }
+
+    #[test]
+    fn the_flatpak_settings_are_listed_only_when_flatpak_is_installed() {
+        assert!(is_listed("Include Flatpak apps", true));
+        assert!(!is_listed("Include Flatpak apps", false));
+        assert!(!is_listed("Flatpak", false));
+        assert!(is_listed("Enable update checks", false));
+        assert!(Index::new().is_flatpak_installed || titles("flatpak").is_empty());
     }
 
     #[test]

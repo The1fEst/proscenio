@@ -8,6 +8,7 @@ use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::administration::system::updates::{
     add_update_button, go_back_on_install,
 };
+use crate::services::updates::flatpak::FlatpakUpdate;
 use crate::services::updates::packages::{build_aur_page_url, parse_web_url, version_change};
 use crate::services::updates::{Job, Updates};
 use crate::ui::theme::{SharedTheme, pixel_size};
@@ -39,6 +40,8 @@ pub fn build(context: &Context) -> Rc<Page> {
         add_update_button(&page, &repository_section, &updates, Job::System);
     let aur_section = page.section("deployed_code_account", &tr("AUR"));
     let aur_update_button = add_update_button(&page, &aur_section, &updates, Job::System);
+    let flatpak_section = page.section("apps", &tr("Flatpak"));
+    let flatpak_update_button = add_update_button(&page, &flatpak_section, &updates, Job::System);
 
     let show_packages = {
         let updates = updates.clone();
@@ -46,6 +49,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         move || {
             let repository_packages = updates.repository_packages.borrow();
             let aur_packages = updates.aur_packages.borrow();
+            let flatpak_updates = updates.flatpak_updates.borrow();
             let package_urls = updates.package_urls.borrow();
             let build_repository_row = |line: &String| {
                 let (name, from, to) = version_change(line).unwrap_or((line, "", ""));
@@ -69,10 +73,16 @@ pub fn build(context: &Context) -> Rc<Page> {
                 build_repository_row,
             );
             fill(&aur_section, &aur_packages, build_aur_row);
+            fill(&flatpak_section, &flatpak_updates, |update| {
+                flatpak_row(&theme, update)
+            });
             let can_start = updates.can_start(Job::System);
             repository_update_button.set_sensitive(can_start);
             aur_update_button.set_sensitive(can_start);
+            flatpak_update_button.set_sensitive(can_start);
             aur_update_button.set_visible(repository_packages.is_empty());
+            flatpak_update_button
+                .set_visible(repository_packages.is_empty() && aur_packages.is_empty());
             let has_check_failed = updates.has_package_check_failed.get();
             empty_label.set_text(&if has_check_failed {
                 tr("Could not check for updates")
@@ -81,7 +91,10 @@ pub fn build(context: &Context) -> Rc<Page> {
             });
             if let Some(section) = empty_section.parent() {
                 section.set_visible(
-                    has_check_failed || (repository_packages.is_empty() && aur_packages.is_empty()),
+                    has_check_failed
+                        || (repository_packages.is_empty()
+                            && aur_packages.is_empty()
+                            && flatpak_updates.is_empty()),
                 );
             }
         }
@@ -93,12 +106,18 @@ pub fn build(context: &Context) -> Rc<Page> {
 }
 
 pub fn summary(updates: &Updates) -> String {
+    let repository_count = updates.repository_packages.borrow().len().to_string();
+    let aur_count = updates.aur_packages.borrow().len().to_string();
+    let flatpak_count = updates.flatpak_updates.borrow().len();
+    if flatpak_count == 0 {
+        return trf(
+            "%1 from the repositories, %2 from AUR",
+            &[&repository_count, &aur_count],
+        );
+    }
     trf(
-        "%1 from the repositories, %2 from AUR",
-        &[
-            &updates.repository_packages.borrow().len().to_string(),
-            &updates.aur_packages.borrow().len().to_string(),
-        ],
+        "%1 from the repositories, %2 from AUR, %3 from Flatpak",
+        &[&repository_count, &aur_count, &flatpak_count.to_string()],
     )
 }
 
@@ -180,6 +199,17 @@ pub fn card(icon: &str, title: &str, is_title_selectable: bool) -> (gtk4::Box, g
     content.append(&lines);
     card.append(&content);
     (card, lines)
+}
+
+pub fn flatpak_row(theme: &SharedTheme, update: &FlatpakUpdate) -> gtk4::Box {
+    package_row(
+        theme,
+        &update.application,
+        "",
+        &update.describe(),
+        false,
+        None,
+    )
 }
 
 pub fn package_row(

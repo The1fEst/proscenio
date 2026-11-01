@@ -166,6 +166,13 @@ While `updates.enableCheck` is on, the shell checks at start and then every
   [Packages page](settings-system.md#updates) links to.
   The row and the indicator appear
   once the count reaches `updates.adviseUpdateThreshold` (1).
+- **Flatpak**: when `flatpak` is installed and `updates.includeFlatpak` is on (the default), the
+  check runs `flatpak remote-ls --updates --columns=application,version,branch,origin` once with
+  `--user` and once with `--system`, with `LC_ALL=C` and without `LANGUAGE`, in the same check as
+  the packages and without waiting for them. Each tab-separated line with an application ID is one
+  update; apps and runtimes both count, and the count above includes them. A failed command lists
+  nothing and writes one line to the shell's error output; it does not mark the check as failed.
+  Without `flatpak` nothing runs and nothing about Flatpak appears.
 - **The shell**: the build's version, `r<commits>.<hash>`, names the commit it was built from. The
   shell asks the GitHub API to compare that commit with `main` and counts the commits `main` is
   ahead. A build from a commit GitHub does not have, which it answers with **Not Found**, counts

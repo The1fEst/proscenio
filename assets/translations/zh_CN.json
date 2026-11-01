@@ -1635,5 +1635,8 @@
   "No boot entries": "没有启动项",
   "Share": "分享",
   "Scan to join this network": "扫描以加入此网络",
-  "This network cannot be put in a code": "无法将此网络转换为二维码"
+  "This network cannot be put in a code": "无法将此网络转换为二维码",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "包含 Flatpak 应用",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "仓库 %1 个，AUR %2 个，Flatpak %3 个"
 }

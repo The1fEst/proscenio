@@ -1635,5 +1635,8 @@
   "No boot entries": "Немає записів завантаження",
   "Share": "Поділитися",
   "Scan to join this network": "Скануйте, щоб приєднатися до цієї мережі",
-  "This network cannot be put in a code": "Цю мережу не можна записати в код"
+  "This network cannot be put in a code": "Цю мережу не можна записати в код",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "Враховувати програми Flatpak",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 з репозиторіїв, %2 з AUR, %3 з Flatpak"
 }

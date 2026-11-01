@@ -1635,5 +1635,8 @@
   "No boot entries": "Нет загрузочных записей",
   "Share": "Поделиться",
   "Scan to join this network": "Отсканируйте, чтобы подключиться к этой сети",
-  "This network cannot be put in a code": "Эту сеть нельзя записать в код"
+  "This network cannot be put in a code": "Эту сеть нельзя записать в код",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "Включать приложения Flatpak",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 из репозиториев, %2 из AUR, %3 из Flatpak"
 }

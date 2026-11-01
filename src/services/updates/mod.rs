@@ -1,4 +1,5 @@
 mod commits;
+pub mod flatpak;
 pub mod manager;
 mod output;
 pub mod packages;
@@ -15,6 +16,7 @@ use std::time::Duration;
 
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, watch};
+use crate::services::updates::flatpak::FlatpakUpdate;
 use crate::services::updates::updateprogress::UpdateProgress;
 
 pub use commits::Commit;
@@ -35,6 +37,7 @@ pub enum Job {
 pub struct Updates {
     pub repository_packages: Rc<RefCell<Vec<String>>>,
     pub aur_packages: Rc<RefCell<Vec<String>>>,
+    pub flatpak_updates: Rc<RefCell<Vec<FlatpakUpdate>>>,
     pub package_urls: Rc<RefCell<HashMap<String, String>>>,
     pub has_package_manager: Rc<Cell<bool>>,
     pub has_package_check_failed: Rc<Cell<bool>>,
@@ -52,7 +55,7 @@ pub struct Updates {
     pub progress: Rc<RefCell<Option<UpdateProgress>>>,
     listeners: Rc<Listeners>,
     output_listeners: Rc<Listeners>,
-    config_watch: Rc<RefCell<Option<watch::Watch>>>,
+    config_watches: Rc<RefCell<Vec<watch::Watch>>>,
     pub is_refreshing_packages: Rc<Cell<bool>>,
     is_package_refresh_queued: Rc<Cell<bool>>,
     pub is_refreshing_shell: Rc<Cell<bool>>,
@@ -64,6 +67,7 @@ impl Updates {
         let updates = Updates {
             repository_packages: Rc::default(),
             aur_packages: Rc::default(),
+            flatpak_updates: Rc::default(),
             package_urls: Rc::default(),
             has_package_manager: Rc::new(Cell::new(false)),
             has_package_check_failed: Rc::new(Cell::new(false)),
@@ -81,20 +85,26 @@ impl Updates {
             progress: Rc::default(),
             listeners: Rc::default(),
             output_listeners: Rc::default(),
-            config_watch: Rc::default(),
+            config_watches: Rc::default(),
             is_refreshing_packages: Rc::default(),
             is_package_refresh_queued: Rc::default(),
             is_refreshing_shell: Rc::default(),
             is_shell_refresh_queued: Rc::default(),
         };
         let checker = updates.clone();
-        updates
-            .config_watch
-            .replace(Some(watch::config("/updates/enableCheck", move || {
+        let flatpak_checker = updates.clone();
+        updates.config_watches.replace(vec![
+            watch::config("/updates/enableCheck", move || {
                 if config::current().updates_enable_check {
                     checker.refresh();
                 }
-            })));
+            }),
+            watch::config("/updates/includeFlatpak", move || {
+                if config::current().updates_enable_check && flatpak::is_installed() {
+                    flatpak_checker.refresh_packages();
+                }
+            }),
+        ]);
         updates
     }
 
@@ -107,7 +117,9 @@ impl Updates {
     }
 
     pub fn count(&self) -> i32 {
-        (self.repository_packages.borrow().len() + self.aur_packages.borrow().len()) as i32
+        (self.repository_packages.borrow().len()
+            + self.aur_packages.borrow().len()
+            + self.flatpak_updates.borrow().len()) as i32
     }
 
     pub fn is_upgrade_advised(&self) -> bool {

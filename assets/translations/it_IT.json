@@ -1635,5 +1635,8 @@
   "No boot entries": "Nessuna voce di avvio",
   "Share": "Condividi",
   "Scan to join this network": "Scansiona per unirti a questa rete",
-  "This network cannot be put in a code": "Questa rete non può essere messa in un codice"
+  "This network cannot be put in a code": "Questa rete non può essere messa in un codice",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "Includi le app Flatpak",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 dai repository, %2 da AUR, %3 da Flatpak"
 }

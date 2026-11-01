@@ -547,7 +547,7 @@ Every key lives in `~/.config/proscenio/config.toml`. A dotted key is a TOML tab
 | `tray.*` | see [System tray](tray.md) | Appearance → Bar → Tray |
 | `time.format`, `dateFormat`, `shortDateFormat`, `secondPrecision` | `hh:mm`, `ddd, dd/MM`, `dd/MM`, `false` | System → Date & Time |
 | `resources.updateInterval` | `3000` | System → Services → Polling interval |
-| `updates.enableCheck`, `checkInterval`, `adviseUpdateThreshold`, `stronglyAdviseUpdateThreshold` | `true`, `120`, `1`, `200` | System → Services → Updates |
+| `updates.enableCheck`, `includeFlatpak`, `checkInterval`, `adviseUpdateThreshold`, `stronglyAdviseUpdateThreshold` | `true`, `true`, `120`, `1`, `200` | System → Services → Updates |
 | `battery.low` | `20` | Power → Battery |
 | `interactions.deadPixelWorkaround.enable` | `false` | System → Advanced |
 

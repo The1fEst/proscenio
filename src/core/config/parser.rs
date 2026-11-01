@@ -285,6 +285,7 @@ impl Config {
             util_dark_mode: flag(&util, "showDarkModeToggle", true),
             util_power_profile: flag(&util, "showPerformanceProfileToggle", false),
             updates_enable_check: flag(&updates, "enableCheck", true),
+            updates_include_flatpak: flag(&updates, "includeFlatpak", true),
             updates_interval: number(&updates, "checkInterval", 120.0) as i32,
             updates_advise: number(&updates, "adviseUpdateThreshold", 1.0) as i32,
             updates_strongly_advise: number(&updates, "stronglyAdviseUpdateThreshold", 200.0)

@@ -1635,5 +1635,8 @@
   "No boot entries": "ブートエントリがありません",
   "Share": "共有",
   "Scan to join this network": "スキャンしてこのネットワークに接続",
-  "This network cannot be put in a code": "このネットワークはコードにできません"
+  "This network cannot be put in a code": "このネットワークはコードにできません",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "Flatpak アプリを含める",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "リポジトリから %1、AUR から %2、Flatpak から %3"
 }

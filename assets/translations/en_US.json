@@ -1635,5 +1635,8 @@
   "No boot entries": "No boot entries",
   "Share": "Share",
   "Scan to join this network": "Scan to join this network",
-  "This network cannot be put in a code": "This network cannot be put in a code"
+  "This network cannot be put in a code": "This network cannot be put in a code",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "Include Flatpak apps",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 from the repositories, %2 from AUR, %3 from Flatpak"
 }

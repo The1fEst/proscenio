@@ -3,6 +3,7 @@ use std::rc::Rc;
 use crate::core::config;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page, Style};
+use crate::services::updates::flatpak;
 
 const ENABLE_CHECK: &str = "/updates/enableCheck";
 
@@ -49,6 +50,15 @@ pub fn build(context: &Context) -> Rc<Page> {
             "Counts the packages paru, yay or pacman could upgrade, the first one installed; paru and yay count the AUR too. Also counts the commits the shell is behind on GitHub.\nThe bar shows an icon and the sidebar a button when the shell is behind or the package count reaches the threshold below.",
         ),
     );
+    if flatpak::is_installed() {
+        page.config_switch(
+            &updates_section,
+            "apps",
+            &tr("Include Flatpak apps"),
+            "/updates/includeFlatpak",
+            true,
+        );
+    }
     let (interval_row, interval_spin) = page.config_spin(
         &updates_section,
         "av_timer",

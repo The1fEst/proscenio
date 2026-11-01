@@ -2,6 +2,7 @@ use gtk4::{gio, glib};
 use proscenio_protocol::Change;
 use std::path::Path;
 
+use super::flatpak::FlatpakUpdate;
 use super::packages::{LOCAL_DATABASE, version_change};
 use super::reboot::find_reboot_packages;
 use super::{Job, Updates};
@@ -16,12 +17,13 @@ pub enum Notice {
 pub struct Review {
     pub changes: Vec<Change>,
     pub aur_packages: Vec<String>,
+    pub flatpak_updates: Vec<FlatpakUpdate>,
     pub reboot_packages: Vec<String>,
 }
 
 impl Review {
     pub fn count(&self) -> usize {
-        self.changes.len() + self.aur_packages.len()
+        self.changes.len() + self.aur_packages.len() + self.flatpak_updates.len()
     }
 }
 
@@ -77,12 +79,22 @@ impl Updates {
                 updates.fail_system_check("Could not list the AUR packages to update");
                 return;
             };
-            updates.show_plan(&plan.changes, aur_packages.clone());
-            if plan.changes.is_empty() && aur_packages.is_empty() {
+            updates.show_plan(
+                &plan.changes,
+                aur_packages.clone(),
+                plan.flatpak_updates.clone(),
+            );
+            if plan.changes.is_empty() && aur_packages.is_empty() && plan.flatpak_updates.is_empty()
+            {
                 updates.notice.set(Some(Notice::UpToDate));
                 updates.abandon();
             } else {
-                updates.open_review(plan.changes, aur_packages, start_count);
+                updates.open_review(
+                    plan.changes,
+                    aur_packages,
+                    plan.flatpak_updates,
+                    start_count,
+                );
             }
         });
     }
@@ -97,7 +109,13 @@ impl Updates {
         self.start_count.get() == start_count && self.job.get() == Some(Job::System)
     }
 
-    fn open_review(&self, changes: Vec<Change>, aur_packages: Vec<String>, start_count: u32) {
+    fn open_review(
+        &self,
+        changes: Vec<Change>,
+        aur_packages: Vec<String>,
+        flatpak_updates: Vec<FlatpakUpdate>,
+        start_count: u32,
+    ) {
         let installed_packages: Vec<(String, String)> = changes
             .iter()
             .filter(|change| !change.to.is_empty())
@@ -122,6 +140,7 @@ impl Updates {
             updates.review.replace(Some(Review {
                 changes,
                 aur_packages,
+                flatpak_updates,
                 reboot_packages,
             }));
             updates.listeners.notify();
@@ -169,6 +188,7 @@ impl Updates {
 
 #[cfg(test)]
 mod tests {
+    use super::super::flatpak::Installation;
     use super::*;
 
     #[test]
@@ -177,5 +197,26 @@ mod tests {
         assert_eq!(choose_commit_notice(false, 5), Some(Notice::CheckFailed));
         assert_eq!(choose_commit_notice(true, 0), Some(Notice::UpToDate));
         assert_eq!(choose_commit_notice(true, 3), None);
+    }
+
+    #[test]
+    fn a_review_counts_flatpak_updates_with_the_packages() {
+        let build_flatpak_update = |application: &str| FlatpakUpdate {
+            application: application.to_owned(),
+            version: String::new(),
+            branch: "stable".to_owned(),
+            origin: "flathub".to_owned(),
+            installation: Installation::User,
+        };
+        let mut review = Review::default();
+        assert_eq!(review.count(), 0);
+        review.flatpak_updates = vec![build_flatpak_update("org.a.App")];
+        assert_eq!(review.count(), 1);
+        review.changes = vec![Change::new("linux", "1-1", "2-1")];
+        review.aur_packages = vec!["foo 1-1 -> 2-1".to_owned()];
+        review
+            .flatpak_updates
+            .push(build_flatpak_update("org.b.App"));
+        assert_eq!(review.count(), 4);
     }
 }

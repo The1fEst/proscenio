@@ -1635,5 +1635,8 @@
   "No boot entries": "No hay entradas de arranque",
   "Share": "Compartir",
   "Scan to join this network": "Escanea para unirte a esta red",
-  "This network cannot be put in a code": "Esta red no se puede convertir en un código"
+  "This network cannot be put in a code": "Esta red no se puede convertir en un código",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "Incluir aplicaciones Flatpak",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 de los repositorios, %2 del AUR, %3 de Flatpak"
 }

@@ -1635,5 +1635,8 @@
   "No boot entries": "Không có mục khởi động",
   "Share": "Chia sẻ",
   "Scan to join this network": "Quét để vào mạng này",
-  "This network cannot be put in a code": "Không thể đưa mạng này vào mã"
+  "This network cannot be put in a code": "Không thể đưa mạng này vào mã",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "Bao gồm ứng dụng Flatpak",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 từ kho phần mềm, %2 từ AUR, %3 từ Flatpak"
 }

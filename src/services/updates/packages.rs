@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Output;
 
+use super::flatpak::{self, FlatpakUpdate};
 use super::manager::{aur_query, build_plan_query, package_manager, repository_query};
 use super::output::{decode_events, stage_text, visible_text};
 use super::{Job, Notice, Updates};
@@ -47,10 +48,12 @@ impl Updates {
             self.has_package_check_failed.set(manager.is_some());
             self.repository_packages.replace(Vec::new());
             self.aur_packages.replace(Vec::new());
+            self.flatpak_updates.replace(Vec::new());
             self.package_urls.replace(HashMap::new());
             self.listeners.notify();
             return;
         };
+        let flatpak_listing = glib::spawn_future_local(flatpak::list_updates());
         let database = database.to_string_lossy().into_owned();
         let (repository_packages, package_urls) =
             query_pending_packages(&repository_query(&database), has_repository_check_failed)
@@ -58,12 +61,14 @@ impl Updates {
                 .map(split_package_urls)
                 .unzip();
         let aur_packages = query_aur_packages(manager).await;
+        let flatpak_updates = flatpak_listing.await.unwrap_or_default();
         self.has_package_manager.set(true);
         self.has_package_check_failed
             .set(repository_packages.is_none() || aur_packages.is_none());
         self.repository_packages
             .replace(repository_packages.unwrap_or_default());
         self.aur_packages.replace(aur_packages.unwrap_or_default());
+        self.flatpak_updates.replace(flatpak_updates);
         self.package_urls.replace(package_urls.unwrap_or_default());
         if let Some(notice) = self.notice.get()
             && contradicts_notice(notice, self.count(), self.has_package_check_failed.get())
@@ -84,6 +89,7 @@ impl Updates {
         let query = build_plan_query(&database);
         self.push_log(&format!("$ {}", query.join(" ")));
         let aur_listing = glib::spawn_future_local(query_aur_packages(manager));
+        let flatpak_listing = glib::spawn_future_local(flatpak::list_updates());
         let output = process::capture(process::command(&query))
             .await
             .ok_or_else(|| format!("could not run {}", query[0]))?;
@@ -100,16 +106,23 @@ impl Updates {
         Ok(SystemPlan {
             changes,
             aur_packages: aur_listing.await.ok().flatten(),
+            flatpak_updates: flatpak_listing.await.unwrap_or_default(),
             log_lines,
         })
     }
 
-    pub(super) fn show_plan(&self, changes: &[Change], aur_packages: Vec<String>) {
+    pub(super) fn show_plan(
+        &self,
+        changes: &[Change],
+        aur_packages: Vec<String>,
+        flatpak_updates: Vec<FlatpakUpdate>,
+    ) {
         self.has_package_manager.set(true);
         self.has_package_check_failed.set(false);
         self.repository_packages
             .replace(list_upgrade_lines(changes));
         self.aur_packages.replace(aur_packages);
+        self.flatpak_updates.replace(flatpak_updates);
         self.package_urls.replace(list_package_urls(changes));
         self.listeners.notify();
     }
@@ -125,6 +138,7 @@ pub(super) async fn query_aur_packages(manager: &str) -> Option<Vec<String>> {
 pub(super) struct SystemPlan {
     pub(super) changes: Vec<Change>,
     pub(super) aur_packages: Option<Vec<String>>,
+    pub(super) flatpak_updates: Vec<FlatpakUpdate>,
     pub(super) log_lines: Vec<String>,
 }
 

@@ -243,23 +243,25 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 
 | Section | Row under the title | Update runs |
 |---|---|---|
-| System | **Packages**: how many packages can be upgraded, from the repositories and from AUR; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `/usr/lib/proscenio/proscenio-packages plan ~/.cache/proscenio/pacman` lists the upgrade without a password; after the list is confirmed, `pkexec /usr/lib/proscenio/proscenio-packages session` upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
+| System | **Packages**: how many packages can be upgraded, from the repositories, from AUR and, with Flatpak installed, from Flatpak; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `/usr/lib/proscenio/proscenio-packages plan ~/.cache/proscenio/pacman` lists the upgrade without a password; after the list is confirmed, `pkexec /usr/lib/proscenio/proscenio-packages session` upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo` |
 | Shell | **Commits**: how many commits `main` is ahead | after the commits are listed and confirmed, downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm` in a root session of `proscenio-packages`, then restarts `proscenio.service` |
 
 ![The Packages subpage listing the pending packages with their old and new versions](/img/screenshots/settings-system-update-packages.webp)
 
 **Packages** opens a page with every pending package, each with its installed and its new
 version: under **Repositories** those the [check](sidebar.md#updates) finds in the repositories,
-under **AUR** those `paru -Qua` or `yay -Qua` reports. A package's name can be selected, and the
+under **AUR** those `paru -Qua` or `yay -Qua` reports, and under **Flatpak** the apps and runtimes
+the [check](sidebar.md#updates) finds, each with its new version, or its branch when it has no
+version, and its remote, such as `stable · flathub`; **Flatpak** shows only while one is pending. A package's name can be selected, and the
 copy button at the end of its row copies the name; the button shows a check for a moment. Left of
 the copy button, an open-in-new button opens the package's web page in the default browser, and its
 tooltip shows the address. A repository package links to the `%URL%` of its entry in the sync
 database, an AUR package to `https://aur.archlinux.org/packages/<name>`. A package without an
-`http` or `https` address has no such button.
+`http` or `https` address has no such button; a Flatpak update has none.
 **Commits** opens a page with every new commit: its subject and, below it, the first seven
 characters of its hash, which can be selected; the copy button at the end of the row copies the
 full hash. Each of the two pages has an **Update** button beside the title of its first list
-(**Repositories**, or **AUR** when no repository package is pending; **Commits**). It starts the same
+(**Repositories**, or **AUR** when no repository package is pending, or **Flatpak** when neither is; **Commits**). It starts the same
 update as the button on this page, with the same confirmation dialog. The **Packages** and
 **Commits** rows are unavailable while their count is 0, so a check
 that failed and found no package leaves **Packages** closed, with **Could not check for updates**
@@ -288,12 +290,13 @@ this page and of the [sidebar](sidebar.md#updates) show the refreshed result, an
 what the update would install, the same list the update installs. Under **Repositories** each
 package of the transaction has its installed and its new version; a package that comes in as a
 dependency has its new version alone, and a package the transaction removes reads **removed** in
-place of a new version. Under **AUR** come the packages `paru -Qua` or `yay -Qua` lists. The rows
-have the same copy and open-in-new buttons as the Packages page.
+place of a new version. Under **AUR** come the packages `paru -Qua` or `yay -Qua` lists, and under
+**Flatpak** the updates `flatpak remote-ls --updates` lists, queried at the same time as the AUR
+listing. The rows have the same copy and open-in-new buttons as the Packages page.
 **Update N packages** asks for the password and installs the list; N counts the dependencies and
 removals as well, so it can be more than the count on the **Packages** row. **Cancel**, Escape, a
 click outside the dialog and closing the Settings window end the update before any password is
-asked for, and so does closing the window while the refresh runs. When the refresh finds nothing, no dialog opens and the
+asked for, and so does closing the window while the refresh runs. When the refresh finds no package and no Flatpak update, no dialog opens and the
 output below reads **Up to date**. When the AUR listing fails, the update stops there and the
 output reads **Could not check for updates**; so it does when the plan fails, such as with no
 network, and the log names the error. Either message stays until the next check or update.
@@ -405,6 +408,7 @@ Links open in the default handler.
 | Resources | Polling interval (ms) | `resources.updateInterval` | 3000 | 100–10000, in steps of 100 |
 | Conflict killer | Kill notification daemons without asking | `conflictKiller.autoKillNotificationDaemons` | off | |
 | Updates | Enable update checks | `updates.enableCheck` | on | |
+| Updates | Include Flatpak apps | `updates.includeFlatpak` | on | |
 | Updates | Check interval (mins) | `updates.checkInterval` | 120 | 60–1440, in steps of 60 |
 | Pending package thresholds | Advise updating at | `updates.adviseUpdateThreshold` | 1 | 1–1000, in steps of 25 |
 | Pending package thresholds | Strongly advise updating at | `updates.stronglyAdviseUpdateThreshold` | 200 | 1–2000, in steps of 25 |
@@ -421,7 +425,8 @@ asks, with **Always**, which also turns the switch on, **No** and **Yes**.
 [sidebar](sidebar.md#updates) describes how. The interval and both thresholds are disabled while
 checks are off. From **Advise updating at** pending packages, the bar shows its updates indicator
 and the sidebar its update buttons; from **Strongly advise updating at**, the indicator turns to the
-error color.
+error color. **Include Flatpak apps** counts the Flatpak updates with the packages; it, its
+search result and everything else about Flatpak exist only while `flatpak` is installed.
 
 The weather comes from wttr.in: for the position GeoClue gives while GPS based location is on, and
 otherwise for the city named here.

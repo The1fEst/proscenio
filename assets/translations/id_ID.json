@@ -1635,5 +1635,8 @@
   "No boot entries": "Tidak ada entri boot",
   "Share": "Bagikan",
   "Scan to join this network": "Pindai untuk bergabung ke jaringan ini",
-  "This network cannot be put in a code": "Jaringan ini tidak dapat dijadikan kode"
+  "This network cannot be put in a code": "Jaringan ini tidak dapat dijadikan kode",
+  "Flatpak": "Flatpak",
+  "Include Flatpak apps": "Sertakan aplikasi Flatpak",
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 dari repositori, %2 dari AUR, %3 dari Flatpak"
 }
