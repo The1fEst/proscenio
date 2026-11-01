@@ -108,6 +108,10 @@ the first monitor when there is none.
 | `brightness` | `increment`, `decrement` | The focused monitor's brightness, in steps of 5 %. At zero, `decrement` dims further through the gamma of the screen's color matrix, down to 25 %, and `increment` brings the gamma back to 100 % before it raises the brightness |
 | | `set(percent: string)` | Sets the focused monitor's brightness to that percent, leaving the gamma alone; a value that is not a whole number from 0 to 100 is ignored |
 | `audio` | `cycleOutput` | Makes the next available output (sink) the default, in the order of the sink names, and wraps after the last. A sink whose ports are all unavailable is skipped. Nothing happens with no other available sink, or when no sound server was running as the shell started. It sets the default sink exactly as the device list in [Sound settings](settings-sound.md) does |
+| | `increment`, `decrement` | The default output's volume, in steps of 2 %, or 1 % below 10 %. `increment` stops at 100 % |
+| | `setVolume(percent: string)` | Sets that volume to that percent; a value that is not a whole number from 0 to 100 is ignored |
+| | `toggleMute` | Mutes or unmutes the default output |
+| | `toggleMicrophoneMute` | Mutes or unmutes the default microphone, as `micMuteToggle` does in [Global shortcuts](shortcuts.md) |
 | `theme` | `toggleLightDark` | Switches between dark and light mode with `proscenio switchwall --noswitch`; see [Colors from the wallpaper](colors.md) |
 | `cliphistService` | `update` | Reads the clipboard history from `cliphist` again |
 | `wallpaperSelector` | `toggle` | The [wallpaper selector](wallpaper-selector.md) |
@@ -134,6 +138,9 @@ the first monitor when there is none.
 | | `reset` | Goes back to Cairo and restarts the shell |
 
 `renderer reset` is the way out from a terminal when a renderer leaves the screen unusable.
+
+Like `cycleOutput`, the other `audio` functions do nothing when no sound server was running as the
+shell started. The [earbang protection](settings-sound.md) still undoes a volume step it forbids.
 
 ### Settings pages
 

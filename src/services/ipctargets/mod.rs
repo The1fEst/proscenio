@@ -1,3 +1,4 @@
+mod audio;
 mod brightness;
 mod nightlight;
 mod notifications;
@@ -9,6 +10,7 @@ pub fn register(ipc: &Ipc, services: &Services) {
     notifications::register(ipc, &services.notifications);
     nightlight::register(ipc, &services.session);
     brightness::register(ipc, &services.light);
+    audio::register(ipc, &services.audio);
 }
 
 fn parse_percent(text: &str) -> Option<u8> {
