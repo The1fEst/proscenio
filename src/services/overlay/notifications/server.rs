@@ -109,6 +109,7 @@ impl Notifications {
             return id;
         }
 
+        let is_update = self.contains(replaces_id);
         let id = self.take_id(replaces_id);
 
         remember_app(&app_name);
@@ -149,6 +150,9 @@ impl Notifications {
         if !is_popup && is_transient {
             self.discard(id, 1);
             return id;
+        }
+        if is_sound_due(is_popup, is_update) {
+            self.play_sound(&hints, urgency);
         }
         let app_icon = notification.app_icon.clone();
         {
@@ -276,6 +280,10 @@ fn is_alert_allowed(is_inhibited: bool, is_silent: bool, is_quiet: bool, urgency
     !is_inhibited && (!is_silent || urgency == URGENCY_CRITICAL) && !is_quiet
 }
 
+fn is_sound_due(is_popup: bool, is_update: bool) -> bool {
+    is_popup && !is_update
+}
+
 fn resolve_timeout_millis(expire_timeout_millis: i32, configured_millis: i64, urgency: u8) -> i32 {
     match expire_timeout_millis {
         0 => 0,
@@ -389,6 +397,23 @@ mod tests {
                 is_alert_allowed(is_inhibited, is_silent, is_quiet, urgency),
                 expected,
                 "{is_inhibited} {is_silent} {is_quiet} {urgency}"
+            );
+        }
+    }
+
+    #[test]
+    fn only_a_new_notification_that_pops_up_plays_a_sound() {
+        let cases = [
+            (true, false, true),
+            (true, true, false),
+            (false, false, false),
+            (false, true, false),
+        ];
+        for (is_popup, is_update, expected) in cases {
+            assert_eq!(
+                is_sound_due(is_popup, is_update),
+                expected,
+                "{is_popup} {is_update}"
             );
         }
     }

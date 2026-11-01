@@ -1,5 +1,6 @@
 pub mod images;
 pub mod server;
+mod sound;
 mod store;
 
 use gtk4::gio;
@@ -12,6 +13,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use self::images::{named_icon, remove_discarded_images};
+use self::sound::BurstLimiter;
 use self::store::{read_store, write_store};
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, persistent};
@@ -137,6 +139,7 @@ pub struct Notifications {
     applied_image_requests: Rc<RefCell<HashMap<u32, u64>>>,
     next_image_request: Rc<Cell<u64>>,
     recent_arrival_millis: Rc<RefCell<HashMap<String, VecDeque<i64>>>>,
+    sound_limiter: Rc<BurstLimiter>,
 }
 
 impl Notifications {
@@ -187,6 +190,7 @@ impl Notifications {
             applied_image_requests: Rc::default(),
             next_image_request: Rc::new(Cell::new(glib::real_time().unsigned_abs())),
             recent_arrival_millis: Rc::default(),
+            sound_limiter: Rc::default(),
         };
         if notifications.trim_history() {
             write_store(&notifications.list.borrow());
@@ -633,6 +637,7 @@ fn new_detached() -> Notifications {
         applied_image_requests: Rc::default(),
         next_image_request: Rc::default(),
         recent_arrival_millis: Rc::default(),
+        sound_limiter: Rc::default(),
     }
 }
 

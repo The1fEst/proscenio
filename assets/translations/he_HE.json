@@ -1604,5 +1604,6 @@
   "Empty the trash?": "לרוקן את האשפה?",
   "Everything in the trash is deleted permanently.": "כל מה שבאשפה נמחק לצמיתות.",
   "Show trash": "להציג את האשפה",
-  "Keyboard brightness": "בהירות המקלדת"
+  "Keyboard brightness": "בהירות המקלדת",
+  "Played when a notification pops up": "מתנגן כשמופיעה התראה"
 }

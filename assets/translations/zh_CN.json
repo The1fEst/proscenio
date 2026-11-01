@@ -1604,5 +1604,6 @@
   "Empty the trash?": "要清空回收站吗？",
   "Everything in the trash is deleted permanently.": "回收站中的所有内容都将被永久删除。",
   "Show trash": "显示回收站",
-  "Keyboard brightness": "键盘亮度"
+  "Keyboard brightness": "键盘亮度",
+  "Played when a notification pops up": "通知弹出时播放"
 }

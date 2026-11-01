@@ -113,6 +113,17 @@ pub fn build(context: &Context) -> Rc<Page> {
         &usb_switch.button,
         &tr("Played when a USB device is connected or disconnected"),
     );
+    let notifications_switch = page.config_switch(
+        &second_row,
+        "notifications",
+        &tr("Notifications"),
+        "/sounds/notifications",
+        false,
+    );
+    page.tip(
+        &notifications_switch.button,
+        &tr("Played when a notification pops up"),
+    );
     let theme_section = page.subsection(&alerts_section, &tr("Sound theme"), "");
     let theme_combo = page.combo(&theme_section, "notification_sound");
     let theme_names = Rc::new(RefCell::new(Vec::<String>::new()));

@@ -426,6 +426,7 @@ impl Config {
             sounds_pomodoro: flag(&sounds, "pomodoro", false),
             sounds_battery: flag(&sounds, "battery", false),
             sounds_devices: flag(&sounds, "devices", true),
+            sounds_notifications: flag(&sounds, "notifications", false),
             sounds_theme: text(&sounds, "theme", "freedesktop"),
             protection: crate::services::media::audio::Protection {
                 is_enabled: flag(&protection, "enable", false),
@@ -545,6 +546,13 @@ mod tests {
         assert!(toggles_of(&empty_list).is_empty());
         let own_list = json!({ "sidebar": { "quickToggles": { "android": { "toggles": [{ "type": "mic" }] } } } });
         assert_eq!(toggles_of(&own_list), [("mic".to_owned(), 1)]);
+    }
+
+    #[test]
+    fn notification_sounds_are_off_until_switched_on() {
+        assert!(!Config::parse(&json!({})).sounds_notifications);
+        let root = json!({ "sounds": { "notifications": true } });
+        assert!(Config::parse(&root).sounds_notifications);
     }
 
     #[test]

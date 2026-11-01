@@ -1604,5 +1604,6 @@
   "Empty the trash?": "Vider la corbeille ?",
   "Everything in the trash is deleted permanently.": "Tout le contenu de la corbeille est supprimé définitivement.",
   "Show trash": "Afficher la corbeille",
-  "Keyboard brightness": "Luminosité du clavier"
+  "Keyboard brightness": "Luminosité du clavier",
+  "Played when a notification pops up": "Joué quand une notification s'affiche"
 }

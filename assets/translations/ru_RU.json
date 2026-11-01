@@ -1604,5 +1604,6 @@
   "Empty the trash?": "Очистить корзину?",
   "Everything in the trash is deleted permanently.": "Всё содержимое корзины удаляется безвозвратно.",
   "Show trash": "Показывать корзину",
-  "Keyboard brightness": "Подсветка клавиатуры"
+  "Keyboard brightness": "Подсветка клавиатуры",
+  "Played when a notification pops up": "Играет, когда появляется уведомление"
 }

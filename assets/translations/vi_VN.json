@@ -1604,5 +1604,6 @@
   "Empty the trash?": "Dọn sạch thùng rác?",
   "Everything in the trash is deleted permanently.": "Mọi thứ trong thùng rác sẽ bị xóa vĩnh viễn.",
   "Show trash": "Hiện thùng rác",
-  "Keyboard brightness": "Độ sáng bàn phím"
+  "Keyboard brightness": "Độ sáng bàn phím",
+  "Played when a notification pops up": "Phát khi có thông báo hiện lên"
 }

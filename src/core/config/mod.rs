@@ -241,6 +241,7 @@ pub struct Config {
     pub sounds_pomodoro: bool,
     pub sounds_battery: bool,
     pub sounds_devices: bool,
+    pub sounds_notifications: bool,
     pub sounds_theme: String,
     pub protection: crate::services::media::audio::Protection,
     pub audio_aliases: HashMap<String, String>,

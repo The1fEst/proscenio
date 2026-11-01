@@ -1604,5 +1604,6 @@
   "Empty the trash?": "ごみ箱を空にしますか？",
   "Everything in the trash is deleted permanently.": "ごみ箱の中身はすべて完全に削除されます。",
   "Show trash": "ごみ箱を表示する",
-  "Keyboard brightness": "キーボードの明るさ"
+  "Keyboard brightness": "キーボードの明るさ",
+  "Played when a notification pops up": "通知がポップアップしたときに鳴ります"
 }

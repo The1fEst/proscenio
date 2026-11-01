@@ -1604,5 +1604,6 @@
   "Empty the trash?": "Çöp kutusu boşaltılsın mı?",
   "Everything in the trash is deleted permanently.": "Çöp kutusundaki her şey kalıcı olarak silinir.",
   "Show trash": "Çöp kutusunu göster",
-  "Keyboard brightness": "Klavye parlaklığı"
+  "Keyboard brightness": "Klavye parlaklığı",
+  "Played when a notification pops up": "Bir bildirim göründüğünde çalar"
 }

@@ -38,6 +38,7 @@ below, are keys in `~/.config/proscenio/config.toml`.
 | Pomodoro | a Pomodoro timer runs out | `sounds.pomodoro`, off |
 | Microphone | the microphone is muted or unmuted | `sounds.microphone`, on |
 | USB devices | a USB device is connected or disconnected | `sounds.devices`, on |
+| Notifications | a notification pops up; see [Sounds](notifications.md#sounds) for the hints that change it | `sounds.notifications`, off |
 | Sound theme | one of the themes in `/usr/share/sounds` that has a `stereo` folder | `sounds.theme`, `freedesktop` |
 
 An alert plays the theme's `.oga` file, or its `.ogg`, with `paplay`. With no sound theme installed a

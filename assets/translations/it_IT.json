@@ -1604,5 +1604,6 @@
   "Empty the trash?": "Svuotare il cestino?",
   "Everything in the trash is deleted permanently.": "Tutto il contenuto del cestino viene eliminato definitivamente.",
   "Show trash": "Mostra il cestino",
-  "Keyboard brightness": "Luminosità della tastiera"
+  "Keyboard brightness": "Luminosità della tastiera",
+  "Played when a notification pops up": "Suona quando compare una notifica"
 }

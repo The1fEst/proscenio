@@ -1604,5 +1604,6 @@
   "Empty the trash?": "¿Vaciar la papelera?",
   "Everything in the trash is deleted permanently.": "Todo lo que hay en la papelera se elimina de forma permanente.",
   "Show trash": "Mostrar la papelera",
-  "Keyboard brightness": "Brillo del teclado"
+  "Keyboard brightness": "Brillo del teclado",
+  "Played when a notification pops up": "Suena cuando aparece una notificación"
 }

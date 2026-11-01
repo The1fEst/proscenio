@@ -191,6 +191,7 @@ settings page it belongs to names it along with the package it comes in.
 | `mpvpaper`, `ffmpeg` | mpvpaper, ffmpeg | a video cannot be the wallpaper |
 | `nmcli` | networkmanager | connections are not listed or switched |
 | `pactl` | libpulse | `proscenio record --sound` finds no output to record |
+| `paplay` | libpulse | alert sounds, notification sounds included, stay silent |
 | `paru` or `yay` | paru or yay (AUR) | the update count leaves out AUR packages, since `pacman` counts the repositories only |
 | `pw-dump` | pipewire | the bar's privacy popup does not name the apps that share the screen or use a camera through PipeWire |
 | `qalc` | libqalculate | the launcher shows no math results |

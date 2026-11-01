@@ -1,7 +1,7 @@
 ---
 title: Notifications
 sidebar_label: Notifications
-description: proscenio as the session's notification server — what it accepts and keeps, where it saves them, the popups and their timeouts, the unread count, Do Not Disturb, per-app rules, and the cards notifications are shown on.
+description: proscenio as the session's notification server — what it accepts and keeps, where it saves them, the popups and their timeouts, the unread count, Do Not Disturb, sounds, per-app rules, and the cards notifications are shown on.
 ---
 
 # Notifications
@@ -145,6 +145,9 @@ forgottenApps = []    # apps whose notifications are dropped once their popup en
 [notifications.forceMonitor]
 enable = false
 name = "DP-1"
+
+[sounds]
+notifications = false # play a sound when a notification pops up
 ```
 
 These are on the **Notifications** page of the [settings window](settings.md): **Do not disturb**,
@@ -210,6 +213,36 @@ epoch. A shell that starts before the end carries on until it; one that starts a
 Do Not Disturb off and sets `notifications.silent` to `false`. One timer is armed for the end and is
 checked again after the computer resumes from sleep. The [IPC](ipc.md) functions of the
 `notifications` target set it from a script.
+
+## Sounds
+
+A notification that pops up plays a sound when `sounds.notifications` is on, which it is not by
+default: the **Notifications** switch under **Alert Sound** on the
+[Sound settings](settings-sound.md) page. The sender can shape the sound with these hints:
+
+| Hint | Does |
+|---|---|
+| `suppress-sound` | when `true`, the notification plays no sound |
+| `sound-file` | an absolute path or a local `file:` URI of an existing file, played instead of the default sound; a path that is not an existing file counts as absent |
+| `sound-name` | a name in the sound theme, played instead of the default sound when there is no usable `sound-file`; a name the theme does not have plays nothing |
+
+While `sounds.notifications` is off, no notification plays a sound, whatever its hints say. With
+neither hint, the sound is `message-new-instant`, or `dialog-warning` for a critical notification,
+falling back to `message-new-instant` when the theme has no `dialog-warning`.
+
+Names are looked up in the theme `sounds.theme` (`freedesktop` by default), then in the themes its
+`index.theme` lists under `Inherits`, then in `freedesktop`, in `sounds` under `$XDG_DATA_HOME` and
+every directory of `$XDG_DATA_DIRS`. Inside a theme, the folders of its `Directories` key are
+searched, `stereo` when there is none, for `<name>.oga`, `.ogg` or `.wav`. A `<name>.disabled` file
+silences the name. A name no theme has is shortened at its last dash and looked up again, so
+`message-new-instant` finds `message` as a last resort.
+
+The file is played with `paplay`, and at most one sound plays per second: a notification that
+arrives within a second of the last sound plays none.
+
+No sound plays for a notification that does not pop up (Do Not Disturb, an app with **Pop up** off,
+an open sidebar, a shared screen), for an update that replaces a notification in the list, or for a
+call [dropped as a duplicate or flood](#duplicates-and-floods).
 
 ## Per-app rules
 
