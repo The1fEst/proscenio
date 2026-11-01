@@ -1626,5 +1626,9 @@
   "Wallpaper per monitor": "Hình nền theo từng màn hình",
   "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Trình chọn hình nền khi đó đặt hình nền cho màn hình mà nó đang mở. Màu sắc lấy từ hình nền của màn hình chính",
   "Applies to this monitor only\nClick to apply to all monitors": "Chỉ áp dụng cho màn hình này\nNhấn để áp dụng cho mọi màn hình",
-  "Applies to all monitors\nClick to apply to this monitor only": "Áp dụng cho mọi màn hình\nNhấn để chỉ áp dụng cho màn hình này"
+  "Applies to all monitors\nClick to apply to this monitor only": "Áp dụng cho mọi màn hình\nNhấn để chỉ áp dụng cho màn hình này",
+  "Slideshow": "Trình chiếu",
+  "Interval (minutes)": "Khoảng cách (phút)",
+  "Order": "Thứ tự",
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Đổi hình nền thành một ảnh trong thư mục của trình chọn hình nền. Với hình nền theo từng màn hình, mỗi màn hình có ảnh riêng"
 }

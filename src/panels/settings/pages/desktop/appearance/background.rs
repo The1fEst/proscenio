@@ -122,6 +122,39 @@ pub fn build(context: &Context) -> Rc<Page> {
         &tr("Saves a bit of resources while gaming or watching videos"),
     );
 
+    let slideshow_section = page.section("slideshow", &tr("Slideshow"));
+    let slideshow_switch = page.config_switch(
+        &slideshow_section,
+        "check",
+        &tr("Enable"),
+        "/background/slideshow/enable",
+        false,
+    );
+    page.tip(
+        &slideshow_switch.button,
+        &tr("Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture"),
+    );
+    page.config_spin(
+        &slideshow_section,
+        "timer",
+        &tr("Interval (minutes)"),
+        "/background/slideshow/intervalMinutes",
+        config::SLIDESHOW_INTERVAL_MINUTES,
+        config::SLIDESHOW_INTERVAL_RANGE_MINUTES,
+        1,
+    );
+    let order_section = page.subsection(&slideshow_section, &tr("Order"), "");
+    string_selection(
+        &page,
+        &order_section,
+        "/background/slideshow/order",
+        "random",
+        vec![
+            choice(&tr("Random"), "shuffle", "random"),
+            choice(&tr("Name"), "sort_by_alpha", "name"),
+        ],
+    );
+
     let parallax_section = page.section("sync_alt", &tr("Parallax"));
     let vertical_row = page.uniform_row(&parallax_section);
     page.config_switch(

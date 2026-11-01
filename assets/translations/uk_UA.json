@@ -1626,5 +1626,9 @@
   "Wallpaper per monitor": "Шпалери для кожного монітора",
   "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Тоді вибір шпалер задає шпалери монітора, на якому він відкритий. Кольори беруться зі шпалер основного монітора",
   "Applies to this monitor only\nClick to apply to all monitors": "Лише для цього монітора\nНатисніть, щоб застосувати до всіх моніторів",
-  "Applies to all monitors\nClick to apply to this monitor only": "Для всіх моніторів\nНатисніть, щоб застосувати лише до цього монітора"
+  "Applies to all monitors\nClick to apply to this monitor only": "Для всіх моніторів\nНатисніть, щоб застосувати лише до цього монітора",
+  "Slideshow": "Слайд-шоу",
+  "Interval (minutes)": "Інтервал (хвилини)",
+  "Order": "Порядок",
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Змінює шпалери на зображення з теки вибору шпалер. Якщо шпалери задано для кожного монітора, кожен монітор отримує своє зображення"
 }

@@ -64,6 +64,40 @@ DP-2 = "/home/me/Pictures/Wallpapers/dunes.jpg"
 - On the lock screen each monitor's background blurs that monitor's own wallpaper.
 - The work safety check below looks at the path each monitor shows.
 
+## Slideshow
+
+With `background.slideshow.enable` on (default off), the shell changes the wallpaper by itself to a
+picture from the [wallpaper selector](wallpaper-selector.md)'s current folder: the folder it was
+last left in, or the one it starts in. The pictures are the ones the selector lists, whatever its
+search field holds.
+
+| Setting | Key under `background.slideshow` | Default |
+|---|---|---|
+| Enable | `enable` | off |
+| Interval (minutes) | `intervalMinutes` | `30`, from 1 to 1440 |
+| Order | `order` | `random` |
+
+- **Order.** `random` picks any picture other than the current wallpaper. `name` takes the next
+  picture by file name, ignoring case, and wraps around to the first after the last; when the
+  current wallpaper is not in the folder, it takes the first picture whose name sorts after the
+  current one.
+- **Nothing to change.** A missing or empty folder, or one whose only picture is the current
+  wallpaper, leaves the wallpaper as it is until the next interval.
+- **One monitor or all.** Without a [wallpaper per monitor](#a-wallpaper-per-monitor), the new
+  picture is set for all monitors and the colors are regenerated. With one, every monitor gets a
+  picture of its own, avoiding the pictures the other monitors just took while the folder has
+  enough of them, and the colors are regenerated only for the main display's.
+- **Timing.** The slideshow is a task of the shared [background loop](architecture.md#the-background-loop),
+  so it runs on the first tick after the interval has passed, counted from the moment it was
+  turned on or from the previous change. Starting the shell does not change the wallpaper.
+- **The selector.** While the wallpaper selector is open the slideshow skips its turn and waits for
+  the next one. It does not pause while the screen is locked or a window is fullscreen.
+- **Queue.** Every change goes through the same queue as a pick in the selector, so changes never
+  overlap (see [Colors from the wallpaper](colors.md)).
+
+`proscenio ipc call wallpaperSelector next` makes the change at once, with the same rules, whether
+or not the slideshow is on and whether or not the selector is open.
+
 ## Sizing
 
 The wallpaper is scaled to cover the screen, so that neither axis leaves a gap, and then enlarged

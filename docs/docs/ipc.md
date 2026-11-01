@@ -119,6 +119,7 @@ the first monitor when there is none.
 | `cliphistService` | `update` | Reads the clipboard history from `cliphist` again |
 | `wallpaperSelector` | `toggle` | The [wallpaper selector](wallpaper-selector.md) |
 | | `random` | Applies a random wallpaper from the selector's folder; with a [wallpaper per monitor](background.md#a-wallpaper-per-monitor), to the focused monitor |
+| | `next` | Changes the wallpaper to the next picture of the selector's folder, in the [slideshow](background.md#slideshow)'s order |
 | `wallpapers` | `apply(path: string)` | Sets `path` as the wallpaper of every monitor and recolors, keeping the mode |
 | `settings` | `toggle`, `open`, `close` | The [settings](settings.md) window |
 | | `openPage(page: string)` | Opens the settings at a page |

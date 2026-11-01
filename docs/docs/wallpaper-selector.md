@@ -18,6 +18,7 @@ center under the bar, and choosing a picture makes it the wallpaper, recolors th
 |---|---|---|
 | `wallpaperSelectorToggle` | `wallpaperSelector toggle` | Opens or closes the selector |
 | `wallpaperSelectorRandom` | `wallpaperSelector random` | Picks a random entry of the current folder without opening anything; with a [wallpaper per monitor](background.md#a-wallpaper-per-monitor), for the focused monitor |
+| — | `wallpaperSelector next` | Changes the wallpaper to the next picture of the current folder, as the [slideshow](background.md#slideshow) does |
 | — | `wallpapers apply <path>` | Makes that file the wallpaper of every monitor, in the current light or dark mode |
 
 The launcher's `/wallpaper` action opens it too; see [Overview and launcher](overview.md).

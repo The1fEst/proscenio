@@ -346,6 +346,13 @@ fn keep_pictures(entries: Vec<Entry>) -> Vec<Entry> {
     entries.into_iter().filter(|entry| !entry.is_dir).collect()
 }
 
+pub fn list_pictures(directory: &Path) -> Vec<PathBuf> {
+    keep_pictures(list_entries(directory, &[]))
+        .into_iter()
+        .map(|entry| entry.path)
+        .collect()
+}
+
 fn list_thumbnail_files(directory: &Path) -> Vec<PathBuf> {
     std::fs::read_dir(directory)
         .map(|listing| {
@@ -496,6 +503,21 @@ mod tests {
             .collect();
         std::fs::remove_dir_all(&root).unwrap();
         assert_eq!(names, ["beach.png"]);
+    }
+
+    #[test]
+    fn the_slideshow_lists_the_pictures_of_a_folder_and_nothing_of_a_missing_one() {
+        let root = std::env::temp_dir().join(format!("proscenio-pictures-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("album")).unwrap();
+        for name in ["beach.png", "notes.txt", ".hidden.png"] {
+            std::fs::write(root.join(name), b"").unwrap();
+        }
+
+        let pictures = list_pictures(&root);
+        let missing = list_pictures(&root.join("gone"));
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(pictures, [root.join("beach.png")]);
+        assert!(missing.is_empty());
     }
 
     #[test]

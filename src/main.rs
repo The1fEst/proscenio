@@ -28,6 +28,7 @@ use crate::platform::system::{locale, readiness};
 use crate::platform::wayland::shortcuts;
 use crate::screens::{Screens, Surfaces};
 use crate::services::Services;
+use crate::services::files::slideshow;
 use crate::services::hardware::devicenotifications::DeviceNotifications;
 use crate::services::ipctargets;
 use crate::services::media::{mpris, recording};
@@ -131,6 +132,14 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     );
     let wallpaper_selector =
         wallpaperselector::WallpaperSelector::new(app, &theme, &services.wallpapers);
+    slideshow::start(&services.background, &services.wallpapers, {
+        let selector = Rc::downgrade(&wallpaper_selector);
+        move || {
+            selector
+                .upgrade()
+                .is_some_and(|selector| selector.is_open())
+        }
+    });
     std::mem::forget(polkit::PolkitWindows::new(app, &theme, &services.polkit));
     std::mem::forget(keyringprompt::KeyringPromptWindows::new(
         app,
@@ -226,6 +235,10 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     ipc.add("wallpaperSelector", "random", {
         let selector = wallpaper_selector.clone();
         move || selector.random()
+    });
+    ipc.add("wallpaperSelector", "next", {
+        let wallpapers = services.wallpapers.clone();
+        move || slideshow::advance(&wallpapers)
     });
     let keyboard = osk::Osk::new(app, &theme, &services.states);
     let keyboard_actions: [(&str, &str, &str, fn(&osk::Osk)); 3] = [

@@ -1626,5 +1626,9 @@
   "Wallpaper per monitor": "Обои для каждого монитора",
   "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Тогда выбор обоев задаёт обои того монитора, на котором он открыт. Цвета берутся из обоев основного монитора",
   "Applies to this monitor only\nClick to apply to all monitors": "Только для этого монитора\nНажмите, чтобы применить ко всем мониторам",
-  "Applies to all monitors\nClick to apply to this monitor only": "Для всех мониторов\nНажмите, чтобы применить только к этому монитору"
+  "Applies to all monitors\nClick to apply to this monitor only": "Для всех мониторов\nНажмите, чтобы применить только к этому монитору",
+  "Slideshow": "Слайд-шоу",
+  "Interval (minutes)": "Интервал (минуты)",
+  "Order": "Порядок",
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Меняет обои на картинку из папки выбора обоев. Если обои заданы для каждого монитора, у каждого монитора своя картинка"
 }

@@ -1626,5 +1626,9 @@
   "Wallpaper per monitor": "רקע לכל צג",
   "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "בורר הרקעים יגדיר אז את הרקע של הצג שעליו הוא פתוח. הצבעים נלקחים מהרקע של הצג הראשי",
   "Applies to this monitor only\nClick to apply to all monitors": "חל על צג זה בלבד\nלחיצה תחיל אותו על כל הצגים",
-  "Applies to all monitors\nClick to apply to this monitor only": "חל על כל הצגים\nלחיצה תחיל אותו על צג זה בלבד"
+  "Applies to all monitors\nClick to apply to this monitor only": "חל על כל הצגים\nלחיצה תחיל אותו על צג זה בלבד",
+  "Slideshow": "מצגת",
+  "Interval (minutes)": "מרווח (דקות)",
+  "Order": "סדר",
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "מחליף את הרקע בתמונה מהתיקייה של בורר הרקעים. עם רקע לכל צג, כל צג מקבל תמונה משלו"
 }

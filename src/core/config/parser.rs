@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use super::{
     BLUETOOTH_MEDIA_BUTTONS, CHEATSHEET_SUPER_KEY, Config, CornerStyle, DARK_MODE_DARK_FROM,
     DARK_MODE_LIGHT_FROM, DATE_FORMAT, DOCK_PINNED_APPS, NIGHT_FROM, NIGHT_TO,
-    NIGHT_TRANSITION_MINUTES, RegionOptions, ScheduleMode, TIME_FORMAT,
+    NIGHT_TRANSITION_MINUTES, RegionOptions, SLIDESHOW_INTERVAL_MINUTES,
+    SLIDESHOW_INTERVAL_RANGE_MINUTES, ScheduleMode, SlideshowOrder, TIME_FORMAT,
 };
 use crate::core::paths;
 use crate::platform::hyprland::hypr;
@@ -20,6 +21,7 @@ impl Config {
         let tray = root.get("tray").cloned().unwrap_or(Value::Null);
         let background = root.get("background").cloned().unwrap_or(Value::Null);
         let parallax = background.get("parallax").cloned().unwrap_or(Value::Null);
+        let slideshow = background.get("slideshow").cloned().unwrap_or(Value::Null);
         let quick_sliders = root
             .pointer("/sidebar/quickSliders")
             .cloned()
@@ -350,6 +352,14 @@ impl Config {
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
             monitor_wallpapers: read_monitor_wallpapers(root),
+            is_slideshow_enabled: flag(&slideshow, "enable", false),
+            slideshow_interval_minutes: integer_within(
+                &slideshow,
+                "intervalMinutes",
+                SLIDESHOW_INTERVAL_MINUTES,
+                SLIDESHOW_INTERVAL_RANGE_MINUTES,
+            ) as u64,
+            slideshow_order: parse_slideshow_order(slideshow.get("order")),
             hide_when_fullscreen: flag(&background, "hideWhenFullscreen", true),
             parallax_workspace: flag(&parallax, "enableWorkspace", true),
             parallax_vertical: flag(&parallax, "vertical", false),
@@ -476,6 +486,13 @@ fn read_monitor_wallpapers(root: &Value) -> HashMap<String, String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn parse_slideshow_order(node: Option<&Value>) -> SlideshowOrder {
+    match node.and_then(Value::as_str) {
+        Some("name") => SlideshowOrder::Name,
+        _ => SlideshowOrder::Shuffle,
+    }
 }
 
 const DEFAULT_TOGGLES: [(&str, i32); 6] = [
@@ -714,6 +731,31 @@ mod tests {
         );
         assert_eq!(strings_or(Some(&json!(["home"])), &defaults), ["home"]);
         assert_eq!(strings_or(None, &defaults), ["cafe", "guest"]);
+    }
+
+    #[test]
+    fn the_slideshow_is_off_and_takes_its_settings_within_range() {
+        let defaults = Config::parse(&json!({}));
+        assert!(!defaults.is_slideshow_enabled);
+        assert_eq!(defaults.slideshow_interval_minutes, 30);
+        assert_eq!(defaults.slideshow_order, SlideshowOrder::Shuffle);
+        let slideshow =
+            |node: Value| Config::parse(&json!({ "background": { "slideshow": node } }));
+        let configured =
+            slideshow(json!({ "enable": true, "intervalMinutes": 5, "order": "name" }));
+        assert!(configured.is_slideshow_enabled);
+        assert_eq!(configured.slideshow_interval_minutes, 5);
+        assert_eq!(configured.slideshow_order, SlideshowOrder::Name);
+        for (minutes, expected) in [(0, 1), (-4, 1), (99999, 1440)] {
+            let config = slideshow(json!({ "intervalMinutes": minutes }));
+            assert_eq!(config.slideshow_interval_minutes, expected, "{minutes}");
+        }
+        for order in [json!("Name"), json!("shuffle"), json!(3)] {
+            assert_eq!(
+                slideshow(json!({ "order": order })).slideshow_order,
+                SlideshowOrder::Shuffle
+            );
+        }
     }
 
     #[test]

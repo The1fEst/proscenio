@@ -119,6 +119,10 @@ impl WallpaperSelector {
         self.wallpapers.random(self.is_dark_mode(), monitor);
     }
 
+    pub fn is_open(&self) -> bool {
+        self.view.borrow().is_some()
+    }
+
     fn is_dark_mode(&self) -> bool {
         self.theme.borrow().m3.is_dark_mode
     }

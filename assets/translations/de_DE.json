@@ -1626,5 +1626,9 @@
   "Wallpaper per monitor": "Hintergrundbild pro Monitor",
   "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Die Hintergrundauswahl setzt dann das Hintergrundbild des Monitors, auf dem sie geöffnet ist. Die Farben stammen vom Hintergrundbild des Hauptmonitors",
   "Applies to this monitor only\nClick to apply to all monitors": "Nur für diesen Monitor\nKlicken, um es auf alle Monitore anzuwenden",
-  "Applies to all monitors\nClick to apply to this monitor only": "Für alle Monitore\nKlicken, um es nur auf diesen Monitor anzuwenden"
+  "Applies to all monitors\nClick to apply to this monitor only": "Für alle Monitore\nKlicken, um es nur auf diesen Monitor anzuwenden",
+  "Slideshow": "Diashow",
+  "Interval (minutes)": "Intervall (Minuten)",
+  "Order": "Reihenfolge",
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Wechselt das Hintergrundbild zu einem Bild aus dem Ordner der Hintergrundauswahl. Mit einem Hintergrundbild pro Monitor bekommt jeder Monitor ein eigenes Bild"
 }

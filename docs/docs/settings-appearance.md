@@ -245,8 +245,18 @@ disabled.
 With **Use system file picker** on, the [wallpaper selector](wallpaper-selector.md)'s shortcut opens
 the file picker instead of the selector. With **Wallpaper per monitor** on, the selector sets the
 wallpaper of the monitor it is open on, or of all monitors; see
-[A wallpaper per monitor](background.md#a-wallpaper-per-monitor). Hiding the background under a fullscreen window saves a
-little work while gaming or watching a video.
+[A wallpaper per monitor](background.md#a-wallpaper-per-monitor). Hiding the background under a
+fullscreen window saves a little work while gaming or watching a video.
+
+### Slideshow
+
+| Control | Key | Default | Range |
+|---|---|---|---|
+| Enable | `background.slideshow.enable` | off | |
+| Interval (minutes) | `background.slideshow.intervalMinutes` | 30 | 1–1440 |
+| Order | `background.slideshow.order` | Random | Random (`random`) or Name (`name`) |
+
+See [Slideshow](background.md#slideshow) for what is picked and when.
 
 ### Parallax
 

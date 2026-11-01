@@ -38,6 +38,15 @@ pub enum ScheduleMode {
     Sun,
 }
 
+pub const SLIDESHOW_INTERVAL_MINUTES: i64 = 30;
+pub const SLIDESHOW_INTERVAL_RANGE_MINUTES: (i64, i64) = (1, 1440);
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SlideshowOrder {
+    Shuffle,
+    Name,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CornerStyle {
     Hug,
@@ -215,6 +224,9 @@ pub struct Config {
     pub thumbnail: String,
     pub is_wallpaper_per_monitor: bool,
     pub monitor_wallpapers: HashMap<String, String>,
+    pub is_slideshow_enabled: bool,
+    pub slideshow_interval_minutes: u64,
+    pub slideshow_order: SlideshowOrder,
     pub hide_when_fullscreen: bool,
     pub parallax_workspace: bool,
     pub parallax_vertical: bool,

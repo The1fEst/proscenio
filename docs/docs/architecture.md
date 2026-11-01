@@ -217,6 +217,7 @@ are zero while their feature is off, so switching the feature on runs the task o
 | `weather` | Fetches the weather every `bar.weather.fetchInterval` minutes (10) while `bar.weather.enable` is on |
 | `updates` | Counts available updates every `updates.checkInterval` minutes (120) while `updates.enableCheck` is on |
 | `trim` | Trims the heap, as above |
+| `wallpaper slideshow` | Changes the wallpaper every `background.slideshow.intervalMinutes` minutes (30) while `background.slideshow.enable` is on; see [Slideshow](background.md#slideshow) |
 | `clock details`, `uptime` | Added per monitor by the bar's clock and the sidebar, for as long as those exist |
 
 `add_scoped` returns a `Subscription` instead of keeping the task for the whole run, and a monitor's

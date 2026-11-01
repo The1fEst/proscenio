@@ -1626,5 +1626,9 @@
   "Wallpaper per monitor": "Wallpaper per monitor",
   "The wallpaper selector then sets the wallpaper of the monitor it is open on. Colors come from the main display's wallpaper": "Pemilih wallpaper lalu mengatur wallpaper monitor tempat ia dibuka. Warna diambil dari wallpaper monitor utama",
   "Applies to this monitor only\nClick to apply to all monitors": "Berlaku hanya untuk monitor ini\nKlik untuk menerapkan ke semua monitor",
-  "Applies to all monitors\nClick to apply to this monitor only": "Berlaku untuk semua monitor\nKlik untuk menerapkan hanya ke monitor ini"
+  "Applies to all monitors\nClick to apply to this monitor only": "Berlaku untuk semua monitor\nKlik untuk menerapkan hanya ke monitor ini",
+  "Slideshow": "Slideshow",
+  "Interval (minutes)": "Interval (menit)",
+  "Order": "Urutan",
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Mengganti wallpaper dengan gambar dari folder pemilih wallpaper. Dengan wallpaper per monitor, setiap monitor mendapat gambarnya sendiri"
 }
