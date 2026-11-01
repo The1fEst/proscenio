@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use super::ppm;
 use super::screenshot::{self, Crop};
-use super::stitcher::{Frame, Outcome, Stitcher};
+use super::stitch::{Frame, Outcome, Stitcher};
 use super::{Phase, Selection};
 use crate::core::i18n::{tr, trf};
 use crate::core::process;
@@ -38,7 +38,7 @@ struct Panel {
     cancel_button: RippleButton,
 }
 
-pub(super) struct Scroll {
+pub(super) struct ScrollSession {
     panel: Panel,
     stitcher: RefCell<Option<Stitcher>>,
     is_finishing: Cell<bool>,
@@ -50,7 +50,7 @@ struct Step {
     preview: Option<Frame>,
 }
 
-impl Scroll {
+impl ScrollSession {
     pub(super) fn new(theme: &SharedTheme) -> Self {
         let picture = gtk4::Picture::new();
         picture.set_content_fit(gtk4::ContentFit::Fill);
@@ -77,7 +77,7 @@ impl Scroll {
         widget.set_halign(gtk4::Align::Start);
         widget.set_valign(gtk4::Align::Start);
         widget.set_visible(false);
-        Scroll {
+        ScrollSession {
             panel: Panel {
                 widget,
                 picture,
@@ -109,7 +109,7 @@ fn build_button(theme: &SharedTheme, text: &str) -> RippleButton {
 
 impl Selection {
     pub(super) fn connect_scroll_buttons(self: &Rc<Self>) {
-        let panel = &self.scroll.panel;
+        let panel = &self.scroll_session.panel;
         panel.done_button.connect_clicked({
             let selection = Rc::downgrade(self);
             move |_| {
@@ -140,7 +140,7 @@ impl Selection {
         self.screenshot_texture.replace(None);
         self.guide.widget.set_visible(false);
         self.controls.holder.set_visible(false);
-        self.scroll.stitcher.replace(Some(Stitcher::new()));
+        self.scroll_session.stitcher.replace(Some(Stitcher::new()));
         self.layout_panel();
         self.paint.queue_draw();
         if let Some(selector) = self.selector.upgrade() {
@@ -163,7 +163,7 @@ impl Selection {
                 if selection.phase.get() != Phase::Scroll {
                     return;
                 }
-                let Some(stitcher) = selection.scroll.stitcher.take() else {
+                let Some(stitcher) = selection.scroll_session.stitcher.take() else {
                     return;
                 };
                 let preview_limits = selection.preview_limits();
@@ -195,8 +195,8 @@ impl Selection {
         }
         self.show_status(&stitcher);
         let is_over = stitcher.has_lost_track() || stitcher.is_full();
-        self.scroll.stitcher.replace(Some(stitcher));
-        if self.scroll.is_finishing.get() {
+        self.scroll_session.stitcher.replace(Some(stitcher));
+        if self.scroll_session.is_finishing.get() {
             self.complete_scroll();
             return None;
         }
@@ -219,7 +219,7 @@ impl Selection {
         } else {
             tr("Scroll the content")
         };
-        self.scroll.panel.status.set_text(&message);
+        self.scroll_session.panel.status.set_text(&message);
         self.layout_panel();
     }
 
@@ -233,7 +233,7 @@ impl Selection {
             &bytes,
             preview.width * 3,
         );
-        let picture = &self.scroll.panel.picture;
+        let picture = &self.scroll_session.panel.picture;
         picture.set_paintable(Some(&texture));
         picture.set_size_request(
             (width as f64 / self.scale).round() as i32,
@@ -247,25 +247,25 @@ impl Selection {
         let height =
             (self.size.1 - PANEL_MARGIN * 2.0 - PANEL_CHROME_HEIGHT).clamp(1.0, PREVIEW_MAX_HEIGHT);
         (
-            (self.scroll.preview_width.get() * self.scale).round() as usize,
+            (self.scroll_session.preview_width.get() * self.scale).round() as usize,
             (height * self.scale).round() as usize,
         )
     }
 
     fn layout_panel(&self) {
-        let panel = &self.scroll.panel.widget;
+        let panel = &self.scroll_session.panel.widget;
         let [x, y, width, _] = self.region.get();
         let (screen_width, screen_height) = self.size;
         let (left_gap, right_gap) = (x, screen_width - x - width);
         let preview_width = (left_gap.max(right_gap) - PANEL_MARGIN * 2.0 - PANEL_PADDING * 2.0)
             .min(PANEL_MAX_WIDTH);
         if preview_width < PANEL_MIN_WIDTH {
-            self.scroll.preview_width.set(0.0);
+            self.scroll_session.preview_width.set(0.0);
             panel.set_visible(false);
             self.set_input_rectangle(None);
             return;
         }
-        self.scroll.preview_width.set(preview_width);
+        self.scroll_session.preview_width.set(preview_width);
         let content_width = preview_width.round() as i32;
         if let Some(content) = panel.first_child() {
             content.set_size_request(content_width, -1);
@@ -309,15 +309,15 @@ impl Selection {
         if self.phase.get() != Phase::Scroll {
             return;
         }
-        self.scroll.is_finishing.set(true);
-        if self.scroll.stitcher.borrow().is_some() {
+        self.scroll_session.is_finishing.set(true);
+        if self.scroll_session.stitcher.borrow().is_some() {
             self.complete_scroll();
         }
     }
 
     fn complete_scroll(self: &Rc<Self>) {
         let Some(frame) = self
-            .scroll
+            .scroll_session
             .stitcher
             .take()
             .and_then(|stitcher| stitcher.into_frame())
@@ -325,7 +325,7 @@ impl Selection {
             self.dismiss();
             return;
         };
-        self.scroll.panel.widget.set_visible(false);
+        self.scroll_session.panel.widget.set_visible(false);
         self.set_input_rectangle(None);
         let crop = Crop {
             x: 0.0,

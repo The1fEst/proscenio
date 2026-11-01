@@ -5,7 +5,7 @@ mod ppm;
 mod renderer;
 pub mod screenshot;
 mod scroll;
-mod stitcher;
+mod stitch;
 mod targets;
 
 use gtk4::gdk;
@@ -38,7 +38,7 @@ use crate::ui::widgets::overlay::tooltip::Tooltip;
 use interaction::{guide_description, guide_symbol};
 use options::options_menu;
 use screenshot::Action;
-use scroll::Scroll;
+use scroll::ScrollSession;
 use targets::{Target, targets};
 
 const NAMESPACE: &str = "proscenio:regionSelector";
@@ -182,7 +182,7 @@ struct Selection {
     paint: Paint,
     layer: gtk4::Fixed,
     guide: Guide,
-    scroll: Scroll,
+    scroll_session: ScrollSession,
     screen: String,
     size: (f64, f64),
     scale: f64,
@@ -472,8 +472,8 @@ impl RegionSelector {
         overlay.set_child(Some(&paint));
         overlay.add_overlay(&layer);
         overlay.add_overlay(&holder);
-        let scroll = Scroll::new(&self.theme);
-        overlay.add_overlay(scroll.widget());
+        let scroll_session = ScrollSession::new(&self.theme);
+        overlay.add_overlay(scroll_session.widget());
 
         let window = gtk4::ApplicationWindow::builder()
             .application(&self.app)
@@ -524,7 +524,7 @@ impl RegionSelector {
                 fade: Cell::new(Tween::new(1.0, FAST_MILLIS, EXPRESSIVE_EFFECTS)),
                 hide_timer: RefCell::new(None),
             },
-            scroll,
+            scroll_session,
             path: screenshot::temp_path(&screen),
             screen,
             size: (geometry.width() as f64, geometry.height() as f64),
@@ -697,7 +697,7 @@ fn close(selection: &Rc<Selection>) {
         let _ = std::fs::remove_file(&selection.path);
     }
     selection.screenshot_texture.replace(None);
-    selection.scroll.end();
+    selection.scroll_session.end();
     selection.window.destroy();
     crate::ui::unload::trim();
 }

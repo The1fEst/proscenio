@@ -55,7 +55,7 @@ pub struct Stitcher {
     previous_rows: Option<Rows>,
     anchor: isize,
     has_moved: bool,
-    misses: u32,
+    miss_count: u32,
 }
 
 impl Stitcher {
@@ -74,7 +74,7 @@ impl Stitcher {
             previous_rows: None,
             anchor: 0,
             has_moved: false,
-            misses: 0,
+            miss_count: 0,
         }
     }
 
@@ -87,7 +87,7 @@ impl Stitcher {
     }
 
     pub fn has_lost_track(&self) -> bool {
-        self.misses >= MAX_MISSES
+        self.miss_count >= MAX_MISSES
     }
 
     pub fn is_full(&self) -> bool {
@@ -99,7 +99,7 @@ impl Stitcher {
     }
 
     pub fn reject(&mut self) -> Outcome {
-        self.misses += 1;
+        self.miss_count += 1;
         Outcome::Mismatch
     }
 
@@ -124,7 +124,7 @@ impl Stitcher {
             .filter(|&index| hashes[index] != previous_rows.hashes[index])
             .collect();
         if changed_rows.is_empty() {
-            self.misses = 0;
+            self.miss_count = 0;
             return Outcome::Standstill;
         }
         let footer_rows = hashes
@@ -135,7 +135,7 @@ impl Stitcher {
             .count();
         let Some(shift) = find_shift(&hashes, &changed_rows, previous_rows) else {
             if changed_rows.len() <= MIN_NOISE_ROWS.max(self.height / NOISE_DIVISOR) {
-                self.misses = 0;
+                self.miss_count = 0;
                 return Outcome::Standstill;
             }
             return self.reject();
@@ -151,7 +151,7 @@ impl Stitcher {
         self.previous_rows = Some(Rows::new(hash_rows(&frame)));
         self.canvas = frame.pixels;
         self.canvas.truncate(count * self.row_bytes());
-        self.misses = 0;
+        self.miss_count = 0;
         if self.is_full() {
             Outcome::Limit
         } else {
@@ -190,7 +190,7 @@ impl Stitcher {
         }
         self.anchor = new_top;
         self.previous_rows = Some(Rows::new(hashes));
-        self.misses = 0;
+        self.miss_count = 0;
         match (self.is_full(), count) {
             (true, _) => Outcome::Limit,
             (false, 0) => Outcome::Revisit,
@@ -379,13 +379,13 @@ mod tests {
         let page = generate_rows(1, 300);
         let header = generate_rows(5000, 8);
         let footer = generate_rows(6000, 8);
-        let capture_with_bars = |offset: usize| {
+        let build_barred_frame = |offset: usize| {
             build_frame(&[&header[..], &page[offset..offset + 84], &footer[..]].concat())
         };
         let mut stitcher = Stitcher::new();
         for offset in [0, 30, 60, 100] {
             assert_ne!(
-                stitcher.push(capture_with_bars(offset)),
+                stitcher.push(build_barred_frame(offset)),
                 Outcome::Mismatch,
                 "{offset}"
             );

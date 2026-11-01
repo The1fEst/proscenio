@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
 
-use super::stitcher::Frame;
+use super::stitch::Frame;
 
 const CHANNELS: usize = 3;
 
