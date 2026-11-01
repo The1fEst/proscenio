@@ -1614,5 +1614,7 @@
   "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service è in esecuzione e registra lettori Bluetooth duplicati. Disattivalo con %1",
   "No events": "Nessun evento",
   "All day": "Tutto il giorno",
-  "No title": "Senza titolo"
+  "No title": "Senza titolo",
+  "Calendar events": "Eventi del calendario",
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Mostra nel pannello del calendario gli eventi di Evolution Data Server, usato da GNOME Calendario"
 }

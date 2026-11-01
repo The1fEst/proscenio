@@ -444,6 +444,17 @@ pub fn build(context: &Context) -> Rc<Page> {
         &seconds_switch.button,
         &tr("Enable if you want clocks to show seconds accurately"),
     );
+    let events_switch = page.config_switch(
+        &clock_section,
+        "event",
+        &tr("Calendar events"),
+        "/time/calendarEvents",
+        true,
+    );
+    page.tip(
+        &events_switch.button,
+        &tr("Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel"),
+    );
     let dates_section = page.subsection(
         &clock_section,
         &tr("Date formats"),

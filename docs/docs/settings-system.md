@@ -148,6 +148,7 @@ The error of the last call shows under them. Each call lets polkit ask for a pas
 |---|---|---|---|---|
 | Time Format | 24h, 12h am/pm or 12h AM/PM | `time.format` | `hh:mm` (24h) | `hh:mm`, `h:mm ap`, `h:mm AP` |
 | Clock & Calendar | Seconds | `time.secondPrecision` | off | |
+| Clock & Calendar | Calendar events | `time.calendarEvents` | on | |
 | Date formats | Date | `time.dateFormat` | `ddd, dd/MM` | |
 | Date formats | Short date | `time.shortDateFormat` | `dd/MM` | |
 | Date formats | Date with year | `time.dateWithYearFormat` | `dd/MM/yyyy` | |

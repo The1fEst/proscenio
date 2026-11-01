@@ -79,8 +79,8 @@ and instances moved with `RECURRENCE-ID`. A rule with anything else (`HOURLY` or
 shows only its first event. Times in a time zone the system does not know, such as a Windows zone
 name, count as local time. Cancelled events are left out.
 
-With `time.calendarEvents` set to `false` in `config.toml` the panel never contacts EDS. It is on
-by default.
+With **Calendar events** off (`time.calendarEvents`, on by default), under **Clock & Calendar** on
+**System › Date & Time** (see [System settings](settings-system.md)), the panel never contacts EDS.
 
 ## To Do
 

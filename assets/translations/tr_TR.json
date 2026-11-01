@@ -1614,5 +1614,7 @@
   "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service çalışıyor ve yinelenen Bluetooth oynatıcıları kaydediyor. Şu komutla kapatın: %1",
   "No events": "Etkinlik yok",
   "All day": "Tüm gün",
-  "No title": "Başlıksız"
+  "No title": "Başlıksız",
+  "Calendar events": "Takvim etkinlikleri",
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "GNOME Takvim'in kullandığı Evolution Data Server'daki etkinlikleri takvim panelinde gösterir"
 }

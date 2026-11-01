@@ -1614,5 +1614,7 @@
   "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service 正在运行，会注册重复的蓝牙播放器。使用 %1 将其关闭",
   "No events": "没有日程",
   "All day": "全天",
-  "No title": "无标题"
+  "No title": "无标题",
+  "Calendar events": "日历日程",
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "在日历面板中显示 GNOME 日历所用的 Evolution Data Server 中的日程"
 }

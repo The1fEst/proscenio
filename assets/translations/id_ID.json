@@ -1614,5 +1614,7 @@
   "mpris-proxy.service is running and registers duplicate Bluetooth players. Turn it off with %1": "mpris-proxy.service sedang berjalan dan mendaftarkan pemutar Bluetooth ganda. Matikan dengan %1",
   "No events": "Tidak ada acara",
   "All day": "Sepanjang hari",
-  "No title": "Tanpa judul"
+  "No title": "Tanpa judul",
+  "Calendar events": "Acara kalender",
+  "Shows the events of Evolution Data Server, which GNOME Calendar uses, in the calendar panel": "Menampilkan acara dari Evolution Data Server, yang dipakai GNOME Calendar, di panel kalender"
 }
