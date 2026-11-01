@@ -1352,7 +1352,7 @@
   "Play the bell sound": "ベル音を鳴らす",
   "Plugin: %1": "プラグイン: %1",
   "Pop up": "ポップアップ",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "「ポップアップ」をオフにすると通知はサイドバーにだけ残ります。「維持」をオフにするとポップアップが終わった時点で通知は消えます",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "「ポップアップ」をオフにすると通知はサイドバーにだけ残ります。「維持」をオフにするとポップアップが終わった時点で通知は消えます。「サウンド」をオフにすると通知の音は鳴りません",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "ポート、範囲、またはリスト（例: 22、6000:6007、80,443）",
   "Power button": "電源ボタン",
   "Power off": "電源を切る",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "ごみ箱の中身はすべて完全に削除されます。",
   "Show trash": "ごみ箱を表示する",
   "Keyboard brightness": "キーボードの明るさ",
-  "Played when a notification pops up": "通知がポップアップしたときに鳴ります"
+  "Played when a notification pops up": "通知がポップアップしたときに鳴ります",
+  "Default urgency": "緊急度: 既定",
+  "Low urgency": "緊急度: 低",
+  "Normal urgency": "緊急度: 通常",
+  "Critical urgency": "緊急度: 重大"
 }

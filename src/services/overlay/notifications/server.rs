@@ -4,10 +4,11 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 
 use super::images::resolve_app_icon;
+use super::rules::{load_override, resolve_urgency};
 use super::store::write_store;
 use super::{
-    FORGOTTEN_APPS, NAME, Notification, Notifications, PATH, QUIET_APPS, Reply, URGENCY_CRITICAL,
-    hint, hint_string, is_app_listed, remember_app,
+    FORGOTTEN_APPS, NAME, Notification, Notifications, PATH, QUIET_APPS, Reply, SILENT_APPS,
+    URGENCY_CRITICAL, hint, hint_string, is_app_listed, remember_app,
 };
 use crate::core::config;
 
@@ -96,7 +97,10 @@ impl Notifications {
         let app_name = text(0);
         let summary = text(3);
         let body = text(4);
-        let urgency = hint_byte(&hints, "urgency").unwrap_or(1);
+        let urgency = resolve_urgency(
+            hint_byte(&hints, "urgency").unwrap_or(1),
+            load_override(&app_name),
+        );
         let time_millis = glib::real_time() / 1000;
         if let Some(id) = self.reject(
             replaces_id,
@@ -115,6 +119,7 @@ impl Notifications {
         remember_app(&app_name);
         let is_quiet = is_app_listed(QUIET_APPS, &app_name);
         let is_forgotten = is_app_listed(FORGOTTEN_APPS, &app_name);
+        let is_muted = is_app_listed(SILENT_APPS, &app_name);
         let reply = take_reply(&mut labels, &hints);
         let should_alert = is_alert_allowed(
             self.is_inhibited.get(),
@@ -151,7 +156,7 @@ impl Notifications {
             self.discard(id, 1);
             return id;
         }
-        if is_sound_due(is_popup, is_update) {
+        if is_sound_due(is_popup, is_update, is_muted) {
             self.play_sound(&hints, urgency);
         }
         let app_icon = notification.app_icon.clone();
@@ -280,8 +285,8 @@ fn is_alert_allowed(is_inhibited: bool, is_silent: bool, is_quiet: bool, urgency
     !is_inhibited && (!is_silent || urgency == URGENCY_CRITICAL) && !is_quiet
 }
 
-fn is_sound_due(is_popup: bool, is_update: bool) -> bool {
-    is_popup && !is_update
+fn is_sound_due(is_popup: bool, is_update: bool, is_muted: bool) -> bool {
+    is_popup && !is_update && !is_muted
 }
 
 fn resolve_timeout_millis(expire_timeout_millis: i32, configured_millis: i64, urgency: u8) -> i32 {
@@ -402,18 +407,20 @@ mod tests {
     }
 
     #[test]
-    fn only_a_new_notification_that_pops_up_plays_a_sound() {
+    fn only_a_new_notification_that_pops_up_from_an_unmuted_app_plays_a_sound() {
         let cases = [
-            (true, false, true),
-            (true, true, false),
-            (false, false, false),
-            (false, true, false),
+            (true, false, false, true),
+            (true, true, false, false),
+            (true, false, true, false),
+            (false, false, false, false),
+            (false, true, false, false),
+            (false, false, true, false),
         ];
-        for (is_popup, is_update, expected) in cases {
+        for (is_popup, is_update, is_muted, expected) in cases {
             assert_eq!(
-                is_sound_due(is_popup, is_update),
+                is_sound_due(is_popup, is_update, is_muted),
                 expected,
-                "{is_popup} {is_update}"
+                "{is_popup} {is_update} {is_muted}"
             );
         }
     }

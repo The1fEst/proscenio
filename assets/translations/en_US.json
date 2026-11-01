@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Play the bell sound",
   "Plugin: %1": "Plugin: %1",
   "Pop up": "Pop up",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Port, range or list, such as 22, 6000:6007 or 80,443",
   "Power button": "Power button",
   "Power off": "Power off",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Everything in the trash is deleted permanently.",
   "Show trash": "Show trash",
   "Keyboard brightness": "Keyboard brightness",
-  "Played when a notification pops up": "Played when a notification pops up"
+  "Played when a notification pops up": "Played when a notification pops up",
+  "Default urgency": "Default urgency",
+  "Low urgency": "Low urgency",
+  "Normal urgency": "Normal urgency",
+  "Critical urgency": "Critical urgency"
 }

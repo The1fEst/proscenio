@@ -1,4 +1,5 @@
 pub mod images;
+pub mod rules;
 pub mod server;
 mod sound;
 mod store;
@@ -23,6 +24,8 @@ use crate::services::session::deadline::{Deadline, Hold};
 const SILENT_UNTIL: [&str; 2] = ["notifications", "silentUntil"];
 pub const QUIET_APPS: &str = "/notifications/quietApps";
 pub const FORGOTTEN_APPS: &str = "/notifications/forgottenApps";
+pub const SILENT_APPS: &str = "/notifications/silentApps";
+pub const APP_URGENCY: &str = "/notifications/appUrgency";
 pub const HIDE_WHILE_SHARING: &str = "/notifications/hideWhileSharing";
 const KNOWN_APPS: &str = "notificationApps";
 const URGENCY_CRITICAL: u8 = 2;

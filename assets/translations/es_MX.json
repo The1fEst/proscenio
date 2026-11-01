@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Reproducir el sonido de campana",
   "Plugin: %1": "Complemento: %1",
   "Pop up": "Emergente",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Con Emergente desactivado, las notificaciones quedan solo en la barra lateral; con Conservar desactivado, se descartan cuando termina su ventana emergente",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Con Emergente desactivado, las notificaciones quedan solo en la barra lateral; con Conservar desactivado, se descartan cuando termina su ventana emergente; con Sonido desactivado, no suenan",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Puerto, rango o lista, como 22, 6000:6007 u 80,443",
   "Power button": "Botón de encendido",
   "Power off": "Apagar",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Todo lo que hay en la papelera se elimina de forma permanente.",
   "Show trash": "Mostrar la papelera",
   "Keyboard brightness": "Brillo del teclado",
-  "Played when a notification pops up": "Suena cuando aparece una notificación"
+  "Played when a notification pops up": "Suena cuando aparece una notificación",
+  "Default urgency": "Urgencia predeterminada",
+  "Low urgency": "Urgencia baja",
+  "Normal urgency": "Urgencia normal",
+  "Critical urgency": "Urgencia crítica"
 }

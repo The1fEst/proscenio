@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Jouer le son de la sonnerie",
   "Plugin: %1": "Plugin : %1",
   "Pop up": "Pop-up",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Sans Pop-up, les notifications restent seulement dans le panneau latéral ; sans Garder, elles disparaissent à la fin de leur pop-up",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Sans Pop-up, les notifications restent seulement dans le panneau latéral ; sans Garder, elles disparaissent à la fin de leur pop-up ; sans Son, elles restent muettes",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Port, plage ou liste, comme 22, 6000:6007 ou 80,443",
   "Power button": "Bouton d'alimentation",
   "Power off": "Éteindre",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Tout le contenu de la corbeille est supprimé définitivement.",
   "Show trash": "Afficher la corbeille",
   "Keyboard brightness": "Luminosité du clavier",
-  "Played when a notification pops up": "Joué quand une notification s'affiche"
+  "Played when a notification pops up": "Joué quand une notification s'affiche",
+  "Default urgency": "Urgence par défaut",
+  "Low urgency": "Urgence faible",
+  "Normal urgency": "Urgence normale",
+  "Critical urgency": "Urgence critique"
 }

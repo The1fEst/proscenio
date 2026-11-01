@@ -46,8 +46,8 @@ time of their own. The display box lists the monitors as "model (connector)", is
 
 ### Applications
 
-Every application that has sent a notification gets a card with its icon, its name and two
-switches. The server remembers each application name it has seen in
+Every application that has sent a notification gets a card with its icon, its name, an urgency
+choice and three switches. The server remembers each application name it has seen in
 `~/.local/state/proscenio/states.json`, under `notificationApps`, and a new name adds its card to the
 open page. Until then the section reads "Apps show up here once they have sent a notification".
 
@@ -55,8 +55,12 @@ open page. Until then the section reads "Apps show up here once they have sent a
 |---|---|---|
 | Pop up | `notifications.quietApps` | its notifications go to the sidebar without a popup |
 | Keep | `notifications.forgottenApps` | its notifications count as transient and go once their popup ends |
+| Sound | `notifications.silentApps` | its notifications play no sound |
 
-With both off, the app's notifications are not kept at all.
+With Pop up and Keep both off, the app's notifications are not kept at all.
+
+The urgency choice, Default, Low, Normal or Critical urgency, is stored in `notifications.appUrgency`
+and replaces the urgency the app asks for. See [Notifications](notifications.md#per-app-rules).
 
 ## Privacy & Security
 

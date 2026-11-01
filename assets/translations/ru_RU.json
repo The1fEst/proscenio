@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Воспроизводить звук звонка",
   "Plugin: %1": "Модуль: %1",
   "Pop up": "Всплывать",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Если «Всплывать» выключено, уведомления остаются только в боковой панели; если выключено «Оставить», они исчезают, когда скрывается всплывающее окно",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Если «Всплывать» выключено, уведомления остаются только в боковой панели; если выключено «Оставить», они исчезают, когда скрывается всплывающее окно; если выключено «Звук», они не воспроизводят звук",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Порт, диапазон или список, например 22, 6000:6007 или 80,443",
   "Power button": "Кнопка питания",
   "Power off": "Выключить",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Всё содержимое корзины удаляется безвозвратно.",
   "Show trash": "Показывать корзину",
   "Keyboard brightness": "Подсветка клавиатуры",
-  "Played when a notification pops up": "Играет, когда появляется уведомление"
+  "Played when a notification pops up": "Играет, когда появляется уведомление",
+  "Default urgency": "Срочность по умолчанию",
+  "Low urgency": "Низкая срочность",
+  "Normal urgency": "Обычная срочность",
+  "Critical urgency": "Критическая срочность"
 }

@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Tocar o som da campainha",
   "Plugin: %1": "Plugin: %1",
   "Pop up": "Pop-up",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Com Pop-up desligado, as notificações ficam só na barra lateral; com Manter desligado, elas são descartadas quando o pop-up termina",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Com Pop-up desligado, as notificações ficam só na barra lateral; com Manter desligado, elas são descartadas quando o pop-up termina; com Som desligado, elas não tocam som",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Porta, intervalo ou lista, como 22, 6000:6007 ou 80,443",
   "Power button": "Botão de energia",
   "Power off": "Desligar",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Tudo o que está na lixeira é excluído permanentemente.",
   "Show trash": "Mostrar a lixeira",
   "Keyboard brightness": "Brilho do teclado",
-  "Played when a notification pops up": "Toca quando uma notificação aparece"
+  "Played when a notification pops up": "Toca quando uma notificação aparece",
+  "Default urgency": "Urgência padrão",
+  "Low urgency": "Urgência baixa",
+  "Normal urgency": "Urgência normal",
+  "Critical urgency": "Urgência crítica"
 }

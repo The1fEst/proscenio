@@ -52,7 +52,7 @@ in the icon.
 | image | the first valid pixels of the `image-data` and `image_data` hints, saved as a PNG; otherwise the first `image-path` or `image_path` hint that is an icon name (with no slash, colon, whitespace or leading `~`) or names an existing regular file with a UTF-8 path by an absolute path or a local `file:` URI; otherwise, when there is no app icon, valid pixels in the `icon_data` hint; with none of these, the card shows the app icon |
 | actions | the identifier and label pairs from `actions`, except `inline-reply` |
 | reply | the `inline-reply` action, if sent, with the `x-kde-reply-placeholder-text` hint |
-| urgency | the `urgency` hint: 0 low, 1 normal (the default), 2 critical |
+| urgency | the app's urgency choice under [Per-app rules](#per-app-rules) when it has one, else the `urgency` hint: 0 low, 1 normal (the default), 2 critical |
 | transient | the `transient` hint |
 | timeout | `expire_timeout` |
 | time | the moment it arrived |
@@ -141,6 +141,8 @@ hideWhileSharing = true
 timeout = 7000        # ms, for senders that ask for no time of their own
 quietApps = []        # apps that never pop up
 forgottenApps = []    # apps whose notifications are dropped once their popup ends
+silentApps = []       # apps whose notifications play no sound
+appUrgency = {}       # app name = "low", "normal" or "critical", replacing the urgency hint
 
 [notifications.forceMonitor]
 enable = false
@@ -241,18 +243,28 @@ The file is played with `paplay`, and at most one sound plays per second: a noti
 arrives within a second of the last sound plays none.
 
 No sound plays for a notification that does not pop up (Do Not Disturb, an app with **Pop up** off,
-an open sidebar, a shared screen), for an update that replaces a notification in the list, or for a
+an open sidebar, a shared screen), from an app with **Sound** off, for an update that replaces a notification in the list, or for a
 call [dropped as a duplicate or flood](#duplicates-and-floods).
 
 ## Per-app rules
 
 The Notifications page lists every app that has ever sent a notification, by app name; the names are
-kept in `~/.local/state/proscenio/states.json` under `notificationApps`. Each app has two switches:
+kept in `~/.local/state/proscenio/states.json` under `notificationApps`. Each app has three switches
+and an urgency choice:
 
 | Switch | Turned off |
 |---|---|
 | **Pop up** | the app goes in `notifications.quietApps`: its notifications go to the sidebar's list only |
 | **Keep** | the app goes in `notifications.forgottenApps`: its notifications are treated as transient, so they are removed when their popup ends, never count as unread, and are dropped at once when they cannot pop up |
+| **Sound** | the app goes in `notifications.silentApps`: its notifications play no sound, whatever their hints say |
+
+The urgency choice is **Default urgency**, **Low urgency**, **Normal urgency** or **Critical
+urgency**. A choice other than the default is stored in `notifications.appUrgency`, a table from app
+name to `low`, `normal` or `critical`, and replaces the `urgency` hint of every notification the app
+sends. It applies when the notification arrives, before anything else is decided: the notification
+is saved with the chosen urgency, which also counts in the [duplicate](#duplicates-and-floods) and
+flood checks (a critical one is never limited by the flood rule), the popup
+[timeout](#timeouts), Do Not Disturb and the sound.
 
 ## Grouping
 

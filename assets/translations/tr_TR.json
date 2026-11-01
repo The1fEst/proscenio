@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Zil sesini çal",
   "Plugin: %1": "Eklenti: %1",
   "Pop up": "Ekranda göster",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "«Ekranda göster» kapalıyken bildirimler yalnızca kenar çubuğunda kalır; «Koru» kapalıyken açılır pencereleri kapanınca silinir",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "«Ekranda göster» kapalıyken bildirimler yalnızca kenar çubuğunda kalır; «Koru» kapalıyken açılır pencereleri kapanınca silinir; «Ses» kapalıyken ses çıkarmaz",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Bağlantı noktası, aralık veya liste, örn. 22, 6000:6007 ya da 80,443",
   "Power button": "Güç düğmesi",
   "Power off": "Kapat",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Çöp kutusundaki her şey kalıcı olarak silinir.",
   "Show trash": "Çöp kutusunu göster",
   "Keyboard brightness": "Klavye parlaklığı",
-  "Played when a notification pops up": "Bir bildirim göründüğünde çalar"
+  "Played when a notification pops up": "Bir bildirim göründüğünde çalar",
+  "Default urgency": "Varsayılan aciliyet",
+  "Low urgency": "Düşük aciliyet",
+  "Normal urgency": "Normal aciliyet",
+  "Critical urgency": "Kritik aciliyet"
 }

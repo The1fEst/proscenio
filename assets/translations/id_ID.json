@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Putar suara bel",
   "Plugin: %1": "Plugin: %1",
   "Pop up": "Munculkan",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Jika Munculkan mati, notifikasi hanya ada di bilah sisi; jika Pertahankan mati, notifikasi dibuang begitu popup-nya selesai",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Jika Munculkan mati, notifikasi hanya ada di bilah sisi; jika Pertahankan mati, notifikasi dibuang begitu popup-nya selesai; jika Suara mati, notifikasi tidak berbunyi",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Port, rentang, atau daftar, seperti 22, 6000:6007 atau 80,443",
   "Power button": "Tombol daya",
   "Power off": "Matikan",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Semua isi tempat sampah dihapus secara permanen.",
   "Show trash": "Tampilkan tempat sampah",
   "Keyboard brightness": "Kecerahan papan ketik",
-  "Played when a notification pops up": "Berbunyi saat notifikasi muncul"
+  "Played when a notification pops up": "Berbunyi saat notifikasi muncul",
+  "Default urgency": "Urgensi bawaan",
+  "Low urgency": "Urgensi rendah",
+  "Normal urgency": "Urgensi normal",
+  "Critical urgency": "Urgensi kritis"
 }

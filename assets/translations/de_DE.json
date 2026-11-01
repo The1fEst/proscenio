@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Glockenton abspielen",
   "Plugin: %1": "Plugin: %1",
   "Pop up": "Aufklappen",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Ist „Aufklappen“ aus, bleiben die Benachrichtigungen nur in der Seitenleiste; ist „Behalten“ aus, verschwinden sie, sobald ihr Popup endet",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Ist „Aufklappen“ aus, bleiben die Benachrichtigungen nur in der Seitenleiste; ist „Behalten“ aus, verschwinden sie, sobald ihr Popup endet; ist „Ton“ aus, spielen sie keinen Ton",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Port, Bereich oder Liste, z. B. 22, 6000:6007 oder 80,443",
   "Power button": "Ein-/Aus-Taste",
   "Power off": "Ausschalten",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Alles im Papierkorb wird endgültig gelöscht.",
   "Show trash": "Papierkorb zeigen",
   "Keyboard brightness": "Tastaturhelligkeit",
-  "Played when a notification pops up": "Erklingt, wenn eine Benachrichtigung erscheint"
+  "Played when a notification pops up": "Erklingt, wenn eine Benachrichtigung erscheint",
+  "Default urgency": "Standard-Dringlichkeit",
+  "Low urgency": "Niedrige Dringlichkeit",
+  "Normal urgency": "Normale Dringlichkeit",
+  "Critical urgency": "Kritische Dringlichkeit"
 }

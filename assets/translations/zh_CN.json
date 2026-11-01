@@ -1352,7 +1352,7 @@
   "Play the bell sound": "播放响铃声音",
   "Plugin: %1": "插件：%1",
   "Pop up": "弹出",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "关闭“弹出”后通知只保留在侧边栏中；关闭“保留”则通知在弹窗结束后即被丢弃",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "关闭“弹出”后通知只保留在侧边栏中；关闭“保留”则通知在弹窗结束后即被丢弃；关闭“声音”则通知不播放声音",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "端口、范围或列表，例如 22、6000:6007 或 80,443",
   "Power button": "电源按钮",
   "Power off": "关机",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "回收站中的所有内容都将被永久删除。",
   "Show trash": "显示回收站",
   "Keyboard brightness": "键盘亮度",
-  "Played when a notification pops up": "通知弹出时播放"
+  "Played when a notification pops up": "通知弹出时播放",
+  "Default urgency": "默认紧急度",
+  "Low urgency": "低紧急度",
+  "Normal urgency": "普通紧急度",
+  "Critical urgency": "严重紧急度"
 }

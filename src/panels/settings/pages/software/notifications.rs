@@ -8,10 +8,10 @@ use crate::core::i18n::tr;
 use crate::core::{config, watch};
 use crate::panels::settings::content::{Context, Page};
 use crate::platform::hyprland::hypr;
-use crate::services::overlay::notifications;
+use crate::services::overlay::notifications::{self, rules};
 use crate::ui::theme::pixel_size;
 use crate::ui::widgets::display::text;
-use crate::ui::widgets::input::controls::ConfigSwitch;
+use crate::ui::widgets::input::controls::{ComboBox, ConfigSwitch};
 use crate::ui::widgets::layout::centered::Centered;
 
 const NOTE_START: i32 = 8;
@@ -20,7 +20,7 @@ const CARD_START: i32 = 12;
 const CARD_END: i32 = 4;
 const CARD_SPACING: i32 = 10;
 const ICON: i32 = 24;
-const SWITCHES_WIDTH: i32 = 300;
+const URGENCY_WIDTH: i32 = 210;
 
 pub fn build(context: &Context) -> Rc<Page> {
     let page = Page::new(&context.theme, true);
@@ -240,7 +240,7 @@ fn applications(context: &Context, page: &Rc<Page>) {
     page.keep(context.services.notifications.subscribe(fill));
     let note_label = text::styled_sized(
         &tr(
-            "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends",
+            "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them",
         ),
         pixel_size::SMALLER,
     );
@@ -252,10 +252,10 @@ fn applications(context: &Context, page: &Rc<Page>) {
 }
 
 fn app_card(page: &Page, app_name: &str, owned_items: &mut Vec<Box<dyn Any>>) -> gtk4::Box {
-    let card = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    let card = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     card.add_css_class("settings-row-card");
-    card.set_size_request(-1, CARD_HEIGHT);
     let content = gtk4::Box::new(gtk4::Orientation::Horizontal, CARD_SPACING);
+    content.set_size_request(-1, CARD_HEIGHT);
     content.set_margin_start(CARD_START);
     content.set_margin_end(CARD_END);
     content.set_hexpand(true);
@@ -276,13 +276,19 @@ fn app_card(page: &Page, app_name: &str, owned_items: &mut Vec<Box<dyn Any>>) ->
     let name_box = Centered::filling_width(&name_label);
     name_box.set_hexpand(true);
     content.append(&name_box);
+    content.append(&Centered::new(
+        &build_urgency_combo(page, app_name, owned_items).button,
+    ));
+    card.append(&content);
     let controls = gtk4::Box::new(gtk4::Orientation::Horizontal, CARD_SPACING);
     controls.set_homogeneous(true);
-    controls.set_size_request(SWITCHES_WIDTH, -1);
-    controls.set_hexpand(false);
+    controls.set_margin_start(CARD_START);
+    controls.set_margin_end(CARD_END);
+    controls.set_margin_bottom(CARD_END);
     for (label, pointer) in [
         (tr("Pop up"), notifications::QUIET_APPS),
         (tr("Keep"), notifications::FORGOTTEN_APPS),
+        (tr("Sound"), notifications::SILENT_APPS),
     ] {
         let app = app_name.to_owned();
         let switch = ConfigSwitch::new(&page.theme, "", &label, move |is_on| {
@@ -299,9 +305,49 @@ fn app_card(page: &Page, app_name: &str, owned_items: &mut Vec<Box<dyn Any>>) ->
         })));
         owned_items.push(Box::new(switch));
     }
-    content.append(&controls);
-    card.append(&content);
+    card.append(&controls);
     card
+}
+
+fn build_urgency_combo(
+    page: &Page,
+    app_name: &str,
+    owned_items: &mut Vec<Box<dyn Any>>,
+) -> Rc<ComboBox> {
+    let combo = ComboBox::new(&page.theme);
+    combo.set_icon("priority_high");
+    combo
+        .button
+        .set_size_request(URGENCY_WIDTH, combo.button.size_request().1);
+    combo.button.set_hexpand(false);
+    let labels = [
+        tr("Default urgency"),
+        tr("Low urgency"),
+        tr("Normal urgency"),
+        tr("Critical urgency"),
+    ];
+    let show_choice = {
+        let combo = Rc::downgrade(&combo);
+        let app = app_name.to_owned();
+        move || {
+            if let Some(combo) = combo.upgrade() {
+                let index = rules::load_override(&app).map_or(0, |level| level as usize + 1);
+                combo.set_items(&labels, index as i32);
+            }
+        }
+    };
+    show_choice();
+    owned_items.push(Box::new(watch::config(
+        notifications::APP_URGENCY,
+        show_choice,
+    )));
+    let app = app_name.to_owned();
+    combo.connect_activated(move |index| {
+        let urgency = index.checked_sub(1).map(|level| level as u8);
+        rules::store_override(&app, urgency);
+    });
+    owned_items.push(Box::new(combo.clone()));
+    combo
 }
 
 pub fn monitors() -> Vec<(String, String)> {

@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Відтворювати звуковий сигнал",
   "Plugin: %1": "Плагін: %1",
   "Pop up": "Спливати",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Якщо вимкнути «Спливати», сповіщення лишаються тільки в бічній панелі; якщо вимкнути «Залишити», вони зникають, щойно закриється спливне вікно",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Якщо вимкнути «Спливати», сповіщення лишаються тільки в бічній панелі; якщо вимкнути «Залишити», вони зникають, щойно закриється спливне вікно; якщо вимкнути «Звук», вони не відтворюють звук",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Порт, діапазон або список, напр. 22, 6000:6007 чи 80,443",
   "Power button": "Кнопка живлення",
   "Power off": "Вимкнути",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Увесь вміст смітника видаляється назавжди.",
   "Show trash": "Показувати смітник",
   "Keyboard brightness": "Підсвічування клавіатури",
-  "Played when a notification pops up": "Грає, коли з'являється сповіщення"
+  "Played when a notification pops up": "Грає, коли з'являється сповіщення",
+  "Default urgency": "Терміновість за замовчуванням",
+  "Low urgency": "Низька терміновість",
+  "Normal urgency": "Звичайна терміновість",
+  "Critical urgency": "Критична терміновість"
 }

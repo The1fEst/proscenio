@@ -1352,7 +1352,7 @@
   "Play the bell sound": "Riproduci il suono della campanella",
   "Plugin: %1": "Plugin: %1",
   "Pop up": "Popup",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "Con Popup disattivato le notifiche restano solo nella barra laterale; con Mantieni disattivato spariscono quando il loro popup finisce",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "Con Popup disattivato le notifiche restano solo nella barra laterale; con Mantieni disattivato spariscono quando il loro popup finisce; con Audio disattivato non emettono suoni",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "Porta, intervallo o elenco, come 22, 6000:6007 o 80,443",
   "Power button": "Pulsante di accensione",
   "Power off": "Spegni",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "Tutto il contenuto del cestino viene eliminato definitivamente.",
   "Show trash": "Mostra il cestino",
   "Keyboard brightness": "Luminosità della tastiera",
-  "Played when a notification pops up": "Suona quando compare una notifica"
+  "Played when a notification pops up": "Suona quando compare una notifica",
+  "Default urgency": "Urgenza predefinita",
+  "Low urgency": "Urgenza bassa",
+  "Normal urgency": "Urgenza normale",
+  "Critical urgency": "Urgenza critica"
 }

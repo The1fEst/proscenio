@@ -1352,7 +1352,7 @@
   "Play the bell sound": "להשמיע את צליל הצלצול",
   "Plugin: %1": "תוסף: %1",
   "Pop up": "הקפצה",
-  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends": "כש«הקפצה» כבויה, ההתראות נשמרות בסרגל הצדדי בלבד; כש«שמירה» כבויה, הן נמחקות כשהחלון הקופץ שלהן נסגר",
+  "Pop up off keeps the notifications in the sidebar only; Keep off drops them once their popup ends; Sound off plays no sound for them": "כש«הקפצה» כבויה, ההתראות נשמרות בסרגל הצדדי בלבד; כש«שמירה» כבויה, הן נמחקות כשהחלון הקופץ שלהן נסגר; כש«צליל» כבוי, הן לא משמיעות צליל",
   "Port, range or list, such as 22, 6000:6007 or 80,443": "פורט, טווח או רשימה, למשל 22, 6000:6007 או 80,443",
   "Power button": "כפתור ההפעלה",
   "Power off": "כיבוי",
@@ -1605,5 +1605,9 @@
   "Everything in the trash is deleted permanently.": "כל מה שבאשפה נמחק לצמיתות.",
   "Show trash": "להציג את האשפה",
   "Keyboard brightness": "בהירות המקלדת",
-  "Played when a notification pops up": "מתנגן כשמופיעה התראה"
+  "Played when a notification pops up": "מתנגן כשמופיעה התראה",
+  "Default urgency": "דחיפות ברירת מחדל",
+  "Low urgency": "דחיפות נמוכה",
+  "Normal urgency": "דחיפות רגילה",
+  "Critical urgency": "דחיפות קריטית"
 }
