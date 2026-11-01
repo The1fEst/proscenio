@@ -1638,5 +1638,11 @@
   "This network cannot be put in a code": "このネットワークはコードにできません",
   "Flatpak": "Flatpak",
   "Include Flatpak apps": "Flatpak アプリを含める",
-  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "リポジトリから %1、AUR から %2、Flatpak から %3"
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "リポジトリから %1、AUR から %2、Flatpak から %3",
+  "Delete this note?": "このメモを削除しますか？",
+  "Its text is deleted permanently.": "内容は完全に削除されます。",
+  "This note is larger than %1 MB and was not opened.": "このメモは %1 MB を超えているため開けませんでした。",
+  "This note could not be read.": "このメモを読み込めませんでした。",
+  "%1 lines": ["%1行"],
+  "%1 characters": ["%1文字"]
 }

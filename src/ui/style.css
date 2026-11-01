@@ -608,6 +608,47 @@ entry.search-input > text > selection {
     background-color: var(--colSecondaryContainer);
     color: var(--m3onSecondaryContainer);
 }
+.notepad {
+    background-color: var(--colLayer0);
+    border: 1px solid var(--colLayer0Border);
+    border-radius: 19px;
+    padding: 9px;
+    box-shadow: 0 1px 9px 1px var(--colShadow);
+}
+.notepad-page {
+    background-color: var(--colLayer1);
+    border-radius: 17px;
+}
+textview.notepad-editor, textview.notepad-editor > text {
+    background: none;
+    color: var(--colOnLayer1);
+    font-family: var(--fontMonospace);
+    font-size: 14px;
+    caret-color: var(--colPrimary);
+}
+textview.notepad-editor > text > selection {
+    background-color: var(--colSecondaryContainer);
+    color: var(--m3onSecondaryContainer);
+}
+.notepad-field {
+    background: none;
+    border: 2px solid var(--m3outline);
+    border-radius: 8px;
+    min-height: 0;
+    padding: 2px 8px;
+    box-shadow: none;
+    outline: none;
+    color: var(--m3onSurface);
+    caret-color: var(--colPrimary);
+    font-family: var(--fontMain);
+    font-size: 14px;
+}
+.notepad-field:focus-within { border-color: var(--colPrimary); }
+.notepad-field > text > placeholder { color: var(--m3outline); }
+.notepad-field > text > selection {
+    background-color: var(--colSecondaryContainer);
+    color: var(--m3onSecondaryContainer);
+}
 .timer-cycle {
     background-color: var(--colLayer2);
     border-radius: 9999px;

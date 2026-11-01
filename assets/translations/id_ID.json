@@ -1638,5 +1638,11 @@
   "This network cannot be put in a code": "Jaringan ini tidak dapat dijadikan kode",
   "Flatpak": "Flatpak",
   "Include Flatpak apps": "Sertakan aplikasi Flatpak",
-  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 dari repositori, %2 dari AUR, %3 dari Flatpak"
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 dari repositori, %2 dari AUR, %3 dari Flatpak",
+  "Delete this note?": "Hapus catatan ini?",
+  "Its text is deleted permanently.": "Teksnya dihapus secara permanen.",
+  "This note is larger than %1 MB and was not opened.": "Catatan ini lebih besar dari %1 MB dan tidak dibuka.",
+  "This note could not be read.": "Catatan ini tidak dapat dibaca.",
+  "%1 lines": ["%1 baris"],
+  "%1 characters": ["%1 karakter"]
 }

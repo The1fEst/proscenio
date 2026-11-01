@@ -8,6 +8,7 @@ pub mod deadline;
 pub mod deadlineipc;
 pub mod forecast;
 pub mod location;
+pub mod notes;
 mod schedule;
 pub mod states;
 pub mod timedate;

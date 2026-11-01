@@ -1638,5 +1638,11 @@
   "This network cannot be put in a code": "无法将此网络转换为二维码",
   "Flatpak": "Flatpak",
   "Include Flatpak apps": "包含 Flatpak 应用",
-  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "仓库 %1 个，AUR %2 个，Flatpak %3 个"
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "仓库 %1 个，AUR %2 个，Flatpak %3 个",
+  "Delete this note?": "删除这条笔记？",
+  "Its text is deleted permanently.": "其内容将被永久删除。",
+  "This note is larger than %1 MB and was not opened.": "这条笔记超过 %1 MB，未能打开。",
+  "This note could not be read.": "无法读取这条笔记。",
+  "%1 lines": ["%1 行"],
+  "%1 characters": ["%1 个字符"]
 }

@@ -1638,5 +1638,11 @@
   "This network cannot be put in a code": "אי אפשר להציג את הרשת הזו בקוד",
   "Flatpak": "Flatpak",
   "Include Flatpak apps": "לכלול יישומי Flatpak",
-  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 מהמאגרים, %2 מ-AUR, %3 מ-Flatpak"
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 מהמאגרים, %2 מ-AUR, %3 מ-Flatpak",
+  "Delete this note?": "למחוק את הפתק הזה?",
+  "Its text is deleted permanently.": "הטקסט שלו נמחק לצמיתות.",
+  "This note is larger than %1 MB and was not opened.": "הפתק הזה גדול מ-%1 MB ולא נפתח.",
+  "This note could not be read.": "לא ניתן לקרוא את הפתק הזה.",
+  "%1 lines": ["%1 שורה", "%1 שורות"],
+  "%1 characters": ["%1 תו", "%1 תווים"]
 }

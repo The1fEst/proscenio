@@ -11,8 +11,8 @@ use crate::core::watch;
 use crate::panels::notifications::popup;
 use crate::panels::overview::{self, launcher};
 use crate::panels::{
-    background, calendar, cheatsheet, corners, dock, mediacontrols, mixer, sessionscreen, settings,
-    sidebar,
+    background, calendar, cheatsheet, corners, dock, mediacontrols, mixer, notepad, sessionscreen,
+    settings, sidebar,
 };
 use crate::platform::hyprland::hypr;
 use crate::services::Services;
@@ -102,12 +102,14 @@ struct Panels {
     session: Rc<sessionscreen::SessionScreen>,
     media: Rc<mediacontrols::MediaControls>,
     volume_mixer: Option<Rc<mixer::VolumeMixer>>,
+    notepad: Rc<notepad::Notepad>,
 }
 
 impl Panels {
     fn windows(&self) -> Vec<gtk4::ApplicationWindow> {
         let mut windows = vec![
             self.sidebar.window.clone(),
+            self.notepad.window.clone(),
             self.calendar.window.clone(),
             self.session.window.clone(),
             self.media.window.clone(),
@@ -140,6 +142,7 @@ pub struct Surfaces {
     pub session: Rc<sessionscreen::SessionScreen>,
     pub media: Rc<mediacontrols::MediaControls>,
     pub volume_mixer: Option<Rc<mixer::VolumeMixer>>,
+    pub notepad: Rc<notepad::Notepad>,
     pub sheet: Rc<cheatsheet::Cheatsheet>,
     pub overview: Rc<overview::Overview>,
 }
@@ -380,6 +383,7 @@ impl Screens {
                     screen_surfaces.session = panels.session;
                     screen_surfaces.media = panels.media;
                     screen_surfaces.volume_mixer = panels.volume_mixer;
+                    screen_surfaces.notepad = panels.notepad;
                 });
                 windows
             }
@@ -474,6 +478,7 @@ impl Screens {
             session: panels.session,
             media: panels.media,
             volume_mixer: panels.volume_mixer,
+            notepad: panels.notepad,
             sheet,
             overview,
         });
@@ -522,6 +527,7 @@ impl Screens {
             }
         });
         Panels {
+            notepad: notepad::build(app, theme, services, monitor, scope),
             calendar: calendar::build(app, config, theme, services, monitor, scope),
             media: mediacontrols::build(app, config, services, theme, monitor, scope),
             volume_mixer: mixer::build(

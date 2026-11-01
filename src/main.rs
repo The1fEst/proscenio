@@ -466,7 +466,7 @@ fn register_ipc(
     region: &Rc<regionselector::RegionSelector>,
 ) {
     let run_on_focused = focused_runner(surfaces);
-    let panel_actions: [(&'static str, &'static str, fn(&Surfaces)); 25] = [
+    let panel_actions: [(&'static str, &'static str, fn(&Surfaces)); 28] = [
         ("sidebarRight", "toggle", |screen_surfaces| {
             screen_surfaces.sidebar.toggle()
         }),
@@ -475,6 +475,15 @@ fn register_ipc(
         }),
         ("sidebarRight", "open", |screen_surfaces| {
             screen_surfaces.sidebar.open()
+        }),
+        ("notepad", "toggle", |screen_surfaces| {
+            screen_surfaces.notepad.toggle()
+        }),
+        ("notepad", "close", |screen_surfaces| {
+            screen_surfaces.notepad.close()
+        }),
+        ("notepad", "open", |screen_surfaces| {
+            screen_surfaces.notepad.open()
         }),
         ("session", "toggle", |screen_surfaces| {
             screen_surfaces.session.toggle()
@@ -652,7 +661,7 @@ fn register_ipc(
 fn bind(surfaces: &Rc<RefCell<Vec<Surfaces>>>) {
     let run_on_focused = focused_runner(surfaces);
 
-    let shortcut_actions: [(&str, &str, Box<dyn Fn(&Surfaces)>); 21] = [
+    let shortcut_actions: [(&str, &str, Box<dyn Fn(&Surfaces)>); 22] = [
         (
             "searchToggle",
             "Toggles search on press",
@@ -712,6 +721,11 @@ fn bind(surfaces: &Rc<RefCell<Vec<Surfaces>>>) {
             "calendarToggle",
             "Toggles the calendar on press",
             Box::new(|screen_surfaces: &Surfaces| screen_surfaces.calendar.toggle()),
+        ),
+        (
+            "notepadToggle",
+            "Toggles the notepad on press",
+            Box::new(|screen_surfaces: &Surfaces| screen_surfaces.notepad.toggle()),
         ),
         (
             "sessionToggle",

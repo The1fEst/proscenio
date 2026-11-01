@@ -1638,5 +1638,11 @@
   "This network cannot be put in a code": "This network cannot be put in a code",
   "Flatpak": "Flatpak",
   "Include Flatpak apps": "Include Flatpak apps",
-  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 from the repositories, %2 from AUR, %3 from Flatpak"
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "%1 from the repositories, %2 from AUR, %3 from Flatpak",
+  "Delete this note?": "Delete this note?",
+  "Its text is deleted permanently.": "Its text is deleted permanently.",
+  "This note is larger than %1 MB and was not opened.": "This note is larger than %1 MB and was not opened.",
+  "This note could not be read.": "This note could not be read.",
+  "%1 lines": ["%1 line", "%1 lines"],
+  "%1 characters": ["%1 character", "%1 characters"]
 }

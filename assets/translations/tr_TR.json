@@ -1638,5 +1638,11 @@
   "This network cannot be put in a code": "Bu ağ bir koda dönüştürülemez",
   "Flatpak": "Flatpak",
   "Include Flatpak apps": "Flatpak uygulamalarını dâhil et",
-  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "Depolardan %1, AUR'dan %2, Flatpak'ten %3"
+  "%1 from the repositories, %2 from AUR, %3 from Flatpak": "Depolardan %1, AUR'dan %2, Flatpak'ten %3",
+  "Delete this note?": "Bu not silinsin mi?",
+  "Its text is deleted permanently.": "Metni kalıcı olarak silinir.",
+  "This note is larger than %1 MB and was not opened.": "Bu not %1 MB'tan büyük olduğu için açılmadı.",
+  "This note could not be read.": "Bu not okunamadı.",
+  "%1 lines": ["%1 satır"],
+  "%1 characters": ["%1 karakter"]
 }
