@@ -560,10 +560,11 @@ fn register_ipc(
         ipc.add("osdVolume", name, move || act(&osd));
     }
 
-    let region_actions: [(&'static str, fn(&Rc<regionselector::RegionSelector>)); 3] = [
+    let region_actions: [(&'static str, fn(&Rc<regionselector::RegionSelector>)); 4] = [
         ("screenshot", |region| region.screenshot()),
         ("record", |region| region.record()),
         ("recordWithSound", |region| region.record_with_sound()),
+        ("stopRecording", |region| region.stop_recording()),
     ];
     for (name, act) in region_actions {
         let region = region.clone();

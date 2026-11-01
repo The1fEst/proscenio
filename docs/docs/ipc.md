@@ -103,6 +103,7 @@ the first monitor when there is none.
 | | `toggle` | Shows the indicator until the next `toggle`, or hides it |
 | | `hide` | Hides it |
 | `region` | `screenshot`, `record`, `recordWithSound` | Opens the [region selector](region-selector.md) to take a screenshot or record, with or without sound |
+| | `stopRecording` | Stops the running recording, as `recordStop` does in [Global shortcuts](shortcuts.md); nothing happens with no recording |
 | `mpris` | `playPause`, `previous`, `next` | The active player: the one playing most recently, else the first. `next` seeks to the end of the track when the player cannot skip but can seek |
 | | `pauseAll` | Pauses every player that can pause |
 | `brightness` | `increment`, `decrement` | The focused monitor's brightness, in steps of 5 %. At zero, `decrement` dims further through the gamma of the screen's color matrix, down to 25 %, and `increment` brings the gamma back to 100 % before it raises the brightness |
