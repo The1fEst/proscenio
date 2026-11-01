@@ -325,7 +325,7 @@ brightness of the focused monitor, and the [on-screen display](osd.md) shows the
 
 Past zero brightness the screen keeps dimming through the gamma, which scales the same color matrix
 night light sets (see [Night light](settings-displays.md#night-light)); the brightness goes through
-`brightnessctl` or `ddcutil`.
+the backlight device or `ddcutil` (see [Sidebar](sidebar.md#brightness)).
 
 Hovering the region reveals a hint at the screen edge: arrows around a sun icon (`light_mode` at full
 gamma, `wb_twilight` below it), with the tooltip "Scroll to change brightness" after half a second.

@@ -98,8 +98,8 @@ config. `wayland/` has `grab.rs`, `shortcuts.rs`, `capture.rs` and `locknotify.r
 Hyprland's Wayland protocols. `dbus/` has the D-Bus helpers and what is built on them: notifications,
 geoclue, fprintd, sleep and power settings, and the shell's own IPC endpoint. `network/` has
 NetworkManager profiles, the firewall and the proxy settings. `security/` has PAM, password hashing
-and the secret exchange of keyring prompts. `system/` has udev, desktop entries, desktop theming and
-the programs the shell runs.
+and the secret exchange of keyring prompts. `system/` has udev, the backlight devices, desktop
+entries, desktop theming and the programs the shell runs.
 
 **UI** (`src/ui/`) is the [design system](design.md): the theme, the widgets and the motion
 primitives, plus `unload.rs` and `reserve.rs` below.

@@ -122,7 +122,7 @@ impl Services {
             session_bus: session,
             audio,
             device_usage,
-            light: Light::new(&color),
+            light: Light::new(&color, system.clone()),
             cliphist: Cliphist::new(),
             net: Net::new(system.clone()),
             bluez,

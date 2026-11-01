@@ -1,6 +1,7 @@
 pub mod appearance;
 pub mod appicon;
 pub mod autostart;
+pub mod backlight;
 pub mod defaultapps;
 pub mod desktop;
 pub mod locale;
