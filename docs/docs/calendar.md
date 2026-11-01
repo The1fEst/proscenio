@@ -74,10 +74,12 @@ show up within a moment.
 Recurring events are expanded by the panel: `FREQ` of `DAILY`, `WEEKLY`, `MONTHLY` or `YEARLY`
 with `INTERVAL`, `COUNT`, `UNTIL`, `WKST`, `BYDAY` (with ordinals such as `2TU` or `-1FR` for
 monthly and yearly rules), `BYMONTHDAY` and `BYMONTH`, together with `EXDATE`, single-value `RDATE`
-and instances moved with `RECURRENCE-ID`. A rule with anything else (`HOURLY` or finer, `BYSETPOS`,
-`BYWEEKNO`, `BYYEARDAY`, `BYHOUR`, `BYMINUTE`, `BYSECOND`, or a yearly `BYDAY` without `BYMONTH`)
-shows only its first event. Times in a time zone the system does not know, such as a Windows zone
-name, count as local time. Cancelled events are left out.
+and instances moved with `RECURRENCE-ID`. The start date is always the first event of a series and
+counts toward `COUNT`, also when the rule would not land on it; `EXDATE` removes `RDATE` dates too.
+A rule with anything else (`HOURLY` or finer, `BYSETPOS`, `BYWEEKNO`, `BYYEARDAY`, `BYHOUR`,
+`BYMINUTE`, `BYSECOND`, or a yearly `BYDAY` without `BYMONTH`) shows only its first event. Times in
+a time zone the system does not know, such as a Windows zone name, count as local time. Cancelled
+events and cancelled instances of a series are left out.
 
 With **Calendar events** off (`time.calendarEvents`, on by default), under **Clock & Calendar** on
 **System › Date & Time** (see [System settings](settings-system.md)), the panel never contacts EDS.

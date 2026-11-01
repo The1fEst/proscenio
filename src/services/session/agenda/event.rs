@@ -13,6 +13,7 @@ pub struct Event {
     pub exceptions: Vec<Time>,
     pub extra_starts: Vec<Time>,
     pub recurrence_id: Option<Time>,
+    pub is_cancelled: bool,
 }
 
 impl Event {
@@ -23,7 +24,9 @@ impl Event {
                 .map(Property::text)
                 .unwrap_or_default()
         };
-        if read_text("STATUS").eq_ignore_ascii_case("CANCELLED") {
+        let recurrence_id = component.property("RECURRENCE-ID").and_then(Time::parse);
+        let is_cancelled = read_text("STATUS").eq_ignore_ascii_case("CANCELLED");
+        if is_cancelled && recurrence_id.is_none() {
             return None;
         }
         let read_times = |name: &str| -> Vec<Time> {
@@ -44,7 +47,11 @@ impl Event {
             uid: read_text("UID"),
             summary: read_text("SUMMARY"),
             location: read_text("LOCATION"),
-            start: Time::parse(component.property("DTSTART")?)?,
+            start: match component.property("DTSTART") {
+                Some(property) => Time::parse(property)?,
+                None if is_cancelled => recurrence_id.clone()?,
+                None => return None,
+            },
             end: component.property("DTEND").and_then(Time::parse),
             duration: component
                 .property("DURATION")
@@ -54,7 +61,8 @@ impl Event {
                 .map(|property| Rule::parse(&property.value)),
             exceptions: read_times("EXDATE"),
             extra_starts: read_times("RDATE"),
-            recurrence_id: component.property("RECURRENCE-ID").and_then(Time::parse),
+            recurrence_id,
+            is_cancelled,
         })
     }
 }
@@ -92,6 +100,16 @@ mod tests {
         assert_eq!(event.end.as_ref().unwrap().wall - event.start.wall, 3600);
         assert!(event.rule.is_some());
         assert_eq!(event.exceptions.len(), 3);
+    }
+
+    #[test]
+    fn a_cancelled_override_is_kept_to_remove_its_instance() {
+        let events = parse_events(
+            "BEGIN:VEVENT\nUID:a\nSTATUS:CANCELLED\nRECURRENCE-ID:20261111T100000Z\nEND:VEVENT",
+        );
+        assert_eq!(events.len(), 1);
+        assert!(events[0].is_cancelled);
+        assert_eq!(events[0].recurrence_id, Some(events[0].start.clone()));
     }
 
     #[test]

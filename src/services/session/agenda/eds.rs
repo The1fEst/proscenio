@@ -127,7 +127,7 @@ pub async fn watch(
         None,
         gio::DBusSignalFlags::NONE,
         move |signal| match signal.signal_name {
-            "Complete" => is_loaded.set(true),
+            "Complete" if !is_loaded.replace(true) => on_change(),
             "ObjectsAdded" | "ObjectsModified" | "ObjectsRemoved" if is_loaded.get() => on_change(),
             _ => {}
         },

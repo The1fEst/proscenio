@@ -322,6 +322,9 @@ impl Agenda {
     fn schedule_refresh(self: &Rc<Self>, index: usize, generation: u64) {
         {
             let mut state = self.state.borrow_mut();
+            if state.generation != generation {
+                return;
+            }
             let Some(connection) = state.connections.get_mut(index) else {
                 return;
             };
@@ -332,10 +335,40 @@ impl Agenda {
         }
         let agenda = self.clone();
         glib::timeout_add_local_once(Duration::from_millis(REFRESH_DELAY_MILLIS), move || {
-            if let Some(connection) = agenda.state.borrow_mut().connections.get_mut(index) {
-                connection.is_refresh_pending = false;
+            {
+                let mut state = agenda.state.borrow_mut();
+                if state.generation != generation {
+                    return;
+                }
+                if let Some(connection) = state.connections.get_mut(index) {
+                    connection.is_refresh_pending = false;
+                }
             }
             glib::spawn_future_local(async move { agenda.refresh(index, generation).await });
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_change_from_an_earlier_generation_does_not_mark_a_refresh_pending() {
+        let agenda = Agenda::new(None);
+        {
+            let mut state = agenda.state.borrow_mut();
+            state.generation = 2;
+            state.connections.push(Connection {
+                uid: "calendar".into(),
+                color: None,
+                calendar: None,
+                watch: None,
+                occurrences: Vec::new(),
+                is_refresh_pending: false,
+            });
+        }
+        agenda.schedule_refresh(0, 1);
+        assert!(!agenda.state.borrow().connections[0].is_refresh_pending);
     }
 }

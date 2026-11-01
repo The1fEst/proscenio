@@ -41,6 +41,9 @@ pub fn expand_events(
     }
     let mut occurrences = Vec::new();
     for event in events {
+        if event.is_cancelled {
+            continue;
+        }
         let first = zones.to_local(&event.start);
         let is_all_day = event.start.is_date();
         let length = match (&event.end, event.duration) {
@@ -57,18 +60,6 @@ pub fn expand_events(
         let mut starts = vec![first];
         if event.recurrence_id.is_none() {
             if let Some(rule) = &event.rule {
-                let excluded_starts: Vec<i64> = event
-                    .exceptions
-                    .iter()
-                    .map(|time| zones.to_local(time))
-                    .chain(
-                        replaced_starts
-                            .get(event.uid.as_str())
-                            .into_iter()
-                            .flatten()
-                            .copied(),
-                    )
-                    .collect();
                 let latest_start = rule.until.as_ref().map(|until| {
                     let local = zones.to_local(until);
                     if until.is_date() {
@@ -85,13 +76,25 @@ pub fn expand_events(
                     )
                     .into_iter()
                     .map(|wall| zones.to_local(&event.start.with_wall(wall)))
-                    .filter(|start| {
-                        !excluded_starts.contains(start)
-                            && latest_start.is_none_or(|latest| *start <= latest)
-                    })
+                    .filter(|start| latest_start.is_none_or(|latest| *start <= latest))
                     .collect();
             }
             starts.extend(event.extra_starts.iter().map(|time| zones.to_local(time)));
+            let excluded_starts: Vec<i64> = event
+                .exceptions
+                .iter()
+                .map(|time| zones.to_local(time))
+                .chain(
+                    replaced_starts
+                        .get(event.uid.as_str())
+                        .into_iter()
+                        .flatten()
+                        .copied(),
+                )
+                .collect();
+            starts.sort_unstable();
+            starts.dedup();
+            starts.retain(|start| !excluded_starts.contains(start));
         }
         for start in starts {
             let end = start + length;
@@ -310,6 +313,63 @@ mod tests {
         assert_eq!(
             days[&to_days(2026, 11, 6)][0].start,
             to_wall(2026, 11, 6, 16, 0)
+        );
+    }
+
+    #[test]
+    fn a_cancelled_instance_is_left_out_and_the_others_stay() {
+        let days = bucket_text(
+            "BEGIN:VEVENT\nUID:a\nSUMMARY:Review\nDTSTART:20261105T100000Z\nDTEND:20261105T110000Z\nRRULE:FREQ=DAILY;COUNT=3\nEND:VEVENT\n\
+             BEGIN:VEVENT\nUID:a\nSUMMARY:Review\nSTATUS:CANCELLED\nRECURRENCE-ID:20261106T100000Z\nDTSTART:20261106T100000Z\nEND:VEVENT",
+        );
+        assert_eq!(list_summaries(&days, to_days(2026, 11, 5)), ["Review"]);
+        assert!(list_summaries(&days, to_days(2026, 11, 6)).is_empty());
+        assert_eq!(list_summaries(&days, to_days(2026, 11, 7)), ["Review"]);
+    }
+
+    #[test]
+    fn extra_dates_follow_the_excluded_dates_and_never_repeat_a_series_instance() {
+        let days = bucket_text(
+            "BEGIN:VEVENT\nUID:a\nSUMMARY:Series\nDTSTART:20261105T100000Z\nRRULE:FREQ=DAILY;COUNT=3\n\
+             RDATE:20261106T100000Z,20261109T100000Z\nRDATE:20261110T100000Z\n\
+             EXDATE:20261107T100000Z,20261110T100000Z\nEND:VEVENT",
+        );
+        let mut dates: Vec<(i64, usize)> = days
+            .iter()
+            .map(|(date, list)| (*date, list.len()))
+            .collect();
+        dates.sort();
+        assert_eq!(
+            dates,
+            [
+                (to_days(2026, 11, 5), 1),
+                (to_days(2026, 11, 6), 1),
+                (to_days(2026, 11, 9), 1)
+            ]
+        );
+    }
+
+    #[test]
+    fn a_start_off_the_rule_pattern_is_still_the_first_of_the_counted_instances() {
+        let days = bucket_text(
+            "BEGIN:VEVENT\nUID:a\nSUMMARY:Off\nDTSTART:20261110T100000Z\nRRULE:FREQ=WEEKLY;BYDAY=FR;COUNT=3\nEND:VEVENT\n\
+             BEGIN:VEVENT\nUID:b\nSUMMARY:On\nDTSTART:20261110T100000Z\nRRULE:FREQ=WEEKLY;BYDAY=TU;COUNT=3\nEND:VEVENT",
+        );
+        let mut dates: Vec<(i64, &str)> = days
+            .iter()
+            .flat_map(|(date, list)| list.iter().map(|item| (*date, item.summary.as_str())))
+            .collect();
+        dates.sort();
+        assert_eq!(
+            dates,
+            [
+                (to_days(2026, 11, 10), "Off"),
+                (to_days(2026, 11, 10), "On"),
+                (to_days(2026, 11, 13), "Off"),
+                (to_days(2026, 11, 17), "On"),
+                (to_days(2026, 11, 20), "Off"),
+                (to_days(2026, 11, 24), "On"),
+            ]
         );
     }
 

@@ -101,13 +101,16 @@ impl Rule {
                 self.count_periods_before(frequency, first_day, from.div_euclid(SECONDS_PER_DAY))
             }
         };
-        let mut emitted_count = 0;
+        let mut emitted_count = 1;
         let mut starts = Vec::new();
+        if first >= from && first < to {
+            starts.push(first);
+        }
         while period <= MAX_PERIODS
             && self.find_period_start(frequency, first_day, period) <= to_day
         {
             for day in self.list_period_days(frequency, first_day, period) {
-                if day < first_day {
+                if day <= first_day {
                     continue;
                 }
                 emitted_count += 1;
@@ -429,11 +432,21 @@ mod tests {
         );
         assert_eq!(
             expand_dates("FREQ=MONTHLY;BYDAY=-1FR", first, first, to),
-            [(2026, 11, 27), (2026, 12, 25), (2027, 1, 29)]
+            [
+                (2026, 11, 10),
+                (2026, 11, 27),
+                (2026, 12, 25),
+                (2027, 1, 29)
+            ]
         );
         assert_eq!(
             expand_dates("FREQ=MONTHLY;BYMONTHDAY=-1", first, first, to),
-            [(2026, 11, 30), (2026, 12, 31), (2027, 1, 31)]
+            [
+                (2026, 11, 10),
+                (2026, 11, 30),
+                (2026, 12, 31),
+                (2027, 1, 31)
+            ]
         );
         assert_eq!(
             expand_dates(
@@ -442,7 +455,29 @@ mod tests {
                 first,
                 to
             ),
-            [(2026, 12, 1)]
+            [(2026, 11, 10), (2026, 12, 1)]
+        );
+    }
+
+    #[test]
+    fn the_start_is_always_the_first_instance_and_counts_toward_the_count() {
+        let first = to_days(2026, 11, 10);
+        let to = first + 100;
+        assert_eq!(
+            expand_dates("FREQ=WEEKLY;BYDAY=FR;COUNT=3", first, first, to),
+            [(2026, 11, 10), (2026, 11, 13), (2026, 11, 20)]
+        );
+        assert_eq!(
+            expand_dates("FREQ=WEEKLY;BYDAY=TU;COUNT=3", first, first, to),
+            [(2026, 11, 10), (2026, 11, 17), (2026, 11, 24)]
+        );
+        assert_eq!(
+            expand_dates("FREQ=WEEKLY;BYDAY=FR;COUNT=1", first, first, to),
+            [(2026, 11, 10)]
+        );
+        assert_eq!(
+            expand_dates("FREQ=WEEKLY;BYDAY=FR;COUNT=3", first, first + 1, to),
+            [(2026, 11, 13), (2026, 11, 20)]
         );
     }
 

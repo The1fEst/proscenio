@@ -102,7 +102,7 @@ pub fn parse_duration(value: &str) -> Option<i64> {
         seconds += number.parse::<i64>().ok()? * unit;
         number.clear();
     }
-    Some(sign * seconds)
+    number.is_empty().then_some(sign * seconds)
 }
 
 pub struct Zones {
@@ -243,6 +243,8 @@ mod tests {
         assert_eq!(parse_duration("-PT15M"), Some(-900));
         assert_eq!(parse_duration("1H"), None);
         assert_eq!(parse_duration("PT5X"), None);
+        assert_eq!(parse_duration("PT1H30"), None);
+        assert_eq!(parse_duration("P1W2"), None);
     }
 
     #[test]
