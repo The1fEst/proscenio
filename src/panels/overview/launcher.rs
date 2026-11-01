@@ -466,30 +466,26 @@ impl Launcher {
         let Some(emojis) = self.emojis() else {
             return Vec::new();
         };
-        let references: Vec<&SearchTarget> = emojis.names.iter().collect();
-        let indices: Vec<usize> = if search.is_empty() {
-            (0..emojis.lines.len()).collect()
-        } else if levenshtein::is_enabled() {
-            let lines = emojis.lines.iter().map(String::as_str);
-            levenshtein::rank(lines, search, levenshtein::text_match_score)
-        } else {
-            fuzzy::go(search, &references)
-        };
-        indices
-            .into_iter()
-            .filter_map(|index| emojis.lines.get(index))
-            .map(|line| {
-                let emoji = line.split_whitespace().next().unwrap_or("").to_owned();
-                Item {
-                    kind: tr("Emoji"),
-                    raw_entry: line.clone(),
-                    icon: emoji.clone(),
-                    icon_type: IconType::Text,
-                    verb: tr("Copy"),
-                    ..Item::new(cliphist::without_first_word(line), Run::Clipboard(emoji))
-                }
-            })
-            .collect()
+        fuzzy::rank_lines(
+            &emojis.lines,
+            &emojis.names,
+            search,
+            levenshtein::is_enabled(),
+        )
+        .into_iter()
+        .filter_map(|index| emojis.lines.get(index))
+        .map(|line| {
+            let emoji = line.split_whitespace().next().unwrap_or("").to_owned();
+            Item {
+                kind: tr("Emoji"),
+                raw_entry: line.clone(),
+                icon: emoji.clone(),
+                icon_type: IconType::Text,
+                verb: tr("Copy"),
+                ..Item::new(cliphist::without_first_word(line), Run::Clipboard(emoji))
+            }
+        })
+        .collect()
     }
 
     fn action_results(&self, query: &str) -> Vec<Item> {

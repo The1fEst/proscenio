@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 
+use crate::core::levenshtein;
+
 pub struct SearchTarget {
     lower: Vec<u16>,
     plain: Vec<u16>,
@@ -36,6 +38,23 @@ pub fn go(search: &str, targets: &[&SearchTarget]) -> Vec<usize> {
         .into_iter()
         .map(|(index, _)| index)
         .collect()
+}
+
+pub fn rank_lines(
+    lines: &[String],
+    targets: &[SearchTarget],
+    search: &str,
+    is_sloppy: bool,
+) -> Vec<usize> {
+    if search.is_empty() {
+        return (0..lines.len()).collect();
+    }
+    if is_sloppy {
+        let texts = lines.iter().map(String::as_str);
+        return levenshtein::rank(texts, search, levenshtein::text_match_score);
+    }
+    let references: Vec<&SearchTarget> = targets.iter().collect();
+    go(search, &references)
 }
 
 pub fn go_with_scores(search: &str, targets: &[&SearchTarget]) -> Vec<(usize, f64)> {
@@ -476,7 +495,7 @@ impl Queue {
 
 #[cfg(test)]
 mod tests {
-    use super::{go, prepare};
+    use super::{go, prepare, rank_lines};
 
     fn order(search: &str, targets: &[&str]) -> Vec<usize> {
         let search_targets: Vec<_> = targets.iter().map(|target| prepare(target)).collect();
@@ -532,6 +551,20 @@ mod tests {
         ("  ", &[]),
         ("Fi", &[5, 1, 0, 7, 4]),
     ];
+
+    #[test]
+    fn ranking_lines_keeps_every_line_for_an_empty_search_and_orders_by_the_chosen_matcher() {
+        let lines: Vec<String> = TARGETS.iter().map(|target| (*target).to_owned()).collect();
+        let targets: Vec<_> = lines.iter().map(|line| prepare(line)).collect();
+        let everything: Vec<usize> = (0..lines.len()).collect();
+        assert_eq!(rank_lines(&lines, &targets, "", false), everything);
+        assert_eq!(rank_lines(&lines, &targets, "", true), everything);
+        assert_eq!(
+            rank_lines(&lines, &targets, "fir", false),
+            order("fir", &TARGETS)
+        );
+        assert_eq!(rank_lines(&lines, &targets, "firewall", true)[0], 7);
+    }
 
     #[test]
     fn orders_results_as_the_shells_fuzzysort_does() {
