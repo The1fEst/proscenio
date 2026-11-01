@@ -46,6 +46,39 @@ Pair, Connect and Disconnect are inactive while that device is pairing or connec
 device trusted, waits 5 seconds for the bonding link to drop, and then tries to connect up to four
 times, 1.5 seconds apart. **Connecting** stops discovery too and gives up after 15 seconds.
 
+### Headset media buttons
+
+For the whole session the shell also offers BlueZ a media player, so the buttons of a Bluetooth
+headset or car kit (AVRCP) act on the [active player](media-controls.md#the-active-player). The
+player is `org.mpris.MediaPlayer2.Player` at `/dev/fEst/Proscenio/BluezPlayer` on the system bus.
+The shell registers it with `org.bluez.Media1.RegisterPlayer` on every adapter that has `Media1`,
+on an adapter that appears later, and again whenever BlueZ restarts. Turning the buttons off
+unregisters it (`UnregisterPlayer`), and an adapter that goes away takes the player with it. A
+registration that fails is tried again 30 seconds later, then after twice as long each time up to
+30 minutes, and `org.bluez.Error.AlreadyExists` counts as registered. It answers only calls from
+the owner of `org.bluez`, and anyone else gets `org.freedesktop.DBus.Error.AccessDenied`.
+
+| Method BlueZ calls | Active player |
+|---|---|
+| `Play`, `Pause`, `Stop` | the same method |
+| `PlayPause` | play or pause, as `mpris playPause` over [IPC](ipc.md) |
+| `Next` | next track, or the end of the track for a player that can only seek, as `mpris next` |
+| `Previous` | previous track |
+
+One of these methods that the active player does not allow, and any of them while there is no
+player, gets `org.freedesktop.DBus.Error.NotSupported`.
+
+The headset or car display sees the active player: its `PlaybackStatus` (`Stopped` without a
+player), a `Metadata` with the title, first artist, album and length, the buttons it allows
+(`CanControl`, `CanPlay`, `CanPause`, `CanGoNext`, `CanGoPrevious`), its `Position`, and the
+shell's name as `Identity`. A track with no title, artist, album or length has the track id
+`/org/mpris/MediaPlayer2/TrackList/NoTrack` and the position 0. Changes go to BlueZ alone as
+`PropertiesChanged`, each with the current `Position` last; a change of `Position` alone, such as a
+seek, is not sent.
+
+`bluetooth.mediaButtons` (default `true`) turns the buttons off: with `false` the player shows
+`Stopped`, and the shell unregisters it from every adapter.
+
 ### Pairing requests
 
 For the whole session the shell is BlueZ's default pairing agent (`org.bluez.Agent1` at

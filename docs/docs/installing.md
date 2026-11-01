@@ -161,7 +161,7 @@ works without it.
 | Service | What needs it |
 |---|---|
 | NetworkManager | Wi-Fi, Ethernet, VPN, the hotspot and the network indicators |
-| BlueZ | Bluetooth |
+| BlueZ | Bluetooth and headset media buttons |
 | UPower | the battery indicator and the power page |
 | power-profiles-daemon | the power profile toggle |
 | AccountsService | the Users page |

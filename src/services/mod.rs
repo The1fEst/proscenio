@@ -33,6 +33,7 @@ use crate::services::media::mpris::Mpris;
 use crate::services::media::recording::Recording;
 use crate::services::network::bluez::Bluez;
 use crate::services::network::bluezagent::BluezAgent;
+use crate::services::network::bluezplayer::BluezPlayer;
 use crate::services::network::net::Net;
 use crate::services::network::warp::Warp;
 use crate::services::overlay::notifications::Notifications;
@@ -84,13 +85,14 @@ pub struct Services {
     dark_mode_schedule: std::rc::Rc<DarkModeSchedule>,
     _workspace_group_writer: std::rc::Rc<WorkspaceGroupWriter>,
     _hyprlock_clock_writer: HyprlockClockWriter,
+    _bluez_player: Option<std::rc::Rc<BluezPlayer>>,
 }
 
 impl Services {
     pub fn new(config: &Config) -> Self {
         let system = gio::bus_get_sync(gio::BusType::System, gio::Cancellable::NONE).ok();
         let session = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE).ok();
-        let session_for_mpris = session.clone();
+        let mpris = Mpris::new(session.clone());
         let events = Events::default();
         let hypr = HyprState::new(&events);
         let states = States::new();
@@ -104,6 +106,7 @@ impl Services {
         let bluez = Bluez::new(system.clone());
         let services = Services {
             bluez_agent: BluezAgent::new(system.clone(), &bluez),
+            _bluez_player: BluezPlayer::new(system.clone(), &bluez, &mpris),
             dark_mode_schedule: DarkModeSchedule::new(&desktop_session, &location),
             background: BackgroundTasks::start(),
             resources: std::rc::Rc::new(Resources::default()),
@@ -137,7 +140,7 @@ impl Services {
             warp: Warp::new(),
             todo: Todo::new(),
             timer: Timer::new(),
-            mpris: Mpris::new(session_for_mpris),
+            mpris,
         };
         services.register_tasks();
         services

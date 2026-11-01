@@ -28,6 +28,7 @@ pub struct Bluez {
     pub is_discovering: Rc<Cell<bool>>,
     pub connected_name: Rc<RefCell<Option<String>>>,
     pub adapter: Rc<RefCell<Option<String>>>,
+    pub media_adapters: Rc<RefCell<Vec<String>>>,
     pub devices: Rc<RefCell<Vec<Device>>>,
     system: Option<gio::DBusConnection>,
     is_refresh_queued: Rc<Cell<bool>>,
@@ -42,6 +43,7 @@ impl Bluez {
             is_discovering: Rc::new(Cell::new(false)),
             connected_name: Rc::new(RefCell::new(None)),
             adapter: Rc::new(RefCell::new(None)),
+            media_adapters: Rc::new(RefCell::new(Vec::new())),
             devices: Rc::new(RefCell::new(Vec::new())),
             system,
             is_refresh_queued: Rc::new(Cell::new(false)),
@@ -270,6 +272,7 @@ impl Bluez {
             let mut adapter = None;
             let mut is_powered = false;
             let mut is_discovering = false;
+            let mut media_adapters = Vec::new();
             let mut devices = Vec::new();
             for entry in objects.iter() {
                 let path = entry
@@ -291,6 +294,7 @@ impl Bluez {
                             is_powered = boolean(&properties, "Powered");
                             is_discovering = boolean(&properties, "Discovering");
                         }
+                        "org.bluez.Media1" => media_adapters.push(path.clone()),
                         "org.bluez.Battery1" => {
                             battery = lookup(&properties, "Percentage")
                                 .and_then(|value| value.get::<u8>())
@@ -328,6 +332,7 @@ impl Bluez {
             bluez.is_available.set(adapter.is_some());
             bluez.is_powered.set(is_powered);
             bluez.is_discovering.set(is_discovering);
+            bluez.media_adapters.replace(media_adapters);
             bluez.adapter.replace(adapter);
             bluez.devices.replace(devices);
             bluez.announce();

@@ -114,3 +114,6 @@ first player.
 ```bash
 proscenio ipc call mpris playPause
 ```
+
+The buttons of a Bluetooth headset act on the active player too; see
+[Headset media buttons](settings-devices.md#headset-media-buttons).

@@ -3,9 +3,9 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
 use super::{
-    CHEATSHEET_SUPER_KEY, Config, CornerStyle, DARK_MODE_DARK_FROM, DARK_MODE_LIGHT_FROM,
-    DATE_FORMAT, DOCK_PINNED_APPS, NIGHT_FROM, NIGHT_TO, NIGHT_TRANSITION_MINUTES, RegionOptions,
-    ScheduleMode, TIME_FORMAT,
+    BLUETOOTH_MEDIA_BUTTONS, CHEATSHEET_SUPER_KEY, Config, CornerStyle, DARK_MODE_DARK_FROM,
+    DARK_MODE_LIGHT_FROM, DATE_FORMAT, DOCK_PINNED_APPS, NIGHT_FROM, NIGHT_TO,
+    NIGHT_TRANSITION_MINUTES, RegionOptions, ScheduleMode, TIME_FORMAT,
 };
 use crate::core::paths;
 use crate::platform::hyprland::hypr;
@@ -434,6 +434,10 @@ impl Config {
                 max_allowed: number(&protection, "maxAllowed", 99.0) / 100.0,
             },
             audio_aliases: read_aliases(root),
+            has_bluetooth_media_buttons: root
+                .pointer(BLUETOOTH_MEDIA_BUTTONS)
+                .and_then(Value::as_bool)
+                .unwrap_or(true),
         }
     }
 }
@@ -568,6 +572,14 @@ mod tests {
             Config::parse(&json!({})).night_schedule,
             ScheduleMode::Times
         );
+    }
+
+    #[test]
+    fn bluetooth_media_buttons_control_the_player_unless_turned_off() {
+        let parse = |root: Value| Config::parse(&root).has_bluetooth_media_buttons;
+        assert!(parse(json!({})));
+        assert!(parse(json!({ "bluetooth": { "mediaButtons": "no" } })));
+        assert!(!parse(json!({ "bluetooth": { "mediaButtons": false } })));
     }
 
     #[test]

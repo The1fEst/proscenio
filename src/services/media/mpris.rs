@@ -11,7 +11,7 @@ use crate::platform::dbus;
 const MPRIS: &str = "org.mpris.MediaPlayer2";
 const OBJECT: &str = "/org/mpris/MediaPlayer2";
 const INTERFACE: &str = "org.mpris.MediaPlayer2.Player";
-const NO_TRACK: &str = "/org/mpris/MediaPlayer2/TrackList/NoTrack";
+pub const NO_TRACK: &str = "/org/mpris/MediaPlayer2/TrackList/NoTrack";
 const DUPLICATE_WINDOW_MICROS: u64 = 2_000_000;
 
 #[derive(Clone, Default)]
@@ -23,12 +23,14 @@ pub struct Track {
     pub track_id: String,
     pub title: String,
     pub artist: String,
+    pub album: String,
     pub art: String,
     pub url: String,
     pub position: i64,
     pub length: i64,
     pub is_length_supported: bool,
     pub is_playing: bool,
+    pub is_stopped: bool,
     pub can_seek: bool,
     pub can_control: bool,
     pub can_play: bool,
@@ -45,6 +47,10 @@ impl Track {
             } else {
                 self.can_play
             }
+    }
+
+    pub fn can_skip(&self) -> bool {
+        self.can_go_next || self.end_position().is_some()
     }
 
     fn end_position(&self) -> Option<i64> {
@@ -446,6 +452,7 @@ async fn read_track(session: &gio::DBusConnection, bus: &str) -> Track {
             .unwrap_or(false)
     };
     let length = entry("mpris:length").and_then(|value| length_of(&value));
+    let status = dbus::string_property(session, bus, OBJECT, INTERFACE, "PlaybackStatus").await;
     Track {
         bus: bus.to_owned(),
         pid: None,
@@ -469,6 +476,9 @@ async fn read_track(session: &gio::DBusConnection, bus: &str) -> Track {
                     .next()
             })
             .unwrap_or_default(),
+        album: entry("xesam:album")
+            .and_then(|value| value.str().map(str::to_owned))
+            .unwrap_or_default(),
         art: entry("mpris:artUrl")
             .and_then(|value| value.str().map(str::to_owned))
             .unwrap_or_default(),
@@ -478,8 +488,8 @@ async fn read_track(session: &gio::DBusConnection, bus: &str) -> Track {
         position: read_position(session, bus).await.unwrap_or(0),
         length: length.unwrap_or(0),
         is_length_supported: length.is_some(),
-        is_playing: dbus::string_property(session, bus, OBJECT, INTERFACE, "PlaybackStatus").await
-            == Some("Playing".to_owned()),
+        is_playing: status.as_deref() == Some("Playing"),
+        is_stopped: status.as_deref() == Some("Stopped"),
         can_seek: flag("CanSeek").await,
         can_control: flag("CanControl").await,
         can_play: flag("CanPlay").await,

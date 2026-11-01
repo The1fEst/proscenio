@@ -30,6 +30,7 @@ pub const NIGHT_TO: &str = "06:30";
 pub const NIGHT_TRANSITION_MINUTES: i32 = 30;
 pub const DARK_MODE_DARK_FROM: &str = "20:00";
 pub const DARK_MODE_LIGHT_FROM: &str = "07:00";
+pub const BLUETOOTH_MEDIA_BUTTONS: &str = "/bluetooth/mediaButtons";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ScheduleMode {
@@ -245,6 +246,7 @@ pub struct Config {
     pub sounds_theme: String,
     pub protection: crate::services::media::audio::Protection,
     pub audio_aliases: HashMap<String, String>,
+    pub has_bluetooth_media_buttons: bool,
 }
 
 impl Config {
