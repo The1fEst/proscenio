@@ -12,6 +12,7 @@ pub mod listeners;
 pub mod paths;
 pub mod persistent;
 pub mod process;
+pub mod qr;
 pub mod scope;
 pub mod shell;
 pub mod sun;
