@@ -382,7 +382,7 @@ impl BluezAgent {
     }
 
     fn follow_owner(self: &Rc<Self>, system: &gio::DBusConnection) {
-        let id = gio::bus_watch_name_on_connection(
+        gio::bus_watch_name_on_connection(
             system,
             BUS,
             gio::BusNameWatcherFlags::NONE,
@@ -407,7 +407,6 @@ impl BluezAgent {
                 }
             },
         );
-        std::mem::forget(id);
     }
 }
 
