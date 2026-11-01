@@ -645,7 +645,7 @@
   "Rate (per second)": "Taxa (por segundo)",
   "Reboot": "Reiniciar",
   "Reboot to firmware settings": "Reiniciar na BIOS/Firmware",
-  "Reboot to Windows": "Reiniciar no Windows",
+  "Reboot into…": "Reiniciar em…",
   "Record": "Gravar",
   "Record a region": "Gravar uma região",
   "Record region": "Gravar região",
@@ -1630,5 +1630,7 @@
   "Slideshow": "Apresentação de slides",
   "Interval (minutes)": "Intervalo (minutos)",
   "Order": "Ordem",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Troca o papel de parede por uma imagem da pasta do seletor. Com papel de parede por monitor, cada monitor recebe a sua"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Troca o papel de parede por uma imagem da pasta do seletor. Com papel de parede por monitor, cada monitor recebe a sua",
+  "Running now": "Em execução",
+  "No boot entries": "Nenhuma entrada de inicialização"
 }

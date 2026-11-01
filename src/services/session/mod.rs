@@ -2,6 +2,7 @@ pub mod accounts;
 pub mod agenda;
 pub mod appearance;
 pub mod background;
+pub mod boot;
 pub mod darkmode;
 pub mod deadline;
 pub mod deadlineipc;
@@ -26,6 +27,7 @@ use crate::core::process::{self, detach};
 use crate::core::{persistent, watch};
 use crate::services::hyprland::screencolor::{NEUTRAL_TEMPERATURE, ScreenColor};
 use crate::services::session::deadline::{Deadline, Hold};
+use boot::BootNumber;
 use location::Location;
 use schedule::Span;
 
@@ -482,23 +484,15 @@ impl Session {
         ]);
     }
 
-    pub fn reboot_to_windows(&self) {
+    pub fn reboot_into(&self, number: BootNumber) {
         close_all_windows();
-        std::thread::spawn(|| {
-            let Some(entry) = crate::core::process::output(&["efibootmgr"])
-                .as_deref()
-                .and_then(windows_entry)
-            else {
-                eprintln!(
-                    "boot-next-windows: no 'Windows Boot Manager' entry in the UEFI boot list"
-                );
-                return;
-            };
-            if !crate::core::process::run(&["pkexec", "efibootmgr", "--bootnext", &entry]) {
+        std::thread::spawn(move || {
+            let number = number.to_string();
+            if !process::run(&["pkexec", "efibootmgr", "--bootnext", &number]) {
                 return;
             }
-            if !crate::core::process::run(&["systemctl", "reboot"]) {
-                crate::core::process::run(&["loginctl", "reboot"]);
+            if !process::run(&["systemctl", "reboot"]) {
+                process::run(&["loginctl", "reboot"]);
             }
         });
     }
@@ -580,22 +574,6 @@ fn close_all_windows() {
     {
         detach(&["kill", &pid.to_string()]);
     }
-}
-
-fn windows_entry(boot_list: &str) -> Option<String> {
-    boot_list.lines().find_map(|line| {
-        let rest = line.strip_prefix("Boot")?;
-        let number = rest.get(..4)?;
-        if !number.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-            return None;
-        }
-        let label = rest[4..].strip_prefix('*').unwrap_or(&rest[4..]);
-        if !label.starts_with(char::is_whitespace) {
-            return None;
-        }
-        let tail = label.trim_start().strip_prefix("Windows Boot Manager")?;
-        (tail.is_empty() || tail.starts_with(char::is_whitespace)).then(|| number.to_owned())
-    })
 }
 
 #[cfg(test)]
@@ -750,26 +728,6 @@ mod tests {
             "19.30", "7pm", "24:00", "12:60", "12:5", "12", "", "1:2:3", "-1:30",
         ] {
             assert_eq!(parse_clock_time(wrong), None, "{wrong}");
-        }
-    }
-
-    #[test]
-    fn windows_entry_matches_what_the_script_grepped_for() {
-        let cases = [
-            (
-                "BootCurrent: 0001\nBootOrder: 0001,0000\nBoot0000* Windows Boot Manager\tHD(1,GPT)\nBoot0001* Linux Boot Manager\tHD(1,GPT)\n",
-                Some("0000"),
-            ),
-            ("Boot000A  Windows Boot Manager\n", Some("000A")),
-            ("Boot0003* Windows Boot Manager2\tHD\n", None),
-            (
-                "Boot0004* Linux\nBoot0005* Windows Boot Manager",
-                Some("0005"),
-            ),
-            ("BootCurrent: 0001\n", None),
-        ];
-        for (list, expected) in cases {
-            assert_eq!(windows_entry(list).as_deref(), expected);
         }
     }
 }

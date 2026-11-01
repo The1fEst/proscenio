@@ -647,7 +647,7 @@
   "Rate (per second)": "频率（每秒）",
   "Reboot": "重启",
   "Reboot to firmware settings": "重启到固件设置",
-  "Reboot to Windows": "重启到 Windows",
+  "Reboot into…": "重启到…",
   "Record": "屏幕录制",
   "Record a region": "录制区域",
   "Record region": "录制区域",
@@ -1630,5 +1630,7 @@
   "Slideshow": "幻灯片",
   "Interval (minutes)": "间隔（分钟）",
   "Order": "顺序",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "将壁纸换成壁纸选择器所在文件夹中的图片。启用每个显示器单独壁纸时，每个显示器使用各自的图片"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "将壁纸换成壁纸选择器所在文件夹中的图片。启用每个显示器单独壁纸时，每个显示器使用各自的图片",
+  "Running now": "当前运行",
+  "No boot entries": "没有启动项"
 }

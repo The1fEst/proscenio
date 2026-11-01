@@ -187,7 +187,7 @@ settings page it belongs to names it along with the package it comes in.
 | `ddcutil` | ddcutil | external monitors' brightness cannot change |
 | `djpeg` | libjpeg-turbo | the shell cannot read colors from a JPEG wallpaper |
 | `easyeffects` | easyeffects | the EasyEffects toggle does nothing |
-| `efibootmgr` | efibootmgr | the session screen cannot restart into Windows |
+| `efibootmgr` | efibootmgr | the session screen cannot reboot into a chosen boot entry |
 | `gnome-keyring-daemon` | gnome-keyring | unlocking leaves the keyring as it is |
 | `grim`, `magick`, `wl-copy`, `satty` | grim, imagemagick, wl-clipboard, satty | screenshots and the snip actions fail |
 | `hypridle` | hypridle | the session never blanks, locks or suspends on its own |

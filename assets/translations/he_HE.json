@@ -647,7 +647,7 @@
   "Rate (per second)": "קצב (בשנייה)",
   "Reboot": "הפעל מחדש",
   "Reboot to firmware settings": "הפעל מחדש להגדרות קושחה",
-  "Reboot to Windows": "הפעלה מחדש אל Windows",
+  "Reboot into…": "הפעלה מחדש אל…",
   "Record": "הקלטה",
   "Record a region": "הקלטת אזור",
   "Record region": "הקלטת אזור",
@@ -1630,5 +1630,7 @@
   "Slideshow": "מצגת",
   "Interval (minutes)": "מרווח (דקות)",
   "Order": "סדר",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "מחליף את הרקע בתמונה מהתיקייה של בורר הרקעים. עם רקע לכל צג, כל צג מקבל תמונה משלו"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "מחליף את הרקע בתמונה מהתיקייה של בורר הרקעים. עם רקע לכל צג, כל צג מקבל תמונה משלו",
+  "Running now": "פועל כעת",
+  "No boot entries": "אין רשומות אתחול"
 }

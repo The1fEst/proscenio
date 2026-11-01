@@ -647,7 +647,7 @@
   "Rate (per second)": "頻度（毎秒）",
   "Reboot": "再起動",
   "Reboot to firmware settings": "ファームウェア設定で再起動",
-  "Reboot to Windows": "Windows で再起動",
+  "Reboot into…": "起動先を選んで再起動…",
   "Record": "録画",
   "Record a region": "範囲を録画",
   "Record region": "範囲の録画",
@@ -1630,5 +1630,7 @@
   "Slideshow": "スライドショー",
   "Interval (minutes)": "間隔(分)",
   "Order": "順序",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "壁紙セレクターのフォルダーにある画像へ壁紙を切り替えます。モニターごとの壁紙では、各モニターが別々の画像になります"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "壁紙セレクターのフォルダーにある画像へ壁紙を切り替えます。モニターごとの壁紙では、各モニターが別々の画像になります",
+  "Running now": "実行中",
+  "No boot entries": "ブートエントリがありません"
 }

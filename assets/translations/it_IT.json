@@ -645,7 +645,7 @@
   "Rate (per second)": "Frequenza (al secondo)",
   "Reboot": "Riavvia",
   "Reboot to firmware settings": "Riavvia alle impostazioni firmware",
-  "Reboot to Windows": "Riavvia in Windows",
+  "Reboot into…": "Riavvia in…",
   "Record": "Registra",
   "Record a region": "Registra una regione",
   "Record region": "Registra regione",
@@ -1630,5 +1630,7 @@
   "Slideshow": "Presentazione",
   "Interval (minutes)": "Intervallo (minuti)",
   "Order": "Ordine",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Cambia lo sfondo con un'immagine della cartella del selettore. Con uno sfondo per monitor, ogni monitor ottiene la propria"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Cambia lo sfondo con un'immagine della cartella del selettore. Con uno sfondo per monitor, ogni monitor ottiene la propria",
+  "Running now": "In esecuzione",
+  "No boot entries": "Nessuna voce di avvio"
 }

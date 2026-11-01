@@ -645,7 +645,7 @@
   "Rate (per second)": "Rate (per second)",
   "Reboot": "Reboot",
   "Reboot to firmware settings": "Reboot to firmware settings",
-  "Reboot to Windows": "Reboot to Windows",
+  "Reboot into…": "Reboot into…",
   "Record": "Record",
   "Record a region": "Record a region",
   "Record region": "Record region",
@@ -1630,5 +1630,7 @@
   "Slideshow": "Slideshow",
   "Interval (minutes)": "Interval (minutes)",
   "Order": "Order",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture",
+  "Running now": "Running now",
+  "No boot entries": "No boot entries"
 }

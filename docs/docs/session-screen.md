@@ -31,7 +31,7 @@ Eight buttons sit in a grid of four columns:
 | Lock | `loginctl lock-session` |
 | Sleep | `systemctl suspend`, or `loginctl suspend` if that fails |
 | Logout | Closes every window, then `systemctl --user stop graphical-session.target` and `pkill -i Hyprland` |
-| Reboot to Windows | Closes every window, makes the firmware's "Windows Boot Manager" entry the next boot with `efibootmgr`, then reboots |
+| Reboot into… | Opens the list of the firmware's boot entries; picking one closes every window, makes that entry the next boot with `efibootmgr`, then reboots |
 | Hibernate | `systemctl hibernate`, or `loginctl hibernate` |
 | Shutdown | Closes every window, then `systemctl poweroff`, or `loginctl poweroff` |
 | Reboot | Closes every window, then `reboot`, or `loginctl reboot` |
@@ -48,10 +48,19 @@ point that at proscenio.
 the shell included, stop cleanly before Hyprland goes. The command runs in a scope of its own, so
 stopping the shell does not cut it short.
 
-**Reboot to Windows** reads the boot entries with `efibootmgr`, sets `BootNext` to the one labeled
-"Windows Boot Manager" through `pkexec efibootmgr --bootnext`, which asks for authentication, and
-reboots. Without such an entry, or if authentication fails, the windows are closed all the same, but
-the machine does not reboot.
+### Reboot into…
+
+**Reboot into…** replaces the grid with a list of the labeled boot entries that `efibootmgr`
+prints, inactive ones included, since the firmware boots those as the next boot all the same. Each
+row shows the entry's label and its four-digit number; the entry the machine booted from says
+"Running now". The rows follow `BootOrder`, and entries missing from it come after, as
+`efibootmgr` lists them. When exactly one label contains "Windows Boot Manager", that entry is
+first, so Enter twice reboots into Windows.
+
+Picking a row closes every window, sets `BootNext` to that entry's number with
+`pkexec efibootmgr --bootnext`, which asks for authentication, and reboots. If authentication
+fails, the windows are closed all the same, but the machine does not reboot. With no entries, the
+caption says "No boot entries".
 
 ## Moving around
 
@@ -66,6 +75,11 @@ When the screen opens, **Lock** has the focus. Under the grid, a caption names t
 | Click anywhere else | Closes the screen |
 
 Running an action closes the screen.
+
+In the list of **Reboot into…**, the first row has the focus and the caption names the focused
+entry. Up and Down move between the rows and stop at the ends, Enter or a click reboots into the
+focused entry, and Escape goes back to the grid. Holding Enter down does not repeat it, so the key
+that opened the list does not pick an entry too.
 
 ## Warnings
 
@@ -82,4 +96,5 @@ shows a warning under the grid for each it finds:
 Each monitor the shell draws on has its own session screen, and the shortcuts and IPC calls act on
 the focused monitor's. It is a surface on the `overlay` layer, namespace `proscenio:session`,
 anchored to every edge and taking the keyboard exclusively while it is shown. The window is
-`src/panels/sessionscreen.rs`, and the actions are in `src/services/session/mod.rs`.
+`src/panels/sessionscreen.rs`, the actions are in `src/services/session/mod.rs`, and the boot
+entries are read in `src/services/session/boot.rs`.

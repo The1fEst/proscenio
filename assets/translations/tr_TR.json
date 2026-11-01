@@ -645,7 +645,7 @@
   "Rate (per second)": "Hız (saniyede)",
   "Reboot": "Yeniden Başlat",
   "Reboot to firmware settings": "Firmware ayarlarına yeniden başlat",
-  "Reboot to Windows": "Windows'a yeniden başlat",
+  "Reboot into…": "Başka sisteme yeniden başlat…",
   "Record": "Kaydet",
   "Record a region": "Bir bölgeyi kaydet",
   "Record region": "Bölge kaydı",
@@ -1630,5 +1630,7 @@
   "Slideshow": "Slayt gösterisi",
   "Interval (minutes)": "Aralık (dakika)",
   "Order": "Sıra",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Duvar kâğıdını duvar kâğıdı seçicinin klasöründeki bir resimle değiştirir. Monitör başına duvar kâğıdında her monitör kendi resmini alır"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Duvar kâğıdını duvar kâğıdı seçicinin klasöründeki bir resimle değiştirir. Monitör başına duvar kâğıdında her monitör kendi resmini alır",
+  "Running now": "Şu an çalışıyor",
+  "No boot entries": "Önyükleme girdisi yok"
 }

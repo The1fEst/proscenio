@@ -647,7 +647,7 @@
   "Rate (per second)": "Tần suất (mỗi giây)",
   "Reboot": "Khởi động lại",
   "Reboot to firmware settings": "Khởi động lại vào cài đặt firmware",
-  "Reboot to Windows": "Khởi động lại vào Windows",
+  "Reboot into…": "Khởi động lại vào…",
   "Record": "Quay",
   "Record a region": "Quay một vùng",
   "Record region": "Quay vùng",
@@ -1630,5 +1630,7 @@
   "Slideshow": "Trình chiếu",
   "Interval (minutes)": "Khoảng cách (phút)",
   "Order": "Thứ tự",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Đổi hình nền thành một ảnh trong thư mục của trình chọn hình nền. Với hình nền theo từng màn hình, mỗi màn hình có ảnh riêng"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Đổi hình nền thành một ảnh trong thư mục của trình chọn hình nền. Với hình nền theo từng màn hình, mỗi màn hình có ảnh riêng",
+  "Running now": "Đang chạy",
+  "No boot entries": "Không có mục khởi động"
 }

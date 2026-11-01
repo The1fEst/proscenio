@@ -647,7 +647,7 @@
   "Rate (per second)": "Частота (за секунду)",
   "Reboot": "Перезапуск",
   "Reboot to firmware settings": "Перезапуск в параметри UEFI/BIOS",
-  "Reboot to Windows": "Перезавантажитися у Windows",
+  "Reboot into…": "Перезавантажитися в…",
   "Record": "Запис",
   "Record a region": "Записати область",
   "Record region": "Запис області",
@@ -1630,5 +1630,7 @@
   "Slideshow": "Слайд-шоу",
   "Interval (minutes)": "Інтервал (хвилини)",
   "Order": "Порядок",
-  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Змінює шпалери на зображення з теки вибору шпалер. Якщо шпалери задано для кожного монітора, кожен монітор отримує своє зображення"
+  "Changes the wallpaper to a picture from the wallpaper selector's folder. With a wallpaper per monitor, each monitor gets its own picture": "Змінює шпалери на зображення з теки вибору шпалер. Якщо шпалери задано для кожного монітора, кожен монітор отримує своє зображення",
+  "Running now": "Запущена зараз",
+  "No boot entries": "Немає записів завантаження"
 }
