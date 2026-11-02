@@ -528,9 +528,10 @@ impl Screens {
                 set_sidebar_open(false);
             }
         });
+        let left_sidebar = leftsidebar::build(app, theme, services, monitor, scope);
         Panels {
-            left_sidebar: leftsidebar::build(app, theme, services, monitor, scope),
-            calendar: calendar::build(app, config, theme, services, monitor, scope),
+            calendar: calendar::build(app, config, theme, services, &left_sidebar, monitor, scope),
+            left_sidebar,
             media: mediacontrols::build(app, config, services, theme, monitor, scope),
             volume_mixer: mixer::build(
                 app,

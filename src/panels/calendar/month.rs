@@ -86,7 +86,12 @@ impl Month {
     }
 }
 
-pub fn build(theme: &SharedTheme, agenda: &Rc<Agenda>, scope: &Scope) -> Rc<Month> {
+pub fn build(
+    theme: &SharedTheme,
+    agenda: &Rc<Agenda>,
+    open_note: Rc<dyn Fn(u64) -> bool>,
+    scope: &Scope,
+) -> Rc<Month> {
     let shift = Rc::new(Cell::new(0i32));
     let selection: Rc<Cell<Option<i64>>> = Rc::default();
     let window = Rc::new(Cell::new(Window {
@@ -178,7 +183,7 @@ pub fn build(theme: &SharedTheme, agenda: &Rc<Agenda>, scope: &Scope) -> Rc<Mont
         column.append(&line);
     }
 
-    let event_list = events::build_list(theme);
+    let event_list = events::build_list(theme, open_note);
     event_list.widget.set_margin_bottom(MARGIN);
     column.append(&event_list.widget);
 

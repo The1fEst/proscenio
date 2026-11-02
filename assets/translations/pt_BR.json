@@ -1638,5 +1638,6 @@
   "%1 characters": ["%1 caractere", "%1 caracteres"],
   "Find": "Localizar",
   "%1 of %2": "%1 de %2",
-  "Notepad": "Bloco de notas"
+  "Notepad": "Bloco de notas",
+  "This note no longer exists": "Esta nota não existe mais"
 }

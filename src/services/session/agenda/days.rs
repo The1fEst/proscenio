@@ -19,6 +19,7 @@ pub struct Occurrence {
     pub is_all_day: bool,
     pub summary: String,
     pub location: String,
+    pub note_id: Option<u64>,
     pub color: Option<String>,
 }
 
@@ -105,6 +106,7 @@ pub fn expand_events(
                     is_all_day,
                     summary: event.summary.clone(),
                     location: event.location.clone(),
+                    note_id: event.note_id,
                     color: color.map(str::to_owned),
                 });
             }
@@ -199,6 +201,16 @@ mod tests {
         assert_eq!(entries[0].start, to_wall(2026, 11, 5, 0, 30));
         assert_eq!(entries[0].end, to_wall(2026, 11, 5, 1, 30));
         assert_eq!(entries[0].color.as_deref(), Some("#62a0ea"));
+    }
+
+    #[test]
+    fn an_occurrence_keeps_the_note_of_its_event_on_every_day() {
+        let days = bucket_text(
+            "BEGIN:VEVENT\nUID:a\nDTSTART:20261104T223000\nDTEND:20261105T013000\nX-PROSCENIO-NOTE:5\nEND:VEVENT",
+        );
+        for day in [to_days(2026, 11, 4), to_days(2026, 11, 5)] {
+            assert_eq!(days[&day][0].note_id, Some(5));
+        }
     }
 
     #[test]

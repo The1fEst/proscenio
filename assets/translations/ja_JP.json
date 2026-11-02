@@ -1638,5 +1638,6 @@
   "%1 characters": ["%1文字"],
   "Find": "検索",
   "%1 of %2": "%1 / %2",
-  "Notepad": "メモ帳"
+  "Notepad": "メモ帳",
+  "This note no longer exists": "このメモはもう存在しません"
 }

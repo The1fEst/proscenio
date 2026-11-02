@@ -2,10 +2,13 @@ use super::recurrence::Rule;
 use super::time::{Time, parse_duration};
 use crate::core::icalendar::{self, Component, Property};
 
+pub const NOTE_URL_PREFIX: &str = "proscenio://note/";
+
 pub struct Event {
     pub uid: String,
     pub summary: String,
     pub location: String,
+    pub note_id: Option<u64>,
     pub start: Time,
     pub end: Option<Time>,
     pub duration: Option<i64>,
@@ -47,6 +50,7 @@ impl Event {
             uid: read_text("UID"),
             summary: read_text("SUMMARY"),
             location: read_text("LOCATION"),
+            note_id: read_note_id(component),
             start: match component.property("DTSTART") {
                 Some(property) => Time::parse(property)?,
                 None if is_cancelled => recurrence_id.clone()?,
@@ -65,6 +69,21 @@ impl Event {
             is_cancelled,
         })
     }
+}
+
+fn read_note_id(component: &Component) -> Option<u64> {
+    component
+        .property("X-PROSCENIO-NOTE")
+        .and_then(|property| property.value.trim().parse().ok())
+        .or_else(|| {
+            component
+                .property("URL")?
+                .value
+                .trim()
+                .strip_prefix(NOTE_URL_PREFIX)?
+                .parse()
+                .ok()
+        })
 }
 
 pub fn parse_events(text: &str) -> Vec<Event> {
@@ -100,6 +119,18 @@ mod tests {
         assert_eq!(event.end.as_ref().unwrap().wall - event.start.wall, 3600);
         assert!(event.rule.is_some());
         assert_eq!(event.exceptions.len(), 3);
+    }
+
+    #[test]
+    fn the_note_comes_from_its_property_or_else_from_the_proscenio_url() {
+        let events = parse_events(
+            "BEGIN:VEVENT\nUID:a\nDTSTART:20261104\nX-PROSCENIO-NOTE:7\nURL:proscenio://note/9\nEND:VEVENT\n\
+             BEGIN:VEVENT\nUID:b\nDTSTART:20261104\nURL:proscenio://note/12\nEND:VEVENT\n\
+             BEGIN:VEVENT\nUID:c\nDTSTART:20261104\nURL:https://example.com/note/3\nEND:VEVENT\n\
+             BEGIN:VEVENT\nUID:d\nDTSTART:20261104\nX-PROSCENIO-NOTE:x\nEND:VEVENT\n",
+        );
+        let ids: Vec<Option<u64>> = events.iter().map(|event| event.note_id).collect();
+        assert_eq!(ids, [Some(7), Some(12), None, None]);
     }
 
     #[test]

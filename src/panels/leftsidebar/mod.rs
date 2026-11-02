@@ -62,6 +62,15 @@ impl LeftSidebar {
         }
     }
 
+    pub fn open_note(self: &Rc<Self>, id: u64) -> bool {
+        if self.notes.status(id).is_none() {
+            return false;
+        }
+        self.notes.select(id);
+        self.open();
+        true
+    }
+
     pub fn close(self: &Rc<Self>) {
         if self.window.is_visible() {
             self.hide();

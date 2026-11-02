@@ -1638,5 +1638,6 @@
   "%1 characters": ["%1 ký tự"],
   "Find": "Tìm",
   "%1 of %2": "%1/%2",
-  "Notepad": "Sổ ghi chú"
+  "Notepad": "Sổ ghi chú",
+  "This note no longer exists": "Ghi chú này không còn tồn tại"
 }

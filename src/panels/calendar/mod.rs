@@ -15,6 +15,7 @@ use std::rc::Rc;
 use crate::core::config::Config;
 use crate::core::persistent;
 use crate::core::scope::Scope;
+use crate::panels::leftsidebar::LeftSidebar;
 use crate::platform::wayland::grab;
 use crate::services::Services;
 use crate::ui::anim::{EMPHASIZED_DECEL, EXPRESSIVE_EFFECTS, Tween};
@@ -244,6 +245,7 @@ pub fn build(
     config: &Rc<Config>,
     theme: &SharedTheme,
     services: &Rc<Services>,
+    left_sidebar: &Rc<LeftSidebar>,
     monitor: &gdk::Monitor,
     scope: &Scope,
 ) -> Rc<Calendar> {
@@ -252,7 +254,15 @@ pub fn build(
         .map(|tab| (tab as usize).min(TABS.len() - 1))
         .unwrap_or(0);
 
-    let month = month::build(theme, &services.agenda, scope);
+    let open_note: Rc<dyn Fn(u64) -> bool> = Rc::new({
+        let left_sidebar = Rc::downgrade(left_sidebar);
+        move |id| {
+            left_sidebar
+                .upgrade()
+                .is_some_and(|left_sidebar| left_sidebar.open_note(id))
+        }
+    });
+    let month = month::build(theme, &services.agenda, open_note, scope);
     let timer_page = pomodoro::build(theme, &services.timer, scope);
     let widgets: Vec<gtk4::Widget> = vec![month.widget.clone(), timer_page.widget.clone()];
     let resets: Vec<Box<dyn Fn()>> = vec![

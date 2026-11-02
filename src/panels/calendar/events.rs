@@ -16,6 +16,7 @@ use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::display::paint::Paint;
 use crate::ui::widgets::display::text;
 use crate::ui::widgets::layout::centered::Centered;
+use crate::ui::widgets::layout::group::pointer_cursor;
 
 const LIST_HEIGHT: i32 = 100;
 const SPACING: i32 = 5;
@@ -32,6 +33,7 @@ pub struct EventList {
     title: gtk4::Label,
     list: gtk4::Box,
     theme: SharedTheme,
+    open_note: Rc<dyn Fn(u64) -> bool>,
 }
 
 impl EventList {
@@ -53,13 +55,17 @@ impl EventList {
         }
         let time_pattern = strip_seconds(&strftime_from_qt(&config::current().time_format));
         for occurrence in occurrences {
-            self.list
-                .append(&build_card(&self.theme, occurrence, &time_pattern));
+            self.list.append(&build_card(
+                &self.theme,
+                occurrence,
+                &time_pattern,
+                self.open_note.clone(),
+            ));
         }
     }
 }
 
-pub fn build_list(theme: &SharedTheme) -> Rc<EventList> {
+pub fn build_list(theme: &SharedTheme, open_note: Rc<dyn Fn(u64) -> bool>) -> Rc<EventList> {
     let title = text::styled(" ");
     text::set_color(&title, "colOnLayer1");
     title.set_xalign(0.0);
@@ -81,10 +87,16 @@ pub fn build_list(theme: &SharedTheme) -> Rc<EventList> {
         title,
         list,
         theme: theme.clone(),
+        open_note,
     })
 }
 
-fn build_card(theme: &SharedTheme, occurrence: &Occurrence, time_pattern: &str) -> gtk4::Widget {
+fn build_card(
+    theme: &SharedTheme,
+    occurrence: &Occurrence,
+    time_pattern: &str,
+    open_note: Rc<dyn Fn(u64) -> bool>,
+) -> gtk4::Widget {
     let summary = if occurrence.summary.is_empty() {
         tr("No title")
     } else {
@@ -128,6 +140,21 @@ fn build_card(theme: &SharedTheme, occurrence: &Occurrence, time_pattern: &str) 
     row.append(&bar);
     row.append(&lines);
     row.set_margin_end(CARD_MARGIN / 2);
+    if let Some(note_id) = occurrence.note_id {
+        let icon = text::symbol("sticky_note_2", pixel_size::LARGER as f64);
+        text::set_color(&icon, "m3outline");
+        icon.set_valign(gtk4::Align::Center);
+        icon.set_margin_end(CARD_PADDING);
+        row.append(&icon);
+        pointer_cursor(row.upcast_ref());
+        let click = gtk4::GestureClick::new();
+        click.connect_released(move |_, _, _, _| {
+            if !open_note(note_id) {
+                details.set_text(&tr("This note no longer exists"));
+            }
+        });
+        row.add_controller(click);
+    }
     row.upcast()
 }
 
@@ -230,6 +257,7 @@ mod tests {
             is_all_day: false,
             summary: String::new(),
             location: "Room 4\nFloor 2".into(),
+            note_id: None,
             color: None,
         };
         assert_eq!(

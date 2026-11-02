@@ -1638,5 +1638,6 @@
   "%1 characters": ["%1 个字符"],
   "Find": "查找",
   "%1 of %2": "%1 / %2",
-  "Notepad": "记事本"
+  "Notepad": "记事本",
+  "This note no longer exists": "此笔记已不存在"
 }
