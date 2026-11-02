@@ -396,10 +396,14 @@ impl Background {
         self.clock.on_wallpaper_changed();
         self.weather.on_wallpaper_changed();
         if is_video || wallpaper.is_empty() {
-            self.image.replace(None);
+            let had_image = self.image.replace(None).is_some();
             self.blur_texture.replace(None);
             self.follow_margins();
             self.paint.queue_draw();
+            if had_image && self.window.is_visible() {
+                self.window.set_visible(false);
+                self.window.set_visible(true);
+            }
             return;
         }
         let Some((_, source_width, source_height)) = Pixbuf::file_info(&wallpaper) else {
