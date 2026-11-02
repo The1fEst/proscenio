@@ -1639,5 +1639,11 @@
   "Find": "Buscar",
   "%1 of %2": "%1 de %2",
   "Notepad": "Bloc de notas",
-  "This note no longer exists": "Esta nota ya no existe"
+  "This note no longer exists": "Esta nota ya no existe",
+  "Add to calendar": "Añadir al calendario",
+  "Date": "Fecha",
+  "Time": "Hora",
+  "Duration (minutes)": "Duración (minutos)",
+  "Create": "Crear",
+  "No calendar can take events": "Ningún calendario admite eventos"
 }

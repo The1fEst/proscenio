@@ -109,6 +109,29 @@ of one short line in the editor, the field starts with it. The match is case-ins
   and stops at 50000 matches.
 - Escape or the **×** closes the bar and returns to the editor.
 
+## Adding a note to the calendar
+
+The calendar button after the tabs (tooltip **Add to calendar**) opens a dialog that puts the open
+note in the calendar as an event in [Evolution Data Server](installing.md) (EDS), so
+GNOME Calendar and synced calendars show it too.
+
+| Field | Value |
+|---|---|
+| Date | Day, month and year, today at first. A day past the end of the month becomes its last day |
+| All day | On at first. Off enables the time and the duration |
+| Time | Hour and minute, the next full hour at first |
+| Duration (minutes) | 30 at first, up to 1440, for a timed event |
+| Calendar | The enabled calendars of EDS that can take events, the first selected one at first. The read-only ones (`webcal`, `http`, `contacts` and `weather` backends) are not listed |
+
+**Create** sends the event to EDS and closes the dialog. If EDS refuses it, its message shows in
+the dialog and nothing is created. **Cancel**, Escape or a click outside closes the dialog.
+
+The event has the note's tab title as its summary, the first 500 characters of the note as its
+description, and a `URL` of `proscenio://note/<id>` with an `X-PROSCENIO-NOTE` property holding the
+same id. An all-day event ends on the next date; a timed one is in the system time zone. The
+[calendar](calendar.md#events) opens the note from the event's card. Changing or deleting the event
+is done in GNOME Calendar, and the note does not track its events.
+
 ## Keys
 
 | Key | Action |

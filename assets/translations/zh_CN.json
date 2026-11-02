@@ -1639,5 +1639,11 @@
   "Find": "查找",
   "%1 of %2": "%1 / %2",
   "Notepad": "记事本",
-  "This note no longer exists": "此笔记已不存在"
+  "This note no longer exists": "此笔记已不存在",
+  "Add to calendar": "添加到日历",
+  "Date": "日期",
+  "Time": "时间",
+  "Duration (minutes)": "时长（分钟）",
+  "Create": "创建",
+  "No calendar can take events": "没有可添加事件的日历"
 }

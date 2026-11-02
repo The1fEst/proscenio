@@ -1,3 +1,5 @@
+const MAX_LINE_OCTETS: usize = 75;
+
 #[derive(Debug, Default, PartialEq)]
 pub struct Component {
     pub name: String,
@@ -157,9 +159,60 @@ pub fn unescape_text(value: &str) -> String {
     text
 }
 
+pub fn escape_text(value: &str) -> String {
+    let mut text = String::with_capacity(value.len());
+    for character in value.chars() {
+        match character {
+            '\\' => text.push_str("\\\\"),
+            ';' => text.push_str("\\;"),
+            ',' => text.push_str("\\,"),
+            '\n' => text.push_str("\\n"),
+            '\r' => {}
+            other => text.push(other),
+        }
+    }
+    text
+}
+
+pub fn fold_line(line: &str) -> String {
+    let mut folded = String::with_capacity(line.len() + line.len() / MAX_LINE_OCTETS * 3);
+    let mut octets = 0;
+    for character in line.chars() {
+        let width = character.len_utf8();
+        if octets + width > MAX_LINE_OCTETS {
+            folded.push_str("\r\n ");
+            octets = 1;
+        }
+        folded.push(character);
+        octets += width;
+    }
+    folded
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_is_escaped_and_lines_are_folded_so_that_parsing_gives_the_original_back() {
+        let original = "Plan, a; b\\c\r\nnext line";
+        assert_eq!(escape_text(original), "Plan\\, a\\; b\\\\c\\nnext line");
+        assert_eq!(
+            unescape_text(&escape_text(original)),
+            "Plan, a; b\\c\nnext line"
+        );
+
+        let long = format!("DESCRIPTION:{}", "ж, ".repeat(60));
+        let folded = fold_line(&long);
+        assert!(
+            folded
+                .split("\r\n")
+                .all(|line| line.len() <= MAX_LINE_OCTETS)
+        );
+        assert!(folded.contains("\r\n "));
+        assert_eq!(unfold(&folded), [long]);
+        assert_eq!(fold_line("SUMMARY:short"), "SUMMARY:short");
+    }
 
     #[test]
     fn lines_are_unfolded_and_properties_keep_parameters_and_quoted_colons() {

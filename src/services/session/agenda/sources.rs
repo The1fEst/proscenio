@@ -11,11 +11,32 @@ pub struct Source {
     pub color: Option<String>,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct Target {
+    pub uid: String,
+    pub name: String,
+    pub is_selected: bool,
+}
+
+const READ_ONLY_BACKENDS: [&str; 4] = ["webcal", "http", "contacts", "weather"];
+
 pub fn from_managed_objects(objects: &Variant) -> Vec<Source> {
+    rank(objects, parse, |source| &source.uid)
+}
+
+pub fn targets_from_managed_objects(objects: &Variant) -> Vec<Target> {
+    rank(objects, parse_target, |target| &target.uid)
+}
+
+fn rank<T>(
+    objects: &Variant,
+    parse: fn(&str, &str) -> Option<(i64, T)>,
+    uid_of: fn(&T) -> &str,
+) -> Vec<T> {
     let Some(objects) = objects.get::<HashMap<glib::variant::ObjectPath, Interfaces>>() else {
         return Vec::new();
     };
-    let mut ranked_sources: Vec<(i64, Source)> = objects
+    let mut ranked: Vec<(i64, T)> = objects
         .values()
         .filter_map(|interfaces| {
             let properties = interfaces.get(SOURCE_INTERFACE)?;
@@ -24,13 +45,34 @@ pub fn from_managed_objects(objects: &Variant) -> Vec<Source> {
             parse(uid, data)
         })
         .collect();
-    ranked_sources.sort_by(|(first_order, first), (second_order, second)| {
-        (first_order, &first.uid).cmp(&(second_order, &second.uid))
+    ranked.sort_by(|(first_order, first), (second_order, second)| {
+        (first_order, uid_of(first)).cmp(&(second_order, uid_of(second)))
     });
-    ranked_sources
-        .into_iter()
-        .map(|(_, source)| source)
-        .collect()
+    ranked.into_iter().map(|(_, item)| item).collect()
+}
+
+fn parse_target(uid: &str, data: &str) -> Option<(i64, Target)> {
+    if lookup(data, "Data Source", "Enabled") == Some("false") {
+        return None;
+    }
+    let backend = lookup(data, "Calendar", "BackendName")?;
+    if backend.is_empty() || READ_ONLY_BACKENDS.contains(&backend) {
+        return None;
+    }
+    let order = lookup(data, "Calendar", "Order")
+        .and_then(|order| order.parse().ok())
+        .unwrap_or(0);
+    Some((
+        order,
+        Target {
+            uid: uid.to_owned(),
+            name: lookup(data, "Data Source", "DisplayName")
+                .filter(|name| !name.is_empty())
+                .unwrap_or(uid)
+                .to_owned(),
+            is_selected: lookup(data, "Calendar", "Selected") == Some("true"),
+        },
+    ))
 }
 
 fn parse(uid: &str, data: &str) -> Option<(i64, Source)> {
@@ -119,6 +161,43 @@ mod tests {
         assert_eq!(parse("c", &no_selection_data), None);
         let task_list_data = LOCAL.replace("[Calendar]", "[Task List]");
         assert_eq!(parse("d", &task_list_data), None);
+    }
+
+    #[test]
+    fn only_enabled_calendars_with_a_writable_backend_are_targets() {
+        let target = |uid: &str, data: &str| parse_target(uid, data).map(|(_, target)| target);
+        assert_eq!(
+            target("system-calendar", LOCAL),
+            Some(Target {
+                uid: "system-calendar".into(),
+                name: "Personal".into(),
+                is_selected: true
+            })
+        );
+        let unselected_data = LOCAL.replace("Selected=true", "Selected=false");
+        assert!(!target("a", &unselected_data).unwrap().is_selected);
+        for backend in READ_ONLY_BACKENDS {
+            let data = LOCAL.replace("BackendName=local", &format!("BackendName={backend}"));
+            assert_eq!(target("b", &data), None);
+        }
+        let disabled_data = LOCAL.replace("Enabled=true\nParent", "Enabled=false\nParent");
+        assert_eq!(target("c", &disabled_data), None);
+        let task_list_data = LOCAL.replace("[Calendar]", "[Task List]");
+        assert_eq!(target("d", &task_list_data), None);
+        let unnamed_data = LOCAL.replace("DisplayName=Personal\n", "");
+        assert_eq!(target("e", &unnamed_data).unwrap().name, "e");
+    }
+
+    #[test]
+    fn targets_keep_unselected_calendars_in_order() {
+        let unselected_data = LOCAL.replace("Selected=true", "Selected=false");
+        let targets = targets_from_managed_objects(&build_objects(&[
+            ("zeta", LOCAL),
+            ("alpha", &unselected_data),
+            ("birthdays", &LOCAL.replace("local", "contacts")),
+        ]));
+        let uids: Vec<&str> = targets.iter().map(|target| target.uid.as_str()).collect();
+        assert_eq!(uids, ["alpha", "zeta"]);
     }
 
     #[test]

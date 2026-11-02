@@ -1639,5 +1639,11 @@
   "Find": "Find",
   "%1 of %2": "%1 of %2",
   "Notepad": "Notepad",
-  "This note no longer exists": "This note no longer exists"
+  "This note no longer exists": "This note no longer exists",
+  "Add to calendar": "Add to calendar",
+  "Date": "Date",
+  "Time": "Time",
+  "Duration (minutes)": "Duration (minutes)",
+  "Create": "Create",
+  "No calendar can take events": "No calendar can take events"
 }

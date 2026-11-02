@@ -42,9 +42,35 @@ pub fn days_in_month(year: i64, month: i64) -> i64 {
     next - first
 }
 
+pub fn format_date(days: i64) -> String {
+    let (year, month, day) = civil_from_days(days);
+    format!("{year:04}{month:02}{day:02}")
+}
+
+pub fn format_date_time(seconds: i64) -> String {
+    let clock = seconds.rem_euclid(SECONDS_PER_DAY);
+    format!(
+        "{}T{:02}{:02}{:02}",
+        format_date(seconds.div_euclid(SECONDS_PER_DAY)),
+        clock / 3600,
+        clock / 60 % 60,
+        clock % 60
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dates_and_times_format_in_the_basic_icalendar_form() {
+        assert_eq!(format_date(20_758), "20261101");
+        assert_eq!(
+            format_date_time(1_793_491_200 + 3 * 3600 + 4 * 60 + 5),
+            "20261101T030405"
+        );
+        assert_eq!(format_date_time(-1), "19691231T235959");
+    }
 
     #[test]
     fn days_and_dates_convert_both_ways_with_monday_as_weekday_zero() {

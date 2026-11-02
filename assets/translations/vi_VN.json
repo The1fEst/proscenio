@@ -1639,5 +1639,11 @@
   "Find": "Tìm",
   "%1 of %2": "%1/%2",
   "Notepad": "Sổ ghi chú",
-  "This note no longer exists": "Ghi chú này không còn tồn tại"
+  "This note no longer exists": "Ghi chú này không còn tồn tại",
+  "Add to calendar": "Thêm vào lịch",
+  "Date": "Ngày",
+  "Time": "Giờ",
+  "Duration (minutes)": "Thời lượng (phút)",
+  "Create": "Tạo",
+  "No calendar can take events": "Không có lịch nào nhận được sự kiện"
 }

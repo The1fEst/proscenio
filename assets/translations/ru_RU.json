@@ -1639,5 +1639,11 @@
   "Find": "Найти",
   "%1 of %2": "%1 из %2",
   "Notepad": "Блокнот",
-  "This note no longer exists": "Эта заметка больше не существует"
+  "This note no longer exists": "Эта заметка больше не существует",
+  "Add to calendar": "Добавить в календарь",
+  "Date": "Дата",
+  "Time": "Время",
+  "Duration (minutes)": "Длительность (минуты)",
+  "Create": "Создать",
+  "No calendar can take events": "Нет календаря для событий"
 }

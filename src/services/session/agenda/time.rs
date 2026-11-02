@@ -141,7 +141,7 @@ impl Zones {
         wall_to_unix(&self.local, wall)
     }
 
-    fn unix_to_local(&self, unix: i64) -> i64 {
+    pub fn unix_to_local(&self, unix: i64) -> i64 {
         let interval = self.local.find_interval(glib::TimeType::Universal, unix);
         unix + i64::from(self.local.offset(interval))
     }

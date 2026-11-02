@@ -1639,5 +1639,11 @@
   "Find": "Знайти",
   "%1 of %2": "%1 з %2",
   "Notepad": "Блокнот",
-  "This note no longer exists": "Цієї нотатки більше не існує"
+  "This note no longer exists": "Цієї нотатки більше не існує",
+  "Add to calendar": "Додати до календаря",
+  "Date": "Дата",
+  "Time": "Час",
+  "Duration (minutes)": "Тривалість (хвилини)",
+  "Create": "Створити",
+  "No calendar can take events": "Немає календаря для подій"
 }

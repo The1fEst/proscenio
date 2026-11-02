@@ -5,6 +5,7 @@ mod event;
 mod recurrence;
 mod sources;
 mod time;
+mod vevent;
 
 use gtk4::gio;
 use gtk4::glib;
@@ -14,11 +15,14 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::core::config;
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use civil::SECONDS_PER_DAY;
 pub use days::{Occurrence, Window};
 use sources::Source;
+pub use sources::Target;
 use time::Zones;
+pub use vevent::{Draft, Slot, make_excerpt};
 
 const REFRESH_DELAY_MILLIS: u64 = 300;
 
@@ -93,6 +97,26 @@ impl Agenda {
 
     pub fn is_available(&self) -> bool {
         config::current().should_show_calendar_events && self.state.borrow().is_available
+    }
+
+    pub async fn read_targets(&self) -> Vec<Target> {
+        let Some(bus) = &self.bus else {
+            return Vec::new();
+        };
+        eds::read_targets(bus).await.unwrap_or_default()
+    }
+
+    pub async fn add_event(&self, calendar_uid: &str, draft: &Draft) -> Result<(), String> {
+        let Some(bus) = &self.bus else {
+            return Err(tr("No calendar can take events"));
+        };
+        let component = vevent::render(
+            draft,
+            &Zones::local(),
+            &glib::uuid_string_random(),
+            glib::real_time() / 1_000_000,
+        );
+        eds::create_object(bus, calendar_uid, &component).await
     }
 
     pub fn occurrences_on(&self, day: i64) -> Vec<Occurrence> {

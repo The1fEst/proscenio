@@ -4,8 +4,10 @@ use gtk4::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use super::civil::{SECONDS_PER_DAY, civil_from_days};
-use super::sources::{self, Source};
+use crate::core::i18n::tr;
+
+use super::civil::format_date_time;
+use super::sources::{self, Source, Target};
 
 const REGISTRY_BUS: &str = "org.gnome.evolution.dataserver.Sources5";
 const REGISTRY_PATH: &str = "/org/gnome/evolution/dataserver/SourceManager";
@@ -28,7 +30,7 @@ pub struct Watch {
     _subscription: gio::SignalSubscription,
 }
 
-pub async fn read_sources(bus: &gio::DBusConnection) -> Option<Vec<Source>> {
+async fn read_managed_objects(bus: &gio::DBusConnection) -> Option<Variant> {
     let reply = bus
         .call_future(
             Some(REGISTRY_BUS),
@@ -42,7 +44,43 @@ pub async fn read_sources(bus: &gio::DBusConnection) -> Option<Vec<Source>> {
         )
         .await
         .ok()?;
-    Some(sources::from_managed_objects(&reply.child_value(0)))
+    Some(reply.child_value(0))
+}
+
+pub async fn read_sources(bus: &gio::DBusConnection) -> Option<Vec<Source>> {
+    Some(sources::from_managed_objects(
+        &read_managed_objects(bus).await?,
+    ))
+}
+
+pub async fn read_targets(bus: &gio::DBusConnection) -> Option<Vec<Target>> {
+    Some(sources::targets_from_managed_objects(
+        &read_managed_objects(bus).await?,
+    ))
+}
+
+pub async fn create_object(
+    bus: &gio::DBusConnection,
+    calendar_uid: &str,
+    component: &str,
+) -> Result<(), String> {
+    let calendar = open(bus, calendar_uid)
+        .await
+        .ok_or_else(|| tr("No calendar can take events"))?;
+    let result = call(
+        bus,
+        &calendar.bus_name,
+        &calendar.path,
+        CALENDAR_INTERFACE,
+        "CreateObjects",
+        Some(&(vec![component], 0u32).to_variant()),
+    )
+    .await;
+    release(bus, &calendar, None);
+    result.map(|_| ()).map_err(|mut error| {
+        gio::DBusError::strip_remote_error(&mut error);
+        error.message().to_owned()
+    })
 }
 
 pub async fn open(bus: &gio::DBusConnection, uid: &str) -> Option<Calendar> {
@@ -226,14 +264,7 @@ pub fn range_query(first_unix: i64, end_unix: i64, zone: &str) -> String {
 }
 
 fn iso_utc(unix: i64) -> String {
-    let (year, month, day) = civil_from_days(unix.div_euclid(SECONDS_PER_DAY));
-    let seconds = unix.rem_euclid(SECONDS_PER_DAY);
-    format!(
-        "{year:04}{month:02}{day:02}T{:02}{:02}{:02}Z",
-        seconds / 3600,
-        seconds / 60 % 60,
-        seconds % 60
-    )
+    format!("{}Z", format_date_time(unix))
 }
 
 #[cfg(test)]

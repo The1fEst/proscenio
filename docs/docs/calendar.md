@@ -64,7 +64,7 @@ is on both days, cut at midnight, and on a day it covers completely it reads *Al
 events come first, then the others by start time.
 
 An event that carries an `X-PROSCENIO-NOTE` property, or a `URL` of the form
-`proscenio://note/<id>`, stands for a note of the [left sidebar](sidebar-left.md). Its card shows a
+`proscenio://note/<id>`, stands for a note of the [left sidebar](sidebar-left.md#adding-a-note-to-the-calendar). Its card shows a
 note icon at the end, and clicking the card opens the left sidebar of the same screen on that note.
 When the note has been deleted, the card's second line reads *This note no longer exists* instead,
 and nothing else happens.

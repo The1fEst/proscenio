@@ -1639,5 +1639,11 @@
   "Find": "Bul",
   "%1 of %2": "%1 / %2",
   "Notepad": "Not defteri",
-  "This note no longer exists": "Bu not artık yok"
+  "This note no longer exists": "Bu not artık yok",
+  "Add to calendar": "Takvime ekle",
+  "Date": "Tarih",
+  "Time": "Saat",
+  "Duration (minutes)": "Süre (dakika)",
+  "Create": "Oluştur",
+  "No calendar can take events": "Etkinlik kabul eden takvim yok"
 }

@@ -1639,5 +1639,11 @@
   "Find": "Suchen",
   "%1 of %2": "%1 von %2",
   "Notepad": "Notizblock",
-  "This note no longer exists": "Diese Notiz gibt es nicht mehr"
+  "This note no longer exists": "Diese Notiz gibt es nicht mehr",
+  "Add to calendar": "Zum Kalender hinzufügen",
+  "Date": "Datum",
+  "Time": "Uhrzeit",
+  "Duration (minutes)": "Dauer (Minuten)",
+  "Create": "Erstellen",
+  "No calendar can take events": "Kein Kalender kann Termine aufnehmen"
 }

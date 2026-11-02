@@ -1,5 +1,6 @@
 mod confirmation;
 mod editor;
+mod eventdialog;
 mod findbar;
 mod matches;
 mod privacy;
@@ -13,12 +14,15 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+use crate::core::i18n::tr;
 use crate::core::listeners::{Listeners, Subscription};
 use crate::core::scope::Scope;
 use crate::platform::wayland::grab;
 use crate::services::Services;
+use crate::services::session::agenda::{self, Agenda};
 use crate::services::session::notes::Notes;
 use crate::ui::theme::{SharedTheme, pixel_size};
+use crate::ui::widgets::overlay::tooltip;
 use crate::ui::widgets::overlay::windowdialog::WindowDialog;
 use editor::Editor;
 use findbar::FindBar;
@@ -36,6 +40,7 @@ pub struct LeftSidebar {
     pub window: gtk4::ApplicationWindow,
     grab: Option<Rc<grab::Grab>>,
     notes: Rc<Notes>,
+    agenda: Rc<Agenda>,
     editor: Rc<Editor>,
     tabs: Rc<Tabs>,
     find: Rc<FindBar>,
@@ -145,13 +150,43 @@ impl LeftSidebar {
             self.notes.remove(id);
             return;
         }
-        if let Some(previous) = self.dialog.take() {
-            previous.remove_from(&self.overlay);
-        }
         let dialog = confirmation::build(&self.theme, {
             let notes = self.notes.clone();
             move || notes.remove(id)
         });
+        self.present(dialog);
+    }
+
+    fn request_event(self: &Rc<Self>) {
+        let id = self.notes.active_id();
+        let Some(buffer) = self.notes.buffer(id) else {
+            return;
+        };
+        let title = self
+            .notes
+            .summaries()
+            .into_iter()
+            .find(|summary| summary.id == id)
+            .and_then(|summary| summary.title().map(str::to_owned))
+            .unwrap_or_else(|| tr("Untitled"));
+        let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
+        let dialog = eventdialog::build(
+            &self.theme,
+            &self.agenda,
+            eventdialog::Note {
+                id,
+                title,
+                excerpt: agenda::make_excerpt(&text),
+            },
+            &glib::DateTime::now_local().expect("local time"),
+        );
+        self.present(dialog);
+    }
+
+    fn present(self: &Rc<Self>, dialog: Rc<WindowDialog>) {
+        if let Some(previous) = self.dialog.take() {
+            previous.remove_from(&self.overlay);
+        }
         dialog.root.set_margin_top(GAP);
         dialog.root.set_margin_bottom(GAP);
         dialog.root.set_margin_start(GAP);
@@ -246,8 +281,20 @@ pub fn build(
         }
     });
 
+    let event_button = symbolbutton::build(theme, "event", pixel_size::HUGE, FIND_BUTTON_SIZE);
+    event_button.connect_clicked({
+        let owner = owner.clone();
+        move |_| {
+            if let Some(left_sidebar) = owner.borrow().upgrade() {
+                left_sidebar.request_event();
+            }
+        }
+    });
+    tooltip::attach_hover_tip(&event_button, theme, &tr("Add to calendar"));
+
     let header = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     header.append(&tabs.widget);
+    header.append(&event_button);
     header.append(&find_button);
 
     let column = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
@@ -287,6 +334,7 @@ pub fn build(
         window: window.clone(),
         grab: grab::Grab::new(&monitor.display()),
         notes: notes.clone(),
+        agenda: services.agenda.clone(),
         editor,
         tabs,
         find,

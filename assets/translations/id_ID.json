@@ -1639,5 +1639,11 @@
   "Find": "Cari",
   "%1 of %2": "%1 dari %2",
   "Notepad": "Buku catatan",
-  "This note no longer exists": "Catatan ini sudah tidak ada"
+  "This note no longer exists": "Catatan ini sudah tidak ada",
+  "Add to calendar": "Tambahkan ke kalender",
+  "Date": "Tanggal",
+  "Time": "Waktu",
+  "Duration (minutes)": "Durasi (menit)",
+  "Create": "Buat",
+  "No calendar can take events": "Tidak ada kalender yang dapat menerima acara"
 }
