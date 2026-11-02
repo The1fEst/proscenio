@@ -1,4 +1,3 @@
-use gtk4::gdk_pixbuf::Pixbuf;
 use gtk4::glib;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -53,7 +52,6 @@ const OVERRIDES: &str = "/background/perMonitor/wallpapers";
 
 const LOCK_FILE: &str = "switchwall.lock";
 const MATUGEN_NICE: &str = "15";
-const OFFER_UPSCALE: &str = "--offer-upscale";
 
 static GENERATION_LOCK: OnceLock<File> = OnceLock::new();
 
@@ -83,12 +81,6 @@ pub fn run(arguments: &[String]) -> glib::ExitCode {
 }
 
 fn start(arguments: &[String], jobs: &mut Vec<JoinHandle<()>>) -> glib::ExitCode {
-    if arguments.first().map(String::as_str) == Some(OFFER_UPSCALE) {
-        if let Some(image) = arguments.get(1) {
-            offer_upscale(image);
-        }
-        return glib::ExitCode::SUCCESS;
-    }
     let request = Request::parse(arguments);
     let has_color_argument = request.color.is_some();
     match &request.color {
@@ -122,7 +114,6 @@ fn start(arguments: &[String], jobs: &mut Vec<JoinHandle<()>>) -> glib::ExitCode
             &list_connected_monitors(),
         )
     {
-        process::launch_subcommand(&["switchwall", OFFER_UPSCALE, image]);
         lock_generation();
         process::run(&["pkill", "-9", "-f", &build_video_pattern(monitor)]);
         config::store_value(
@@ -327,9 +318,6 @@ fn switch(
 }
 
 fn apply_wallpaper(image: String, assignment: Assignment) -> Result<String, glib::ExitCode> {
-    if assignment.is_new() {
-        process::launch_subcommand(&["switchwall", OFFER_UPSCALE, &image]);
-    }
     process::run(&["pkill", "-9", "-x", "mpvpaper"]);
 
     if !is_video(&image) {
@@ -402,68 +390,6 @@ fn find_main_monitor<'a>(primary: &str, connected: &'a [String]) -> Option<&'a s
         .find(|name| *name == primary)
         .or_else(|| connected.first())
         .map(String::as_str)
-}
-
-fn offer_upscale(image: &str) {
-    let monitors = monitors();
-    let find_largest = |key: &str| {
-        monitors
-            .iter()
-            .filter_map(|monitor| monitor.get(key)?.as_i64())
-            .max()
-    };
-    let (Some(width), Some(height)) = (find_largest("width"), find_largest("height")) else {
-        return;
-    };
-    if !Path::new(image).is_file() {
-        return;
-    }
-    let (image_width, image_height) = if is_video(image) {
-        (width, height)
-    } else {
-        let Some((_, image_width, image_height)) = Pixbuf::file_info(image) else {
-            return;
-        };
-        (i64::from(image_width), i64::from(image_height))
-    };
-    if image_width >= width && image_height >= height {
-        return;
-    }
-    let body = trf(
-        "Image resolution (%1x%2) is lower than screen resolution (%3x%4)",
-        &[
-            &image_width.to_string(),
-            &image_height.to_string(),
-            &width.to_string(),
-            &height.to_string(),
-        ],
-    );
-    if !ask(
-        &tr("Upscale?"),
-        &body,
-        "",
-        ("open_upscayl", &tr("Open Upscayl")),
-    ) {
-        return;
-    }
-    if !process::exists("upscayl") {
-        let should_install = ask(
-            &tr("Install Upscayl?"),
-            "paru -S upscayl-bin",
-            "im.error",
-            ("install_upscayl", &tr("Install Upscayl (Arch)")),
-        );
-        if !should_install {
-            return;
-        }
-        if let Some(command) = updates::manager::install_command(&["upscayl-bin"]) {
-            process::run(&command);
-        }
-        if !process::exists("upscayl") {
-            return;
-        }
-    }
-    process::detach(&["upscayl"]);
 }
 
 fn offer_install(missing_programs: &[&str]) {

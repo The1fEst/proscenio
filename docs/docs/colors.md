@@ -50,14 +50,13 @@ waits for the shell's, and the other way round.
 | Argument | Effect |
 |---|---|
 | `PATH`, `--image PATH` | The wallpaper to set: an image, or a video ending in `.mp4`, `.webm`, `.mkv`, `.avi` or `.mov` |
-| `--monitor NAME` | With `background.perMonitor.enable` on, sets the image for the monitor `NAME` only and, unless `NAME` is the main display (see [The background](background.md#a-wallpaper-per-monitor)), stops there: it stores the image in `background.perMonitor.wallpapers` and, after the upscale offer, generates no colors, applies no mode, keeps the accent color and stops the `mpvpaper` of that monitor only. For the main display it is an ordinary run that also removes the main display's entry. While Hyprland cannot say which monitor is the main display, every `NAME` is treated as another monitor. Without the switch, with an empty `NAME`, or with a video or `--noswitch`, it is ignored |
+| `--monitor NAME` | With `background.perMonitor.enable` on, sets the image for the monitor `NAME` only and, unless `NAME` is the main display (see [The background](background.md#a-wallpaper-per-monitor)), stops there: it stores the image in `background.perMonitor.wallpapers` and generates no colors, applies no mode, keeps the accent color and stops the `mpvpaper` of that monitor only. For the main display it is an ordinary run that also removes the main display's entry. While Hyprland cannot say which monitor is the main display, every `NAME` is treated as another monitor. Without the switch, with an empty `NAME`, or with a video or `--noswitch`, it is ignored |
 | `--noswitch` | Keeps the current wallpaper, `background.wallpaperPath`, and only recolors; a `PATH` given with it is ignored |
 | `--mode dark` / `--mode light` | The mode to switch to. Without it, the mode is dark when `color-scheme` in `org.gnome.desktop.interface` is `prefer-dark`, and light otherwise |
 | `--type SCHEME` | The scheme for this run. Without it, `appearance.palette.type` decides, and without that, `auto` |
 | `--color HEX` | Stores `HEX` (six hex digits, with or without `#`) as the accent color |
 | `--color clear` | Empties the accent color |
 | `--color` | Lets you pick the accent color from the screen with `hyprpicker` |
-| `--offer-upscale PATH` | Only offers to upscale `PATH`, as described under step 1 of What a run does, and changes nothing else; a run for a wallpaper that is smaller than the screen starts it in a scope of its own |
 
 With no wallpaper, no accent color and no `--noswitch`, a `kdialog` file picker asks for the
 wallpaper, starting in `Pictures/Wallpapers/showcase`, else `Pictures/Wallpapers`, else `Pictures`.
@@ -100,9 +99,7 @@ decoded with `djpeg` and 16-bit PNG images with `magick`; other formats go throu
    wallpaper. Any running `mpvpaper` stops, the
    path is stored in `background.wallpaperPath`, and a video starts playing; with `--noswitch`, all
    of this happens to the current wallpaper. A new wallpaper for all monitors also empties
-   `background.perMonitor.wallpapers`, with `background.perMonitor.enable` on or off. When a chosen image is smaller than the largest monitor,
-   a notification offers to open Upscayl, and to install `upscayl-bin` from the AUR when it is
-   missing. The offer runs in a process of its own, so waiting for an answer holds nothing up.
+   `background.perMonitor.wallpapers`, with `background.perMonitor.enable` on or off.
 2. **The mode.** `color-scheme` in `org.gnome.desktop.interface` becomes `prefer-dark` or
    `prefer-light`, `gtk-theme` becomes `adw-gtk3-dark` or `adw-gtk3`, and the icon theme becomes
    its installed variant for the mode (see [Appearance](settings-appearance.md)).
