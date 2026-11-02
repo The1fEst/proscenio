@@ -11,8 +11,8 @@ use crate::core::watch;
 use crate::panels::notifications::popup;
 use crate::panels::overview::{self, launcher};
 use crate::panels::{
-    background, calendar, cheatsheet, corners, dock, mediacontrols, mixer, notepad, sessionscreen,
-    settings, sidebar,
+    background, calendar, cheatsheet, corners, dock, leftsidebar, mediacontrols, mixer,
+    sessionscreen, settings, sidebar,
 };
 use crate::platform::hyprland::hypr;
 use crate::services::Services;
@@ -102,14 +102,14 @@ struct Panels {
     session: Rc<sessionscreen::SessionScreen>,
     media: Rc<mediacontrols::MediaControls>,
     volume_mixer: Option<Rc<mixer::VolumeMixer>>,
-    notepad: Rc<notepad::Notepad>,
+    left_sidebar: Rc<leftsidebar::LeftSidebar>,
 }
 
 impl Panels {
     fn windows(&self) -> Vec<gtk4::ApplicationWindow> {
         let mut windows = vec![
             self.sidebar.window.clone(),
-            self.notepad.window.clone(),
+            self.left_sidebar.window.clone(),
             self.calendar.window.clone(),
             self.session.window.clone(),
             self.media.window.clone(),
@@ -142,7 +142,7 @@ pub struct Surfaces {
     pub session: Rc<sessionscreen::SessionScreen>,
     pub media: Rc<mediacontrols::MediaControls>,
     pub volume_mixer: Option<Rc<mixer::VolumeMixer>>,
-    pub notepad: Rc<notepad::Notepad>,
+    pub left_sidebar: Rc<leftsidebar::LeftSidebar>,
     pub sheet: Rc<cheatsheet::Cheatsheet>,
     pub overview: Rc<overview::Overview>,
 }
@@ -383,7 +383,7 @@ impl Screens {
                     screen_surfaces.session = panels.session;
                     screen_surfaces.media = panels.media;
                     screen_surfaces.volume_mixer = panels.volume_mixer;
-                    screen_surfaces.notepad = panels.notepad;
+                    screen_surfaces.left_sidebar = panels.left_sidebar;
                 });
                 windows
             }
@@ -430,7 +430,7 @@ impl Screens {
                     theme,
                     services,
                     &screen_surfaces.sidebar,
-                    &screen_surfaces.notepad,
+                    &screen_surfaces.left_sidebar,
                     &screen_surfaces.calendar,
                     &screen_surfaces.media,
                     &screen_surfaces.volume_mixer,
@@ -444,7 +444,7 @@ impl Screens {
                     config,
                     services,
                     &screen_surfaces.sidebar,
-                    &screen_surfaces.notepad,
+                    &screen_surfaces.left_sidebar,
                     monitor,
                     &scope,
                 ));
@@ -480,7 +480,7 @@ impl Screens {
             session: panels.session,
             media: panels.media,
             volume_mixer: panels.volume_mixer,
-            notepad: panels.notepad,
+            left_sidebar: panels.left_sidebar,
             sheet,
             overview,
         });
@@ -529,7 +529,7 @@ impl Screens {
             }
         });
         Panels {
-            notepad: notepad::build(app, theme, services, monitor, scope),
+            left_sidebar: leftsidebar::build(app, theme, services, monitor, scope),
             calendar: calendar::build(app, config, theme, services, monitor, scope),
             media: mediacontrols::build(app, config, services, theme, monitor, scope),
             volume_mixer: mixer::build(

@@ -9,7 +9,7 @@ description: The panel on the left edge of the screen with the notepad, which ha
 The left sidebar is a full-height panel on the left edge of the screen. From top to bottom it holds
 the notepad, for scratch notes, and the [privacy section](#privacy), which is there while the
 microphone, the screen or the camera is in use. The notepad is a row of tabs with a plain-text
-editor under it, and everything typed is saved by itself. The source is in `src/panels/notepad/`,
+editor under it, and everything typed is saved by itself. The source is in `src/panels/leftsidebar/`,
 with the notes and their files in `src/services/session/notes/`.
 
 ## Opening and closing
@@ -21,8 +21,8 @@ Every monitor the shell runs on has a left sidebar of its own, and they show the
 | A left click anywhere on the bar's [left region](bar.md#the-left-region-brightness), privacy chips included, or on the top part of a vertical bar | The screen clicked |
 | A left click on a left [screen corner](screen-corners.md#corner-regions) | The screen clicked |
 | The notepad button in the [bar](bar.md#utility-buttons), off by default | Hyprland's focused monitor |
-| `proscenio ipc call notepad toggle`, or `open`, `close` | Hyprland's focused monitor |
-| The global shortcut `notepadToggle`, which has no default bind | Hyprland's focused monitor |
+| `proscenio ipc call sidebarLeft toggle`, or `open`, `close` | Hyprland's focused monitor |
+| The global shortcut `sidebarLeftToggle`, which has no default bind | Hyprland's focused monitor |
 | The launcher [action](overview.md#actions) `/notepad` | Hyprland's focused monitor |
 
 [IPC](ipc.md) and [Shortcuts](shortcuts.md) show how to call and bind these.

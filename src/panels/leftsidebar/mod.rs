@@ -32,7 +32,7 @@ const ELEVATION: i32 = 10;
 const PADDING: i32 = 10;
 const FIND_BUTTON_SIZE: i32 = 32;
 
-pub struct Notepad {
+pub struct LeftSidebar {
     pub window: gtk4::ApplicationWindow,
     grab: Option<Rc<grab::Grab>>,
     notes: Rc<Notes>,
@@ -47,7 +47,7 @@ pub struct Notepad {
     watchers: Listeners<bool>,
 }
 
-impl Notepad {
+impl LeftSidebar {
     pub fn toggle(self: &Rc<Self>) {
         if self.window.is_visible() {
             self.hide();
@@ -85,10 +85,10 @@ impl Notepad {
         let (Some(grab), Some(surface)) = (self.grab.as_ref(), self.window.surface()) else {
             return;
         };
-        let notepad = Rc::downgrade(self);
+        let left_sidebar = Rc::downgrade(self);
         grab.hold(&surface, move || {
-            if let Some(notepad) = notepad.upgrade() {
-                notepad.hide();
+            if let Some(left_sidebar) = left_sidebar.upgrade() {
+                left_sidebar.hide();
             }
         });
     }
@@ -149,22 +149,23 @@ impl Notepad {
         dialog.root.set_margin_end(ELEVATION);
         dialog.connect_dismiss({
             let dialog = Rc::downgrade(&dialog);
-            let notepad = Rc::downgrade(self);
+            let left_sidebar = Rc::downgrade(self);
             move || {
-                let (Some(dialog), Some(notepad)) = (dialog.upgrade(), notepad.upgrade()) else {
+                let (Some(dialog), Some(left_sidebar)) = (dialog.upgrade(), left_sidebar.upgrade())
+                else {
                     return;
                 };
                 let root = dialog.root.downgrade();
-                let notepad = Rc::downgrade(&notepad);
+                let left_sidebar = Rc::downgrade(&left_sidebar);
                 dialog.show(false, move || {
-                    let Some(notepad) = notepad.upgrade() else {
+                    let Some(left_sidebar) = left_sidebar.upgrade() else {
                         return;
                     };
                     if let Some(root) = root.upgrade() {
-                        notepad.overlay.remove_overlay(&root);
+                        left_sidebar.overlay.remove_overlay(&root);
                     }
-                    notepad.dialog.take();
-                    notepad.editor.focus();
+                    left_sidebar.dialog.take();
+                    left_sidebar.editor.focus();
                 });
             }
         });
@@ -180,9 +181,9 @@ pub fn build(
     services: &Rc<Services>,
     monitor: &gdk::Monitor,
     scope: &Scope,
-) -> Rc<Notepad> {
+) -> Rc<LeftSidebar> {
     let notes = services.notes.clone();
-    let owner: Rc<RefCell<Weak<Notepad>>> = Rc::new(RefCell::new(Weak::new()));
+    let owner: Rc<RefCell<Weak<LeftSidebar>>> = Rc::new(RefCell::new(Weak::new()));
 
     let editor = Editor::new(&notes);
     let tabs = Tabs::new(
@@ -191,8 +192,8 @@ pub fn build(
         Rc::new({
             let owner = owner.clone();
             move |id| {
-                if let Some(notepad) = owner.borrow().upgrade() {
-                    notepad.request_close(id);
+                if let Some(left_sidebar) = owner.borrow().upgrade() {
+                    left_sidebar.request_close(id);
                 }
             }
         }),
@@ -230,8 +231,8 @@ pub fn build(
     find_button.connect_clicked({
         let owner = owner.clone();
         move |_| {
-            if let Some(notepad) = owner.borrow().upgrade() {
-                notepad.open_find();
+            if let Some(left_sidebar) = owner.borrow().upgrade() {
+                left_sidebar.open_find();
             }
         }
     });
@@ -273,7 +274,7 @@ pub fn build(
     window.set_keyboard_mode(KeyboardMode::OnDemand);
     window.set_visible(false);
 
-    let notepad = Rc::new(Notepad {
+    let left_sidebar = Rc::new(LeftSidebar {
         window: window.clone(),
         grab: grab::Grab::new(&monitor.display()),
         notes: notes.clone(),
@@ -287,32 +288,32 @@ pub fn build(
         privacy,
         watchers: Listeners::default(),
     });
-    owner.replace(Rc::downgrade(&notepad));
-    notepad.refresh();
+    owner.replace(Rc::downgrade(&left_sidebar));
+    left_sidebar.refresh();
     scope.keep(services.device_usage.subscribe({
-        let notepad = Rc::downgrade(&notepad);
+        let left_sidebar = Rc::downgrade(&left_sidebar);
         move || {
-            if let Some(notepad) = notepad.upgrade()
-                && notepad.window.is_visible()
+            if let Some(left_sidebar) = left_sidebar.upgrade()
+                && left_sidebar.window.is_visible()
             {
-                notepad.privacy.refresh();
+                left_sidebar.privacy.refresh();
             }
         }
     }));
     scope.keep(notes.subscribe({
-        let notepad = Rc::downgrade(&notepad);
+        let left_sidebar = Rc::downgrade(&left_sidebar);
         move || {
-            if let Some(notepad) = notepad.upgrade() {
-                notepad.refresh();
+            if let Some(left_sidebar) = left_sidebar.upgrade() {
+                left_sidebar.refresh();
             }
         }
     }));
 
     scope.keep(notes.subscribe_rejection({
-        let notepad = Rc::downgrade(&notepad);
+        let left_sidebar = Rc::downgrade(&left_sidebar);
         move || {
-            if let Some(notepad) = notepad.upgrade() {
-                notepad.editor.warn_full();
+            if let Some(left_sidebar) = left_sidebar.upgrade() {
+                left_sidebar.editor.warn_full();
             }
         }
     }));
@@ -320,25 +321,27 @@ pub fn build(
     let key_controller = gtk4::EventControllerKey::new();
     key_controller.set_propagation_phase(gtk4::PropagationPhase::Capture);
     key_controller.connect_key_pressed({
-        let notepad = Rc::downgrade(&notepad);
+        let left_sidebar = Rc::downgrade(&left_sidebar);
         move |_, key, _, modifiers| {
-            let Some(notepad) = notepad.upgrade() else {
+            let Some(left_sidebar) = left_sidebar.upgrade() else {
                 return glib::Propagation::Proceed;
             };
-            if notepad.dialog.borrow().is_some() {
+            if left_sidebar.dialog.borrow().is_some() {
                 return glib::Propagation::Proceed;
             }
             let is_control_held = modifiers.contains(gdk::ModifierType::CONTROL_MASK);
             match key {
-                gdk::Key::Escape if notepad.tabs.is_renaming() => notepad.tabs.cancel_rename(),
-                gdk::Key::Escape if notepad.find.is_open() => notepad.find.close(),
-                gdk::Key::Escape => notepad.hide(),
-                gdk::Key::f | gdk::Key::F if is_control_held => notepad.open_find(),
-                gdk::Key::Page_Down if is_control_held => notepad.step_tab(1),
-                gdk::Key::Page_Up if is_control_held => notepad.step_tab(-1),
-                gdk::Key::n | gdk::Key::N if is_control_held => notepad.notes.create(),
+                gdk::Key::Escape if left_sidebar.tabs.is_renaming() => {
+                    left_sidebar.tabs.cancel_rename()
+                }
+                gdk::Key::Escape if left_sidebar.find.is_open() => left_sidebar.find.close(),
+                gdk::Key::Escape => left_sidebar.hide(),
+                gdk::Key::f | gdk::Key::F if is_control_held => left_sidebar.open_find(),
+                gdk::Key::Page_Down if is_control_held => left_sidebar.step_tab(1),
+                gdk::Key::Page_Up if is_control_held => left_sidebar.step_tab(-1),
+                gdk::Key::n | gdk::Key::N if is_control_held => left_sidebar.notes.create(),
                 gdk::Key::w | gdk::Key::W if is_control_held => {
-                    notepad.request_close(notepad.notes.active_id())
+                    left_sidebar.request_close(left_sidebar.notes.active_id())
                 }
                 _ => return glib::Propagation::Proceed,
             }
@@ -347,5 +350,5 @@ pub fn build(
     });
     window.add_controller(key_controller);
 
-    notepad
+    left_sidebar
 }

@@ -35,7 +35,7 @@ pub fn build(
     theme: &SharedTheme,
     services: &Services,
     sidebar: &Rc<crate::panels::sidebar::Sidebar>,
-    notepad: &Rc<crate::panels::notepad::Notepad>,
+    left_sidebar: &Rc<crate::panels::leftsidebar::LeftSidebar>,
     calendar: &Rc<crate::panels::calendar::Calendar>,
     media: &Rc<MediaControls>,
     volume_mixer: &Option<Rc<VolumeMixer>>,
@@ -56,7 +56,7 @@ pub fn build(
     }
 
     let sections = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    sections.append(&top_section(theme, services, notepad, scope));
+    sections.append(&top_section(theme, services, left_sidebar, scope));
     sections.append(&middle_section(
         config,
         theme,
@@ -98,7 +98,7 @@ pub fn build(
 fn top_section(
     theme: &SharedTheme,
     services: &Services,
-    notepad: &Rc<crate::panels::notepad::Notepad>,
+    left_sidebar: &Rc<crate::panels::leftsidebar::LeftSidebar>,
     scope: &Scope,
 ) -> gtk4::Widget {
     let area = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
@@ -106,7 +106,7 @@ fn top_section(
     area.append(&privacy::build(
         &services.device_usage,
         theme,
-        notepad,
+        left_sidebar,
         true,
         scope,
     ));
@@ -124,19 +124,19 @@ fn top_section(
     });
     area.add_controller(wheel);
 
-    let notepad_click = gtk4::GestureClick::new();
-    notepad_click.set_button(gtk4::gdk::BUTTON_PRIMARY);
-    notepad_click.connect_pressed({
-        let notepad = Rc::downgrade(notepad);
+    let left_sidebar_click = gtk4::GestureClick::new();
+    left_sidebar_click.set_button(gtk4::gdk::BUTTON_PRIMARY);
+    left_sidebar_click.connect_pressed({
+        let left_sidebar = Rc::downgrade(left_sidebar);
         move |gesture, _, x, y| {
-            if let (Some(notepad), Some(area)) = (notepad.upgrade(), gesture.widget())
+            if let (Some(left_sidebar), Some(area)) = (left_sidebar.upgrade(), gesture.widget())
                 && !is_over_button(&area, x, y)
             {
-                notepad.toggle();
+                left_sidebar.toggle();
             }
         }
     });
-    area.add_controller(notepad_click);
+    area.add_controller(left_sidebar_click);
 
     area.upcast()
 }

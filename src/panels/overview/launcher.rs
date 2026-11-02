@@ -622,7 +622,7 @@ impl Launcher {
             }
             "dark" => crate::theming::switchwallqueue::request(&["--mode", "dark", "--noswitch"]),
             "light" => crate::theming::switchwallqueue::request(&["--mode", "light", "--noswitch"]),
-            "notepad" => crate::core::actions::run("notepadToggle"),
+            "notepad" => crate::core::actions::run("sidebarLeftToggle"),
             "superpaste" => self.superpaste(arguments),
             "wallpaper" => crate::core::actions::run("wallpaperSelectorToggle"),
             "wipeclipboard" => self.cliphist.wipe(),

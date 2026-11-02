@@ -476,14 +476,14 @@ fn register_ipc(
         ("sidebarRight", "open", |screen_surfaces| {
             screen_surfaces.sidebar.open()
         }),
-        ("notepad", "toggle", |screen_surfaces| {
-            screen_surfaces.notepad.toggle()
+        ("sidebarLeft", "toggle", |screen_surfaces| {
+            screen_surfaces.left_sidebar.toggle()
         }),
-        ("notepad", "close", |screen_surfaces| {
-            screen_surfaces.notepad.close()
+        ("sidebarLeft", "close", |screen_surfaces| {
+            screen_surfaces.left_sidebar.close()
         }),
-        ("notepad", "open", |screen_surfaces| {
-            screen_surfaces.notepad.open()
+        ("sidebarLeft", "open", |screen_surfaces| {
+            screen_surfaces.left_sidebar.open()
         }),
         ("session", "toggle", |screen_surfaces| {
             screen_surfaces.session.toggle()
@@ -723,9 +723,9 @@ fn bind(surfaces: &Rc<RefCell<Vec<Surfaces>>>) {
             Box::new(|screen_surfaces: &Surfaces| screen_surfaces.calendar.toggle()),
         ),
         (
-            "notepadToggle",
-            "Toggles the notepad on press",
-            Box::new(|screen_surfaces: &Surfaces| screen_surfaces.notepad.toggle()),
+            "sidebarLeftToggle",
+            "Toggles left sidebar on press",
+            Box::new(|screen_surfaces: &Surfaces| screen_surfaces.left_sidebar.toggle()),
         ),
         (
             "sessionToggle",

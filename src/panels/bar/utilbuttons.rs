@@ -56,7 +56,7 @@ pub fn build(
 
     if config.util_notepad {
         let (button, _) = circle(theme, "edit_note", 0.0);
-        button.connect_clicked(|_| crate::core::actions::run("notepadToggle"));
+        button.connect_clicked(|_| crate::core::actions::run("sidebarLeftToggle"));
         row.append(&button);
     }
 

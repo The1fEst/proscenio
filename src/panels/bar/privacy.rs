@@ -3,7 +3,7 @@ use gtk4::{gdk, graphene, gsk};
 use std::rc::Rc;
 
 use crate::core::scope::Scope;
-use crate::panels::notepad::Notepad;
+use crate::panels::leftsidebar::LeftSidebar;
 use crate::services::media::deviceusage::{DeviceUsage, Usage};
 use crate::ui::theme::{SharedTheme, mix, pixel_size, rounding};
 use crate::ui::widgets::display::paint::Paint;
@@ -105,7 +105,7 @@ pub fn build_disc(indicator: Indicator, size: i32) -> Paint {
 pub fn build(
     usage: &DeviceUsage,
     theme: &SharedTheme,
-    notepad: &Rc<Notepad>,
+    left_sidebar: &Rc<LeftSidebar>,
     is_vertical: bool,
     scope: &Scope,
 ) -> gtk4::Widget {
@@ -127,10 +127,10 @@ pub fn build(
                 button.set_look(look_of(indicator));
                 button.set_content(&Centered::by_ink(&symbol), CHIP_HORIZONTAL_PADDING, 0);
                 button.connect_down({
-                    let notepad = Rc::downgrade(notepad);
+                    let left_sidebar = Rc::downgrade(left_sidebar);
                     move || {
-                        if let Some(notepad) = notepad.upgrade() {
-                            notepad.toggle();
+                        if let Some(left_sidebar) = left_sidebar.upgrade() {
+                            left_sidebar.toggle();
                         }
                     }
                 });
@@ -139,7 +139,7 @@ pub fn build(
             })
             .collect();
 
-    scope.keep(notepad.watch({
+    scope.keep(left_sidebar.watch({
         let buttons: Vec<_> = buttons
             .iter()
             .map(|(_, button)| button.downgrade())
