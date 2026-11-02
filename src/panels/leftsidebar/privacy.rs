@@ -16,7 +16,8 @@ const BADGE_SYMBOL_SIZE: f64 = 14.0;
 const SECTION_SPACING: i32 = 6;
 const ICON_SIZE: i32 = 28;
 const ROW_SPACING: i32 = 8;
-const SECTION_GAP: i32 = 8;
+const SECTION_GAP: i32 = 16;
+const LINE_SPACING: i32 = 8;
 const MAX_TITLE_CHARS: i32 = 34;
 
 pub struct Privacy {
@@ -26,7 +27,7 @@ pub struct Privacy {
 
 impl Privacy {
     pub fn new(usage: &DeviceUsage) -> Self {
-        let widget = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
+        let widget = gtk4::Box::new(gtk4::Orientation::Vertical, LINE_SPACING);
         widget.add_css_class("notepad-page");
         widget.set_margin_top(MARGIN);
         widget.set_visible(false);
