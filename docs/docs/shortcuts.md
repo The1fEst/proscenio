@@ -88,7 +88,7 @@ general {
 | `barToggle`, `barOpen`, `barClose` | Shows or hides the [bar](bar.md) on every monitor |
 | `sidebarRightToggle`, `sidebarRightOpen`, `sidebarRightClose` | The [sidebar](sidebar.md) |
 | `calendarToggle` | The [calendar](calendar.md), at the bar's clock |
-| `notepadToggle` | The [notepad](notepad.md) |
+| `notepadToggle` | The [left sidebar](sidebar-left.md) |
 | `sessionToggle`, `sessionOpen`, `sessionClose` | The [session screen](session-screen.md) |
 | `mediaControlsToggle`, `mediaControlsOpen`, `mediaControlsClose` | The [media controls](media-controls.md) |
 | `volumeMixerToggle`, `volumeMixerOpen`, `volumeMixerClose` | The [volume mixer](volume-mixer.md) |

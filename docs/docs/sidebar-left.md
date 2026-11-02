@@ -1,22 +1,25 @@
 ---
-title: Notepad
-sidebar_label: Notepad
-description: The panel on the left edge of the screen for quick text notes, with tabs, autosave to plain files, find, and line and character counts.
+title: Left sidebar
+sidebar_label: Left sidebar
+description: The panel on the left edge of the screen with the notepad, which has tabs, autosave to plain files, find, and line and character counts, and a privacy section listing the applications using the microphone, screen or camera.
 ---
 
-# Notepad
+# Left sidebar
 
-The notepad is a full-height panel on the left edge of the screen for scratch notes. Each note is a
-tab with a plain-text editor under it, and everything typed is saved by itself. The source is in
-`src/panels/notepad/`, with the notes and their files in `src/services/session/notes/`.
+The left sidebar is a full-height panel on the left edge of the screen. From top to bottom it holds
+the notepad, for scratch notes, and the [privacy section](#privacy), which is there while the
+microphone, the screen or the camera is in use. The notepad is a row of tabs with a plain-text
+editor under it, and everything typed is saved by itself. The source is in `src/panels/notepad/`,
+with the notes and their files in `src/services/session/notes/`.
 
 ## Opening and closing
 
-Every monitor the shell runs on has a notepad of its own, and they show the same notes.
+Every monitor the shell runs on has a left sidebar of its own, and they show the same notes.
 
 | To open or close it | Acts on |
 |---|---|
-| A left click on the bar's [left region](bar.md#the-left-region-brightness), the top of a vertical bar, or a left [screen corner](screen-corners.md#corner-regions) | The screen clicked |
+| A left click anywhere on the bar's [left region](bar.md#the-left-region-brightness), privacy chips included, or on the top part of a vertical bar | The screen clicked |
+| A left click on a left [screen corner](screen-corners.md#corner-regions) | The screen clicked |
 | The notepad button in the [bar](bar.md#utility-buttons), off by default | Hyprland's focused monitor |
 | `proscenio ipc call notepad toggle`, or `open`, `close` | Hyprland's focused monitor |
 | The global shortcut `notepadToggle`, which has no default bind | Hyprland's focused monitor |
@@ -24,24 +27,27 @@ Every monitor the shell runs on has a notepad of its own, and they show the same
 
 [IPC](ipc.md) and [Shortcuts](shortcuts.md) show how to call and bind these.
 
-The notepad closes on:
+While the left sidebar is open, the privacy chips in the bar show their pressed fill, the way the
+indicators button at the right end does while the [sidebar](sidebar.md) is open.
+
+The left sidebar closes on:
 
 - **Escape.** With the delete dialog open, the first Escape closes the dialog. Otherwise, it ends a
-  tab rename, then closes the find bar, and then closes the notepad.
+  tab rename, then closes the find bar, and then closes the left sidebar.
 - **A click outside it**, on a window, the bar or the wallpaper. This is Hyprland's
   `hyprland-focus-grab-v1`; see [Architecture](architecture.md#focus-grabbing). Only one panel holds
-  a grab at a time, so opening the notepad closes the sidebar or the calendar if one is open, and
-  opening one of them closes the notepad.
+  a grab at a time, so opening the left sidebar closes the right sidebar or the calendar if one is
+  open, and opening one of them closes the left sidebar.
 
 Closing saves every unsaved note at once. The content is built once and kept; about a second after
-the notepad closes, its window gives back its surface and buffers.
+the left sidebar closes, its window gives back its surface and buffers.
 
 ## The window
 
 | Property | Value |
 |---|---|
 | Layer | top |
-| Namespace | `proscenio:notepad`, for Hyprland layer rules |
+| Namespace | `proscenio:sidebarLeft`, for Hyprland layer rules |
 | Anchors | top, left and bottom |
 | Width | 480 px: the panel, 5 px of gap above, below and to the left, and 10 px on the right for its shadow |
 | Exclusive zone | none of its own; it keeps clear of the bar's, so it starts below a top bar |
@@ -50,8 +56,20 @@ the notepad closes, its window gives back its surface and buffers.
 The window does not animate itself. A layer rule makes it slide in from the left edge:
 
 ```lua
-hl.layer_rule({ match = { namespace = "proscenio:notepad" }, animation = "slide left" })
+hl.layer_rule({ match = { namespace = "proscenio:sidebarLeft" }, animation = "slide left" })
 ```
+
+## Privacy
+
+Below the editor, a rounded section like the editor's page lists what is using the microphone, the
+screen or the camera right now. It has one block for each kind in use, in the order microphone,
+screen sharing, camera, each headed by a badge in the kind's color (see the
+[privacy indicator](bar.md#privacy-indicator)), with a row for each application: its icon, its name,
+and what it uses. While nothing is in use the section is hidden, the way the sidebar hides its update
+buttons while there is nothing to update.
+
+It is filled when the left sidebar opens, which also asks for a fresh scan of the cameras and the
+shared screens, and follows changes while it stays open.
 
 ## Tabs
 
@@ -101,7 +119,7 @@ of one short line in the editor, the field starts with it. The match is case-ins
 | Ctrl+F | Find |
 | Enter, Shift+Enter | Next or previous match, in the find field |
 | Ctrl+Z, Ctrl+Shift+Z | Undo, redo |
-| Escape | End a rename, close the find bar, or close the notepad |
+| Escape | End a rename, close the find bar, or close the left sidebar |
 
 ## What is kept
 
@@ -126,7 +144,7 @@ The index looks like this:
 ```
 
 - **Autosave.** A note is written 500 ms after the last keystroke, and at the latest 5 s after the
-  first keystroke of a stretch of typing, and when the notepad closes. Every write goes to a
+  first keystroke of a stretch of typing, and when the left sidebar closes. Every write goes to a
   temporary file next to the target and replaces it by a rename, on a worker thread, so a crash
   leaves the old or the new file whole.
 - **Restart.** The open tab and the cursor position of every note come back after a restart of the

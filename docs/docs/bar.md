@@ -18,7 +18,7 @@ keyboard layout button and the button that opens the [sidebar](sidebar.md).
 
 | Part | Wheel | Left click |
 |---|---|---|
-| Left region, from the screen edge to the center groups | brightness | toggles the [notepad](notepad.md); the [privacy indicator](#privacy-indicator) opens its popup |
+| Left region, from the screen edge to the center groups | brightness | toggles the [left sidebar](sidebar-left.md), also on the [privacy indicator](#privacy-indicator) |
 | Media and resources group | nothing | the media ring opens the media controls, the mixer ring the volume mixer |
 | Workspaces group | previous or next workspace | focuses the workspace |
 | Clock group | nothing | the clock opens the calendar; anywhere else toggles the sidebar |
@@ -288,7 +288,7 @@ A row of round buttons after the clock, shown on wide screens with Verbose on. E
 | Record | `showScreenRecord` | off | runs `proscenio record`: pick a region with `slurp`, record it with `wf-recorder` |
 | Color picker | `showColorPicker` | off | runs `hyprpicker -a`, which copies the picked color |
 | Keyboard toggle | `showKeyboardToggle` | on | shows or hides the [on-screen keyboard](on-screen-keyboard.md) |
-| Notepad | `showNotepad` | off | shows or hides the [notepad](notepad.md) |
+| Notepad | `showNotepad` | off | opens or closes the [left sidebar](sidebar-left.md) |
 | Mic toggle | `showMicToggle` | off | runs `wpctl set-mute @DEFAULT_SOURCE@ toggle`; the icon shows whether the microphone is muted |
 | Dark/Light toggle | `showDarkModeToggle` | on | switches the [color scheme](colors.md) between dark and light and keeps the wallpaper |
 | Performance profile toggle | `showPerformanceProfileToggle` | off | cycles power saver, balanced and performance; without a performance profile it switches between balanced and power saver |
@@ -317,8 +317,9 @@ The low, critical and full warnings and the automatic suspend are set on the
 
 The left region runs from the screen edge to the center groups. Scrolling over it changes the
 brightness of the focused monitor, and the [on-screen display](osd.md) shows the level. A left click
-anywhere on it toggles the [notepad](notepad.md) of that screen, except on the privacy indicator and
-the weather pill, which keep their own clicks.
+anywhere on it, the privacy indicator included, toggles the [left sidebar](sidebar-left.md) of that
+screen. The weather pill keeps its own clicks. While the left sidebar is open, the privacy chips
+show their pressed fill.
 
 - Scrolling up first raises the screen gamma by 5 points while it is under 100 %, then the monitor's
   brightness by 5 %.
@@ -349,9 +350,9 @@ vertical bar they are the same pills, stacked. The chips have fixed colors, what
 | Screen sharing | `#6D7CFD` |
 | Camera | `#1F9D44` |
 
-A left click on a chip opens a popup with a section for each active kind, marked with a badge in the
-kind's color, listing the applications with their icons and what they use. A click elsewhere closes
-the popup, and it closes by itself when nothing is in use any more. It refreshes while open.
+A left click on a chip toggles the [left sidebar](sidebar-left.md), whose [privacy
+section](sidebar-left.md#privacy) has a block for each active kind, marked with a badge in the kind's
+color, listing the applications with their icons and what they use.
 
 While a fullscreen window covers the bar of a screen, a dot in each active kind's color shows in the
 corner where the chips sit: top left for a horizontal bar at the top, bottom left for one at the
@@ -363,7 +364,7 @@ and disappear with the chips. With `bar.privacyDotsInFullscreen` off (`true` by 
 surface is not created and nothing shows over fullscreen windows; the chips in the bar are
 unaffected.
 
-| Kind | Detected by | Popup rows |
+| Kind | Detected by | Rows in the privacy section |
 |---|---|---|
 | Microphone | the sound server's recording streams, followed through PulseAudio events | each application with the source it records from |
 | Screen sharing | Hyprland's `screencastv2` event | each application reading the share, with what is shared: `Monitor: DP-2`, `Window: <title>`, `Region: DP-2` or `Workspace: <name>` |
@@ -397,7 +398,7 @@ unaffected.
   reads `capture`), and the holder that started first is taken for the producer and left out. PipeWire
   and WirePlumber holding a camera for an application are not listed; the applications streaming
   that camera are, from `pw-dump`. It runs when the shared targets or the cameras PipeWire holds
-  change and when the popup opens, and up to three more times on later ticks while no reader has
+  change and when the left sidebar opens, and up to three more times on later ticks while no reader has
   shown up.
 
 ### Weather
@@ -491,7 +492,7 @@ turns the dot into a badge with the number. Opening the sidebar marks every noti
 The resources, clock, battery and weather popups open when the pointer enters their widget and close
 when it leaves, with no delay and no animation. Each one opens just past the bar's inner edge, lined
 up with its widget, on a `m3surfaceContainer` card with a 12 px radius. They are GTK popovers on the
-bar's own surface and refresh while open. The privacy popup opens on a click instead.
+bar's own surface and refresh while open.
 
 ## The vertical bar
 
@@ -501,8 +502,7 @@ bar's own surface and refresh while open. The privacy popup opens on a click ins
 From top to bottom:
 
 - **The top part**, above the groups: the [privacy indicator](#privacy-indicator) with its icons
-  stacked. Scroll here for brightness; a click toggles the notepad, except on the privacy
-  indicator.
+  stacked. Scroll here for brightness; a click toggles the [left sidebar](sidebar-left.md).
 - **Three groups**, centered on the screen's height:
   - the three resource rings without numbers, a line, the media ring and the mixer ring. Hovering
     the media ring shows the track title and artist, or "No media", unless the media controls are

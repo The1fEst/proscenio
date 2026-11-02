@@ -56,7 +56,7 @@ pub fn build(
     }
 
     let sections = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    sections.append(&top_section(config, theme, services, notepad, scope));
+    sections.append(&top_section(theme, services, notepad, scope));
     sections.append(&middle_section(
         config,
         theme,
@@ -96,7 +96,6 @@ pub fn build(
 }
 
 fn top_section(
-    config: &Rc<Config>,
     theme: &SharedTheme,
     services: &Services,
     notepad: &Rc<crate::panels::notepad::Notepad>,
@@ -107,7 +106,7 @@ fn top_section(
     area.append(&privacy::build(
         &services.device_usage,
         theme,
-        config,
+        notepad,
         true,
         scope,
     ));

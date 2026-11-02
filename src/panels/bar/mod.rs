@@ -177,7 +177,7 @@ fn left_section(
     row.append(&privacy::build(
         &services.device_usage,
         theme,
-        config,
+        notepad,
         false,
         scope,
     ));

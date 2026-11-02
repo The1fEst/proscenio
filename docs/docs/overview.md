@@ -101,7 +101,7 @@ query starts with it. Whatever follows the first space is the action's argument:
 |---|---|
 | `accentcolor` | Sets the accent color to a hex color such as `#ff6f00`, removes it with `clear`, or picks one from the screen with `hyprpicker` when given nothing |
 | `dark`, `light` | Switches the color scheme, keeping the wallpaper |
-| `notepad` | Opens or closes the [notepad](notepad.md) |
+| `notepad` | Opens or closes the [left sidebar](sidebar-left.md) |
 | `superpaste` | Pastes the last N clipboard entries, oldest first, by copying each and pressing Ctrl+V with `ydotool`; `/superpaste 4i` pastes the last four images |
 | `wallpaper` | Opens the [wallpaper selector](wallpaper-selector.md) |
 | `wipeclipboard` | Deletes the whole clipboard history |

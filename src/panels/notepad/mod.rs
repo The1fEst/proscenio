@@ -2,6 +2,7 @@ mod confirmation;
 mod editor;
 mod findbar;
 mod matches;
+mod privacy;
 mod symbolbutton;
 mod tabs;
 
@@ -12,6 +13,7 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+use crate::core::listeners::{Listeners, Subscription};
 use crate::core::scope::Scope;
 use crate::platform::wayland::grab;
 use crate::services::Services;
@@ -20,9 +22,10 @@ use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::overlay::windowdialog::WindowDialog;
 use editor::Editor;
 use findbar::FindBar;
+use privacy::Privacy;
 use tabs::Tabs;
 
-const NAMESPACE: &str = "proscenio:notepad";
+const NAMESPACE: &str = "proscenio:sidebarLeft";
 const WIDTH: i32 = 480;
 const GAP: i32 = 5;
 const ELEVATION: i32 = 10;
@@ -40,6 +43,8 @@ pub struct Notepad {
     theme: SharedTheme,
     dialog: RefCell<Option<Rc<WindowDialog>>>,
     last_active_id: Cell<u64>,
+    privacy: Privacy,
+    watchers: Listeners<bool>,
 }
 
 impl Notepad {
@@ -63,8 +68,19 @@ impl Notepad {
         }
     }
 
+    pub fn watch(&self, watcher: impl Fn(bool) + 'static) -> Subscription {
+        watcher(self.window.is_visible());
+        self.watchers.add_with(move |is_open| watcher(*is_open))
+    }
+
+    fn announce(&self) {
+        self.watchers.notify_with(&self.window.is_visible());
+    }
+
     fn show(self: &Rc<Self>) {
         self.window.set_visible(true);
+        self.announce();
+        self.privacy.show();
         self.editor.focus();
         let (Some(grab), Some(surface)) = (self.grab.as_ref(), self.window.surface()) else {
             return;
@@ -88,6 +104,7 @@ impl Notepad {
         self.find.hide();
         self.notes.flush();
         self.window.set_visible(false);
+        self.announce();
     }
 
     fn open_find(self: &Rc<Self>) {
@@ -234,6 +251,8 @@ pub fn build(
     column.append(&header);
     column.append(&find.widget);
     column.append(&editor.widget);
+    let privacy = Privacy::new(&services.device_usage);
+    column.append(&privacy.widget);
 
     let overlay = gtk4::Overlay::new();
     overlay.set_child(Some(&column));
@@ -265,9 +284,21 @@ pub fn build(
         theme: theme.clone(),
         dialog: RefCell::new(None),
         last_active_id: Cell::new(notes.active_id()),
+        privacy,
+        watchers: Listeners::default(),
     });
     owner.replace(Rc::downgrade(&notepad));
     notepad.refresh();
+    scope.keep(services.device_usage.subscribe({
+        let notepad = Rc::downgrade(&notepad);
+        move || {
+            if let Some(notepad) = notepad.upgrade()
+                && notepad.window.is_visible()
+            {
+                notepad.privacy.refresh();
+            }
+        }
+    }));
     scope.keep(notes.subscribe({
         let notepad = Rc::downgrade(&notepad);
         move || {

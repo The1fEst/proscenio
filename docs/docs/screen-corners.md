@@ -1,14 +1,14 @@
 ---
 title: Screen corners
 sidebar_label: Screen corners
-description: The black rounded corners drawn over each monitor's corners, and the corner regions that open the sidebar or the notepad and scroll brightness and volume.
+description: The black rounded corners drawn over each monitor's corners, and the corner regions that open the sidebar or the left sidebar and scroll brightness and volume.
 ---
 
 # Screen corners
 
 proscenio draws a small black quarter-circle in each corner of every monitor, so the screen looks
 rounded like the windows on it. Two of those corners can also be hot: clicking the right one toggles
-the [sidebar](sidebar.md), clicking the left one toggles the [notepad](notepad.md), and scrolling
+the [sidebar](sidebar.md), clicking the left one toggles the [left sidebar](sidebar-left.md), and scrolling
 over them changes brightness or volume.
 
 The source is `src/panels/corners.rs`.
@@ -42,7 +42,8 @@ two bottom ones with *Place at bottom*. They work wherever the bar is.
   when the pointer reaches the corner's very end: within 2 pixels of the screen's side edge, and
   more than *vertical offset* pixels from the top (or bottom) edge. It opens once on arriving there,
   not again while the pointer stays.
-- **Left corners** open the [notepad](notepad.md). A click toggles it. They have no hover trigger.
+- **Left corners** open the [left sidebar](sidebar-left.md). A click toggles it. They have no hover
+  trigger.
 - **Scrolling** over a region, with *Value scroll* on, changes brightness on the left and volume on
   the right. Scrolling up raises the value. Brightness moves in steps of 5%; volume moves in steps
   of 1% below 10% and 2% above. The matching [on-screen display](osd.md) closes once the pointer
