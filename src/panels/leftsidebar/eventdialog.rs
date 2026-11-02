@@ -245,6 +245,9 @@ pub fn build(
         }
     });
     dialog.column.add(&form.combo.button, Place::wide());
+    dialog
+        .column
+        .add(&form.combo.use_inline_list(), Place::wide());
     dialog.keep(form.combo.clone());
 
     text::set_color(&form.status, "colError");
