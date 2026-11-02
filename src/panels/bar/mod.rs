@@ -54,6 +54,7 @@ pub fn build(
     theme: &SharedTheme,
     services: &Services,
     sidebar: &Rc<crate::panels::sidebar::Sidebar>,
+    notepad: &Rc<crate::panels::notepad::Notepad>,
     calendar: &Rc<crate::panels::calendar::Calendar>,
     media: &Rc<crate::panels::mediacontrols::MediaControls>,
     volume_mixer: &Option<Rc<crate::panels::mixer::VolumeMixer>>,
@@ -68,7 +69,7 @@ pub fn build(
     }
 
     let strip = Strip::new(
-        &left_section(config, services, theme, scope),
+        &left_section(config, services, theme, notepad, scope),
         &middle_section(
             config,
             theme,
@@ -167,6 +168,7 @@ fn left_section(
     config: &Rc<Config>,
     services: &Services,
     theme: &SharedTheme,
+    notepad: &Rc<crate::panels::notepad::Notepad>,
     scope: &Scope,
 ) -> gtk4::Widget {
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -226,6 +228,20 @@ fn left_section(
         gtk4::glib::Propagation::Stop
     });
     area.add_controller(wheel);
+
+    let notepad_click = gtk4::GestureClick::new();
+    notepad_click.set_button(gtk4::gdk::BUTTON_PRIMARY);
+    notepad_click.connect_pressed({
+        let notepad = Rc::downgrade(notepad);
+        move |gesture, _, x, y| {
+            if let (Some(notepad), Some(area)) = (notepad.upgrade(), gesture.widget())
+                && !is_over_button(&area, x, y)
+            {
+                notepad.toggle();
+            }
+        }
+    });
+    area.add_controller(notepad_click);
 
     area.upcast()
 }

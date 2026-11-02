@@ -18,7 +18,7 @@ keyboard layout button and the button that opens the [sidebar](sidebar.md).
 
 | Part | Wheel | Left click |
 |---|---|---|
-| Left region, from the screen edge to the center groups | brightness | nothing; the [privacy indicator](#privacy-indicator) opens its popup |
+| Left region, from the screen edge to the center groups | brightness | toggles the [notepad](notepad.md); the [privacy indicator](#privacy-indicator) opens its popup |
 | Media and resources group | nothing | the media ring opens the media controls, the mixer ring the volume mixer |
 | Workspaces group | previous or next workspace | focuses the workspace |
 | Clock group | nothing | the clock opens the calendar; anywhere else toggles the sidebar |
@@ -316,7 +316,9 @@ The low, critical and full warnings and the automatic suspend are set on the
 ## The left region: brightness
 
 The left region runs from the screen edge to the center groups. Scrolling over it changes the
-brightness of the focused monitor, and the [on-screen display](osd.md) shows the level.
+brightness of the focused monitor, and the [on-screen display](osd.md) shows the level. A left click
+anywhere on it toggles the [notepad](notepad.md) of that screen, except on the privacy indicator and
+the weather pill, which keep their own clicks.
 
 - Scrolling up first raises the screen gamma by 5 points while it is under 100 %, then the monitor's
   brightness by 5 %.
@@ -499,7 +501,8 @@ bar's own surface and refresh while open. The privacy popup opens on a click ins
 From top to bottom:
 
 - **The top part**, above the groups: the [privacy indicator](#privacy-indicator) with its icons
-  stacked, and scroll for brightness.
+  stacked. Scroll here for brightness; a click toggles the notepad, except on the privacy
+  indicator.
 - **Three groups**, centered on the screen's height:
   - the three resource rings without numbers, a line, the media ring and the mixer ring. Hovering
     the media ring shows the track title and artist, or "No media", unless the media controls are

@@ -430,6 +430,7 @@ impl Screens {
                     theme,
                     services,
                     &screen_surfaces.sidebar,
+                    &screen_surfaces.notepad,
                     &screen_surfaces.calendar,
                     &screen_surfaces.media,
                     &screen_surfaces.volume_mixer,
@@ -443,6 +444,7 @@ impl Screens {
                     config,
                     services,
                     &screen_surfaces.sidebar,
+                    &screen_surfaces.notepad,
                     monitor,
                     &scope,
                 ));

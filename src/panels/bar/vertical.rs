@@ -35,6 +35,7 @@ pub fn build(
     theme: &SharedTheme,
     services: &Services,
     sidebar: &Rc<crate::panels::sidebar::Sidebar>,
+    notepad: &Rc<crate::panels::notepad::Notepad>,
     calendar: &Rc<crate::panels::calendar::Calendar>,
     media: &Rc<MediaControls>,
     volume_mixer: &Option<Rc<VolumeMixer>>,
@@ -55,7 +56,7 @@ pub fn build(
     }
 
     let sections = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-    sections.append(&top_section(config, theme, services, scope));
+    sections.append(&top_section(config, theme, services, notepad, scope));
     sections.append(&middle_section(
         config,
         theme,
@@ -98,6 +99,7 @@ fn top_section(
     config: &Rc<Config>,
     theme: &SharedTheme,
     services: &Services,
+    notepad: &Rc<crate::panels::notepad::Notepad>,
     scope: &Scope,
 ) -> gtk4::Widget {
     let area = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
@@ -122,6 +124,20 @@ fn top_section(
         gtk4::glib::Propagation::Stop
     });
     area.add_controller(wheel);
+
+    let notepad_click = gtk4::GestureClick::new();
+    notepad_click.set_button(gtk4::gdk::BUTTON_PRIMARY);
+    notepad_click.connect_pressed({
+        let notepad = Rc::downgrade(notepad);
+        move |gesture, _, x, y| {
+            if let (Some(notepad), Some(area)) = (notepad.upgrade(), gesture.widget())
+                && !is_over_button(&area, x, y)
+            {
+                notepad.toggle();
+            }
+        }
+    });
+    area.add_controller(notepad_click);
 
     area.upcast()
 }

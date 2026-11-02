@@ -9,7 +9,7 @@ use crate::connector;
 use crate::core::config::Config;
 use crate::core::scope::Scope;
 use crate::panels::overview;
-use crate::panels::{bar, calendar, mediacontrols, mixer, settings, sidebar};
+use crate::panels::{bar, calendar, mediacontrols, mixer, notepad, settings, sidebar};
 use crate::services::Services;
 use crate::ui::theme;
 use crate::ui::{anim, reserve, widgets};
@@ -24,6 +24,7 @@ pub fn open_bar(
     theme: &theme::SharedTheme,
     services: &Services,
     sidebar: &Rc<sidebar::Sidebar>,
+    notepad: &Rc<notepad::Notepad>,
     calendar: &Rc<calendar::Calendar>,
     media: &Rc<mediacontrols::MediaControls>,
     volume_mixer: &Option<Rc<mixer::VolumeMixer>>,
@@ -42,6 +43,7 @@ pub fn open_bar(
             theme,
             services,
             sidebar,
+            notepad,
             calendar,
             media,
             volume_mixer,
@@ -56,6 +58,7 @@ pub fn open_bar(
             theme,
             services,
             sidebar,
+            notepad,
             calendar,
             media,
             volume_mixer,

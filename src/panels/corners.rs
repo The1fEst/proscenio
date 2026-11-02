@@ -9,6 +9,7 @@ use std::rc::Rc;
 
 use crate::core::config::Config;
 use crate::core::scope::Scope;
+use crate::panels::notepad::Notepad;
 use crate::panels::sidebar::Sidebar;
 use crate::services::Services;
 use crate::services::session::states::Osd;
@@ -43,6 +44,7 @@ pub fn open(
     config: &Rc<Config>,
     services: &Rc<Services>,
     sidebar: &Rc<Sidebar>,
+    notepad: &Rc<Notepad>,
     monitor: &gdk::Monitor,
     scope: &Scope,
 ) -> Vec<gtk4::ApplicationWindow> {
@@ -58,7 +60,7 @@ pub fn open(
     ];
     let windows: Vec<gtk4::ApplicationWindow> = corners
         .iter()
-        .map(|corner| corner_window(app, config, services, sidebar, monitor, *corner))
+        .map(|corner| corner_window(app, config, services, sidebar, notepad, monitor, *corner))
         .collect();
 
     let connector: String = monitor.connector().map(Into::into).unwrap_or_default();
@@ -84,6 +86,7 @@ fn corner_window(
     config: &Rc<Config>,
     services: &Rc<Services>,
     sidebar: &Rc<Sidebar>,
+    notepad: &Rc<Notepad>,
     monitor: &gdk::Monitor,
     corner: Corner,
 ) -> gtk4::ApplicationWindow {
@@ -174,7 +177,7 @@ fn corner_window(
     });
 
     if is_hot {
-        connect_reach(&overlay, config, services, sidebar, corner);
+        connect_reach(&overlay, config, services, sidebar, notepad, corner);
     }
 
     window.present();
@@ -186,6 +189,7 @@ fn connect_reach(
     config: &Rc<Config>,
     services: &Rc<Services>,
     sidebar: &Rc<Sidebar>,
+    notepad: &Rc<Notepad>,
     corner: Corner,
 ) {
     let is_at_end = Rc::new(Cell::new(false));
@@ -222,9 +226,12 @@ fn connect_reach(
     press_gesture.set_button(gdk::BUTTON_PRIMARY);
     press_gesture.connect_pressed({
         let sidebar = sidebar.clone();
+        let notepad = notepad.clone();
         move |_, _, _, _| {
             if corner.opens_sidebar() {
                 sidebar.toggle();
+            } else {
+                notepad.toggle();
             }
         }
     });

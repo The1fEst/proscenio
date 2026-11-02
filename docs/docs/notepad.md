@@ -16,6 +16,7 @@ Every monitor the shell runs on has a notepad of its own, and they show the same
 
 | To open or close it | Acts on |
 |---|---|
+| A left click on the bar's [left region](bar.md#the-left-region-brightness), the top of a vertical bar, or a left [screen corner](screen-corners.md#corner-regions) | The screen clicked |
 | The notepad button in the [bar](bar.md#utility-buttons), off by default | Hyprland's focused monitor |
 | `proscenio ipc call notepad toggle`, or `open`, `close` | Hyprland's focused monitor |
 | The global shortcut `notepadToggle`, which has no default bind | Hyprland's focused monitor |
