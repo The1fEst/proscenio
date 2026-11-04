@@ -2,7 +2,6 @@
 #include "Expect.hpp"
 
 #include <format>
-#include <string_view>
 #include <vector>
 
 static void testAppearance() {
@@ -60,27 +59,31 @@ static void testArmedButton() {
     expect(computeCloseAppearance() == SButtonAppearance{.usesRoleColor = true, .iconAlpha = 1, .stateLayerAlpha = PRESS_STATE_LAYER_ALPHA}, "back on the button: press layer");
 }
 
-static void testGlyphNames() {
+static void testIconSelection() {
     struct SCase {
-        eBarButton       button;
-        bool             isWindowMaximized;
-        std::string_view expected;
+        const char* name;
+        eBarButton  button;
+        bool        isWindowMaximized;
+        eBarIcon    expected;
     };
 
     const std::vector<SCase> CASES = {
-        {BAR_BUTTON_CLOSE, false, "close"},           {BAR_BUTTON_CLOSE, true, "close"},
-        {BAR_BUTTON_MINIMIZE, false, "remove"},       {BAR_BUTTON_MINIMIZE, true, "remove"},
-        {BAR_BUTTON_MAXIMIZE, false, "open_in_full"}, {BAR_BUTTON_MAXIMIZE, true, "close_fullscreen"},
+        {"close", BAR_BUTTON_CLOSE, false, BAR_ICON_CLOSE},
+        {"close on a maximized window", BAR_BUTTON_CLOSE, true, BAR_ICON_CLOSE},
+        {"minimize", BAR_BUTTON_MINIMIZE, false, BAR_ICON_MINIMIZE},
+        {"minimize on a maximized window", BAR_BUTTON_MINIMIZE, true, BAR_ICON_MINIMIZE},
+        {"maximize", BAR_BUTTON_MAXIMIZE, false, BAR_ICON_MAXIMIZE},
+        {"maximize on a maximized window", BAR_BUTTON_MAXIMIZE, true, BAR_ICON_RESTORE},
     };
 
     for (const auto& testCase : CASES)
-        expect(selectGlyphName(testCase.button, testCase.isWindowMaximized) == testCase.expected, std::format("glyph: {}", testCase.expected));
+        expect(selectIcon(testCase.button, testCase.isWindowMaximized) == testCase.expected, std::format("icon: {}", testCase.name));
 }
 
 int main() {
     testAppearance();
     testArmedButton();
-    testGlyphNames();
+    testIconSelection();
 
     return reportResult("ButtonAppearanceTests");
 }

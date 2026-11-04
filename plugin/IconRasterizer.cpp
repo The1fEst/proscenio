@@ -1,49 +1,49 @@
 #include "IconRasterizer.hpp"
 
-#include <pango/pangocairo.h>
+constexpr double ICON_DESIGN_SIZE    = 16;
+constexpr double ICON_STROKE_WIDTH   = 2;
+constexpr double ICON_HALF_EXTENT    = 4;
+constexpr double CHEVRON_HALF_HEIGHT = 2;
 
-constexpr double GLYPH_RATIO      = 0.75;
-constexpr auto   GLYPH_FAMILY     = "Material Symbols Rounded";
-constexpr auto   GLYPH_VARIATIONS = "FILL=1,opsz=20,wght=600";
-
-CairoSurfacePtr  rasterizeIcon(const std::string& glyphName, const SIconColor& color, int surfaceSize) {
+CairoSurfacePtr  rasterizeIcon(eBarIcon icon, const SIconColor& color, int surfaceSize) {
     CairoSurfacePtr surface{cairo_image_surface_create(CAIRO_FORMAT_ARGB32, surfaceSize, surfaceSize)};
-    auto*           cairo       = cairo_create(surface.get());
-    auto*           layout      = pango_cairo_create_layout(cairo);
-    auto*           font        = pango_font_description_new();
-    auto*           fontOptions = cairo_font_options_create();
+    auto*           cairo = cairo_create(surface.get());
 
-    cairo_font_options_set_hint_style(fontOptions, CAIRO_HINT_STYLE_NONE);
-    cairo_font_options_set_hint_metrics(fontOptions, CAIRO_HINT_METRICS_OFF);
-    cairo_font_options_set_antialias(fontOptions, CAIRO_ANTIALIAS_GRAY);
+    cairo_translate(cairo, surfaceSize / 2.0, surfaceSize / 2.0);
+    cairo_scale(cairo, surfaceSize / ICON_DESIGN_SIZE, surfaceSize / ICON_DESIGN_SIZE);
 
-    auto* context = pango_layout_get_context(layout);
-    pango_cairo_context_set_font_options(context, fontOptions);
-    pango_context_set_round_glyph_positions(context, false);
+    cairo_set_source_rgba(cairo, color.red, color.green, color.blue, color.alpha);
+    cairo_set_line_width(cairo, ICON_STROKE_WIDTH);
+    cairo_set_line_cap(cairo, CAIRO_LINE_CAP_ROUND);
+    cairo_set_line_join(cairo, CAIRO_LINE_JOIN_ROUND);
 
-    pango_font_description_set_family_static(font, GLYPH_FAMILY);
-    pango_font_description_set_absolute_size(font, surfaceSize * GLYPH_RATIO * PANGO_SCALE);
-    pango_font_description_set_variations_static(font, GLYPH_VARIATIONS);
-
-    pango_layout_set_font_description(layout, font);
-    pango_layout_set_text(layout, glyphName.c_str(), -1);
-
-    PangoRectangle inkBox = {};
-    pango_layout_get_extents(layout, &inkBox, nullptr);
-
-    const double UNIT  = PANGO_SCALE;
-    const double INK_X = (surfaceSize - inkBox.width / UNIT) / 2.0 - inkBox.x / UNIT;
-    const double INK_Y = (surfaceSize - inkBox.height / UNIT) / 2.0 - inkBox.y / UNIT;
-
-    if (inkBox.width / UNIT <= surfaceSize && inkBox.height / UNIT <= surfaceSize) {
-        cairo_set_source_rgba(cairo, color.red, color.green, color.blue, color.alpha);
-        cairo_move_to(cairo, INK_X, INK_Y);
-        pango_cairo_show_layout(cairo, layout);
+    switch (icon) {
+        case BAR_ICON_MINIMIZE:
+            cairo_move_to(cairo, -ICON_HALF_EXTENT, -CHEVRON_HALF_HEIGHT);
+            cairo_line_to(cairo, 0, CHEVRON_HALF_HEIGHT);
+            cairo_line_to(cairo, ICON_HALF_EXTENT, -CHEVRON_HALF_HEIGHT);
+            break;
+        case BAR_ICON_MAXIMIZE:
+            cairo_move_to(cairo, -ICON_HALF_EXTENT, CHEVRON_HALF_HEIGHT);
+            cairo_line_to(cairo, 0, -CHEVRON_HALF_HEIGHT);
+            cairo_line_to(cairo, ICON_HALF_EXTENT, CHEVRON_HALF_HEIGHT);
+            break;
+        case BAR_ICON_RESTORE:
+            cairo_move_to(cairo, -ICON_HALF_EXTENT, 0);
+            cairo_line_to(cairo, 0, -ICON_HALF_EXTENT);
+            cairo_line_to(cairo, ICON_HALF_EXTENT, 0);
+            cairo_line_to(cairo, 0, ICON_HALF_EXTENT);
+            cairo_close_path(cairo);
+            break;
+        case BAR_ICON_CLOSE:
+            cairo_move_to(cairo, -ICON_HALF_EXTENT, -ICON_HALF_EXTENT);
+            cairo_line_to(cairo, ICON_HALF_EXTENT, ICON_HALF_EXTENT);
+            cairo_move_to(cairo, ICON_HALF_EXTENT, -ICON_HALF_EXTENT);
+            cairo_line_to(cairo, -ICON_HALF_EXTENT, ICON_HALF_EXTENT);
+            break;
     }
 
-    cairo_font_options_destroy(fontOptions);
-    pango_font_description_free(font);
-    g_object_unref(layout);
+    cairo_stroke(cairo);
     cairo_destroy(cairo);
 
     cairo_surface_flush(surface.get());

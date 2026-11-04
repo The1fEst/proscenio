@@ -15,12 +15,12 @@ SButtonAppearance computeButtonAppearance(eBarButton button, const SButtonState&
     return appearance;
 }
 
-const char* selectGlyphName(eBarButton button, bool isWindowMaximized) {
+eBarIcon selectIcon(eBarButton button, bool isWindowMaximized) {
     switch (button) {
-        case BAR_BUTTON_CLOSE: return "close";
-        case BAR_BUTTON_MINIMIZE: return "remove";
-        case BAR_BUTTON_MAXIMIZE: return isWindowMaximized ? "close_fullscreen" : "open_in_full";
+        case BAR_BUTTON_CLOSE: return BAR_ICON_CLOSE;
+        case BAR_BUTTON_MINIMIZE: return BAR_ICON_MINIMIZE;
+        case BAR_BUTTON_MAXIMIZE: return isWindowMaximized ? BAR_ICON_RESTORE : BAR_ICON_MAXIMIZE;
     }
 
-    return "";
+    return BAR_ICON_CLOSE;
 }

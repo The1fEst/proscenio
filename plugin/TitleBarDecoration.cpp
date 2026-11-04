@@ -436,14 +436,14 @@ void CTitleBarDecoration::renderTitleTexture(Render::CRenderContext& ctx, SP<Ren
     g_pHyprOpenGL->renderTexture(ctx, texture, TITLE_BOX, {.a = alpha});
 }
 
-static SP<Render::ITexture> resolveIconTexture(eBarButton button, const char* glyphName, Config::INTEGER color, int deviceSize) {
-    const SIconKey KEY = {.button = button, .glyphName = glyphName, .color = color, .deviceSize = deviceSize};
+static SP<Render::ITexture> resolveIconTexture(eBarButton button, eBarIcon icon, Config::INTEGER color, int deviceSize) {
+    const SIconKey KEY = {.button = button, .icon = icon, .color = color, .deviceSize = deviceSize};
 
     if (const auto IT = g_pGlobalState->iconTextures.find(KEY); IT != g_pGlobalState->iconTextures.end())
         return IT->second;
 
     const auto ICON_COLOR = toColor(color);
-    const auto SURFACE    = rasterizeIcon(glyphName, {.red = ICON_COLOR.r, .green = ICON_COLOR.g, .blue = ICON_COLOR.b, .alpha = ICON_COLOR.a}, deviceSize);
+    const auto SURFACE    = rasterizeIcon(icon, {.red = ICON_COLOR.r, .green = ICON_COLOR.g, .blue = ICON_COLOR.b, .alpha = ICON_COLOR.a}, deviceSize);
     auto       texture    = g_pHyprRenderer->createTexture(SURFACE.get());
 
     g_pGlobalState->iconTextures.emplace(KEY, texture);
@@ -483,7 +483,7 @@ void CTitleBarDecoration::renderButtons(Render::CRenderContext& ctx, const CBox&
             continue;
 
         const bool IS_MAXIMIZED = Fullscreen::controller()->isFullscreen(m_window.lock(), Fullscreen::FSMODE_MAXIMIZED);
-        g_pHyprOpenGL->renderTexture(ctx, resolveIconTexture(BUTTON, selectGlyphName(BUTTON, IS_MAXIMIZED), ICON_COLOR, sc<int>(DEVICE_SIZE)), DISC, {.a = ICON_ALPHA * alpha});
+        g_pHyprOpenGL->renderTexture(ctx, resolveIconTexture(BUTTON, selectIcon(BUTTON, IS_MAXIMIZED), ICON_COLOR, sc<int>(DEVICE_SIZE)), DISC, {.a = ICON_ALPHA * alpha});
     }
 }
 

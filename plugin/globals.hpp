@@ -12,7 +12,6 @@
 
 #include <compare>
 #include <map>
-#include <string_view>
 #include <vector>
 
 inline HANDLE         PHANDLE          = nullptr;
@@ -21,12 +20,12 @@ inline constexpr auto BAR_DISPLAY_NAME = "proscenio_bars";
 class CTitleBarDecoration;
 
 struct SIconKey {
-    eBarButton       button = BAR_BUTTON_CLOSE;
-    std::string_view glyphName;
-    Config::INTEGER  color      = 0;
-    int              deviceSize = 0;
+    eBarButton      button     = BAR_BUTTON_CLOSE;
+    eBarIcon        icon       = BAR_ICON_CLOSE;
+    Config::INTEGER color      = 0;
+    int             deviceSize = 0;
 
-    auto             operator<=>(const SIconKey&) const = default;
+    auto            operator<=>(const SIconKey&) const = default;
 };
 
 struct SGlobalState {

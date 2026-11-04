@@ -1,9 +1,10 @@
 #pragma once
 
+#include "ButtonLayout.hpp"
+
 #include <cairo/cairo.h>
 
 #include <memory>
-#include <string>
 
 struct SIconColor {
     double red   = 0;
@@ -20,4 +21,4 @@ struct SCairoSurfaceDeleter {
 
 using CairoSurfacePtr = std::unique_ptr<cairo_surface_t, SCairoSurfaceDeleter>;
 
-CairoSurfacePtr rasterizeIcon(const std::string& glyphName, const SIconColor& color, int surfaceSize);
+CairoSurfacePtr rasterizeIcon(eBarIcon icon, const SIconColor& color, int surfaceSize);

@@ -13,6 +13,13 @@ enum eBarButton : uint8_t {
 
 constexpr size_t BAR_BUTTON_COUNT = 3;
 
+enum eBarIcon : uint8_t {
+    BAR_ICON_MINIMIZE = 0,
+    BAR_ICON_MAXIMIZE,
+    BAR_ICON_RESTORE,
+    BAR_ICON_CLOSE,
+};
+
 enum eButtonSide : uint8_t {
     BUTTON_SIDE_RIGHT = 0,
     BUTTON_SIDE_LEFT,

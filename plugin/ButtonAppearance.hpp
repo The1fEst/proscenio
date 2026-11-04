@@ -14,4 +14,4 @@ struct SButtonAppearance {
 };
 
 SButtonAppearance computeButtonAppearance(eBarButton button, const SButtonState& state, bool isWindowFocused);
-const char*       selectGlyphName(eBarButton button, bool isWindowMaximized);
+eBarIcon          selectIcon(eBarButton button, bool isWindowMaximized);

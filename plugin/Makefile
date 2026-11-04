@@ -9,8 +9,9 @@ CXXFLAGS += -std=c++23 -Wall -Wextra -Wno-missing-field-initializers
 
 PKG_CFLAGS := $(shell pkg-config --cflags pixman-1 libdrm hyprland libinput libudev wayland-server xkbcommon pangocairo)
 INCLUDES = $(patsubst -I%,-isystem %,$(filter-out -I/usr/include,$(PKG_CFLAGS)))
-PANGOCAIRO_CFLAGS := $(patsubst -I%,-isystem %,$(filter-out -I/usr/include,$(shell pkg-config --cflags pangocairo)))
 PANGOCAIRO_LIBS := $(shell pkg-config --libs pangocairo)
+CAIRO_CFLAGS := $(patsubst -I%,-isystem %,$(filter-out -I/usr/include,$(shell pkg-config --cflags cairo)))
+CAIRO_LIBS := $(shell pkg-config --libs cairo)
 
 SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp DragGeometry.cpp ButtonAppearance.cpp IconRasterizer.cpp
 HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp DragGeometry.hpp ButtonAppearance.hpp IconRasterizer.hpp
@@ -37,9 +38,9 @@ build/ButtonAppearanceTests: tests/ButtonAppearanceTests.cpp tests/Expect.hpp Bu
 	mkdir -p build
 	$(CXX) $(CXXFLAGS) tests/ButtonAppearanceTests.cpp ButtonAppearance.cpp ButtonStateMachine.cpp ButtonLayout.cpp -o $@
 
-build/IconRasterizerTests: tests/IconRasterizerTests.cpp tests/Expect.hpp IconRasterizer.cpp IconRasterizer.hpp
+build/IconRasterizerTests: tests/IconRasterizerTests.cpp tests/Expect.hpp IconRasterizer.cpp IconRasterizer.hpp ButtonLayout.hpp
 	mkdir -p build
-	$(CXX) $(CXXFLAGS) $(PANGOCAIRO_CFLAGS) tests/IconRasterizerTests.cpp IconRasterizer.cpp -o $@ $(PANGOCAIRO_LIBS)
+	$(CXX) $(CXXFLAGS) $(CAIRO_CFLAGS) tests/IconRasterizerTests.cpp IconRasterizer.cpp -o $@ $(CAIRO_LIBS)
 
 test: build/ButtonLayoutTests build/ButtonStateMachineTests build/DragGeometryTests build/ButtonAppearanceTests build/IconRasterizerTests
 	./build/ButtonLayoutTests

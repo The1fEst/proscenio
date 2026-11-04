@@ -31,9 +31,9 @@ A button that does not fit in a narrow bar is left out, last one first.
 
 | Button | Icon | Action |
 |---|---|---|
-| Close | `close` | Closes the window |
-| Minimize | `remove` | Moves the window to `special:minimized` without showing that workspace |
-| Maximize | `open_in_full`, or `close_fullscreen` while the window is maximized | Toggles Hyprland's maximized state |
+| Close | Cross | Closes the window |
+| Minimize | Chevron pointing down | Moves the window to `special:minimized` without showing that workspace |
+| Maximize | Chevron pointing up, or a diamond while the window is maximized | Toggles Hyprland's maximized state |
 
 Hyprland has no minimized state. The [dock](dock.md) shows a window on `special:minimized` as
 minimized, and focusing it there moves it back to the active workspace.
@@ -52,8 +52,8 @@ minimized, and focusing it there moves it back to the active workspace.
 
 The colors fade in and out. A window with the `no_anim` rule changes at once.
 
-The icons are glyphs of **Material Symbols Rounded**, which the plugin looks up at run time. Without
-that font installed, the discs show no icons (see [Fonts](installing.md#fonts)).
+The icons are strokes with round caps and joins, drawn at the disc's size in device pixels. The
+stroke is 2 px wide on a 16 px disc and scales with it.
 
 ### Pointer
 
