@@ -30,6 +30,7 @@
 #include <climits>
 #include <cmath>
 
+#include "DragGeometry.hpp"
 #include "TitleBarPassElement.hpp"
 
 using namespace Render::GL;
@@ -187,7 +188,32 @@ void CTitleBarDecoration::onMouseMove() {
     m_isDragPending = false;
     m_isDragging    = true;
     m_lastFreeAreaPress.reset();
+
+    if (Fullscreen::controller()->isFullscreen(m_window.lock(), Fullscreen::FSMODE_MAXIMIZED))
+        restoreUnderPointer();
+
     g_layoutManager->beginDragTarget(m_window->layoutTarget(), MBIND_MOVE);
+}
+
+void CTitleBarDecoration::restoreUnderPointer() {
+    const auto   WINDOW       = m_window.lock();
+    const auto   TARGET       = WINDOW->layoutTarget();
+    const auto   MOUSE        = g_pInputManager->getMouseCoordsInternal();
+    const double BAR_OFFSET_Y = -m_assignedBox.y;
+
+    Fullscreen::controller()->setFullscreenMode(WINDOW, Fullscreen::FSMODE_NONE);
+
+    const auto SIZE     = TARGET->position().size();
+    const auto POSITION = computeRestoredPosition({.pointerX      = MOUSE.x,
+                                                   .pointerY      = MOUSE.y,
+                                                   .grabX         = m_freeAreaGrabOffset.x,
+                                                   .grabY         = m_freeAreaGrabOffset.y,
+                                                   .barWidth      = m_freeAreaBarWidth,
+                                                   .barOffsetY    = BAR_OFFSET_Y,
+                                                   .restoredWidth = SIZE.x});
+
+    TARGET->setPositionGlobal(CBox{{POSITION.x, POSITION.y}, SIZE});
+    TARGET->warpPositionSize();
 }
 
 void CTitleBarDecoration::dropStalePress(uint32_t mouseButton) {
@@ -246,6 +272,8 @@ void CTitleBarDecoration::handlePress(Event::SCallbackInfo& info, const IPointer
 
     m_lastFreeAreaPress     = Time::steadyNow();
     m_freeAreaPressPosition = MOUSE;
+    m_freeAreaGrabOffset    = cursorRelativeToBar();
+    m_freeAreaBarWidth      = assignedBoxGlobal().w;
     m_isDragPending         = true;
 }
 

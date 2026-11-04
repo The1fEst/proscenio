@@ -53,6 +53,8 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     bool                           m_isDragPending = false;
     bool                           m_isDragging    = false;
     Vector2D                       m_freeAreaPressPosition;
+    Vector2D                       m_freeAreaGrabOffset;
+    double                         m_freeAreaBarWidth = 0;
     std::vector<uint32_t>          m_consumedMouseButtons;
     CButtonStateMachine            m_buttonStateMachine;
 
@@ -71,6 +73,7 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     void                           updatePointer();
     void                           applyUpdate(const SButtonStateUpdate& update);
     void                           endDrag();
+    void                           restoreUnderPointer();
 
     void                           onMouseMove();
     void                           handlePress(Event::SCallbackInfo& info, const IPointer::SButtonEvent& event);
