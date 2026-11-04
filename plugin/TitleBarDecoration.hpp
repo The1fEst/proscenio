@@ -7,6 +7,7 @@
 #include <hyprland/src/devices/IPointer.hpp>
 #include <hyprland/src/helpers/time/Time.hpp>
 #include <hyprland/src/helpers/signal/Signal.hpp>
+#include <hyprland/src/helpers/AnimatedVariable.hpp>
 #include "globals.hpp"
 #include "ButtonLayout.hpp"
 #include "ButtonStateMachine.hpp"
@@ -16,6 +17,12 @@
 namespace Event {
     struct SCallbackInfo;
 }
+
+struct SButtonAnimation {
+    PHLANIMVAR<CHyprColor> discColor;
+    PHLANIMVAR<float>      iconAlpha;
+    PHLANIMVAR<float>      stateLayerAlpha;
+};
 
 class CTitleBarDecoration : public IHyprWindowDecoration {
   public:
@@ -66,12 +73,19 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
 
     CHyprSignalListener            m_mouseMoveListener;
 
+    PHLANIMVAR<CHyprColor>         m_barColor;
+    PHLANIMVAR<float>              m_titleFocusAlpha;
+    SButtonAnimation               m_buttonAnimations[BAR_BUTTON_COUNT];
+
+    void                           syncAnimations(bool isInstant);
+
     bool                           shouldHide();
     bool                           isBarInteractive();
     bool                           inputIsValid();
     bool                           isPointerOnBar();
     Vector2D                       cursorRelativeToBar();
     CBox                           assignedBoxGlobal();
+    CBox                           computePaintedBox();
 
     SBarLayout                     computeLayout();
     void                           applyUpdate(const SButtonStateUpdate& update);
@@ -89,6 +103,9 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     void renderTitleTexture(Render::CRenderContext& ctx, SP<Render::ITexture>& texture, Config::INTEGER color, const CBox& barBox, const Vector2D& bufferSize, float scale,
                             float alpha);
     void renderButtons(Render::CRenderContext& ctx, const CBox& barBox, float scale, float alpha);
+
+    template <typename T>
+    void createAnimation(PHLANIMVAR<T>& variable, const T& value);
 
     friend class CTitleBarPassElement;
 };

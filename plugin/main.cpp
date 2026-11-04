@@ -5,6 +5,7 @@
 #include <hyprland/src/desktop/view/window/WindowPresentation.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/config/ConfigManager.hpp>
+#include <hyprland/src/config/shared/animation/AnimationTree.hpp>
 #include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/event/EventBus.hpp>
 #include <hyprland/src/desktop/rule/windowRule/WindowRuleEffectContainer.hpp>
@@ -14,6 +15,8 @@
 
 #include "TitleBarDecoration.hpp"
 #include "globals.hpp"
+
+constexpr float ANIMATION_SPEED = 1.5F;
 
 APICALL EXPORT std::string PLUGIN_API_VERSION() {
     return HYPRLAND_API_VERSION;
@@ -31,6 +34,7 @@ static void onNewWindow(PHLWINDOW window) {
 
 static void onConfigReloaded() {
     g_pGlobalState->iconTextures.clear();
+    g_pGlobalState->animationConfig->internalEnabled = Config::animationTree()->getAnimationPropertyConfig("fade")->pValues->internalEnabled;
 
     for (const auto& bar : g_pGlobalState->bars) {
         if (bar)
@@ -90,6 +94,12 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     g_pGlobalState               = makeUnique<SGlobalState>();
     g_pGlobalState->noBarRuleIdx = Desktop::Rule::windowEffects()->registerEffect("proscenio_bars:no_bar");
+
+    g_pGlobalState->animationConfig                  = makeShared<Hyprutils::Animation::SAnimationPropertyConfig>();
+    g_pGlobalState->animationConfig->internalEnabled = 1;
+    g_pGlobalState->animationConfig->internalSpeed   = ANIMATION_SPEED;
+    g_pGlobalState->animationConfig->internalBezier  = "default";
+    g_pGlobalState->animationConfig->pValues         = g_pGlobalState->animationConfig;
 
     static auto WINDOW_OPEN_LISTENER   = Event::bus()->m_events.window.open.listen([](PHLWINDOW window) { onNewWindow(window); });
     static auto WINDOW_RULES_LISTENER  = Event::bus()->m_events.window.updateRules.listen([](PHLWINDOW window) { onUpdateWindowRules(window); });

@@ -17,7 +17,7 @@ bool CTitleBarPassElement::needsLiveBlur(Render::CRenderContext&) {
 }
 
 std::optional<CBox> CTitleBarPassElement::boundingBox(Render::CRenderContext& ctx) {
-    return m_data.decoration->assignedBoxGlobal().translate(-ctx.m_data.pMonitor->m_position).expand(10);
+    return m_data.decoration->computePaintedBox().translate(-ctx.m_data.pMonitor->m_position).expand(10);
 }
 
 bool CTitleBarPassElement::needsPrecomputeBlur(Render::CRenderContext&) {
