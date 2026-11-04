@@ -30,6 +30,8 @@ static void onNewWindow(PHLWINDOW window) {
 }
 
 static void onConfigReloaded() {
+    g_pGlobalState->iconTextures.clear();
+
     for (const auto& bar : g_pGlobalState->bars) {
         if (bar)
             bar->onConfigReloaded();
@@ -58,6 +60,21 @@ static void onMouseButton(IPointer::SButtonEvent event, Event::SCallbackInfo& in
         if (bar)
             bar->onMouseButton(info, event);
     }
+
+    for (const auto& bar : BARS) {
+        if (bar)
+            bar->updatePointer();
+    }
+}
+
+static void onWindowActive() {
+    for (const auto& bar : g_pGlobalState->bars) {
+        if (!bar)
+            continue;
+
+        bar->updateFocus();
+        bar->updatePointer();
+    }
 }
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
@@ -79,30 +96,43 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     static auto CONFIG_RELOAD_LISTENER = Event::bus()->m_events.config.reloaded.listen([] { onConfigReloaded(); });
     static auto MOUSE_BUTTON_LISTENER =
         Event::bus()->m_events.input.mouse.button.listen([](IPointer::SButtonEvent event, Event::SCallbackInfo& info) { onMouseButton(event, info); });
+    static auto WINDOW_ACTIVE_LISTENER = Event::bus()->m_events.window.active.listen([] { onWindowActive(); });
 
-    auto& config = g_pGlobalState->config;
+    auto&       config = g_pGlobalState->config;
 
-    config.barHeight     = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:bar_height", "Height of the bar", 40, Config::Values::SIntValueOptions{.min = 1});
-    config.barColor      = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:bar_color", "Color of the bar", 0xFF211F26);
-    config.titleColor    = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:title_color", "Color of the title", 0xFFE6E0E9);
-    config.titleFont     = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:title_font", "Font of the title", "Sans");
-    config.titleSize     = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:title_size", "Size of the title", 14, Config::Values::SIntValueOptions{.min = 1});
-    config.titleWeight   = makeShared<Config::Values::CFontWeightValue>("plugin:proscenio_bars:title_weight", "Weight of the title (e.g. \"bold\" or an integer 100-1000)", 500);
-    config.buttonSide    = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:button_side", "Side of the bar the buttons sit on: right or left", "right");
-    config.closeColor    = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:close_color", "Color of the close button", 0xFFF2B8B5);
-    config.minimizeColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:minimize_color", "Color of the minimize button", 0xFFEFB8C8);
-    config.maximizeColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_color", "Color of the maximize button", 0xFFD0BCFF);
+    config.barHeight          = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:bar_height", "Height of the bar", 40, Config::Values::SIntValueOptions{.min = 1});
+    config.barColor           = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:bar_color", "Color of the bar", 0xFF211F26);
+    config.inactiveBarColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_bar_color", "Color of the bar on an unfocused window", 0xFF1D1B20);
+    config.titleColor         = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:title_color", "Color of the title", 0xFFE6E0E9);
+    config.inactiveTitleColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_title_color", "Color of the title on an unfocused window", 0xFFCAC4D0);
+    config.titleFont          = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:title_font", "Font of the title", "Sans");
+    config.titleSize          = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:title_size", "Size of the title", 14, Config::Values::SIntValueOptions{.min = 1});
+    config.titleWeight    = makeShared<Config::Values::CFontWeightValue>("plugin:proscenio_bars:title_weight", "Weight of the title (e.g. \"bold\" or an integer 100-1000)", 500);
+    config.buttonSide     = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:button_side", "Side of the bar the buttons sit on: right or left", "right");
+    config.closeColor     = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:close_color", "Color of the close button", 0xFFF2B8B5);
+    config.closeIconColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:close_icon_color", "Color of the close icon and its state layer", 0xFF601410);
+    config.minimizeColor  = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:minimize_color", "Color of the minimize button", 0xFFEFB8C8);
+    config.minimizeIconColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:minimize_icon_color", "Color of the minimize icon and its state layer", 0xFF492532);
+    config.maximizeColor       = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_color", "Color of the maximize button", 0xFFD0BCFF);
+    config.maximizeIconColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_icon_color", "Color of the maximize icon and its state layer", 0xFF381E72);
+    config.inactiveButtonColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_button_color", "Color of the buttons on an unfocused window", 0xFF36343B);
 
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barHeight);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barColor);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveBarColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.titleColor);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveTitleColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.titleFont);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.titleSize);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.titleWeight);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.buttonSide);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.closeColor);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.closeIconColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.minimizeColor);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.minimizeIconColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.maximizeColor);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.maximizeIconColor);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveButtonColor);
 
     for (const auto& window : Desktop::windowState()->windows()) {
         if (validMapped(window))
@@ -119,6 +149,8 @@ APICALL EXPORT void PLUGIN_EXIT() {
         monitor->m_scheduledRecalc = true;
 
     g_pHyprRenderer->context().m_pass.removeAllOfType("CTitleBarPassElement");
+
+    g_pGlobalState->iconTextures.clear();
 
     Desktop::Rule::windowEffects()->unregisterEffect(g_pGlobalState->noBarRuleIdx);
 }

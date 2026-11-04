@@ -37,6 +37,8 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     void                               onConfigReloaded();
     void                               onMouseButton(Event::SCallbackInfo& info, IPointer::SButtonEvent event);
     void                               dropStalePress(uint32_t mouseButton);
+    void                               updatePointer();
+    void                               updateFocus();
 
     WP<CTitleBarDecoration>            m_self;
 
@@ -44,11 +46,13 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     PHLWINDOWREF                   m_window;
     CBox                           m_assignedBox;
     SP<Render::ITexture>           m_titleTexture;
+    SP<Render::ITexture>           m_inactiveTitleTexture;
     std::string                    m_lastTitle;
     int                            m_lastScaledTitleSize = 0;
     int                            m_lastHeight          = 0;
     bool                           m_isHidden            = false;
     bool                           m_isSizeChanged       = false;
+    bool                           m_isWindowFocused     = false;
 
     bool                           m_isDragPending = false;
     bool                           m_isDragging    = false;
@@ -70,7 +74,6 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     CBox                           assignedBoxGlobal();
 
     SBarLayout                     computeLayout();
-    void                           updatePointer();
     void                           applyUpdate(const SButtonStateUpdate& update);
     void                           endDrag();
     void                           restoreUnderPointer();
@@ -83,7 +86,9 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
 
     void                           renderPass(Render::CRenderContext& ctx, PHLMONITOR monitor, const float& alpha);
     void                           renderTitle(Render::CRenderContext& ctx, const CBox& barBox, const Vector2D& bufferSize, float scale, float alpha);
-    void                           renderButtons(Render::CRenderContext& ctx, const CBox& barBox, float scale, float alpha);
+    void renderTitleTexture(Render::CRenderContext& ctx, SP<Render::ITexture>& texture, Config::INTEGER color, const CBox& barBox, const Vector2D& bufferSize, float scale,
+                            float alpha);
+    void renderButtons(Render::CRenderContext& ctx, const CBox& barBox, float scale, float alpha);
 
     friend class CTitleBarPassElement;
 };

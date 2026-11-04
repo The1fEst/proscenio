@@ -30,7 +30,9 @@
 #include <climits>
 #include <cmath>
 
+#include "ButtonAppearance.hpp"
 #include "DragGeometry.hpp"
+#include "IconRasterizer.hpp"
 #include "TitleBarPassElement.hpp"
 
 using namespace Render::GL;
@@ -48,7 +50,8 @@ CTitleBarDecoration::CTitleBarDecoration(PHLWINDOW window) : IHyprWindowDecorati
     if (const auto MONITOR = window->m_monitor.lock())
         MONITOR->m_scheduledRecalc = true;
 
-    m_isHidden = shouldHide();
+    m_isHidden        = shouldHide();
+    m_isWindowFocused = Desktop::focusState()->window() == window;
 
     m_mouseMoveListener = Event::bus()->m_events.input.mouse.move.listen([this](Vector2D, Event::SCallbackInfo&) { onMouseMove(); });
 }
@@ -147,13 +150,24 @@ SBarLayout CTitleBarDecoration::computeLayout() {
 }
 
 void CTitleBarDecoration::updatePointer() {
-    if (!isPointerOnBar()) {
+    const bool IS_FREE_AREA_PRESS_HELD = std::ranges::contains(m_consumedMouseButtons, BTN_LEFT) && !m_buttonStateMachine.hasArmedButton();
+
+    if (IS_FREE_AREA_PRESS_HELD || !isPointerOnBar()) {
         applyUpdate(m_buttonStateMachine.onPointerLeave());
         return;
     }
 
     const auto COORDS = cursorRelativeToBar();
     applyUpdate(m_buttonStateMachine.onPointerMove(computeLayout(), COORDS.x, COORDS.y));
+}
+
+void CTitleBarDecoration::updateFocus() {
+    const bool IS_FOCUSED = Desktop::focusState()->window() == m_window.lock();
+    if (IS_FOCUSED == m_isWindowFocused)
+        return;
+
+    m_isWindowFocused = IS_FOCUSED;
+    damageEntire();
 }
 
 void CTitleBarDecoration::applyUpdate(const SButtonStateUpdate& update) {
@@ -240,12 +254,13 @@ void CTitleBarDecoration::handlePress(Event::SCallbackInfo& info, const IPointer
         return;
 
     info.cancelled = true;
-    m_consumedMouseButtons.push_back(event.button);
 
     if (event.button == BTN_LEFT) {
         updatePointer();
         applyUpdate(m_buttonStateMachine.onPress());
     }
+
+    m_consumedMouseButtons.push_back(event.button);
 
     const auto WINDOW = m_window.lock();
 
@@ -312,45 +327,92 @@ void CTitleBarDecoration::renderTitle(Render::CRenderContext& ctx, const CBox& b
     const int  SCALED_SIZE = std::round(g_pGlobalState->config.titleSize->value() * scale);
     const auto TITLE       = m_window->metadata().title();
 
-    if (m_lastTitle != TITLE || m_isSizeChanged || !m_titleTexture || m_titleTexture->m_texID == 0 || m_lastScaledTitleSize != SCALED_SIZE) {
-        m_lastTitle           = TITLE;
-        m_lastScaledTitleSize = SCALED_SIZE;
+    if (m_lastTitle != TITLE || m_isSizeChanged || m_lastScaledTitleSize != SCALED_SIZE) {
+        m_lastTitle            = TITLE;
+        m_lastScaledTitleSize  = SCALED_SIZE;
+        m_titleTexture         = nullptr;
+        m_inactiveTitleTexture = nullptr;
+    }
 
+    if (m_isWindowFocused)
+        renderTitleTexture(ctx, m_titleTexture, g_pGlobalState->config.titleColor->value(), barBox, bufferSize, scale, alpha);
+    else
+        renderTitleTexture(ctx, m_inactiveTitleTexture, g_pGlobalState->config.inactiveTitleColor->value(), barBox, bufferSize, scale, alpha);
+}
+
+void CTitleBarDecoration::renderTitleTexture(Render::CRenderContext& ctx, SP<Render::ITexture>& texture, Config::INTEGER color, const CBox& barBox, const Vector2D& bufferSize,
+                                             float scale, float alpha) {
+    if (!texture || texture->m_texID == 0) {
         const double GROUP_WIDTH = computeLayout().groupBox.w * scale;
         const int    MAX_WIDTH   = std::clamp(sc<int>(bufferSize.x - 2 * GROUP_WIDTH), 0, INT_MAX);
 
-        m_titleTexture = TITLE.empty() || MAX_WIDTH < 1 ?
-            nullptr :
-            g_pHyprRenderer->renderText(TITLE, toColor(g_pGlobalState->config.titleColor->value()), SCALED_SIZE, false, g_pGlobalState->config.titleFont->value(), MAX_WIDTH,
-                                        g_pGlobalState->config.titleWeight->value().m_value);
+        if (m_lastTitle.empty() || MAX_WIDTH < 1)
+            return;
+
+        texture = g_pHyprRenderer->renderText(m_lastTitle, toColor(color), m_lastScaledTitleSize, false, g_pGlobalState->config.titleFont->value(), MAX_WIDTH,
+                                              g_pGlobalState->config.titleWeight->value().m_value);
     }
 
-    if (!m_titleTexture)
+    if (!texture)
         return;
 
-    const CBox TITLE_BOX = {barBox.x + std::round((bufferSize.x - m_titleTexture->m_size.x) / 2.0), barBox.y + std::round((bufferSize.y - m_titleTexture->m_size.y) / 2.0),
-                            m_titleTexture->m_size.x, m_titleTexture->m_size.y};
+    const CBox TITLE_BOX = {barBox.x + std::round((bufferSize.x - texture->m_size.x) / 2.0), barBox.y + std::round((bufferSize.y - texture->m_size.y) / 2.0), texture->m_size.x,
+                            texture->m_size.y};
 
-    g_pHyprOpenGL->renderTexture(ctx, m_titleTexture, TITLE_BOX, {.a = alpha});
+    g_pHyprOpenGL->renderTexture(ctx, texture, TITLE_BOX, {.a = alpha});
+}
+
+static SP<Render::ITexture> resolveIconTexture(eBarButton button, const char* glyphName, Config::INTEGER color, int deviceSize) {
+    const SIconKey KEY = {.button = button, .glyphName = glyphName, .color = color, .deviceSize = deviceSize};
+
+    if (const auto IT = g_pGlobalState->iconTextures.find(KEY); IT != g_pGlobalState->iconTextures.end())
+        return IT->second;
+
+    const auto ICON_COLOR = toColor(color);
+    const auto SURFACE    = rasterizeIcon(glyphName, {.red = ICON_COLOR.r, .green = ICON_COLOR.g, .blue = ICON_COLOR.b, .alpha = ICON_COLOR.a}, deviceSize);
+    auto       texture    = g_pHyprRenderer->createTexture(SURFACE.get());
+
+    g_pGlobalState->iconTextures.emplace(KEY, texture);
+
+    return texture;
 }
 
 void CTitleBarDecoration::renderButtons(Render::CRenderContext& ctx, const CBox& barBox, float scale, float alpha) {
-    const auto                                                          LAYOUT = computeLayout();
-    const std::array<SP<Config::Values::CColorValue>, BAR_BUTTON_COUNT> COLORS = {g_pGlobalState->config.closeColor, g_pGlobalState->config.minimizeColor,
-                                                                                  g_pGlobalState->config.maximizeColor};
+    using ColorValues = std::array<SP<Config::Values::CColorValue>, BAR_BUTTON_COUNT>;
+
+    const auto&       CONFIG      = g_pGlobalState->config;
+    const ColorValues ROLE_COLORS = {CONFIG.closeColor, CONFIG.minimizeColor, CONFIG.maximizeColor};
+    const ColorValues ICON_COLORS = {CONFIG.closeIconColor, CONFIG.minimizeIconColor, CONFIG.maximizeIconColor};
+    const auto        LAYOUT      = computeLayout();
+    const auto        STATE       = m_buttonStateMachine.state();
 
     for (size_t i = 0; i < LAYOUT.buttons.size(); ++i) {
         const auto& DISC_BOX = LAYOUT.buttons[i].discBox;
         if (DISC_BOX.w <= 0)
             continue;
 
-        CHyprColor color = toColor(COLORS[i]->value());
-        color.a *= alpha;
+        const auto   BUTTON      = sc<eBarButton>(i);
+        const auto   APPEARANCE  = computeButtonAppearance(BUTTON, STATE, m_isWindowFocused);
+        const auto   ICON_COLOR  = ICON_COLORS[i]->value();
+        const double DEVICE_SIZE = std::max(2.0, std::round(DISC_BOX.w * scale / 2.0) * 2.0);
+        const double RADIUS      = DEVICE_SIZE / 2.0;
+        const CBox   DISC = {std::round(barBox.x + (DISC_BOX.x + DISC_BOX.w / 2.0) * scale - RADIUS), std::round(barBox.y + (DISC_BOX.y + DISC_BOX.h / 2.0) * scale - RADIUS),
+                             DEVICE_SIZE, DEVICE_SIZE};
 
-        const double SIZE = std::round(DISC_BOX.w * scale);
-        const CBox   DISC = {std::round(barBox.x + DISC_BOX.x * scale), std::round(barBox.y + DISC_BOX.y * scale), SIZE, SIZE};
+        CHyprColor   discColor = toColor(APPEARANCE.usesRoleColor ? ROLE_COLORS[i]->value() : CONFIG.inactiveButtonColor->value());
+        discColor.a *= alpha;
 
-        g_pHyprOpenGL->renderRect(ctx, DISC, color, {.round = sc<int>(std::round(SIZE / 2.0)), .roundingPower = 2.F});
+        g_pHyprOpenGL->renderRect(ctx, DISC, discColor, {.round = sc<int>(RADIUS), .roundingPower = 2.F});
+
+        if (APPEARANCE.stateLayerAlpha > 0)
+            g_pHyprOpenGL->renderRect(ctx, DISC, toColor(ICON_COLOR).modifyA(APPEARANCE.stateLayerAlpha * alpha), {.round = sc<int>(RADIUS), .roundingPower = 2.F});
+
+        if (APPEARANCE.iconAlpha <= 0)
+            continue;
+
+        const bool IS_MAXIMIZED = Fullscreen::controller()->isFullscreen(m_window.lock(), Fullscreen::FSMODE_MAXIMIZED);
+        g_pHyprOpenGL->renderTexture(ctx, resolveIconTexture(BUTTON, selectGlyphName(BUTTON, IS_MAXIMIZED), ICON_COLOR, sc<int>(DEVICE_SIZE)), DISC,
+                                     {.a = APPEARANCE.iconAlpha * alpha});
     }
 }
 
@@ -385,7 +447,7 @@ void CTitleBarDecoration::renderPass(Render::CRenderContext& ctx, PHLMONITOR mon
     if (ROUNDING && (windowBox.w < 1 || windowBox.h < 1))
         return;
 
-    CHyprColor color = toColor(g_pGlobalState->config.barColor->value());
+    CHyprColor color = toColor(m_isWindowFocused ? g_pGlobalState->config.barColor->value() : g_pGlobalState->config.inactiveBarColor->value());
     color.a *= alpha;
 
     g_pHyprOpenGL->scissor(ctx, titleBarBox);
@@ -441,10 +503,12 @@ eDecorationType CTitleBarDecoration::getDecorationType() {
 
 void CTitleBarDecoration::updateWindow(PHLWINDOW) {
     damageEntire();
+    updatePointer();
 }
 
 void CTitleBarDecoration::onConfigReloaded() {
-    m_titleTexture = nullptr;
+    m_titleTexture         = nullptr;
+    m_inactiveTitleTexture = nullptr;
 
     g_pDecorationPositioner->repositionDeco(this);
     updatePointer();
