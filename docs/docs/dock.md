@@ -32,7 +32,7 @@ The list comes from `dock.pinnedApps` and from Hyprland's list of windows:
   scratchpad. Its dot is a 1 px outline instead of a filled bar, drawn after the filled ones and
   keeping the last of the three places when there are more windows than places, and its preview card
   is half transparent. The accent color follows the windows that are not minimized. Focusing a
-  window on `special:minimized` (from the button, the wheel, the context menu or its card) moves it
+  window on `special:minimized` (from the button, the context menu or its card) moves it
   to the active workspace of the focused monitor and focuses it, without opening the special
   workspace. Focusing a window on any other hidden special workspace shows that workspace.
 - A window that asks for attention, through Hyprland's `urgent` event (a Wayland activation request,

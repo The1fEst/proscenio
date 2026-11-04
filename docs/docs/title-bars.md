@@ -69,6 +69,7 @@ that font installed, the discs show no icons (see [Fonts](installing.md#fonts)).
 The plugin is built against the headers of the running Hyprland, so `hyprpm` installs it:
 
 ```bash
+hyprpm update
 hyprpm add https://github.com/The1fEst/proscenio
 hyprpm enable proscenio_bars
 ```
