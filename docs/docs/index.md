@@ -59,6 +59,7 @@ proscenio runs only on Hyprland, and leans on it in three places:
 | [Overview and launcher](overview.md) | Search, math, commands, clipboard and emoji, over a grid of workspaces |
 | [The background](background.md) | The wallpaper, its parallax, and the clock and weather over it |
 | [Screen corners](screen-corners.md) | Rounded corners and the corner regions that open panels |
+| [Title bars](title-bars.md) | The Hyprland plugin that draws title bars on floating windows |
 | [Calendar](calendar.md) | The month view, the pomodoro timer and stopwatch |
 | [Left sidebar](sidebar-left.md) | The panel on the left edge with quick notes in tabs, saved by themselves, and what is using the microphone, screen or camera |
 | [Media controls](media-controls.md) | Player cards colored from the album art |

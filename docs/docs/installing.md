@@ -141,6 +141,9 @@ changed-shortcut lines in that file call a `shortcut` function that the config h
 
 Idle timeouts go to `~/.config/hypr/hypridle.conf`, the file `hypridle` reads.
 
+The title bars on floating windows come from a separate Hyprland plugin, which `hyprpm` installs;
+see [Title bars](title-bars.md#installing).
+
 ## Fonts
 
 Every icon in the shell is a glyph of **Material Symbols Rounded**, so that font is required. The

@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
         'overview',
         'background',
         'screen-corners',
+        'title-bars',
         'calendar',
         'sidebar-left',
         'media-controls',
