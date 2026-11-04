@@ -1640,5 +1640,7 @@
   "Time": "时间",
   "Duration (minutes)": "时长（分钟）",
   "Create": "创建",
-  "No calendar can take events": "没有可添加事件的日历"
+  "No calendar can take events": "没有可添加事件的日历",
+  "Title bars": "标题栏",
+  "Button side": "按钮位置"
 }

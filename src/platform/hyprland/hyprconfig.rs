@@ -320,6 +320,13 @@ pub const NO_DIM_FULLSCREEN: Lines = Lines {
     ],
 };
 
+pub const TITLE_BUTTONS_ON_LEFT: Lines = Lines {
+    area: Area::Appearance,
+    lines: &[
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({ plugin = { proscenio_bars = { button_side = \"left\" } } }) end end",
+    ],
+};
+
 pub const OPAQUE_FULLSCREEN: Lines = Lines {
     area: Area::Appearance,
     lines: &[

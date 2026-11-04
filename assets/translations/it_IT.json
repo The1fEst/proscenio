@@ -1640,5 +1640,7 @@
   "Time": "Ora",
   "Duration (minutes)": "Durata (minuti)",
   "Create": "Crea",
-  "No calendar can take events": "Nessun calendario può accogliere eventi"
+  "No calendar can take events": "Nessun calendario può accogliere eventi",
+  "Title bars": "Barre del titolo",
+  "Button side": "Lato dei pulsanti"
 }

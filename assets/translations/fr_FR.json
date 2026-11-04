@@ -1640,5 +1640,7 @@
   "Time": "Heure",
   "Duration (minutes)": "Durée (minutes)",
   "Create": "Créer",
-  "No calendar can take events": "Aucun agenda ne peut recevoir d'événements"
+  "No calendar can take events": "Aucun agenda ne peut recevoir d'événements",
+  "Title bars": "Barres de titre",
+  "Button side": "Côté des boutons"
 }

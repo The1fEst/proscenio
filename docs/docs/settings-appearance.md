@@ -16,7 +16,7 @@ own title bars. Its subpages go further:
 | Panels | the on-screen keyboard, with the Dock, Sidebars and Cheat sheet subpages |
 | Colors | the palette scheme, the accent, transparency and what gets themed |
 | Fonts | the families and sizes for apps and panels |
-| Windows | corners, blur, opacity, borders, shadows and dimming of Hyprland's windows |
+| Windows | corners, blur, opacity, borders, title bars, shadows and dimming of Hyprland's windows |
 
 ## Where the values go
 
@@ -180,6 +180,7 @@ Every control here is a Hyprland option or line in `appearance.lua`.
 | Opacity | Focused window (%) | `decoration:active_opacity` | 10–100 %, stored as 0.1–1.0 |
 | Opacity | Other windows (%) | `decoration:inactive_opacity` | 10–100 % |
 | Borders | Border width | `general:border_size` | 0–20 px |
+| Title bars | Button side | `plugin:proscenio_bars:button_side` | Right or Left; Left is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Right is no line |
 | Shadows | Drop shadows under windows | `decoration:shadow:enabled` | on or off |
 | Shadows | Size (px) | `decoration:shadow:range` | 0–100 px |
 | Shadows | Falloff | `decoration:shadow:render_power` | 1–4 |

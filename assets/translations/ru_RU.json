@@ -1640,5 +1640,7 @@
   "Time": "Время",
   "Duration (minutes)": "Длительность (минуты)",
   "Create": "Создать",
-  "No calendar can take events": "Нет календаря для событий"
+  "No calendar can take events": "Нет календаря для событий",
+  "Title bars": "Заголовки окон",
+  "Button side": "Сторона кнопок"
 }

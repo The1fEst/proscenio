@@ -1,6 +1,6 @@
 use crate::platform::hyprland::hyprconfig::{
-    Area, Lines, NO_DIM_FULLSCREEN, OPAQUE_FULLSCREEN, SMART_GAPS, config_dir, prefix_for,
-    read_for_edit, write,
+    Area, Lines, NO_DIM_FULLSCREEN, OPAQUE_FULLSCREEN, SMART_GAPS, TITLE_BUTTONS_ON_LEFT,
+    config_dir, prefix_for, read_for_edit, write,
 };
 
 const LEGACY_HEADER: [&str; 2] = [
@@ -72,7 +72,10 @@ fn area_of(statement: &str, option_area: &impl Fn(&str) -> Option<Area>) -> Opti
         Area::Appearance
     } else if is_in(&SMART_GAPS) {
         Area::Multitasking
-    } else if is_in(&NO_DIM_FULLSCREEN) || is_in(&OPAQUE_FULLSCREEN) {
+    } else if is_in(&NO_DIM_FULLSCREEN)
+        || is_in(&OPAQUE_FULLSCREEN)
+        || is_in(&TITLE_BUTTONS_ON_LEFT)
+    {
         Area::Appearance
     } else if first.starts_with("hl.window_rule(") {
         Area::Apps
@@ -306,6 +309,25 @@ mod tests {
         assert_eq!(
             move_lines(unchanged_files.clone(), &option_area),
             unchanged_files
+        );
+    }
+
+    #[test]
+    fn the_title_button_side_line_stays_whole_in_the_appearance_file() {
+        let line = TITLE_BUTTONS_ON_LEFT.lines[0];
+        let option_area =
+            |option: &str| (option == "plugin:proscenio_bars:button_side").then_some(Area::Other);
+        let text = format!("{line}\nhl.config({{ general = {{ gaps_in = 2 }} }})\n");
+        assert_eq!(
+            move_lines(vec![(Area::Appearance, text.clone())], &option_area),
+            vec![(Area::Appearance, text.clone())]
+        );
+        assert_eq!(
+            split(&text, &|_| None)
+                .into_iter()
+                .find(|(area, _)| *area == Area::Appearance)
+                .map(|(_, part)| part),
+            Some(format!("{line}\n"))
         );
     }
 

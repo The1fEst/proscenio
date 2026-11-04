@@ -1640,5 +1640,7 @@
   "Time": "שעה",
   "Duration (minutes)": "משך (בדקות)",
   "Create": "צור",
-  "No calendar can take events": "אין לוח שנה שיכול לקבל אירועים"
+  "No calendar can take events": "אין לוח שנה שיכול לקבל אירועים",
+  "Title bars": "שורות כותרת",
+  "Button side": "צד הכפתורים"
 }

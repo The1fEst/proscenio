@@ -1640,5 +1640,7 @@
   "Time": "時刻",
   "Duration (minutes)": "長さ（分）",
   "Create": "作成",
-  "No calendar can take events": "予定を追加できるカレンダーがありません"
+  "No calendar can take events": "予定を追加できるカレンダーがありません",
+  "Title bars": "タイトルバー",
+  "Button side": "ボタンの位置"
 }

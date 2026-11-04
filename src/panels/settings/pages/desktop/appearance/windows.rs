@@ -235,6 +235,26 @@ pub fn build(context: &Context) -> Rc<Page> {
         page.spin_row(&border_row, "opacity", &tr(label), &alpha_spin);
     }
 
+    let title_bars_section = page.subsection(&windows_section, &tr("Title bars"), "");
+    let button_side_combo = page.combo_row(&title_bars_section, "swap_horiz", &tr("Button side"));
+    let button_side_names = [tr("Right"), tr("Left")];
+    button_side_combo.set_items(
+        &button_side_names,
+        i32::from(hyprconfig::are_lines_present(
+            &hyprconfig::TITLE_BUTTONS_ON_LEFT,
+        )),
+    );
+    button_side_combo.connect_activated({
+        let button_side_combo = Rc::downgrade(&button_side_combo);
+        move |index| {
+            let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BUTTONS_ON_LEFT, index == 1);
+            hypr::request("reload");
+            if let Some(button_side_combo) = button_side_combo.upgrade() {
+                button_side_combo.set_items(&button_side_names, index as i32);
+            }
+        }
+    });
+
     let shadows_section = page.subsection(&windows_section, &tr("Shadows"), "");
     hyprrows::switch(
         &page,

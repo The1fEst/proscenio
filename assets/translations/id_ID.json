@@ -1640,5 +1640,7 @@
   "Time": "Waktu",
   "Duration (minutes)": "Durasi (menit)",
   "Create": "Buat",
-  "No calendar can take events": "Tidak ada kalender yang dapat menerima acara"
+  "No calendar can take events": "Tidak ada kalender yang dapat menerima acara",
+  "Title bars": "Bilah judul",
+  "Button side": "Sisi tombol"
 }

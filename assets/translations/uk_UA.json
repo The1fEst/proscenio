@@ -1640,5 +1640,7 @@
   "Time": "Час",
   "Duration (minutes)": "Тривалість (хвилини)",
   "Create": "Створити",
-  "No calendar can take events": "Немає календаря для подій"
+  "No calendar can take events": "Немає календаря для подій",
+  "Title bars": "Заголовки вікон",
+  "Button side": "Сторона кнопок"
 }

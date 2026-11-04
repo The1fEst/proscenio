@@ -1640,5 +1640,7 @@
   "Time": "Saat",
   "Duration (minutes)": "Süre (dakika)",
   "Create": "Oluştur",
-  "No calendar can take events": "Etkinlik kabul eden takvim yok"
+  "No calendar can take events": "Etkinlik kabul eden takvim yok",
+  "Title bars": "Başlık çubukları",
+  "Button side": "Düğmelerin tarafı"
 }

@@ -1640,5 +1640,7 @@
   "Time": "Uhrzeit",
   "Duration (minutes)": "Dauer (Minuten)",
   "Create": "Erstellen",
-  "No calendar can take events": "Kein Kalender kann Termine aufnehmen"
+  "No calendar can take events": "Kein Kalender kann Termine aufnehmen",
+  "Title bars": "Titelleisten",
+  "Button side": "Seite der Schaltflächen"
 }

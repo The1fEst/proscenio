@@ -1640,5 +1640,7 @@
   "Time": "Time",
   "Duration (minutes)": "Duration (minutes)",
   "Create": "Create",
-  "No calendar can take events": "No calendar can take events"
+  "No calendar can take events": "No calendar can take events",
+  "Title bars": "Title bars",
+  "Button side": "Button side"
 }
