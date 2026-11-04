@@ -290,7 +290,7 @@ impl RegionSelector {
             .iter::<gdk::Monitor>()
             .flatten()
             .collect();
-        let title_bar_height = hypr::option_int("plugin:hyprbars:bar_height");
+        let title_bar_height = hypr::option_int("plugin:proscenio_bars:bar_height");
         for monitor in monitors {
             let selection = self.build(&monitor, title_bar_height);
             self.selections.borrow_mut().push(selection.clone());
