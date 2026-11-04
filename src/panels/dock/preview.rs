@@ -8,6 +8,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
+use super::taskbar::focus_window;
 use crate::platform::hyprland::hypr;
 use crate::platform::wayland::capture::Capture;
 use crate::ui::anim::{EXPRESSIVE_EFFECTS, Tween};
@@ -392,7 +393,7 @@ impl Preview {
         button.set_opacity(choose_card_opacity(target));
         button.connect_clicked({
             let address = target.address.clone();
-            move |_| hypr::focus_window(&address)
+            move |_| focus_window(&address)
         });
         button.connect_middle({
             let address = target.address.clone();
@@ -400,7 +401,7 @@ impl Preview {
         });
         super::buttons::spring_load(&button, {
             let address = target.address.clone();
-            move || hypr::focus_window(&address)
+            move || focus_window(&address)
         });
 
         Rc::new(Card {

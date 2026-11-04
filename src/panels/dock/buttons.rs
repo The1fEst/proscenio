@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use super::menuitems::{MenuItem, build_items};
-use super::taskbar::{DotStyle, SEPARATOR, Window, choose_dot_styles, targets};
+use super::taskbar::{DotStyle, SEPARATOR, Window, choose_dot_styles, focus_window, targets};
 use super::{Dock, ELEVATION, GAPS_OUT, MOVE_MILLIS, Metrics, ROW_PADDING, refresh_docks};
 use crate::platform::hyprland::hypr;
 use crate::platform::system::desktop;
@@ -96,7 +96,7 @@ impl Dock {
         let config = self.config.clone();
         self.menu
             .show(&entry.button, items, move |item| match item {
-                MenuItem::Window { address, .. } => hypr::focus_window(address),
+                MenuItem::Window { address, .. } => focus_window(address),
                 MenuItem::NewWindow => {
                     if let Some(desktop_entry) = &desktop_entry {
                         desktop::launch(desktop_entry);
@@ -185,7 +185,7 @@ impl Dock {
                 let windows = entry.windows.borrow();
                 match windows.as_slice() {
                     [] => {}
-                    [window] => hypr::focus_window(&window.address),
+                    [window] => focus_window(&window.address),
                     _ => {
                         drop(windows);
                         dock.open_preview(&entry);
@@ -237,7 +237,7 @@ impl Dock {
                 }
                 let next = (entry.cycle_index.get() + 1).rem_euclid(windows.len() as i64);
                 entry.cycle_index.set(next);
-                hypr::focus_window(&windows[next as usize].address);
+                focus_window(&windows[next as usize].address);
             }
         });
         button.connect_middle({

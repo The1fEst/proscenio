@@ -97,6 +97,46 @@ fn is_minimized(client: &Value, shown_special_workspaces: &[String]) -> bool {
             .is_some_and(|name| shown_special_workspaces.iter().any(|shown| shown == name))
 }
 
+const MINIMIZED_WORKSPACE: &str = "special:minimized";
+
+#[derive(Debug, PartialEq, Eq)]
+enum FocusAction {
+    Focus,
+    Restore,
+}
+
+fn choose_focus_action(client: &Value) -> FocusAction {
+    let workspace_name = client.pointer("/workspace/name").and_then(Value::as_str);
+    if workspace_name == Some(MINIMIZED_WORKSPACE) {
+        FocusAction::Restore
+    } else {
+        FocusAction::Focus
+    }
+}
+
+pub(super) fn focus_window(address: &str) {
+    let is_window =
+        |client: &&Value| client.get("address").and_then(Value::as_str) == Some(address);
+    let restore_workspace_id = hypr::json("clients")
+        .as_ref()
+        .and_then(Value::as_array)
+        .and_then(|clients| clients.iter().find(is_window))
+        .filter(|client| choose_focus_action(client) == FocusAction::Restore)
+        .and_then(|_| hypr::json("monitors"))
+        .and_then(|monitors| {
+            monitors
+                .as_array()?
+                .iter()
+                .find(|monitor| monitor.get("focused").and_then(Value::as_bool) == Some(true))?
+                .pointer("/activeWorkspace/id")?
+                .as_i64()
+        });
+    if let Some(id) = restore_workspace_id {
+        hypr::move_to_workspace(address, id as i32);
+    }
+    hypr::focus_window(address);
+}
+
 pub(super) fn collect_entries(
     pinned_ids: &[String],
     ignore_patterns: &[glib::Regex],
@@ -350,6 +390,20 @@ mod tests {
         assert!(is_idle(client(2, false)));
         assert!(!is_idle(client(2, true)));
         assert!(!is_idle(client(-97, true)));
+    }
+
+    #[test]
+    fn only_a_window_on_the_minimized_workspace_is_restored_when_focused() {
+        let action = |workspace: &str| {
+            choose_focus_action(&serde_json::json!({"workspace": {"name": workspace}}))
+        };
+        assert_eq!(action("special:minimized"), FocusAction::Restore);
+        assert_eq!(action("special:magic"), FocusAction::Focus);
+        assert_eq!(action("2"), FocusAction::Focus);
+        assert_eq!(
+            choose_focus_action(&serde_json::json!({})),
+            FocusAction::Focus
+        );
     }
 
     #[test]
