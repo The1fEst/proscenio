@@ -14,8 +14,8 @@ HYPRLAND_PREFIX := $(shell pkg-config --variable=prefix hyprland)
 DEPENDENCY_CFLAGS := $(filter-out -I$(HYPRLAND_PREFIX) -I$(HYPRLAND_PREFIX)/hyprland%,$(PKG_CFLAGS))
 INCLUDES = $(patsubst -I%,-isystem %,$(DEPENDENCY_CFLAGS)) -isystem /usr/include/hyprland/protocols -isystem /usr/include/hyprland/src -isystem /usr/include/hyprland
 
-SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp
-HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp
+SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp
+HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp
 TARGET = proscenio_bars.so
 
 all: $(TARGET)
@@ -23,7 +23,19 @@ all: $(TARGET)
 $(TARGET): $(SRC) $(HDR)
 	$(CXX) $(CXXFLAGS) -shared -fPIC $(LDFLAGS) $(EXTRA_FLAGS) $(INCLUDES) $(SRC) -o $@
 
-clean:
-	rm -f $(TARGET)
+build/ButtonLayoutTests: tests/ButtonLayoutTests.cpp tests/Expect.hpp ButtonLayout.cpp ButtonLayout.hpp
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) tests/ButtonLayoutTests.cpp ButtonLayout.cpp -o $@
 
-.PHONY: all clean
+build/ButtonStateMachineTests: tests/ButtonStateMachineTests.cpp tests/Expect.hpp ButtonStateMachine.cpp ButtonStateMachine.hpp ButtonLayout.cpp ButtonLayout.hpp
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) tests/ButtonStateMachineTests.cpp ButtonStateMachine.cpp ButtonLayout.cpp -o $@
+
+test: build/ButtonLayoutTests build/ButtonStateMachineTests
+	./build/ButtonLayoutTests
+	./build/ButtonStateMachineTests
+
+clean:
+	rm -rf $(TARGET) build
+
+.PHONY: all test clean

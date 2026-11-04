@@ -8,19 +8,14 @@
 #include <hyprland/src/helpers/time/Time.hpp>
 #include <hyprland/src/helpers/signal/Signal.hpp>
 #include "globals.hpp"
+#include "ButtonLayout.hpp"
+#include "ButtonStateMachine.hpp"
 
-#include <array>
 #include <optional>
 
 namespace Event {
     struct SCallbackInfo;
 }
-
-enum eBarButton : uint8_t {
-    BAR_BUTTON_CLOSE = 0,
-    BAR_BUTTON_MINIMIZE,
-    BAR_BUTTON_MAXIMIZE,
-};
 
 class CTitleBarDecoration : public IHyprWindowDecoration {
   public:
@@ -40,6 +35,8 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     PHLWINDOW                          window();
     void                               updateRules();
     void                               onConfigReloaded();
+    void                               onMouseButton(Event::SCallbackInfo& info, IPointer::SButtonEvent event);
+    void                               dropStalePress(uint32_t mouseButton);
 
     WP<CTitleBarDecoration>            m_self;
 
@@ -57,10 +54,10 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     bool                           m_isDragging    = false;
     Vector2D                       m_freeAreaPressPosition;
     std::vector<uint32_t>          m_consumedMouseButtons;
+    CButtonStateMachine            m_buttonStateMachine;
 
     std::optional<Time::steady_tp> m_lastFreeAreaPress;
 
-    CHyprSignalListener            m_mouseButtonListener;
     CHyprSignalListener            m_mouseMoveListener;
 
     bool                           shouldHide();
@@ -70,9 +67,11 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     Vector2D                       cursorRelativeToBar();
     CBox                           assignedBoxGlobal();
 
-    std::array<CBox, 3>            buttonBoxes(double barWidth, double barHeight);
+    SBarLayout                     computeLayout();
+    void                           updatePointer();
+    void                           applyUpdate(const SButtonStateUpdate& update);
+    void                           endDrag();
 
-    void                           onMouseButton(Event::SCallbackInfo& info, IPointer::SButtonEvent event);
     void                           onMouseMove();
     void                           handlePress(Event::SCallbackInfo& info, const IPointer::SButtonEvent& event);
     void                           handleRelease(Event::SCallbackInfo& info, const IPointer::SButtonEvent& event);

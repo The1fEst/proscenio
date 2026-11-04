@@ -44,6 +44,22 @@ static void onUpdateWindowRules(PHLWINDOW window) {
     (*IT)->updateRules();
 }
 
+static void onMouseButton(IPointer::SButtonEvent event, Event::SCallbackInfo& info) {
+    const auto BARS = g_pGlobalState->bars;
+
+    if (event.state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        for (const auto& bar : BARS) {
+            if (bar)
+                bar->dropStalePress(event.button);
+        }
+    }
+
+    for (const auto& bar : BARS) {
+        if (bar)
+            bar->onMouseButton(info, event);
+    }
+}
+
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     PHANDLE = handle;
 
@@ -61,8 +77,10 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     static auto WINDOW_OPEN_LISTENER   = Event::bus()->m_events.window.open.listen([](PHLWINDOW window) { onNewWindow(window); });
     static auto WINDOW_RULES_LISTENER  = Event::bus()->m_events.window.updateRules.listen([](PHLWINDOW window) { onUpdateWindowRules(window); });
     static auto CONFIG_RELOAD_LISTENER = Event::bus()->m_events.config.reloaded.listen([] { onConfigReloaded(); });
+    static auto MOUSE_BUTTON_LISTENER =
+        Event::bus()->m_events.input.mouse.button.listen([](IPointer::SButtonEvent event, Event::SCallbackInfo& info) { onMouseButton(event, info); });
 
-    auto&       config = g_pGlobalState->config;
+    auto& config = g_pGlobalState->config;
 
     config.barHeight     = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:bar_height", "Height of the bar", 40, Config::Values::SIntValueOptions{.min = 1});
     config.barColor      = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:bar_color", "Color of the bar", 0xFF211F26);

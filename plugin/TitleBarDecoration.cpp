@@ -35,8 +35,6 @@
 using namespace Render::GL;
 
 constexpr double  DISC_SIZE                = 16.0;
-constexpr double  BUTTON_GAP               = 8.0;
-constexpr double  BAR_PADDING              = 16.0;
 constexpr double  DRAG_THRESHOLD           = 4.0;
 constexpr int     BAR_PRIORITY             = 10005;
 constexpr auto    DOUBLE_CLICK_INTERVAL_MS = std::chrono::milliseconds(400);
@@ -51,8 +49,7 @@ CTitleBarDecoration::CTitleBarDecoration(PHLWINDOW window) : IHyprWindowDecorati
 
     m_isHidden = shouldHide();
 
-    m_mouseButtonListener = Event::bus()->m_events.input.mouse.button.listen([this](IPointer::SButtonEvent event, Event::SCallbackInfo& info) { onMouseButton(info, event); });
-    m_mouseMoveListener   = Event::bus()->m_events.input.mouse.move.listen([this](Vector2D, Event::SCallbackInfo&) { onMouseMove(); });
+    m_mouseMoveListener = Event::bus()->m_events.input.mouse.move.listen([this](Vector2D, Event::SCallbackInfo&) { onMouseMove(); });
 }
 
 CTitleBarDecoration::~CTitleBarDecoration() {
@@ -134,7 +131,36 @@ bool CTitleBarDecoration::isPointerOnBar() {
     if (COORDS.x < 0 || COORDS.y < 0 || COORDS.x >= BOX.w || COORDS.y >= BOX.h)
         return false;
 
+    if (g_layoutManager->dragController()->target() || g_pInputManager->hasHeldButtons())
+        return false;
+
+    if (std::ranges::any_of(g_pGlobalState->bars, [this](const auto& bar) { return bar && bar != m_self && std::ranges::contains(bar->m_consumedMouseButtons, BTN_LEFT); }))
+        return false;
+
     return inputIsValid() && !m_window->hasPopupAt(g_pInputManager->getMouseCoordsInternal());
+}
+
+SBarLayout CTitleBarDecoration::computeLayout() {
+    const auto SIDE = g_pGlobalState->config.buttonSide->value() == "left" ? BUTTON_SIDE_LEFT : BUTTON_SIDE_RIGHT;
+    return computeBarLayout(m_assignedBox.w, m_assignedBox.h, SIDE, DISC_SIZE);
+}
+
+void CTitleBarDecoration::updatePointer() {
+    if (!isPointerOnBar()) {
+        applyUpdate(m_buttonStateMachine.onPointerLeave());
+        return;
+    }
+
+    const auto COORDS = cursorRelativeToBar();
+    applyUpdate(m_buttonStateMachine.onPointerMove(computeLayout(), COORDS.x, COORDS.y));
+}
+
+void CTitleBarDecoration::applyUpdate(const SButtonStateUpdate& update) {
+    if (update.isStateChanged)
+        damageEntire();
+
+    if (update.firedButton)
+        fireButton(*update.firedButton);
 }
 
 void CTitleBarDecoration::onMouseButton(Event::SCallbackInfo& info, IPointer::SButtonEvent event) {
@@ -145,6 +171,8 @@ void CTitleBarDecoration::onMouseButton(Event::SCallbackInfo& info, IPointer::SB
 }
 
 void CTitleBarDecoration::onMouseMove() {
+    updatePointer();
+
     if (!m_isDragPending)
         return;
 
@@ -162,9 +190,36 @@ void CTitleBarDecoration::onMouseMove() {
     g_layoutManager->beginDragTarget(m_window->layoutTarget(), MBIND_MOVE);
 }
 
+void CTitleBarDecoration::dropStalePress(uint32_t mouseButton) {
+    if (std::erase(m_consumedMouseButtons, mouseButton) == 0 || mouseButton != BTN_LEFT)
+        return;
+
+    m_lastFreeAreaPress.reset();
+    endDrag();
+    applyUpdate(m_buttonStateMachine.onPointerLeave());
+    applyUpdate(m_buttonStateMachine.onRelease());
+}
+
+void CTitleBarDecoration::endDrag() {
+    m_isDragPending = false;
+
+    if (m_isDragging && validMapped(m_window) && g_layoutManager->dragController()->target() == m_window->layoutTarget())
+        g_layoutManager->endDragTarget();
+
+    m_isDragging = false;
+}
+
 void CTitleBarDecoration::handlePress(Event::SCallbackInfo& info, const IPointer::SButtonEvent& event) {
     if (info.cancelled || g_pInputManager->getModsFromAllKBs() || !isPointerOnBar())
         return;
+
+    info.cancelled = true;
+    m_consumedMouseButtons.push_back(event.button);
+
+    if (event.button == BTN_LEFT) {
+        updatePointer();
+        applyUpdate(m_buttonStateMachine.onPress());
+    }
 
     const auto WINDOW = m_window.lock();
 
@@ -173,20 +228,11 @@ void CTitleBarDecoration::handlePress(Event::SCallbackInfo& info, const IPointer
 
     Desktop::windowState()->raise(WINDOW);
 
-    info.cancelled = true;
-    m_consumedMouseButtons.push_back(event.button);
-
     if (event.button != BTN_LEFT)
         return;
 
-    const auto COORDS = cursorRelativeToBar();
-    const auto BOXES  = buttonBoxes(m_assignedBox.w, m_assignedBox.h);
-
-    for (size_t i = 0; i < BOXES.size(); ++i) {
-        if (!BOXES[i].containsPoint(COORDS))
-            continue;
-
-        fireButton(sc<eBarButton>(i));
+    if (m_buttonStateMachine.hasArmedButton()) {
+        m_lastFreeAreaPress.reset();
         return;
     }
 
@@ -214,15 +260,9 @@ void CTitleBarDecoration::handleRelease(Event::SCallbackInfo& info, const IPoint
     if (event.button != BTN_LEFT)
         return;
 
-    m_isDragPending = false;
-
-    if (!m_isDragging)
-        return;
-
-    m_isDragging = false;
-
-    if (validMapped(m_window) && g_layoutManager->dragController()->target() == m_window->layoutTarget())
-        g_layoutManager->endDragTarget();
+    endDrag();
+    updatePointer();
+    applyUpdate(m_buttonStateMachine.onRelease());
 }
 
 void CTitleBarDecoration::toggleMaximized() {
@@ -240,21 +280,6 @@ void CTitleBarDecoration::fireButton(eBarButton button) {
     }
 }
 
-std::array<CBox, 3> CTitleBarDecoration::buttonBoxes(double barWidth, double barHeight) {
-    const bool                      IS_LEFT = g_pGlobalState->config.buttonSide->value() == "left";
-    const std::array<eBarButton, 3> FROM_EDGE =
-        IS_LEFT ? std::array{BAR_BUTTON_CLOSE, BAR_BUTTON_MINIMIZE, BAR_BUTTON_MAXIMIZE} : std::array{BAR_BUTTON_CLOSE, BAR_BUTTON_MAXIMIZE, BAR_BUTTON_MINIMIZE};
-
-    std::array<CBox, 3> boxes;
-    double              offset = BAR_PADDING;
-    for (const auto BUTTON : FROM_EDGE) {
-        boxes[BUTTON] = {IS_LEFT ? offset : barWidth - offset - DISC_SIZE, (barHeight - DISC_SIZE) / 2.0, DISC_SIZE, DISC_SIZE};
-        offset += DISC_SIZE + BUTTON_GAP;
-    }
-
-    return boxes;
-}
-
 void CTitleBarDecoration::renderTitle(Render::CRenderContext& ctx, const CBox& barBox, const Vector2D& bufferSize, float scale, float alpha) {
     const int  SCALED_SIZE = std::round(g_pGlobalState->config.titleSize->value() * scale);
     const auto TITLE       = m_window->metadata().title();
@@ -263,7 +288,7 @@ void CTitleBarDecoration::renderTitle(Render::CRenderContext& ctx, const CBox& b
         m_lastTitle           = TITLE;
         m_lastScaledTitleSize = SCALED_SIZE;
 
-        const double GROUP_WIDTH = (BAR_PADDING + 3 * DISC_SIZE + 3 * BUTTON_GAP) * scale;
+        const double GROUP_WIDTH = computeLayout().groupBox.w * scale;
         const int    MAX_WIDTH   = std::clamp(sc<int>(bufferSize.x - 2 * GROUP_WIDTH), 0, INT_MAX);
 
         m_titleTexture = TITLE.empty() || MAX_WIDTH < 1 ?
@@ -282,15 +307,20 @@ void CTitleBarDecoration::renderTitle(Render::CRenderContext& ctx, const CBox& b
 }
 
 void CTitleBarDecoration::renderButtons(Render::CRenderContext& ctx, const CBox& barBox, float scale, float alpha) {
-    const auto                                           BOXES  = buttonBoxes(m_assignedBox.w, m_assignedBox.h);
-    const std::array<SP<Config::Values::CColorValue>, 3> COLORS = {g_pGlobalState->config.closeColor, g_pGlobalState->config.minimizeColor, g_pGlobalState->config.maximizeColor};
+    const auto                                                          LAYOUT = computeLayout();
+    const std::array<SP<Config::Values::CColorValue>, BAR_BUTTON_COUNT> COLORS = {g_pGlobalState->config.closeColor, g_pGlobalState->config.minimizeColor,
+                                                                                  g_pGlobalState->config.maximizeColor};
 
-    for (size_t i = 0; i < BOXES.size(); ++i) {
+    for (size_t i = 0; i < LAYOUT.buttons.size(); ++i) {
+        const auto& DISC_BOX = LAYOUT.buttons[i].discBox;
+        if (DISC_BOX.w <= 0)
+            continue;
+
         CHyprColor color = toColor(COLORS[i]->value());
         color.a *= alpha;
 
-        const double SIZE = std::round(BOXES[i].w * scale);
-        const CBox   DISC = {std::round(barBox.x + BOXES[i].x * scale), std::round(barBox.y + BOXES[i].y * scale), SIZE, SIZE};
+        const double SIZE = std::round(DISC_BOX.w * scale);
+        const CBox   DISC = {std::round(barBox.x + DISC_BOX.x * scale), std::round(barBox.y + DISC_BOX.y * scale), SIZE, SIZE};
 
         g_pHyprOpenGL->renderRect(ctx, DISC, color, {.round = sc<int>(std::round(SIZE / 2.0)), .roundingPower = 2.F});
     }
@@ -389,6 +419,7 @@ void CTitleBarDecoration::onConfigReloaded() {
     m_titleTexture = nullptr;
 
     g_pDecorationPositioner->repositionDeco(this);
+    updatePointer();
     damageEntire();
 }
 
@@ -432,4 +463,5 @@ void CTitleBarDecoration::updateRules() {
 
     m_isHidden = IS_HIDDEN;
     g_pDecorationPositioner->repositionDeco(this);
+    updatePointer();
 }
