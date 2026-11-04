@@ -1,0 +1,9 @@
+[repository]
+name = "proscenio"
+authors = ["fEst"]
+
+[proscenio_bars]
+description = "Material 3 title bars for floating windows"
+authors = ["fEst"]
+output = "plugin/proscenio_bars.so"
+build = ["make -C plugin"]
