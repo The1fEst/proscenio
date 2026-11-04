@@ -153,7 +153,11 @@ impl Notifications {
         let timeout_millis = notification.timeout_millis;
         let is_transient = notification.is_transient;
         if !is_popup && is_transient {
-            self.discard(id, 1);
+            if is_update {
+                self.discard(id, 1);
+            } else {
+                self.emit_closed_after_reply(id, 1);
+            }
             return id;
         }
         if is_sound_due(is_popup, is_update, is_muted) {
@@ -223,7 +227,9 @@ impl Notifications {
         });
         let times = arrivals.entry(app_name.to_owned()).or_default();
         if times.len() >= FLOOD_LIMIT {
-            return Some(self.take_id(replaces_id));
+            let id = self.take_id(replaces_id);
+            self.emit_closed_after_reply(id, 1);
+            return Some(id);
         }
         times.push_back(now_millis);
         None

@@ -502,6 +502,14 @@ impl Notifications {
         );
     }
 
+    fn emit_closed_after_reply(&self, id: u32, reason: u32) {
+        if self.connection.is_none() {
+            return;
+        }
+        let notifications = self.clone();
+        glib::idle_add_local_once(move || notifications.emit_closed(id, reason));
+    }
+
     fn trim_history(&self) -> bool {
         let evicted_entries = evict_oldest(&mut self.list.borrow_mut(), HISTORY_LIMIT);
         for notification in &evicted_entries {

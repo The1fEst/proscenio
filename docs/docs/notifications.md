@@ -21,7 +21,7 @@ Notifications interface, version 1.2, at `/org/freedesktop/Notifications`:
 | `CloseNotification` | removes a notification, as its sender asks |
 | `GetCapabilities` | returns `actions`, `body`, `body-hyperlinks`, `body-images`, `body-markup`, `icon-static`, `inline-reply` and `persistence` |
 | `GetServerInformation` | returns `proscenio`, `fEst`, `0.1` and `1.2` |
-| `NotificationClosed` | signals a removal, with reason 1 when it expired, 2 when the user dismissed it, 3 when `CloseNotification` closed it, 4 when the history limit removed it |
+| `NotificationClosed` | signals a removal, with reason 1 when it expired, 2 when the user dismissed it, 3 when `CloseNotification` closed it, 4 when the history limit removed it; a notification dropped on arrival, as a transient one without a popup or one over the flood limit, is signaled with reason 1 right after the reply to `Notify` |
 | `ActionInvoked` | signals that the user clicked one of the notification's actions |
 | `NotificationReplied` | signals the text the user sent from the notification's reply field |
 
@@ -125,8 +125,8 @@ hold only the notifications that are still popping up.
 A notification does not pop up while a sidebar is open, while Do Not Disturb is on (a critical
 notification pops up anyway), while the screen is shared with `notifications.hideWhileSharing` on,
 or when its app has popups turned off. It still
-goes to the sidebar's list, unless it is transient: then it is dropped, and the notification it
-replaces is removed with reason 1.
+goes to the sidebar's list, unless it is transient: then it is dropped, and `NotificationClosed`
+signals reason 1 for its ID, which for a notification that replaces another is the replaced one's.
 
 The screen counts as shared while the screen-sharing state of the [bar's privacy
 indicator](bar.md#privacy-indicator) is on: an app capturing the screen through the desktop portal,

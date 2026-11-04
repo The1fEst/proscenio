@@ -8,6 +8,8 @@ use std::rc::Rc;
 
 const NAME: &str = "org.freedesktop.Notifications";
 const PATH: &str = "/org/freedesktop/Notifications";
+const BUS_NAME: &str = "org.freedesktop.DBus";
+const BUS_PATH: &str = "/org/freedesktop/DBus";
 
 #[derive(Clone, Copy, Default)]
 pub enum Urgency {
@@ -174,6 +176,22 @@ fn send_and_wait(context: &glib::MainContext, notification: &Notification) -> Op
             }
         },
     );
+    let _owner_subscription = bus.subscribe_to_signal(
+        Some(BUS_NAME),
+        Some(BUS_NAME),
+        Some("NameOwnerChanged"),
+        Some(BUS_PATH),
+        Some(NAME),
+        gio::DBusSignalFlags::NONE,
+        {
+            let main_loop = main_loop.clone();
+            move |signal| {
+                if is_owner_lost(signal.parameters) {
+                    main_loop.quit();
+                }
+            }
+        },
+    );
     let reply = bus
         .call_sync(
             Some(NAME),
@@ -193,6 +211,12 @@ fn send_and_wait(context: &glib::MainContext, notification: &Notification) -> Op
     }
     main_loop.run();
     action_key.take()
+}
+
+fn is_owner_lost(parameters: &Variant) -> bool {
+    parameters
+        .get::<(String, String, String)>()
+        .is_some_and(|(_, _, new_owner)| new_owner.is_empty())
 }
 
 #[cfg(test)]
@@ -219,6 +243,20 @@ mod tests {
                 .and_then(|path| path.get::<String>()),
             Some("/pictures/a.png".to_owned())
         );
+    }
+
+    #[test]
+    fn only_a_name_without_a_new_owner_ends_the_wait() {
+        let cases = [
+            ((NAME, ":1.5", ""), true),
+            ((NAME, "", ""), true),
+            ((NAME, "", ":1.5"), false),
+            ((NAME, ":1.5", ":1.6"), false),
+        ];
+        for (parameters, expected) in cases {
+            assert_eq!(is_owner_lost(&parameters.to_variant()), expected);
+        }
+        assert!(!is_owner_lost(&(1u32, 2u32).to_variant()));
     }
 
     #[test]
