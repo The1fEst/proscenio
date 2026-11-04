@@ -2,3 +2,5 @@
 /.idea
 /probes/gtk-floor
 /probes/qt-floor
+/plugin/proscenio_bars.so
+/plugin/build
