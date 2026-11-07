@@ -114,6 +114,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     let theme_watch = theme::watch(&theme, &provider, app);
 
     let _ = settings::pages::migrate_settings_files();
+    std::thread::spawn(switchwall::refresh_bar_colors);
     let services = Rc::new(Services::new(&config));
     std::mem::forget(StatusNotifierWatcher::start(services.session_bus.as_ref()));
     readiness::report_when_ready(

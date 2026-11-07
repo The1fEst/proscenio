@@ -274,7 +274,7 @@ fn python_bool(value: bool) -> &'static str {
     if value { "True" } else { "False" }
 }
 
-fn hex(argb: Argb) -> String {
+pub fn hex(argb: Argb) -> String {
     format!("#{:02X}{:02X}{:02X}", argb.red, argb.green, argb.blue)
 }
 

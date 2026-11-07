@@ -88,6 +88,7 @@ The files in `generated/`:
 |---|---|
 | `colors.json` | The shell's palette, written by a matugen template |
 | `color.txt` | The source color of the palette |
+| `scheme.txt` | The scheme type of the last color run, such as `scheme-tonal-spot` |
 | `material_colors.scss` | The palette as SCSS variables, with the terminal colors and `$darkmode` |
 | `terminal/kitty-theme.conf` | A kitty color theme |
 | `terminal/sequences.txt` | Escape sequences that recolor a running terminal |

@@ -191,11 +191,23 @@ for _, plugin in ipairs(hl.get_loaded_plugins()) do
 end
 ```
 
-### The bar's color
+### The bar's colors
 
-With `appearance.wallpaperTheming.enableQtApps` on, a [color run](colors.md#gtk-and-qt) sets
-`bar_color` and `inactive_bar_color` to the `BackgroundNormal` of `Colors:Header` in the Qt scheme of
-the current mode, so that a bar and a Qt app's toolbar have one color. The two options go in
-[one guarded line](hyprland.md#title-bar-color) in `settings/appearance.lua`, which overrides what the
-Hyprland config set before it. With `enableQtApps` off, a color run removes the line, and the bar
-keeps the colors the rest of the config gives it.
+A [color run](colors.md#gtk-and-qt) sets every color option from the palette the shell computes from
+the source color in `color.txt`, the scheme type and the current mode:
+
+| Options | Role |
+|---|---|
+| `bar_color`, `inactive_bar_color` | The `BackgroundNormal` of `Colors:Header` in the Qt scheme with `appearance.wallpaperTheming.enableQtApps` on, so that a bar and a Qt app's toolbar have one color; `surface_container` with it off |
+| `title_color` | `on_surface` |
+| `inactive_title_color` | `on_surface_variant` |
+| `inactive_button_color` | `surface_container_highest` |
+| `close_color`, `close_icon_color` | `error`, `on_error` |
+| `minimize_color`, `minimize_icon_color` | `tertiary`, `on_tertiary` |
+| `maximize_color`, `maximize_icon_color` | `primary`, `on_primary` |
+
+The options go in [one guarded line](hyprland.md#title-bar-colors) in `settings/appearance.lua`, which
+overrides what the Hyprland config set before it. The shell also writes the line when it starts, from
+`color.txt` and the scheme type in `scheme.txt`, so that the bars match the palette before the next
+color run. A run or a start that changes the line reloads Hyprland. With
+`appearance.wallpaperTheming.enableAppsAndShell` off, the shell does not write the line at start.

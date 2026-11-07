@@ -210,13 +210,14 @@ hl.config({ decoration = { shadow = { color = "rgba(00000080)" } } })
 
 Until the line exists, the settings window shows `20`, the alpha of the dotfiles' shadow color.
 
-### Title bar color
+### Title bar colors
 
-The [color run](colors.md#gtk-and-qt) writes the `Colors:Header` background of the Qt scheme as one
-guarded line in `appearance.lua`, when the color differs from the line already there:
+The [color run](colors.md#gtk-and-qt) and the shell's start write the
+[title bar colors](title-bars.md#the-bars-colors) as one guarded line in `appearance.lua`, when the
+colors differ from the line already there:
 
 ```lua
-for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_bars" then hl.config({ plugin = { proscenio_bars = { bar_color = "rgb(1b1d27)", inactive_bar_color = "rgb(1b1d27)" } } }) end end
+for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_bars" then hl.config({ plugin = { proscenio_bars = { bar_color = "rgb(211f26)", inactive_bar_color = "rgb(211f26)", title_color = "rgb(e6e0e9)", inactive_title_color = "rgb(cac4d0)", inactive_button_color = "rgb(36343b)", close_color = "rgb(f2b8b5)", close_icon_color = "rgb(601410)", minimize_color = "rgb(efb8c8)", minimize_icon_color = "rgb(492532)", maximize_color = "rgb(d0bcff)", maximize_icon_color = "rgb(381e72)" } } }) end end
 ```
 
 ### Workspace groups

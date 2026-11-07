@@ -472,23 +472,28 @@ pub fn set_shadow_alpha(alpha: u8) -> std::io::Result<()> {
     )
 }
 
-fn with_bar_color(text: &str, color: Option<&str>) -> String {
-    let is_target = |line: &str| line.contains(BAR_COLOR_MARKER);
-    let Some(color) = color else {
-        return match text.lines().find(|line| is_target(line)) {
-            Some(line) => with_lines(text, &[line.trim()], false),
-            None => text.to_owned(),
-        };
+fn with_bar_colors(text: &str, bar_color: &str, other_colors: &[(&str, String)]) -> String {
+    let format_color = |color: &str| {
+        format!(
+            "\"rgb({})\"",
+            color.trim_start_matches('#').to_ascii_lowercase()
+        )
     };
-    let color = color.trim_start_matches('#');
+    let bar_color = format_color(bar_color);
+    let mut options = format!("{bar_color}, inactive_bar_color = {bar_color}");
+    for (option, color) in other_colors {
+        options.push_str(&format!(", {option} = {}", format_color(color)));
+    }
     let line = format!(
-        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ {BAR_COLOR_MARKER}\"rgb({color})\", inactive_bar_color = \"rgb({color})\" }} }} }}) end end"
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ {BAR_COLOR_MARKER}{options} }} }} }}) end end"
     );
-    with_line(text, is_target, &line)
+    with_line(text, |line| line.contains(BAR_COLOR_MARKER), &line)
 }
 
-pub fn set_bar_color(color: Option<&str>) -> std::io::Result<bool> {
-    replace_if_changed(&path(Area::Appearance), |text| with_bar_color(text, color))
+pub fn set_bar_colors(bar_color: &str, other_colors: &[(&str, String)]) -> std::io::Result<bool> {
+    replace_if_changed(&path(Area::Appearance), |text| {
+        with_bar_colors(text, bar_color, other_colors)
+    })
 }
 
 fn has_lines(text: &str, lines: &[&str]) -> bool {
@@ -617,45 +622,41 @@ mod tests {
     }
 
     #[test]
-    fn a_bar_color_is_one_guarded_line_for_both_focus_states_until_it_is_removed() {
-        let build_line = |color: &str| {
+    fn the_bar_colors_are_one_guarded_line_that_replaces_the_last_one() {
+        let build_line = |options: &str| {
             format!(
-                "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ proscenio_bars = {{ bar_color = \"rgb({color})\", inactive_bar_color = \"rgb({color})\" }} }} }}) end end"
+                "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ proscenio_bars = {{ {options} }} }} }}) end end"
             )
         };
+        let bar_only_line =
+            build_line("bar_color = \"rgb(111111)\", inactive_bar_color = \"rgb(111111)\"");
+        let full_line = build_line(
+            "bar_color = \"rgb(1b1d27)\", inactive_bar_color = \"rgb(1b1d27)\", title_color = \"rgb(e6e0e9)\", close_color = \"rgb(f2b8b5)\"",
+        );
         let other_lines = format!("-- mine\n{}\n", TITLE_BUTTONS_ON_LEFT.lines[0]);
-        let text_with_old_color = format!("{other_lines}{}\n", build_line("111111"));
-        let text_with_new_color = format!("{other_lines}{}\n", build_line("1b1d27"));
+        let text_with_bar_only = format!("{other_lines}{bar_only_line}\n");
+        let text_with_full_line = format!("{other_lines}{full_line}\n");
         let cases = [
-            (
-                "added",
-                other_lines.as_str(),
-                Some("#1b1d27"),
-                text_with_new_color.as_str(),
-            ),
-            (
-                "replaced",
-                text_with_old_color.as_str(),
-                Some("#1b1d27"),
-                text_with_new_color.as_str(),
-            ),
-            (
-                "same color",
-                text_with_new_color.as_str(),
-                Some("#1b1d27"),
-                text_with_new_color.as_str(),
-            ),
-            (
-                "removed",
-                text_with_old_color.as_str(),
-                None,
-                other_lines.as_str(),
-            ),
-            ("nothing to remove", "-- mine", None, "-- mine"),
-            ("empty file", "", None, ""),
+            ("added", other_lines.as_str()),
+            ("replaced from the bar colors alone", &text_with_bar_only),
+            ("same colors", &text_with_full_line),
+            ("empty file", ""),
         ];
-        for (name, text, color, expected) in cases {
-            assert_eq!(with_bar_color(text, color), expected, "{name}");
+        let other_colors = [
+            ("title_color", "#E6E0E9".to_owned()),
+            ("close_color", "f2b8b5".to_owned()),
+        ];
+        for (name, text) in cases {
+            let expected = if text.is_empty() {
+                format!("{full_line}\n")
+            } else {
+                text_with_full_line.clone()
+            };
+            assert_eq!(
+                with_bar_colors(text, "#1B1D27", &other_colors),
+                expected,
+                "{name}"
+            );
         }
     }
 

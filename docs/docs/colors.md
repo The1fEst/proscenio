@@ -216,6 +216,7 @@ Everything lands in `~/.local/state/proscenio/generated/`:
 |---|---|---|
 | `colors.json` | a matugen template | The shell's palette |
 | `color.txt` | proscenio, for a wallpaper; a matugen template, for an accent color | The source color as `#RRGGBB` |
+| `scheme.txt` | proscenio | The scheme type of the run, such as `scheme-tonal-spot`, with `auto` already resolved |
 | `material_colors.scss` | proscenio | `$darkmode`, `$transparent`, the 54 Material roles in camelCase (`$primary`, `$surfaceContainerLow`, …), `$success`, `$onSuccess`, `$successContainer`, `$onSuccessContainer`, and the terminal colors `$term0` to `$term15` |
 | `terminal/kitty-theme.conf` | proscenio | A kitty color theme |
 | `terminal/sequences.txt` | proscenio | Escape sequences that recolor a running terminal |
@@ -271,9 +272,9 @@ the existing background keys (`BackgroundNormal`, `BackgroundAlternate`, `Decora
 of `[Colors:Selection]`, in `kdeglobals` and in the color scheme file `kdeglobals` names. When
 `kdeglobals` changed, it sends `notifyChange` again.
 
-The [title bars](title-bars.md#the-bars-color) take the `Colors:Header` background of the same scheme.
-With `enableQtApps` off, a run removes that color line from `appearance.lua` and writes nothing else
-for Qt.
+The [title bars](title-bars.md#the-bars-colors) take the `Colors:Header` background of the same scheme.
+With `enableQtApps` off, a run writes nothing for Qt, and the title bars take `surface_container`
+instead.
 
 ## Code editors
 

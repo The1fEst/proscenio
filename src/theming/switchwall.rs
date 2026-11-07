@@ -17,8 +17,12 @@ use crate::platform::system::appearance;
 use crate::platform::wayland::gbm;
 use crate::services::files::cliphist::escape;
 use crate::services::updates;
+use crate::theming::material::Scheme;
+use crate::theming::material::roles::Role;
 use crate::theming::switchwallqueue::{ColorRequest, Request};
 use crate::theming::{colors, kde};
+use material_colors::color::Argb;
+use material_colors::hct::Hct;
 
 const SCHEMES: [&str; 8] = [
     "scheme-content",
@@ -49,6 +53,19 @@ const APP_NAME: &str = "Wallpaper switcher";
 const THEMING: &str = "/appearance/wallpaperTheming";
 const PER_MONITOR: &str = "/background/perMonitor/enable";
 const OVERRIDES: &str = "/background/perMonitor/wallpapers";
+
+const SCHEME_FILE: &str = "scheme.txt";
+const BAR_COLOR_ROLES: [(&str, Role); 9] = [
+    ("title_color", Role::OnSurface),
+    ("inactive_title_color", Role::OnSurfaceVariant),
+    ("inactive_button_color", Role::SurfaceContainerHighest),
+    ("close_color", Role::Error),
+    ("close_icon_color", Role::OnError),
+    ("minimize_color", Role::Tertiary),
+    ("minimize_icon_color", Role::OnTertiary),
+    ("maximize_color", Role::Primary),
+    ("maximize_icon_color", Role::OnPrimary),
+];
 
 const LOCK_FILE: &str = "switchwall.lock";
 const MATUGEN_NICE: &str = "15";
@@ -297,6 +314,10 @@ fn switch(
             return glib::ExitCode::FAILURE;
         }
     };
+    let _ = std::fs::create_dir_all(paths::generated_dir());
+    if let Err(error) = std::fs::write(paths::generated_dir().join(SCHEME_FILE), &scheme) {
+        eprintln!("{SCHEME_FILE}: {error}");
+    }
     let scss_path = paths::generated_dir().join("material_colors.scss");
     if is_unchanged(std::fs::read_to_string(&scss_path).ok().as_deref(), &scss) {
         println!("Colors unchanged, skipping matugen and app reloads");
@@ -553,8 +574,26 @@ fn fill(template: &str, terminal_colors: &[(&str, &str)]) -> String {
     text
 }
 
-fn apply_bar_color(color: Option<&str>) {
-    match hyprconfig::set_bar_color(color) {
+fn read_source_color() -> Option<Argb> {
+    std::fs::read_to_string(paths::generated_dir().join("color.txt"))
+        .ok()
+        .and_then(|color| colors::parse_hex(color.trim()))
+}
+
+fn is_qt_themed() -> bool {
+    config::value(&format!("{THEMING}/enableQtApps")) != Some(Value::Bool(false))
+}
+
+fn apply_bar_colors(source: Argb, scheme_name: &str, is_dark: bool, is_qt_themed: bool) {
+    let scheme = Scheme::new(scheme_name, Hct::new(source), is_dark);
+    let bar_color = if is_qt_themed {
+        kde::compute_header_background(source, scheme_name, is_dark)
+    } else {
+        colors::hex(scheme.argb(Role::SurfaceContainer))
+    };
+    let other_colors =
+        BAR_COLOR_ROLES.map(|(option, role)| (option, colors::hex(scheme.argb(role))));
+    match hyprconfig::set_bar_colors(&bar_color, &other_colors) {
         Ok(true) => {
             hypr::request("reload");
         }
@@ -563,24 +602,35 @@ fn apply_bar_color(color: Option<&str>) {
     }
 }
 
-fn apply_kde(scheme: &str) {
-    if config::value(&format!("{THEMING}/enableQtApps")) == Some(Value::Bool(false)) {
-        apply_bar_color(None);
+pub fn refresh_bar_colors() {
+    if config::value(&format!("{THEMING}/enableAppsAndShell")) == Some(Value::Bool(false)) {
         return;
     }
-    if let Some(source) = std::fs::read_to_string(paths::generated_dir().join("color.txt"))
+    let _generation_lock =
+        File::create(paths::runtime().join(LOCK_FILE)).and_then(|file| file.lock().map(|()| file));
+    let Some(source) = read_source_color() else {
+        return;
+    };
+    let scheme = std::fs::read_to_string(paths::generated_dir().join(SCHEME_FILE))
         .ok()
-        .and_then(|color| colors::parse_hex(color.trim()))
-    {
+        .map(|text| text.trim().to_owned())
+        .or_else(|| config_string("/appearance/palette/type"))
+        .filter(|scheme| SCHEMES.contains(&scheme.as_str()))
+        .unwrap_or_else(|| FALLBACK_SCHEME.to_owned());
+    apply_bar_colors(source, &scheme, gsettings::prefers_dark(), is_qt_themed());
+}
+
+fn apply_kde(scheme: &str) {
+    let is_qt_themed = is_qt_themed();
+    if let Some(source) = read_source_color() {
         let is_dark = gsettings::prefers_dark();
-        match kde::apply(source, scheme, is_dark) {
-            Ok(()) => {
-                apply_bar_color(Some(&kde::compute_header_background(
-                    source, scheme, is_dark,
-                )));
-            }
-            Err(error) => eprintln!("{error}"),
+        if is_qt_themed && let Err(error) = kde::apply(source, scheme, is_dark) {
+            eprintln!("{error}");
         }
+        apply_bar_colors(source, scheme, is_dark, is_qt_themed);
+    }
+    if !is_qt_themed {
+        return;
     }
     if let Err(error) = colors::kde_selection() {
         eprintln!("{error}");
