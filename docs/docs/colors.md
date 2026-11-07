@@ -271,6 +271,10 @@ the existing background keys (`BackgroundNormal`, `BackgroundAlternate`, `Decora
 of `[Colors:Selection]`, in `kdeglobals` and in the color scheme file `kdeglobals` names. When
 `kdeglobals` changed, it sends `notifyChange` again.
 
+The [title bars](title-bars.md#the-bars-color) take the `Colors:Header` background of the same scheme.
+With `enableQtApps` off, a run removes that color line from `appearance.lua` and writes nothing else
+for Qt.
+
 ## Code editors
 
 The source color in `color.txt` becomes `material-code.primaryColor` in every one of these editor

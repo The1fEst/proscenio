@@ -12,7 +12,7 @@ one: a bar in the Material 3 palette with the window's title and three round but
 
 ## Which windows get a bar
 
-A window gets a bar when it floats, its `decorate` rule is on and it asks for a bar. Hyprland tells
+A window gets a bar when it floats, has its `decorate` rule on and asks for a bar. Hyprland tells
 every client that the compositor draws the frame and keeps what each client requested; the plugin
 reads those requests.
 
@@ -164,3 +164,12 @@ for _, plugin in ipairs(hl.get_loaded_plugins()) do
     end
 end
 ```
+
+### The bar's color
+
+With `appearance.wallpaperTheming.enableQtApps` on, a [color run](colors.md#gtk-and-qt) sets
+`bar_color` and `inactive_bar_color` to the `BackgroundNormal` of `Colors:Header` in the Qt scheme of
+the current mode, so that a bar and a Qt app's toolbar have one color. The two options go in
+[one guarded line](hyprland.md#title-bar-color) in `settings/appearance.lua`, which overrides what the
+Hyprland config set before it. With `enableQtApps` off, a color run removes the line, and the bar
+keeps the colors the rest of the config gives it.

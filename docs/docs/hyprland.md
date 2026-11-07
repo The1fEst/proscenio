@@ -199,6 +199,15 @@ hl.config({ decoration = { shadow = { color = "rgba(00000080)" } } })
 
 Until the line exists, the settings window shows `20`, the alpha of the dotfiles' shadow color.
 
+### Title bar color
+
+The [color run](colors.md#gtk-and-qt) writes the `Colors:Header` background of the Qt scheme as one
+guarded line in `appearance.lua`, when the color differs from the line already there:
+
+```lua
+for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_bars" then hl.config({ plugin = { proscenio_bars = { bar_color = "rgb(1b1d27)", inactive_bar_color = "rgb(1b1d27)" } } }) end end
+```
+
 ### Workspace groups
 
 Each display gets its own group of `bar.workspaces.shown` workspaces, the number of cells the bar's

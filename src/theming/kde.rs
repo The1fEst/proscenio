@@ -91,6 +91,7 @@ const BACKGROUNDS: [Role; 25] = [
     Role::TertiaryFixed,
     Role::TertiaryFixedDim,
 ];
+const HEADER_BACKGROUND: Role = Role::SurfaceContainer;
 
 struct Mode {
     is_dark: bool,
@@ -160,6 +161,11 @@ pub fn apply(source: Argb, scheme: &str, is_dark: bool) -> Result<(), String> {
         .map_err(|error| format!("{}: {error}", kdeglobals.display()))?;
     notify_palette();
     Ok(())
+}
+
+pub fn compute_header_background(source: Argb, scheme: &str, is_dark: bool) -> String {
+    let scheme = Scheme::new(scheme, Hct::new(source), is_dark);
+    hex(color(&scheme, HEADER_BACKGROUND))
 }
 
 fn with_scheme(kdeglobals_text: &str, scheme_text: &str, name: &str) -> String {
@@ -405,7 +411,7 @@ fn scheme_text(mode: &Mode, scheme: &Scheme, states: &[(String, String); 5]) -> 
         Group {
             name: "Colors:Header",
             background_alternate: Role::SurfaceContainer,
-            background_normal: Role::SurfaceContainer,
+            background_normal: HEADER_BACKGROUND,
             decoration_hover: Role::Primary,
             foreground_active: Active::Role(Role::InverseSurface),
             foreground_inactive: Role::Outline,
@@ -415,7 +421,7 @@ fn scheme_text(mode: &Mode, scheme: &Scheme, states: &[(String, String); 5]) -> 
         Group {
             name: "Colors:Header][Inactive",
             background_alternate: Role::SurfaceContainer,
-            background_normal: Role::SurfaceContainer,
+            background_normal: HEADER_BACKGROUND,
             decoration_hover: Role::Primary,
             foreground_active: Active::Role(Role::InverseSurface),
             foreground_inactive: Role::Outline,
@@ -553,6 +559,24 @@ mod tests {
         ];
         for (text, block) in expected_blocks {
             assert!(text.contains(block), "missing\n{block}\nin\n{text}");
+        }
+    }
+
+    #[test]
+    fn the_header_background_is_what_kdeglobals_gets_in_both_focus_states() {
+        let source = Argb::from_u32(0xff4c3d50);
+        let [light_text, dark_text] = schemes(source, "scheme-tonal-spot");
+        for (mode, text) in [(&LIGHT, &light_text), (&DARK, &dark_text)] {
+            let background = compute_header_background(source, "scheme-tonal-spot", mode.is_dark);
+            let kdeglobals = Ini::parse(&with_scheme("", text, mode.name));
+            for group in ["Colors:Header", "Colors:Header][Inactive"] {
+                assert_eq!(
+                    kdeglobals.entry(group, "BackgroundNormal"),
+                    Some(background.as_str()),
+                    "{group} in {}",
+                    mode.name
+                );
+            }
         }
     }
 

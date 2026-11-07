@@ -12,7 +12,7 @@ use std::time::Duration;
 use crate::core::i18n::{tr, trf};
 use crate::core::{assets, config, gsettings, paths, process};
 use crate::platform::dbus::notify::{self, Notification};
-use crate::platform::hyprland::{hypr, monitorrules};
+use crate::platform::hyprland::{hypr, hyprconfig, monitorrules};
 use crate::platform::system::appearance;
 use crate::platform::wayland::gbm;
 use crate::services::files::cliphist::escape;
@@ -553,16 +553,30 @@ fn fill(template: &str, terminal_colors: &[(&str, &str)]) -> String {
     text
 }
 
+fn apply_bar_color(color: Option<&str>) {
+    if let Err(error) = hyprconfig::set_bar_color(color) {
+        eprintln!("appearance.lua: {error}");
+    }
+}
+
 fn apply_kde(scheme: &str) {
     if config::value(&format!("{THEMING}/enableQtApps")) == Some(Value::Bool(false)) {
+        apply_bar_color(None);
         return;
     }
     if let Some(source) = std::fs::read_to_string(paths::generated_dir().join("color.txt"))
         .ok()
         .and_then(|color| colors::parse_hex(color.trim()))
-        && let Err(error) = kde::apply(source, scheme, gsettings::prefers_dark())
     {
-        eprintln!("{error}");
+        let is_dark = gsettings::prefers_dark();
+        match kde::apply(source, scheme, is_dark) {
+            Ok(()) => {
+                apply_bar_color(Some(&kde::compute_header_background(
+                    source, scheme, is_dark,
+                )));
+            }
+            Err(error) => eprintln!("{error}"),
+        }
     }
     if let Err(error) = colors::kde_selection() {
         eprintln!("{error}");
