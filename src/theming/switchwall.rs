@@ -554,8 +554,12 @@ fn fill(template: &str, terminal_colors: &[(&str, &str)]) -> String {
 }
 
 fn apply_bar_color(color: Option<&str>) {
-    if let Err(error) = hyprconfig::set_bar_color(color) {
-        eprintln!("appearance.lua: {error}");
+    match hyprconfig::set_bar_color(color) {
+        Ok(true) => {
+            hypr::request("reload");
+        }
+        Ok(false) => {}
+        Err(error) => eprintln!("appearance.lua: {error}"),
     }
 }
 

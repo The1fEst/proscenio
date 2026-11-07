@@ -480,8 +480,8 @@ fn with_bar_color(text: &str, color: Option<&str>) -> String {
     with_line(text, is_target, &line)
 }
 
-pub fn set_bar_color(color: Option<&str>) -> std::io::Result<()> {
-    replace_if_changed(&path(Area::Appearance), |text| with_bar_color(text, color)).map(|_| ())
+pub fn set_bar_color(color: Option<&str>) -> std::io::Result<bool> {
+    replace_if_changed(&path(Area::Appearance), |text| with_bar_color(text, color))
 }
 
 fn has_lines(text: &str, lines: &[&str]) -> bool {
