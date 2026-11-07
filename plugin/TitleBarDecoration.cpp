@@ -602,6 +602,7 @@ void CTitleBarDecoration::renderPass(Render::CRenderContext& ctx, PHLMONITOR mon
     g_pHyprOpenGL->scissor(ctx, titleBarBox);
 
     if (ROUNDING) {
+        glStencilMask(-1);
         glClearStencil(0);
         glClear(GL_STENCIL_BUFFER_BIT);
 
