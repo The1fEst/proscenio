@@ -43,5 +43,9 @@ int main() {
     for (const auto& testCase : CASES)
         expect(shouldShowBar(testCase.input) == testCase.expected, std::format("bar visibility: {}", testCase.name));
 
+    expect(formatWindowAddresses({}) == "[]", "window addresses: none");
+    expect(formatWindowAddresses({0x55aa01}) == R"(["0x55aa01"])", "window addresses: one");
+    expect(formatWindowAddresses({0x1a, 0xff}) == R"(["0x1a","0xff"])", "window addresses: two");
+
     return reportResult("BarVisibilityTests");
 }

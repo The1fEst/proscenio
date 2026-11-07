@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <vector>
 
 constexpr uint32_t XDG_DECORATION_MODE_CLIENT_SIDE = 1;
 constexpr uint32_t KDE_DECORATION_MODE_SERVER      = 2;
@@ -17,4 +19,5 @@ struct SBarVisibilityInput {
     std::optional<uint32_t> kdeDecorationMode;
 };
 
-bool shouldShowBar(const SBarVisibilityInput& input);
+bool        shouldShowBar(const SBarVisibilityInput& input);
+std::string formatWindowAddresses(const std::vector<uintptr_t>& addresses);

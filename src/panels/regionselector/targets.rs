@@ -1,4 +1,5 @@
 use serde_json::Value;
+use std::collections::HashSet;
 
 use super::REGION_RADIUS;
 use crate::platform::hyprland::hypr;
@@ -34,26 +35,37 @@ fn pair(value: &Value, key: &str) -> (f64, f64) {
     (read_number(0), read_number(1))
 }
 
-fn has_title_bar(client: &Value) -> bool {
-    let text = |key: &str| client.get(key).and_then(Value::as_str).unwrap_or_default();
-    let fullscreen = client
-        .get("fullscreen")
-        .and_then(Value::as_i64)
-        .unwrap_or(0);
-    client.get("floating").and_then(Value::as_bool) == Some(true)
-        && fullscreen < 2
-        && (!text("class").is_empty() || !text("title").is_empty())
-        && text("class") != crate::APP_ID
+#[derive(Default)]
+pub(super) struct TitleBars {
+    height: f64,
+    addresses: HashSet<String>,
 }
 
-fn window_area(client: &Value, title_bar_height: Option<i32>) -> ((f64, f64), (f64, f64)) {
-    let (position, size) = (pair(client, "at"), pair(client, "size"));
-    match title_bar_height {
-        Some(height) if has_title_bar(client) => {
-            let height = height as f64;
-            ((position.0, position.1 - height), (size.0, size.1 + height))
+impl TitleBars {
+    pub(super) fn read() -> Self {
+        let Some(height) = hypr::option_int("plugin:proscenio_bars:bar_height") else {
+            return Self::default();
+        };
+        Self {
+            height: height as f64,
+            addresses: hypr::json("proscenio_bars")
+                .and_then(|reply| serde_json::from_value(reply).ok())
+                .unwrap_or_default(),
         }
-        _ => (position, size),
+    }
+}
+
+fn window_area(client: &Value, title_bars: &TitleBars) -> ((f64, f64), (f64, f64)) {
+    let (position, size) = (pair(client, "at"), pair(client, "size"));
+    let has_title_bar = client
+        .get("address")
+        .and_then(Value::as_str)
+        .is_some_and(|address| title_bars.addresses.contains(address));
+    if has_title_bar {
+        let height = title_bars.height;
+        ((position.0, position.1 - height), (size.0, size.1 + height))
+    } else {
+        (position, size)
     }
 }
 
@@ -95,7 +107,7 @@ fn order_by_stacking(mut clients: Vec<Value>) -> Vec<Value> {
 pub(super) fn targets(
     name: &str,
     offset: (f64, f64),
-    title_bar_height: Option<i32>,
+    title_bars: &TitleBars,
 ) -> (Vec<Target>, Vec<Target>) {
     let monitor = hypr::json("monitors")
         .and_then(|value| value.as_array().cloned())
@@ -165,7 +177,7 @@ pub(super) fn targets(
         .iter()
         .map(|client| Target {
             bounds: {
-                let (position, size) = window_area(client, title_bar_height);
+                let (position, size) = window_area(client, title_bars);
                 bounds(position, size)
             },
             label: client
@@ -189,17 +201,6 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-
-    fn build_client(floating: bool, fullscreen: i64, class: &str, title: &str) -> Value {
-        json!({
-            "at": [100, 200],
-            "size": [800, 600],
-            "floating": floating,
-            "fullscreen": fullscreen,
-            "class": class,
-            "title": title,
-        })
-    }
 
     fn build_stacked_client(
         class: &str,
@@ -276,62 +277,27 @@ mod tests {
     }
 
     #[test]
-    fn title_bar_extends_a_window_upward_only_when_it_is_drawn() {
+    fn title_bar_extends_a_window_upward_only_when_the_plugin_lists_it() {
+        let build_client =
+            |address: Value| json!({ "at": [100, 200], "size": [800, 600], "address": address });
+        let listed_bars = TitleBars {
+            height: 40.0,
+            addresses: HashSet::from(["0x1a".to_owned()]),
+        };
         let bare = ((100.0, 200.0), (800.0, 600.0));
         let with_bar = ((100.0, 160.0), (800.0, 640.0));
         let cases = [
-            (
-                "floating",
-                build_client(true, 0, "foot", "shell"),
-                Some(40),
-                with_bar,
-            ),
-            (
-                "tiled",
-                build_client(false, 0, "foot", "shell"),
-                Some(40),
-                bare,
-            ),
-            (
-                "fullscreen",
-                build_client(true, 2, "foot", "shell"),
-                Some(40),
-                bare,
-            ),
-            (
-                "maximized",
-                build_client(true, 1, "foot", "shell"),
-                Some(40),
-                with_bar,
-            ),
-            (
-                "class only",
-                build_client(true, 0, "foot", ""),
-                Some(40),
-                with_bar,
-            ),
-            (
-                "title only",
-                build_client(true, 0, "", "shell"),
-                Some(40),
-                with_bar,
-            ),
-            ("popup", build_client(true, 0, "", ""), Some(40), bare),
-            (
-                "own window",
-                build_client(true, 0, crate::APP_ID, "settings"),
-                Some(40),
-                bare,
-            ),
-            (
-                "no plugin",
-                build_client(true, 0, "foot", "shell"),
-                None,
-                bare,
-            ),
+            ("listed", json!("0x1a"), &listed_bars, with_bar),
+            ("not listed", json!("0x2b"), &listed_bars, bare),
+            ("no address", Value::Null, &listed_bars, bare),
+            ("no plugin", json!("0x1a"), &TitleBars::default(), bare),
         ];
-        for (name, client, title_bar_height, expected) in cases {
-            assert_eq!(window_area(&client, title_bar_height), expected, "{name}");
+        for (name, address, title_bars, expected) in cases {
+            assert_eq!(
+                window_area(&build_client(address), title_bars),
+                expected,
+                "{name}"
+            );
         }
     }
 }

@@ -45,6 +45,17 @@ hl.window_rule({ match = { class = "^(hyprland-dialog)$" }, ["proscenio_bars:for
 hl.window_rule({ match = { class = "^(steam)$" }, ["proscenio_bars:no_bar"] = true })
 ```
 
+### Listing the windows with a bar
+
+The plugin adds the `hyprctl` command `proscenio_bars`. It replies with a JSON array of the addresses
+of the mapped windows that show a bar, in the form `hyprctl clients` uses. A fullscreen window is not
+among them, since its bar is not drawn.
+
+```bash
+$ hyprctl proscenio_bars
+["0x55d0c8a1b2e0","0x55d0c8f03a10"]
+```
+
 ## The bar
 
 The bar sits on the top edge of the window and adds its height (`bar_height`) to the window's
@@ -135,8 +146,8 @@ Every option lives under `plugin:proscenio_bars:`.
 | `maximize_icon_color` | `#381E72` | The Maximize icon and its state layer |
 | `inactive_button_color` | `#36343B` | All three discs on an unfocused window |
 
-The [region selector](region-selector.md#picking-a-window) reads `bar_height` to take a window
-together with its bar. **Appearance › Windows › Title bars** in the
+The [region selector](region-selector.md#picking-a-window) reads `bar_height` and the
+[window list](#listing-the-windows-with-a-bar) to take a window together with its bar. **Appearance › Windows › Title bars** in the
 [settings](settings-appearance.md#windows) sets `button_side`.
 
 ### Setting them

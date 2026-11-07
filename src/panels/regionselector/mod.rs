@@ -39,7 +39,7 @@ use interaction::{guide_description, guide_symbol};
 use options::options_menu;
 use screenshot::Action;
 use scroll::ScrollSession;
-use targets::{Target, targets};
+use targets::{Target, TitleBars, targets};
 
 const NAMESPACE: &str = "proscenio:regionSelector";
 const OVERLAY_ALPHA: f32 = 0.6;
@@ -290,9 +290,9 @@ impl RegionSelector {
             .iter::<gdk::Monitor>()
             .flatten()
             .collect();
-        let title_bar_height = hypr::option_int("plugin:proscenio_bars:bar_height");
+        let title_bars = TitleBars::read();
         for monitor in monitors {
-            let selection = self.build(&monitor, title_bar_height);
+            let selection = self.build(&monitor, &title_bars);
             self.selections.borrow_mut().push(selection.clone());
             self.prepare(&selection);
         }
@@ -357,11 +357,7 @@ impl RegionSelector {
         });
     }
 
-    fn build(
-        self: &Rc<Self>,
-        monitor: &gdk::Monitor,
-        title_bar_height: Option<i32>,
-    ) -> Rc<Selection> {
+    fn build(self: &Rc<Self>, monitor: &gdk::Monitor, title_bars: &TitleBars) -> Rc<Selection> {
         let screen: String = monitor.connector().map(Into::into).unwrap_or_default();
         let geometry = monitor.geometry();
         let scale = monitor.scale();
@@ -377,7 +373,7 @@ impl RegionSelector {
                 )
             })
             .unwrap_or((geometry.x() as f64, geometry.y() as f64));
-        let (windows, layers) = targets(&screen, offset, title_bar_height);
+        let (windows, layers) = targets(&screen, offset, title_bars);
 
         let paint = Paint::new(|_, _, _| {});
         paint.set_hexpand(true);

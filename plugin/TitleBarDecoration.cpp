@@ -202,11 +202,15 @@ bool CTitleBarDecoration::shouldHide() {
     });
 }
 
-bool CTitleBarDecoration::isBarInteractive() {
-    if (m_isHidden || !validMapped(m_window) || g_pSessionLockManager->isSessionLocked())
+bool CTitleBarDecoration::isBarVisible() {
+    if (m_isHidden || !validMapped(m_window))
         return false;
 
     return Fullscreen::controller()->getFullscreenModes(m_window.lock()).internal != Fullscreen::FSMODE_FULLSCREEN;
+}
+
+bool CTitleBarDecoration::isBarInteractive() {
+    return !g_pSessionLockManager->isSessionLocked() && isBarVisible();
 }
 
 bool CTitleBarDecoration::inputIsValid() {

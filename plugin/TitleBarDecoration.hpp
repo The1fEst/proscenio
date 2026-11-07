@@ -40,6 +40,7 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     virtual std::string                getDisplayName();
 
     PHLWINDOW                          window();
+    bool                               isBarVisible();
     void                               updateRules();
     void                               onConfigReloaded();
     void                               onMouseButton(Event::SCallbackInfo& info, IPointer::SButtonEvent event);

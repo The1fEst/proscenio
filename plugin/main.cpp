@@ -13,6 +13,7 @@
 
 #include <algorithm>
 
+#include "BarVisibility.hpp"
 #include "TitleBarDecoration.hpp"
 #include "globals.hpp"
 
@@ -69,6 +70,17 @@ static void onMouseButton(IPointer::SButtonEvent event, Event::SCallbackInfo& in
         if (bar)
             bar->updatePointer();
     }
+}
+
+static IPC::Socket1::SResponse listWindowsWithBar(const IPC::Socket1::SRequest&) {
+    std::vector<uintptr_t> addresses;
+
+    for (const auto& bar : g_pGlobalState->bars) {
+        if (bar && bar->isBarVisible())
+            addresses.emplace_back(rc<uintptr_t>(bar->window().get()));
+    }
+
+    return formatWindowAddresses(addresses);
 }
 
 static void onWindowActive() {
@@ -144,6 +156,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addConfigValueV2(PHANDLE, config.maximizeColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.maximizeIconColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveButtonColor);
+
+    HyprlandAPI::registerHyprCtlCommand(PHANDLE, {.name = BAR_DISPLAY_NAME, .handler = listWindowsWithBar});
 
     for (const auto& window : Desktop::windowState()->windows()) {
         if (validMapped(window))
