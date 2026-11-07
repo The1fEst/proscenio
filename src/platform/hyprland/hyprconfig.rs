@@ -532,9 +532,155 @@ pub fn set_lines(line_set: &Lines, is_enabled: bool) -> std::io::Result<()> {
     )
 }
 
+const SETTINGS_LOADER: &str = r#"-- What the proscenio settings app writes, over everything above --
+do
+    local config_dir = package.path:match("^(.-)/%?%.lua")
+    local listing = config_dir and io.popen("ls -1 '" .. (config_dir:gsub("'", "'\\''")) .. "/settings' 2>/dev/null")
+    if listing then
+        for name in listing:lines() do
+            local area = name:match("^(.+)%.lua$")
+            if area then
+                require("settings." .. area)
+            end
+        end
+        listing:close()
+    end
+end
+"#;
+
+fn strip_block_comments(text: &str) -> String {
+    let mut code = String::new();
+    let mut rest = text;
+    while let Some(start) = rest.find("--[[") {
+        code.push_str(&rest[..start]);
+        let comment = &rest[start..];
+        rest = comment.find("]]").map_or("", |end| &comment[end + 2..]);
+    }
+    code.push_str(rest);
+    code
+}
+
+fn loads_settings(config_text: &str) -> bool {
+    strip_block_comments(config_text).lines().any(|line| {
+        let code = line.split("--").next().unwrap_or_default();
+        code.contains("require")
+            && ["\"settings.\"", "'settings.'"]
+                .iter()
+                .any(|module_prefix| {
+                    code.match_indices(module_prefix).any(|(index, _)| {
+                        code[index + module_prefix.len()..]
+                            .trim_start()
+                            .starts_with("..")
+                    })
+                })
+    })
+}
+
+fn with_settings_loader(config_text: &str) -> String {
+    if loads_settings(config_text) {
+        return config_text.to_owned();
+    }
+    let config_text = config_text.trim_end_matches('\n');
+    if config_text.is_empty() {
+        return SETTINGS_LOADER.to_owned();
+    }
+    format!("{config_text}\n\n{SETTINGS_LOADER}")
+}
+
+pub fn add_settings_loader() -> std::io::Result<bool> {
+    let path = config_dir().join("hyprland.lua");
+    if !path.is_file() {
+        return Ok(false);
+    }
+    replace_if_changed(&path, with_settings_loader)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_config_that_does_not_load_the_settings_gets_the_loader_at_its_end() {
+        let dots_block = concat!(
+            "-- What the settings app writes, over the defaults and every custom configuration --\n",
+            "if is_file_exists(HOME .. \"/.config/hypr/settings.lua\") then\n",
+            "    require(\"settings\")\n",
+            "end\n",
+            "local settings = io.popen(\"ls -1 \\\"\" .. HOME .. \"/.config/hypr/settings\\\" 2>/dev/null\")\n",
+            "if settings then\n",
+            "    for name in settings:lines() do\n",
+            "        local area = name:match(\"^(.+)%.lua$\")\n",
+            "        if area then\n",
+            "            require(\"settings.\" .. area)\n",
+            "        end\n",
+            "    end\n",
+            "    settings:close()\n",
+            "end\n",
+        );
+        let dots_config =
+            format!("require(\"hyprland.general\")\n{dots_block}require(\"custom.keybinds\")\n");
+        let own_config = "hl.config({ general = { gaps_in = 4 } })\n";
+        let own_config_with_loader =
+            format!("hl.config({{ general = {{ gaps_in = 4 }} }})\n\n{SETTINGS_LOADER}");
+        let cases = [
+            ("the dots' block", dots_config.as_str(), dots_config.clone()),
+            (
+                "the loader itself",
+                SETTINGS_LOADER,
+                SETTINGS_LOADER.to_owned(),
+            ),
+            (
+                "the folder in single quotes and without spaces",
+                "require('settings.'..area)\n",
+                "require('settings.'..area)\n".to_owned(),
+            ),
+            (
+                "one area only",
+                "require('settings.appearance')\n",
+                format!("require('settings.appearance')\n\n{SETTINGS_LOADER}"),
+            ),
+            (
+                "a loader in a block comment",
+                "--[[\nrequire(\"settings.\" .. area)\n]]\n",
+                format!("--[[\nrequire(\"settings.\" .. area)\n]]\n\n{SETTINGS_LOADER}"),
+            ),
+            (
+                "a loader after a block comment",
+                "--[[ old ]] require(\"settings.\" .. area)\n",
+                "--[[ old ]] require(\"settings.\" .. area)\n".to_owned(),
+            ),
+            (
+                "settings text that is not a module",
+                "require(\"theme\").apply(\"settings.json\")\n",
+                format!("require(\"theme\").apply(\"settings.json\")\n\n{SETTINGS_LOADER}"),
+            ),
+            ("no loader", own_config, own_config_with_loader.clone()),
+            (
+                "no trailing newline",
+                own_config.trim_end(),
+                own_config_with_loader.clone(),
+            ),
+            (
+                "only the legacy single file",
+                "require(\"settings\")\n",
+                format!("require(\"settings\")\n\n{SETTINGS_LOADER}"),
+            ),
+            (
+                "a commented-out require",
+                "-- require(\"settings.\" .. area)\n",
+                format!("-- require(\"settings.\" .. area)\n\n{SETTINGS_LOADER}"),
+            ),
+            (
+                "a module whose name ends in settings",
+                "require(\"mysettings.appearance\")\n",
+                format!("require(\"mysettings.appearance\")\n\n{SETTINGS_LOADER}"),
+            ),
+            ("empty", "", SETTINGS_LOADER.to_owned()),
+        ];
+        for (name, config_text, expected) in cases {
+            assert_eq!(with_settings_loader(config_text), expected, "{name}");
+        }
+    }
 
     #[test]
     fn a_settings_file_that_cannot_be_read_is_not_edited_as_empty() {

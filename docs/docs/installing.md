@@ -118,21 +118,31 @@ The settings window writes Hyprland options, monitor rules, window rules and sho
 per area under `~/.config/hypr/settings/`, in Hyprland's Lua syntax: `appearance.lua`,
 `displays.lua`, `keyboard.lua` and so on. Hyprland applies them only if its config loads that
 folder, and loads it last, so that a change made in the settings window wins over the rest of the
-config:
+config.
+
+When the shell starts and `~/.config/hypr/hyprland.lua` has no line outside a comment that requires
+`"settings." ..` some name, the shell adds this block at the end of the file and reloads Hyprland:
 
 ```lua
-local folder = os.getenv("HOME") .. "/.config/hypr/settings"
-local settings = io.popen('ls -1 "' .. folder .. '" 2>/dev/null')
-if settings then
-    for name in settings:lines() do
-        local area = name:match("^(.+)%.lua$")
-        if area then
-            require("settings." .. area)
+-- What the proscenio settings app writes, over everything above --
+do
+    local config_dir = package.path:match("^(.-)/%?%.lua")
+    local listing = config_dir and io.popen("ls -1 '" .. (config_dir:gsub("'", "'\\''")) .. "/settings' 2>/dev/null")
+    if listing then
+        for name in listing:lines() do
+            local area = name:match("^(.+)%.lua$")
+            if area then
+                require("settings." .. area)
+            end
         end
+        listing:close()
     end
-    settings:close()
 end
 ```
+
+Hyprland puts the folder of its main config first in `package.path`, so the block finds
+`settings/` next to `hyprland.lua`. A config with no `hyprland.lua`, such as one in
+`hyprland.conf`, is left as it is.
 
 `binds.lua` also holds the Super + number, Super + Alt + number and Ctrl + Super + arrow binds of the
 [workspace groups](hyprland.md#workspace-groups), so the config binds none of those keys, and the

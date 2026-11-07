@@ -129,9 +129,10 @@ holds the lock and Hyprland then reports the session unlocked, the shell release
 ## Writing Hyprland's config
 
 The settings window keeps everything it changes in Hyprland's config in one Lua file per area, under
-`~/.config/hypr/settings/`. Hyprland applies them only if its config loads that folder;
-[Building and installing](installing.md) shows how, loading it last so that a change made in the
-settings window wins. The code is in `src/platform/hyprland/hyprconfig.rs` and the modules next to it.
+`~/.config/hypr/settings/`. Hyprland applies them only if its config loads that folder, last so that
+a change made in the settings window wins; when `hyprland.lua` does not, the shell adds a block that
+does, as [Building and installing](installing.md#hyprlands-config) shows. The code is in
+`src/platform/hyprland/hyprconfig.rs` and the modules next to it.
 
 A change reads the area's file, edits its text and writes it back. When the file exists but cannot
 be read, or is read-only, nothing is written. The new text goes to `<file>.part` next to the file,
