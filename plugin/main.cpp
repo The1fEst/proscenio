@@ -92,8 +92,9 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         throw std::runtime_error("[proscenio_bars] Version mismatch");
     }
 
-    g_pGlobalState               = makeUnique<SGlobalState>();
-    g_pGlobalState->noBarRuleIdx = Desktop::Rule::windowEffects()->registerEffect("proscenio_bars:no_bar");
+    g_pGlobalState                  = makeUnique<SGlobalState>();
+    g_pGlobalState->noBarRuleIdx    = Desktop::Rule::windowEffects()->registerEffect("proscenio_bars:no_bar");
+    g_pGlobalState->forceBarRuleIdx = Desktop::Rule::windowEffects()->registerEffect("proscenio_bars:force_bar");
 
     g_pGlobalState->animationConfig                  = makeShared<Hyprutils::Animation::SAnimationPropertyConfig>();
     g_pGlobalState->animationConfig->internalEnabled = 1;
@@ -163,4 +164,5 @@ APICALL EXPORT void PLUGIN_EXIT() {
     g_pGlobalState->iconTextures.clear();
 
     Desktop::Rule::windowEffects()->unregisterEffect(g_pGlobalState->noBarRuleIdx);
+    Desktop::Rule::windowEffects()->unregisterEffect(g_pGlobalState->forceBarRuleIdx);
 }

@@ -1,0 +1,20 @@
+#pragma once
+
+#include <cstdint>
+#include <optional>
+
+constexpr uint32_t XDG_DECORATION_MODE_CLIENT_SIDE = 1;
+constexpr uint32_t KDE_DECORATION_MODE_SERVER      = 2;
+
+struct SBarVisibilityInput {
+    bool                    isFloating         = true;
+    bool                    isDecorated        = true;
+    bool                    isOverrideRedirect = false;
+    bool                    isX11              = false;
+    bool                    hasNoBarRule       = false;
+    bool                    hasForceBarRule    = false;
+    std::optional<uint32_t> xdgDecorationMode;
+    std::optional<uint32_t> kdeDecorationMode;
+};
+
+bool shouldShowBar(const SBarVisibilityInput& input);

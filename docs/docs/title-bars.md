@@ -1,21 +1,54 @@
 ---
 title: Title bars
 sidebar_label: Title bars
-description: The Hyprland plugin that draws a Material 3 title bar on floating windows, its buttons, the hyprpm install, every option and the rule that turns a bar off.
+description: The Hyprland plugin that draws a Material 3 title bar on floating windows that ask for one, its buttons, the hyprpm install, every option and the rules that turn a bar on or off.
 ---
 
 # Title bars
 
-`proscenio_bars` is a Hyprland plugin that draws a title bar above every floating window: a bar in
-the Material 3 palette with the window's title and three round buttons. It lives in `plugin/` and is
-built and loaded by `hyprpm`, apart from the shell.
+`proscenio_bars` is a Hyprland plugin that draws a title bar above a floating window that asks for
+one: a bar in the Material 3 palette with the window's title and three round buttons. It lives in
+`plugin/` and is built and loaded by `hyprpm`, apart from the shell.
+
+## Which windows get a bar
+
+A window gets a bar when it floats, its `decorate` rule is on and it asks for a bar. Hyprland tells
+every client that the compositor draws the frame and keeps what each client requested; the plugin
+reads those requests.
+
+| Window | Request | Bar |
+|---|---|---|
+| Wayland, with an `xdg-decoration` object | Server side, or no mode set | Yes |
+| Wayland, with an `xdg-decoration` object | Client side | No |
+| Wayland, with an `org_kde_kwin_server_decoration` object | Server | Yes |
+| Wayland, with an `org_kde_kwin_server_decoration` object | Client, or none | No |
+| Wayland, with neither object | The window draws its own frame | No |
+| X11 | Not read | Yes |
+| X11 that overrides redirection (menus and tooltips) | Not read | No |
+
+A window with both objects gets a bar when either one asks for it. The plugin reads the requests
+when the window maps and whenever Hyprland updates the window's rules, such as on a change of focus
+or title.
+
+Two window rule effects change the result:
+
+| Effect | Result when set to a true value |
+|---|---|
+| `proscenio_bars:no_bar` | No bar |
+| `proscenio_bars:force_bar` | A bar on a Wayland window that did not ask for one |
+
+`no_bar` wins over `force_bar`. A window that is tiled, has the `decorate` rule off or overrides
+redirection gets no bar with either of them.
+
+```lua
+hl.window_rule({ match = { class = "^(hyprland-dialog)$" }, ["proscenio_bars:force_bar"] = true })
+hl.window_rule({ match = { class = "^(steam)$" }, ["proscenio_bars:no_bar"] = true })
+```
 
 ## The bar
 
 The bar sits on the top edge of the window and adds its height (`bar_height`) to the window's
-extents. Tiled windows get none, nor do windows with the `decorate` rule off, XWayland windows that
-override redirection (menus and tooltips), and windows with the
-[`proscenio_bars:no_bar` rule](#turning-a-bar-off). The title fills the space the buttons leave.
+extents. The title fills the space the buttons leave.
 
 ### Buttons
 
@@ -120,9 +153,3 @@ for _, plugin in ipairs(hl.get_loaded_plugins()) do
     end
 end
 ```
-
-## Turning a bar off
-
-The plugin adds the window rule effect `proscenio_bars:no_bar`. A window that matches a rule with it
-set to a true value gets no bar. A window that is not floating, or has the `decorate` rule off, gets
-none either.

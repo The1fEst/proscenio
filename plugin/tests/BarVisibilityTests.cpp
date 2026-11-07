@@ -1,0 +1,47 @@
+#include "../BarVisibility.hpp"
+#include "Expect.hpp"
+
+#include <format>
+#include <vector>
+
+constexpr uint32_t MODE_UNSET  = 0;
+constexpr uint32_t MODE_CLIENT = 1;
+constexpr uint32_t MODE_SERVER = 2;
+
+int main() {
+    struct SCase {
+        const char*         name;
+        SBarVisibilityInput input;
+        bool                expected;
+    };
+
+    const std::vector<SCase> CASES = {
+        {"no decoration object draws its own frame", {}, false},
+        {"xdg server side, as Dolphin asks", {.xdgDecorationMode = MODE_SERVER}, true},
+        {"xdg client side", {.xdgDecorationMode = MODE_CLIENT}, false},
+        {"xdg unset leaves the compositor to choose", {.xdgDecorationMode = MODE_UNSET}, true},
+        {"kde server, as GTK without a header bar asks", {.kdeDecorationMode = MODE_SERVER}, true},
+        {"kde client, as GTK3 with a header bar asks", {.kdeDecorationMode = MODE_CLIENT}, false},
+        {"kde none", {.kdeDecorationMode = MODE_UNSET}, false},
+        {"xdg client side with kde server", {.xdgDecorationMode = MODE_CLIENT, .kdeDecorationMode = MODE_SERVER}, true},
+        {"xdg server side with kde client", {.xdgDecorationMode = MODE_SERVER, .kdeDecorationMode = MODE_CLIENT}, true},
+        {"force_bar on a window that asked for nothing", {.hasForceBarRule = true}, true},
+        {"force_bar on a window that draws its own frame", {.hasForceBarRule = true, .xdgDecorationMode = MODE_CLIENT}, true},
+        {"no_bar on a window that asked for a bar", {.hasNoBarRule = true, .xdgDecorationMode = MODE_SERVER}, false},
+        {"no_bar wins over force_bar", {.hasNoBarRule = true, .hasForceBarRule = true}, false},
+        {"X11 asks for nothing and keeps its bar", {.isX11 = true}, true},
+        {"no_bar on X11", {.isX11 = true, .hasNoBarRule = true}, false},
+        {"override redirect X11", {.isOverrideRedirect = true, .isX11 = true}, false},
+        {"force_bar on override redirect X11", {.isOverrideRedirect = true, .isX11 = true, .hasForceBarRule = true}, false},
+        {"tiled window that asked for a bar", {.isFloating = false, .xdgDecorationMode = MODE_SERVER}, false},
+        {"force_bar on a tiled window", {.isFloating = false, .hasForceBarRule = true}, false},
+        {"tiled X11", {.isFloating = false, .isX11 = true}, false},
+        {"decorate off on a window that asked for a bar", {.isDecorated = false, .xdgDecorationMode = MODE_SERVER}, false},
+        {"force_bar with decorate off", {.isDecorated = false, .hasForceBarRule = true}, false},
+    };
+
+    for (const auto& testCase : CASES)
+        expect(shouldShowBar(testCase.input) == testCase.expected, std::format("bar visibility: {}", testCase.name));
+
+    return reportResult("BarVisibilityTests");
+}

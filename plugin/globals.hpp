@@ -32,7 +32,8 @@ struct SGlobalState {
     std::vector<WP<CTitleBarDecoration>>               bars;
     std::map<SIconKey, SP<Render::ITexture>>           iconTextures;
     SP<Hyprutils::Animation::SAnimationPropertyConfig> animationConfig;
-    uint32_t                                           noBarRuleIdx = 0;
+    uint32_t                                           noBarRuleIdx    = 0;
+    uint32_t                                           forceBarRuleIdx = 0;
 
     struct {
         SP<Config::Values::CIntValue>        barHeight, titleSize;

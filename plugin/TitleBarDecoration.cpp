@@ -18,6 +18,10 @@
 #include <hyprland/src/config/ConfigManager.hpp>
 #include <hyprland/src/config/shared/actions/ConfigActions.hpp>
 #include <hyprland/src/protocols/LayerShell.hpp>
+#include <hyprland/src/protocols/ServerDecorationKDE.hpp>
+#include <hyprland/src/protocols/XDGDecoration.hpp>
+#include <hyprland/src/protocols/XDGShell.hpp>
+#include <hyprland/src/protocols/core/Compositor.hpp>
 #include <hyprland/src/event/EventBus.hpp>
 #include <hyprland/src/layout/LayoutManager.hpp>
 #include <hyprland/src/layout/supplementary/DragController.hpp>
@@ -30,7 +34,9 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <ranges>
 
+#include "BarVisibility.hpp"
 #include "ButtonAppearance.hpp"
 #include "DragGeometry.hpp"
 #include "IconRasterizer.hpp"
@@ -42,6 +48,68 @@ constexpr double  DISC_SIZE                = 16.0;
 constexpr double  DRAG_THRESHOLD           = 4.0;
 constexpr int     BAR_PRIORITY             = 10005;
 constexpr auto    DOUBLE_CLICK_INTERVAL_MS = std::chrono::milliseconds(400);
+
+static_assert(XDG_DECORATION_MODE_CLIENT_SIDE == ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+static_assert(KDE_DECORATION_MODE_SERVER == ORG_KDE_KWIN_SERVER_DECORATION_MODE_SERVER);
+
+// An explicit instantiation is exempt from access checks, so it can name a private member; the friend hands the pointer out.
+template <auto MEMBER, typename TTag>
+struct SPrivateMemberAccessor {
+    friend auto getPrivateMember(TTag) {
+        return MEMBER;
+    }
+};
+
+struct SXdgDecorationsTag {
+    friend auto getPrivateMember(SXdgDecorationsTag);
+};
+struct SKdeDecorationsTag {
+    friend auto getPrivateMember(SKdeDecorationsTag);
+};
+struct SToplevelResourceTag {
+    friend auto getPrivateMember(SToplevelResourceTag);
+};
+
+template struct SPrivateMemberAccessor<&CXDGDecorationProtocol::m_decorations, SXdgDecorationsTag>;
+template struct SPrivateMemberAccessor<&CServerDecorationKDEProtocol::m_decos, SKdeDecorationsTag>;
+template struct SPrivateMemberAccessor<&CXDGToplevelResource::m_resource, SToplevelResourceTag>;
+
+static std::optional<uint32_t> readXdgDecorationMode(const SP<CWLSurfaceResource>& surface) {
+    if (!PROTO::xdgDecoration || !surface || !surface->m_role || surface->m_role->role() != SURFACE_ROLE_XDG_SHELL)
+        return std::nullopt;
+
+    const auto XDG_SURFACE = sc<CXDGSurfaceRole*>(surface->m_role.get())->m_xdgSurface.lock();
+    const auto TOPLEVEL    = XDG_SURFACE ? XDG_SURFACE->m_toplevel.lock() : nullptr;
+    if (!TOPLEVEL)
+        return std::nullopt;
+
+    const auto  TOPLEVEL_RESOURCE = ((*TOPLEVEL).*getPrivateMember(SToplevelResourceTag{}))->resource();
+    const auto& DECORATIONS       = (*PROTO::xdgDecoration).*getPrivateMember(SXdgDecorationsTag{});
+    const auto  IT                = DECORATIONS.find(TOPLEVEL_RESOURCE);
+    if (IT == DECORATIONS.end())
+        return std::nullopt;
+
+    return IT->second->mostRecentlyRequested;
+}
+
+static std::optional<uint32_t> readKdeDecorationMode(const SP<CWLSurfaceResource>& surface) {
+    if (!PROTO::serverDecorationKDE || !surface)
+        return std::nullopt;
+
+    const auto& DECORATIONS  = (*PROTO::serverDecorationKDE).*getPrivateMember(SKdeDecorationsTag{});
+    const auto  NEWEST_FIRST = DECORATIONS | std::views::reverse;
+    const auto  IT           = std::ranges::find_if(NEWEST_FIRST, [&surface](const auto& decoration) { return decoration->m_surf == surface; });
+    if (IT == NEWEST_FIRST.end())
+        return std::nullopt;
+
+    return (*IT)->m_mostRecentlyRequested;
+}
+
+static bool hasTruthyRule(const PHLWINDOW& window, uint32_t ruleIdx) {
+    const auto& PROPS = window->m_ruleApplicator->m_otherProps.props;
+    const auto  IT    = PROPS.find(ruleIdx);
+    return IT != PROPS.end() && truthy(IT->second->effect);
+}
 
 static CHyprColor toColor(Config::INTEGER color) {
     return CHyprColor{sc<uint64_t>(color)};
@@ -118,14 +186,20 @@ std::string CTitleBarDecoration::getDisplayName() {
 }
 
 bool CTitleBarDecoration::shouldHide() {
-    const auto WINDOW = m_window.lock();
+    const auto  WINDOW  = m_window.lock();
+    const auto& BACKEND = WINDOW->backend();
+    const auto  SURFACE = BACKEND.surface();
 
-    if (!WINDOW->isFloating() || WINDOW->backend().traits().overrideRedirect || !WINDOW->m_ruleApplicator->decorate().valueOrDefault())
-        return true;
-
-    const auto& PROPS = WINDOW->m_ruleApplicator->m_otherProps.props;
-    const auto  IT    = PROPS.find(g_pGlobalState->noBarRuleIdx);
-    return IT != PROPS.end() && truthy(IT->second->effect);
+    return !shouldShowBar({
+        .isFloating         = WINDOW->isFloating(),
+        .isDecorated        = sc<bool>(WINDOW->m_ruleApplicator->decorate().valueOrDefault()),
+        .isOverrideRedirect = BACKEND.traits().overrideRedirect,
+        .isX11              = BACKEND.isX11(),
+        .hasNoBarRule       = hasTruthyRule(WINDOW, g_pGlobalState->noBarRuleIdx),
+        .hasForceBarRule    = hasTruthyRule(WINDOW, g_pGlobalState->forceBarRuleIdx),
+        .xdgDecorationMode  = readXdgDecorationMode(SURFACE),
+        .kdeDecorationMode  = readKdeDecorationMode(SURFACE),
+    });
 }
 
 bool CTitleBarDecoration::isBarInteractive() {

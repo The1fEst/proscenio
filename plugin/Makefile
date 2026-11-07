@@ -13,8 +13,8 @@ PANGOCAIRO_LIBS := $(shell pkg-config --libs pangocairo)
 CAIRO_CFLAGS := $(patsubst -I%,-isystem %,$(filter-out -I/usr/include,$(shell pkg-config --cflags cairo)))
 CAIRO_LIBS := $(shell pkg-config --libs cairo)
 
-SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp DragGeometry.cpp ButtonAppearance.cpp IconRasterizer.cpp
-HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp DragGeometry.hpp ButtonAppearance.hpp IconRasterizer.hpp
+SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp DragGeometry.cpp ButtonAppearance.cpp IconRasterizer.cpp BarVisibility.cpp
+HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp DragGeometry.hpp ButtonAppearance.hpp IconRasterizer.hpp BarVisibility.hpp
 TARGET = proscenio_bars.so
 
 all: $(TARGET)
@@ -42,12 +42,17 @@ build/IconRasterizerTests: tests/IconRasterizerTests.cpp tests/Expect.hpp IconRa
 	mkdir -p build
 	$(CXX) $(CXXFLAGS) $(CAIRO_CFLAGS) tests/IconRasterizerTests.cpp IconRasterizer.cpp -o $@ $(CAIRO_LIBS)
 
-test: build/ButtonLayoutTests build/ButtonStateMachineTests build/DragGeometryTests build/ButtonAppearanceTests build/IconRasterizerTests
+build/BarVisibilityTests: tests/BarVisibilityTests.cpp tests/Expect.hpp BarVisibility.cpp BarVisibility.hpp
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) tests/BarVisibilityTests.cpp BarVisibility.cpp -o $@
+
+test: build/ButtonLayoutTests build/ButtonStateMachineTests build/DragGeometryTests build/ButtonAppearanceTests build/IconRasterizerTests build/BarVisibilityTests
 	./build/ButtonLayoutTests
 	./build/ButtonStateMachineTests
 	./build/DragGeometryTests
 	./build/ButtonAppearanceTests
 	./build/IconRasterizerTests
+	./build/BarVisibilityTests
 
 clean:
 	rm -rf $(TARGET) build
