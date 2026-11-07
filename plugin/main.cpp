@@ -132,6 +132,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     config.titleSize          = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:title_size", "Size of the title", 14, Config::Values::SIntValueOptions{.min = 1});
     config.titleWeight    = makeShared<Config::Values::CFontWeightValue>("plugin:proscenio_bars:title_weight", "Weight of the title (e.g. \"bold\" or an integer 100-1000)", 500);
     config.buttonSide     = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:button_side", "Side of the bar the buttons sit on: right or left", "right");
+    config.windows        = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:windows", "Windows that get a bar: floating or all", "floating");
     config.closeColor     = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:close_color", "Color of the close button", 0xFFF2B8B5);
     config.closeIconColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:close_icon_color", "Color of the close icon and its state layer", 0xFF601410);
     config.minimizeColor  = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:minimize_color", "Color of the minimize button", 0xFFEFB8C8);
@@ -149,6 +150,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addConfigValueV2(PHANDLE, config.titleSize);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.titleWeight);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.buttonSide);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.windows);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.closeColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.closeIconColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.minimizeColor);
@@ -166,7 +168,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     HyprlandAPI::reloadConfig();
 
-    return {"proscenio_bars", "Title bars for floating windows.", "fEst", "1.0"};
+    return {"proscenio_bars", "Title bars for windows that ask for one.", "fEst", "1.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

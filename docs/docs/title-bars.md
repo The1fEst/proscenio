@@ -1,18 +1,27 @@
 ---
 title: Title bars
 sidebar_label: Title bars
-description: The Hyprland plugin that draws a Material 3 title bar on floating windows that ask for one, its buttons, the hyprpm install, every option and the rules that turn a bar on or off.
+description: The Hyprland plugin that draws a Material 3 title bar on floating or all windows that ask for one, its buttons, the hyprpm install, every option and the rules that turn a bar on or off.
 ---
 
 # Title bars
 
-`proscenio_bars` is a Hyprland plugin that draws a title bar above a floating window that asks for
-one: a bar in the Material 3 palette with the window's title and three round buttons. It lives in
-`plugin/` and is built and loaded by `hyprpm`, apart from the shell.
+`proscenio_bars` is a Hyprland plugin that draws a title bar above a window that asks for one: a bar
+in the Material 3 palette with the window's title and three round buttons. It lives in `plugin/` and
+is built and loaded by `hyprpm`, apart from the shell.
 
 ## Which windows get a bar
 
-A window gets a bar when it floats, has its `decorate` rule on and asks for a bar. Hyprland tells
+A window gets a bar when it is placed where bars are shown, has its `decorate` rule on and asks for a
+bar. The `windows` option sets the placement:
+
+| `windows` | Windows that can get a bar |
+|---|---|
+| `floating` (default) | Floating windows |
+| `all` | Floating and tiled windows |
+
+A config reload applies the option to the open windows, and a window that floats or tiles is checked
+again at once. Hyprland tells
 every client that the compositor draws the frame and keeps what each client requested; the plugin
 reads those requests.
 
@@ -37,8 +46,8 @@ Two window rule effects change the result:
 | `proscenio_bars:no_bar` | No bar |
 | `proscenio_bars:force_bar` | A bar on a Wayland window that did not ask for one |
 
-`no_bar` wins over `force_bar`. A window that is tiled, has the `decorate` rule off or overrides
-redirection gets no bar with either of them.
+`no_bar` wins over `force_bar`. A tiled window while `windows` is `floating`, a window with the
+`decorate` rule off and a window that overrides redirection get no bar with either of them.
 
 ```lua
 hl.window_rule({ match = { class = "^(hyprland-dialog)$" }, ["proscenio_bars:force_bar"] = true })
@@ -59,7 +68,9 @@ $ hyprctl proscenio_bars
 ## The bar
 
 The bar sits on the top edge of the window and adds its height (`bar_height`) to the window's
-extents. The title fills the space the buttons leave.
+extents. A floating window keeps its size and the bar sits above it. A tiled window's tile keeps its
+place, gaps and border, and the bar takes its height from the top of the window inside it, in every
+tiled layout. The title fills the space the buttons leave.
 
 ### Buttons
 
@@ -104,7 +115,10 @@ stroke is 2 px wide on a 16 px disc and scales with it.
 - A left press on the bar focuses and raises the window. Presses with a modifier held pass through
   to the window.
 - Pressing and moving the pointer more than 4 px starts a drag that moves the window. Dragging a
-  maximized window restores it first and keeps it under the pointer.
+  maximized floating window restores it first and keeps it under the pointer.
+- Dragging a tiled window works as a `SUPER` drag does: the window floats at a smaller size while it
+  moves, with the bar under the pointer at the point it was grabbed, and tiles again where it is
+  dropped.
 - Two left clicks within 400 ms on the bar, away from the buttons, toggle maximized.
 - The bar does not react while the window is fullscreen.
 
@@ -137,6 +151,7 @@ Every option lives under `plugin:proscenio_bars:`.
 | `title_font` | `Sans` | The title's font family |
 | `title_size` | 14 | The title's font size, at least 1 |
 | `title_weight` | 500 | The title's weight, a number from 100 to 1000 or a name such as `bold` |
+| `windows` | `floating` | `floating` or `all`, the [windows that can get a bar](#which-windows-get-a-bar) |
 | `button_side` | `right` | `right` or `left` |
 | `close_color` | `#F2B8B5` | The Close disc |
 | `close_icon_color` | `#601410` | The Close icon and its state layer |
@@ -148,7 +163,7 @@ Every option lives under `plugin:proscenio_bars:`.
 
 The [region selector](region-selector.md#picking-a-window) reads `bar_height` and the
 [window list](#listing-the-windows-with-a-bar) to take a window together with its bar. **Appearance › Windows › Title bars** in the
-[settings](settings-appearance.md#windows) sets `button_side`.
+[settings](settings-appearance.md#windows) sets `windows` and `button_side`.
 
 ### Setting them
 

@@ -69,10 +69,14 @@ struct SKdeDecorationsTag {
 struct SToplevelResourceTag {
     friend auto getPrivateMember(SToplevelResourceTag);
 };
+struct SDragHotspotTag {
+    friend auto getPrivateMember(SDragHotspotTag);
+};
 
 template struct SPrivateMemberAccessor<&CXDGDecorationProtocol::m_decorations, SXdgDecorationsTag>;
 template struct SPrivateMemberAccessor<&CServerDecorationKDEProtocol::m_decos, SKdeDecorationsTag>;
 template struct SPrivateMemberAccessor<&CXDGToplevelResource::m_resource, SToplevelResourceTag>;
+template struct SPrivateMemberAccessor<&Layout::Supplementary::CDragStateController::m_dragHotspot, SDragHotspotTag>;
 
 static std::optional<uint32_t> readXdgDecorationMode(const SP<CWLSurfaceResource>& surface) {
     if (!PROTO::xdgDecoration || !surface || !surface->m_role || surface->m_role->role() != SURFACE_ROLE_XDG_SHELL)
@@ -157,7 +161,8 @@ CTitleBarDecoration::CTitleBarDecoration(PHLWINDOW window) : IHyprWindowDecorati
 
     syncAnimations(true);
 
-    m_mouseMoveListener = Event::bus()->m_events.input.mouse.move.listen([this](Vector2D, Event::SCallbackInfo&) { onMouseMove(); });
+    m_mouseMoveListener  = Event::bus()->m_events.input.mouse.move.listen([this](Vector2D, Event::SCallbackInfo&) { onMouseMove(); });
+    m_dragMotionListener = g_layoutManager->dragController()->m_events.motion.listen([this] { alignTiledDrag(); });
 }
 
 CTitleBarDecoration::~CTitleBarDecoration() {
@@ -192,6 +197,7 @@ bool CTitleBarDecoration::shouldHide() {
 
     return !shouldShowBar({
         .isFloating         = WINDOW->isFloating(),
+        .isTiledAllowed     = g_pGlobalState->config.windows->value() == "all",
         .isDecorated        = sc<bool>(WINDOW->m_ruleApplicator->decorate().valueOrDefault()),
         .isOverrideRedirect = BACKEND.traits().overrideRedirect,
         .isX11              = BACKEND.isX11(),
@@ -348,35 +354,51 @@ void CTitleBarDecoration::onMouseMove() {
     if (g_pInputManager->getMouseCoordsInternal().distance(m_freeAreaPressPosition) < DRAG_THRESHOLD)
         return;
 
-    m_isDragPending = false;
-    m_isDragging    = true;
+    m_isDragPending      = false;
+    m_isDragging         = true;
+    m_isTiledDragAligned = false;
     m_lastFreeAreaPress.reset();
 
-    if (Fullscreen::controller()->isFullscreen(m_window.lock(), Fullscreen::FSMODE_MAXIMIZED))
-        restoreUnderPointer();
+    const auto WINDOW = m_window.lock();
 
-    g_layoutManager->beginDragTarget(m_window->layoutTarget(), MBIND_MOVE);
+    if (WINDOW->isFloating() && Fullscreen::controller()->isFullscreen(WINDOW, Fullscreen::FSMODE_MAXIMIZED)) {
+        Fullscreen::controller()->setFullscreenMode(WINDOW, Fullscreen::FSMODE_NONE);
+        placeUnderPointer(WINDOW->layoutTarget());
+    }
+
+    g_layoutManager->beginDragTarget(WINDOW->layoutTarget(), MBIND_MOVE);
+    alignTiledDrag();
 }
 
-void CTitleBarDecoration::restoreUnderPointer() {
-    const auto   WINDOW       = m_window.lock();
-    const auto   TARGET       = WINDOW->layoutTarget();
-    const auto   MOUSE        = g_pInputManager->getMouseCoordsInternal();
-    const double BAR_OFFSET_Y = -m_assignedBox.y;
-
-    Fullscreen::controller()->setFullscreenMode(WINDOW, Fullscreen::FSMODE_NONE);
-
-    const auto SIZE     = TARGET->position().size();
+Vector2D CTitleBarDecoration::placeUnderPointer(const SP<Layout::ITarget>& target) {
+    const auto MOUSE    = g_pInputManager->getMouseCoordsInternal();
+    const auto SIZE     = target->position().size();
     const auto POSITION = computeRestoredPosition({.pointerX      = MOUSE.x,
                                                    .pointerY      = MOUSE.y,
                                                    .grabX         = m_freeAreaGrabOffset.x,
                                                    .grabY         = m_freeAreaGrabOffset.y,
                                                    .barWidth      = m_freeAreaBarWidth,
-                                                   .barOffsetY    = BAR_OFFSET_Y,
+                                                   .barOffsetY    = -m_assignedBox.y,
                                                    .restoredWidth = SIZE.x});
 
-    TARGET->setPositionGlobal(CBox{{POSITION.x, POSITION.y}, SIZE});
-    TARGET->warpPositionSize();
+    target->setPositionGlobal(CBox{{POSITION.x, POSITION.y}, SIZE});
+    target->warpPositionSize();
+
+    return MOUSE - Vector2D{POSITION.x, POSITION.y};
+}
+
+void CTitleBarDecoration::alignTiledDrag() {
+    const auto& DRAG_CONTROLLER = g_layoutManager->dragController();
+
+    if (!m_isDragging || m_isTiledDragAligned || !DRAG_CONTROLLER->draggingTiled() || !validMapped(m_window))
+        return;
+
+    const auto TARGET = DRAG_CONTROLLER->target();
+    if (!TARGET || TARGET != m_window->layoutTarget())
+        return;
+
+    m_isTiledDragAligned                                    = true;
+    (*DRAG_CONTROLLER).*getPrivateMember(SDragHotspotTag{}) = placeUnderPointer(TARGET);
 }
 
 void CTitleBarDecoration::dropStalePress(uint32_t mouseButton) {
@@ -657,6 +679,9 @@ void CTitleBarDecoration::updateWindow(PHLWINDOW) {
 }
 
 void CTitleBarDecoration::onConfigReloaded() {
+    if (validMapped(m_window))
+        m_isHidden = shouldHide();
+
     m_titleTexture         = nullptr;
     m_inactiveTitleTexture = nullptr;
 

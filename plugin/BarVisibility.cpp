@@ -3,7 +3,9 @@
 #include <format>
 
 bool shouldShowBar(const SBarVisibilityInput& input) {
-    if (!input.isFloating || !input.isDecorated || input.isOverrideRedirect || input.hasNoBarRule)
+    const bool IS_PLACEMENT_ALLOWED = input.isFloating || input.isTiledAllowed;
+
+    if (!IS_PLACEMENT_ALLOWED || !input.isDecorated || input.isOverrideRedirect || input.hasNoBarRule)
         return false;
 
     if (input.isX11 || input.hasForceBarRule)

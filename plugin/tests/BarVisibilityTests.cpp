@@ -36,6 +36,13 @@ int main() {
         {"tiled window that asked for a bar", {.isFloating = false, .xdgDecorationMode = MODE_SERVER}, false},
         {"force_bar on a tiled window", {.isFloating = false, .hasForceBarRule = true}, false},
         {"tiled X11", {.isFloating = false, .isX11 = true}, false},
+        {"tiled window that asked for a bar, all windows", {.isFloating = false, .isTiledAllowed = true, .xdgDecorationMode = MODE_SERVER}, true},
+        {"tiled window that draws its own frame, all windows", {.isFloating = false, .isTiledAllowed = true, .xdgDecorationMode = MODE_CLIENT}, false},
+        {"force_bar on a tiled window, all windows", {.isFloating = false, .isTiledAllowed = true, .hasForceBarRule = true}, true},
+        {"no_bar on a tiled window, all windows", {.isFloating = false, .isTiledAllowed = true, .hasNoBarRule = true, .xdgDecorationMode = MODE_SERVER}, false},
+        {"tiled X11, all windows", {.isFloating = false, .isTiledAllowed = true, .isX11 = true}, true},
+        {"tiled override redirect X11, all windows", {.isFloating = false, .isTiledAllowed = true, .isOverrideRedirect = true, .isX11 = true}, false},
+        {"floating window that asked for a bar, all windows", {.isTiledAllowed = true, .xdgDecorationMode = MODE_SERVER}, true},
         {"decorate off on a window that asked for a bar", {.isDecorated = false, .xdgDecorationMode = MODE_SERVER}, false},
         {"force_bar with decorate off", {.isDecorated = false, .hasForceBarRule = true}, false},
     };

@@ -10,6 +10,7 @@ constexpr uint32_t KDE_DECORATION_MODE_SERVER      = 2;
 
 struct SBarVisibilityInput {
     bool                    isFloating         = true;
+    bool                    isTiledAllowed     = false;
     bool                    isDecorated        = true;
     bool                    isOverrideRedirect = false;
     bool                    isX11              = false;

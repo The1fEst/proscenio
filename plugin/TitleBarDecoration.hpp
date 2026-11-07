@@ -18,6 +18,10 @@ namespace Event {
     struct SCallbackInfo;
 }
 
+namespace Layout {
+    class ITarget;
+}
+
 struct SButtonAnimation {
     PHLANIMVAR<CHyprColor> discColor;
     PHLANIMVAR<float>      iconAlpha;
@@ -62,8 +66,9 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     bool                           m_isSizeChanged       = false;
     bool                           m_isWindowFocused     = false;
 
-    bool                           m_isDragPending = false;
-    bool                           m_isDragging    = false;
+    bool                           m_isDragPending      = false;
+    bool                           m_isDragging         = false;
+    bool                           m_isTiledDragAligned = false;
     Vector2D                       m_freeAreaPressPosition;
     Vector2D                       m_freeAreaGrabOffset;
     double                         m_freeAreaBarWidth = 0;
@@ -73,6 +78,7 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     std::optional<Time::steady_tp> m_lastFreeAreaPress;
 
     CHyprSignalListener            m_mouseMoveListener;
+    CHyprSignalListener            m_dragMotionListener;
 
     PHLANIMVAR<CHyprColor>         m_barColor;
     PHLANIMVAR<float>              m_titleFocusAlpha;
@@ -91,7 +97,8 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     SBarLayout                     computeLayout();
     void                           applyUpdate(const SButtonStateUpdate& update);
     void                           endDrag();
-    void                           restoreUnderPointer();
+    Vector2D                       placeUnderPointer(const SP<Layout::ITarget>& target);
+    void                           alignTiledDrag();
 
     void                           onMouseMove();
     void                           handlePress(Event::SCallbackInfo& info, const IPointer::SButtonEvent& event);

@@ -38,7 +38,7 @@ struct SGlobalState {
     struct {
         SP<Config::Values::CIntValue>        barHeight, titleSize;
         SP<Config::Values::CFontWeightValue> titleWeight;
-        SP<Config::Values::CStringValue>     titleFont, buttonSide;
+        SP<Config::Values::CStringValue>     titleFont, buttonSide, windows;
         SP<Config::Values::CColorValue>      barColor, inactiveBarColor, titleColor, inactiveTitleColor;
         SP<Config::Values::CColorValue>      closeColor, closeIconColor, minimizeColor, minimizeIconColor, maximizeColor, maximizeIconColor, inactiveButtonColor;
     } config;
