@@ -23,7 +23,7 @@ use crate::panels::{
     regionselector, renderercheck, settings, wallpaperselector, welcome,
 };
 use crate::platform::dbus::{dmenu, ipc};
-use crate::platform::hyprland::hypr;
+use crate::platform::hyprland::{hypr, hyprpm};
 use crate::platform::system::{locale, readiness};
 use crate::platform::wayland::shortcuts;
 use crate::screens::{Screens, Surfaces};
@@ -115,6 +115,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
 
     let _ = settings::pages::migrate_settings_files();
     std::thread::spawn(switchwall::refresh_bar_colors);
+    hyprpm::load_enabled_plugin();
     let services = Rc::new(Services::new(&config));
     std::mem::forget(StatusNotifierWatcher::start(services.session_bus.as_ref()));
     readiness::report_when_ready(

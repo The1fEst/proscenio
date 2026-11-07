@@ -174,7 +174,9 @@ hyprpm add https://github.com/The1fEst/proscenio
 hyprpm enable proscenio_bars
 ```
 
-`hyprpm reload` loads the enabled plugins. Run `hyprpm update` after every Hyprland update, because
+`hyprpm reload` loads the enabled plugins. The shell runs it when it starts, if the `state.toml` of a
+repository under `/var/cache/hyprpm/<user>/` has `proscenio_bars` enabled and Hyprland has not loaded
+the plugin yet. Run `hyprpm update` after every Hyprland update, because
 a plugin built against other headers is refused. The repository's `hyprpm.toml` names the plugin and
 its build command, `make -C plugin`, which needs `pkg-config` entries for `pixman-1`, `libdrm`,
 `hyprland`, `libinput`, `libudev`, `wayland-server`, `xkbcommon` and `pangocairo`.

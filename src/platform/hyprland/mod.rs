@@ -5,6 +5,7 @@ pub mod hypr;
 pub mod hyprconfig;
 pub mod hypridle;
 pub mod hyprlockclock;
+pub mod hyprpm;
 pub mod inputdevices;
 pub mod keybinds;
 pub mod lockkeys;
