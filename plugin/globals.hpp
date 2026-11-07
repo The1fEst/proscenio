@@ -19,6 +19,10 @@ inline constexpr auto BAR_DISPLAY_NAME = "proscenio_bars";
 
 class CTitleBarDecoration;
 
+namespace Config {
+    class CWorkspaceRule;
+}
+
 struct SIconKey {
     eBarButton      button     = BAR_BUTTON_CLOSE;
     eBarIcon        icon       = BAR_ICON_CLOSE;
@@ -31,6 +35,7 @@ struct SIconKey {
 struct SGlobalState {
     std::vector<WP<CTitleBarDecoration>>               bars;
     std::map<SIconKey, SP<Render::ITexture>>           iconTextures;
+    std::map<std::string, WP<Config::CWorkspaceRule>>  monocleRules;
     SP<Hyprutils::Animation::SAnimationPropertyConfig> animationConfig;
     uint32_t                                           noBarRuleIdx    = 0;
     uint32_t                                           forceBarRuleIdx = 0;

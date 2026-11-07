@@ -40,6 +40,7 @@
 #include "ButtonAppearance.hpp"
 #include "DragGeometry.hpp"
 #include "IconRasterizer.hpp"
+#include "Monocle.hpp"
 #include "TitleBarPassElement.hpp"
 
 using namespace Render::GL;
@@ -481,7 +482,29 @@ void CTitleBarDecoration::handleRelease(Event::SCallbackInfo& info, const IPoint
 }
 
 void CTitleBarDecoration::toggleMaximized() {
-    (void)Config::Actions::fullscreenWindow(Fullscreen::FSMODE_MAXIMIZED, true, m_window.lock());
+    if (!validMapped(m_window))
+        return;
+
+    const auto WINDOW = m_window.lock();
+
+    if (WINDOW->isFloating() || Fullscreen::controller()->isFullscreen(WINDOW, Fullscreen::FSMODE_MAXIMIZED)) {
+        (void)Config::Actions::fullscreenWindow(Fullscreen::FSMODE_MAXIMIZED, true, WINDOW);
+        return;
+    }
+
+    toggleMonocleLayout(WINDOW->m_workspace);
+}
+
+bool CTitleBarDecoration::isMaximized() {
+    if (!validMapped(m_window))
+        return false;
+
+    const auto WINDOW = m_window.lock();
+
+    if (Fullscreen::controller()->isFullscreen(WINDOW, Fullscreen::FSMODE_MAXIMIZED))
+        return true;
+
+    return !WINDOW->isFloating() && isMonocleLayout(WINDOW->m_workspace);
 }
 
 void CTitleBarDecoration::fireButton(eBarButton button) {
@@ -553,7 +576,8 @@ static SP<Render::ITexture> resolveIconTexture(eBarButton button, eBarIcon icon,
 }
 
 void CTitleBarDecoration::renderButtons(Render::CRenderContext& ctx, const CBox& barBox, float scale, float alpha) {
-    const auto LAYOUT = computeLayout();
+    const auto LAYOUT       = computeLayout();
+    const bool IS_MAXIMIZED = isMaximized();
 
     for (size_t i = 0; i < LAYOUT.buttons.size(); ++i) {
         const auto& DISC_BOX = LAYOUT.buttons[i].discBox;
@@ -583,7 +607,6 @@ void CTitleBarDecoration::renderButtons(Render::CRenderContext& ctx, const CBox&
         if (ICON_ALPHA <= 0)
             continue;
 
-        const bool IS_MAXIMIZED = Fullscreen::controller()->isFullscreen(m_window.lock(), Fullscreen::FSMODE_MAXIMIZED);
         g_pHyprOpenGL->renderTexture(ctx, resolveIconTexture(BUTTON, selectIcon(BUTTON, IS_MAXIMIZED), ICON_COLOR, sc<int>(DEVICE_SIZE)), DISC, {.a = ICON_ALPHA * alpha});
     }
 }

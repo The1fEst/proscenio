@@ -14,6 +14,7 @@
 #include <algorithm>
 
 #include "BarVisibility.hpp"
+#include "Monocle.hpp"
 #include "TitleBarDecoration.hpp"
 #include "globals.hpp"
 
@@ -160,6 +161,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveButtonColor);
 
     HyprlandAPI::registerHyprCtlCommand(PHANDLE, {.name = BAR_DISPLAY_NAME, .handler = listWindowsWithBar});
+    HyprlandAPI::addLuaFunction(PHANDLE, BAR_DISPLAY_NAME, "toggle_monocle", toggleMonocleFromLua);
 
     for (const auto& window : Desktop::windowState()->windows()) {
         if (validMapped(window))
@@ -178,6 +180,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
     g_pHyprRenderer->context().m_pass.removeAllOfType("CTitleBarPassElement");
 
     g_pGlobalState->iconTextures.clear();
+    disableMonocleRules();
 
     Desktop::Rule::windowEffects()->unregisterEffect(g_pGlobalState->noBarRuleIdx);
     Desktop::Rule::windowEffects()->unregisterEffect(g_pGlobalState->forceBarRuleIdx);

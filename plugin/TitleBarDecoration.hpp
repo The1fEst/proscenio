@@ -104,6 +104,7 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     void                           handlePress(Event::SCallbackInfo& info, const IPointer::SButtonEvent& event);
     void                           handleRelease(Event::SCallbackInfo& info, const IPointer::SButtonEvent& event);
     void                           toggleMaximized();
+    bool                           isMaximized();
     void                           fireButton(eBarButton button);
 
     void                           renderPass(Render::CRenderContext& ctx, PHLMONITOR monitor, const float& alpha);

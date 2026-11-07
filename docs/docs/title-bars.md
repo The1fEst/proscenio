@@ -99,7 +99,9 @@ A button that does not fit in a narrow bar is left out, last one first.
 |---|---|---|
 | Close | Cross | Closes the window |
 | Minimize | Chevron pointing down | Moves the window to `special:minimized` without showing that workspace |
-| Maximize | Chevron pointing up, or a diamond while the window is maximized | Toggles Hyprland's maximized state |
+| Maximize | Chevron pointing up, or a diamond while the window is maximized | On a floating window or a maximized one, toggles Hyprland's maximized state; on any other tiled window, [toggles monocle](#monocle) on the window's workspace |
+
+A tiled window also counts as maximized while its workspace's tiled layout is `monocle`.
 
 Hyprland has no minimized state. The [dock](dock.md) shows a window on `special:minimized` as
 minimized, and focusing it there moves it back to the active workspace.
@@ -130,8 +132,37 @@ stroke is 2 px wide on a 16 px disc and scales with it.
 - Dragging a tiled window works as a `SUPER` drag does: the window floats at a smaller size while it
   moves, with the bar under the pointer at the point it was grabbed, and tiles again where it is
   dropped.
-- Two left clicks within 400 ms on the bar, away from the buttons, toggle maximized.
+- Two left clicks within 400 ms on the bar, away from the buttons, do what Maximize does.
 - The bar does not react while the window is fullscreen.
+
+### Monocle
+
+The plugin adds the Lua function `hl.plugin.proscenio_bars.toggle_monocle(workspace)`. It switches a
+workspace between its tiled layout and Hyprland's `monocle` layout, in which every tiled window fills
+the workspace and only the focused one shows. `workspace` is a workspace object or selector, such as
+`3` or `"special:magic"`; without it, the function takes the special workspace open on the focused
+monitor, or else that monitor's active workspace.
+
+The plugin keeps one workspace rule with `layout = "monocle"` per workspace it toggled, apart from the
+rules of the config. The first toggle of a workspace adds the rule, on unless the workspace is in
+`monocle` already, and every later toggle turns it on or off. The toggle cannot leave a `monocle`
+layout that the config itself sets. A config reload drops the rules, so every workspace goes back to
+the layout its config gives it, and unloading the plugin turns them off.
+
+`hl.plugin.proscenio_bars` exists only while the plugin is loaded, so a bind can fall back to a toggle
+of its own:
+
+```lua
+hl.bind("SUPER + F", function()
+    if hl.plugin.proscenio_bars then
+        hl.plugin.proscenio_bars.toggle_monocle()
+    else
+        my_monocle_toggle()
+    end
+end)
+```
+
+From a shell, `hyprctl eval 'hl.plugin.proscenio_bars.toggle_monocle()'` toggles the active workspace.
 
 ## Installing
 
@@ -180,8 +211,7 @@ The [region selector](region-selector.md#picking-a-window) reads `bar_height` an
 
 Hyprland raises a config error for an option of a plugin that is not loaded, and `hyprpm` loads the
 plugin after the config's first pass, then reads the config again. A line that sets a
-`proscenio_bars` option therefore checks the loaded plugins first. `hl.plugin.proscenio_bars` does
-not exist, since the plugin registers no Lua functions; the check walks the list instead:
+`proscenio_bars` option therefore checks the loaded plugins first:
 
 ```lua
 for _, plugin in ipairs(hl.get_loaded_plugins()) do
