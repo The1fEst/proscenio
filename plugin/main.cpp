@@ -125,10 +125,10 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     config.barHeight          = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:bar_height", "Height of the bar", 40, Config::Values::SIntValueOptions{.min = 1});
     config.barColor           = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:bar_color", "Color of the bar", 0xFF211F26);
-    config.inactiveBarColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_bar_color", "Color of the bar on an unfocused window", 0xFF1D1B20);
+    config.inactiveBarColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_bar_color", "Color of the bar on an unfocused window", 0xFF211F26);
     config.titleColor         = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:title_color", "Color of the title", 0xFFE6E0E9);
     config.inactiveTitleColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_title_color", "Color of the title on an unfocused window", 0xFFCAC4D0);
-    config.titleFont          = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:title_font", "Font of the title", "Sans");
+    config.titleFont          = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:title_font", "Font of the title", "Google Sans");
     config.titleSize          = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:title_size", "Size of the title", 14, Config::Values::SIntValueOptions{.min = 1});
     config.titleWeight    = makeShared<Config::Values::CFontWeightValue>("plugin:proscenio_bars:title_weight", "Weight of the title (e.g. \"bold\" or an integer 100-1000)", 500);
     config.buttonSide     = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:button_side", "Side of the bar the buttons sit on: right or left", "right");

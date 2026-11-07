@@ -203,6 +203,7 @@ bool CTitleBarDecoration::shouldHide() {
         .isX11              = BACKEND.isX11(),
         .hasNoBarRule       = hasTruthyRule(WINDOW, g_pGlobalState->noBarRuleIdx),
         .hasForceBarRule    = hasTruthyRule(WINDOW, g_pGlobalState->forceBarRuleIdx),
+        .builtInRule        = matchBuiltInBarRule(WINDOW->metadata().appID(), WINDOW->metadata().title()),
         .xdgDecorationMode  = readXdgDecorationMode(SURFACE),
         .kdeDecorationMode  = readKdeDecorationMode(SURFACE),
     });

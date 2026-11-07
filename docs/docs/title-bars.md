@@ -39,19 +39,30 @@ A window with both objects gets a bar when either one asks for it. The plugin re
 when the window maps and whenever Hyprland updates the window's rules, such as on a change of focus
 or title.
 
+The plugin has built-in rules for a few windows, matched on the class and title Hyprland's window
+rules see:
+
+| Window | Built-in result |
+|---|---|
+| Empty class and empty title | No bar |
+| Class `dev.fEst.Proscenio`, the shell's own windows | No bar |
+| Class `steam` | No bar |
+| Class starting with `hyprland-`, such as `hyprland-dialog` | A bar, as with `force_bar` |
+
 Two window rule effects change the result:
 
 | Effect | Result when set to a true value |
 |---|---|
 | `proscenio_bars:no_bar` | No bar |
-| `proscenio_bars:force_bar` | A bar on a Wayland window that did not ask for one |
+| `proscenio_bars:force_bar` | A bar on a window that did not ask for one or that a built-in rule leaves without one |
 
-`no_bar` wins over `force_bar`. A tiled window while `windows` is `floating`, a window with the
-`decorate` rule off and a window that overrides redirection get no bar with either of them.
+`no_bar` wins over `force_bar` and over every built-in rule, and `force_bar` wins over a built-in
+no bar. A tiled window while `windows` is `floating`, a window with the `decorate` rule off and a
+window that overrides redirection get no bar with any of them.
 
 ```lua
-hl.window_rule({ match = { class = "^(hyprland-dialog)$" }, ["proscenio_bars:force_bar"] = true })
-hl.window_rule({ match = { class = "^(steam)$" }, ["proscenio_bars:no_bar"] = true })
+hl.window_rule({ match = { class = "^(steam)$" }, ["proscenio_bars:force_bar"] = true })
+hl.window_rule({ match = { class = "^(hyprland-dialog)$" }, ["proscenio_bars:no_bar"] = true })
 ```
 
 ### Listing the windows with a bar
@@ -145,10 +156,10 @@ Every option lives under `plugin:proscenio_bars:`.
 |---|---|---|
 | `bar_height` | 40 | The bar's height in px, at least 1 |
 | `bar_color` | `#211F26` | The bar on a focused window |
-| `inactive_bar_color` | `#1D1B20` | The bar on an unfocused window |
+| `inactive_bar_color` | `#211F26` | The bar on an unfocused window |
 | `title_color` | `#E6E0E9` | The title on a focused window |
 | `inactive_title_color` | `#CAC4D0` | The title on an unfocused window |
-| `title_font` | `Sans` | The title's font family |
+| `title_font` | `Google Sans` | The title's font family |
 | `title_size` | 14 | The title's font size, at least 1 |
 | `title_weight` | 500 | The title's weight, a number from 100 to 1000 or a name such as `bold` |
 | `windows` | `floating` | `floating` or `all`, the [windows that can get a bar](#which-windows-get-a-bar) |

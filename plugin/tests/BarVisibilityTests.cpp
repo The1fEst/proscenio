@@ -45,10 +45,43 @@ int main() {
         {"floating window that asked for a bar, all windows", {.isTiledAllowed = true, .xdgDecorationMode = MODE_SERVER}, true},
         {"decorate off on a window that asked for a bar", {.isDecorated = false, .xdgDecorationMode = MODE_SERVER}, false},
         {"force_bar with decorate off", {.isDecorated = false, .hasForceBarRule = true}, false},
+        {"built-in no_bar on a window that asked for a bar", {.builtInRule = BUILT_IN_BAR_RULE_NO_BAR, .xdgDecorationMode = MODE_SERVER}, false},
+        {"built-in no_bar on X11", {.isX11 = true, .builtInRule = BUILT_IN_BAR_RULE_NO_BAR}, false},
+        {"force_bar wins over built-in no_bar", {.hasForceBarRule = true, .builtInRule = BUILT_IN_BAR_RULE_NO_BAR}, true},
+        {"built-in force_bar on a window that asked for nothing", {.builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR}, true},
+        {"built-in force_bar on a window that draws its own frame", {.builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR, .xdgDecorationMode = MODE_CLIENT}, true},
+        {"no_bar wins over built-in force_bar", {.hasNoBarRule = true, .builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR}, false},
+        {"built-in force_bar on a tiled window", {.isFloating = false, .builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR}, false},
+        {"built-in force_bar with decorate off", {.isDecorated = false, .builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR}, false},
     };
 
     for (const auto& testCase : CASES)
         expect(shouldShowBar(testCase.input) == testCase.expected, std::format("bar visibility: {}", testCase.name));
+
+    struct SRuleCase {
+        const char*     name;
+        const char*     windowClass;
+        const char*     title;
+        eBuiltInBarRule expected;
+    };
+
+    const std::vector<SRuleCase> RULE_CASES = {
+        {"empty class and title", "", "", BUILT_IN_BAR_RULE_NO_BAR},
+        {"empty class with a title", "", "Untitled", BUILT_IN_BAR_RULE_NONE},
+        {"a class with an empty title", "foot", "", BUILT_IN_BAR_RULE_NONE},
+        {"the shell", "dev.fEst.Proscenio", "Settings", BUILT_IN_BAR_RULE_NO_BAR},
+        {"a class that only starts with the shell's", "dev.fEst.ProscenioTools", "", BUILT_IN_BAR_RULE_NONE},
+        {"steam", "steam", "Steam", BUILT_IN_BAR_RULE_NO_BAR},
+        {"steam's web helper", "steamwebhelper", "", BUILT_IN_BAR_RULE_NONE},
+        {"a Hyprland dialog", "hyprland-dialog", "Hyprland", BUILT_IN_BAR_RULE_FORCE_BAR},
+        {"hyprland- and nothing after it", "hyprland-", "", BUILT_IN_BAR_RULE_FORCE_BAR},
+        {"hyprland- inside a class", "my-hyprland-tool", "", BUILT_IN_BAR_RULE_NONE},
+        {"Hyprland without the dash", "hyprland", "", BUILT_IN_BAR_RULE_NONE},
+        {"an ordinary app", "org.kde.dolphin", "Home", BUILT_IN_BAR_RULE_NONE},
+    };
+
+    for (const auto& testCase : RULE_CASES)
+        expect(matchBuiltInBarRule(testCase.windowClass, testCase.title) == testCase.expected, std::format("built-in rule: {}", testCase.name));
 
     expect(formatWindowAddresses({}) == "[]", "window addresses: none");
     expect(formatWindowAddresses({0x55aa01}) == R"(["0x55aa01"])", "window addresses: one");
