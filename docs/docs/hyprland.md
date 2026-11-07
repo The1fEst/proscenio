@@ -61,6 +61,7 @@ main loop and hands each line to whoever subscribed to `Events`.
 |---|---|
 | `workspace`, `focusedmon`, `createworkspace`, `destroyworkspace`, `moveworkspace`, `changeworkspaceid`, `renameworkspace`, `activespecial`, `openwindow`, `closewindow`, `movewindow`, `activewindow`, `fullscreen`, `monitoradded`, `monitorremoved`, `configreloaded`, with their `v2` forms where they have one | The state snapshot is read again |
 | `urgent` | `src/services/hyprland/urgentwindows.rs` marks the window as wanting attention, and the [dock](dock.md) marks its app; `activewindowv2` for that window, or `closewindow`, clears the mark |
+| `changefloatingmode` | With the data `ADDRESS,1`, a window just became floating: `src/services/hyprland/floatfit.rs` fits it, as described under [Floating windows](#floating-windows) |
 | `activelayout` | The keyboard layout button changes, and the [on-screen display](osd.md) shows the new layout |
 | `custom` with the data `proscenio-lock-key` | Posted by the lock key binds in [`binds.lua`](#lock-keys); the keyboard's `capsLock` and `numLock` are read from `j/devices`, and the [on-screen display](osd.md) shows a lock that changed |
 | `configreloaded` | The screen rounding is read again, and the shortcut editors read the binds again |
@@ -74,6 +75,15 @@ thread and notifies its subscribers when the reply lands. Events that arrive whi
 way fold into one more read. The bar's workspace indicator, the wallpaper's
 [parallax](background.md) and the fullscreen handling described in [Architecture](architecture.md)
 read this snapshot.
+
+### Floating windows
+
+A window that switches from tiled to floating keeps the size it had when it mapped, which can be the
+whole tiled area. The shell compares that size with the work area of the window's monitor: the
+monitor's pixel size divided by its scale, minus the area reserved by layer surfaces such as the
+bar. An axis larger than 85 % of the work area becomes 70 % of it, rounded down. When either axis
+changed, the window is resized and centered. A window that already fits is left alone, so a size
+given to a floating window earlier stays.
 
 ## Wayland protocols
 

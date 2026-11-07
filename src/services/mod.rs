@@ -20,6 +20,7 @@ use crate::services::hardware::power::Power;
 use crate::services::hardware::sysinfo::Resources;
 use crate::services::hardware::xkb::Xkb;
 use crate::services::hyprland::cursorhider::CursorHider;
+use crate::services::hyprland::floatfit;
 use crate::services::hyprland::fullscreen::Fullscreen;
 use crate::services::hyprland::hyprlockclock::HyprlockClockWriter;
 use crate::services::hyprland::hyprstate::HyprState;
@@ -107,6 +108,7 @@ impl Services {
         let location = Location::new(system.clone());
         let desktop_session = Session::new(config, &color, &location, system.as_ref());
         let bluez = Bluez::new(system.clone());
+        floatfit::start(&events);
         let services = Services {
             bluez_agent: BluezAgent::new(system.clone(), &bluez),
             _bluez_player: BluezPlayer::new(system.clone(), &bluez, &mpris),

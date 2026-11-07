@@ -65,6 +65,15 @@ pub fn move_window(address: &str, x: f64, y: f64) {
     ));
 }
 
+pub fn resize_and_center_window(address: &str, width: f64, height: f64) {
+    request(&format!(
+        "dispatch hl.dsp.window.resize({{ x = {width}, y = {height}, window = \"address:{address}\" }})"
+    ));
+    request(&format!(
+        "dispatch hl.dsp.window.center({{ window = \"address:{address}\" }})"
+    ));
+}
+
 pub fn show_cursor() {
     let Some(position) = json("cursorpos") else {
         return;
