@@ -1642,5 +1642,8 @@
   "Create": "Créer",
   "No calendar can take events": "Aucun agenda ne peut recevoir d'événements",
   "Title bars": "Barres de titre",
-  "Button side": "Côté des boutons"
+  "Button side": "Côté des boutons",
+  "Show on": "Afficher sur",
+  "Floating windows": "Fenêtres flottantes",
+  "All windows": "Toutes les fenêtres"
 }

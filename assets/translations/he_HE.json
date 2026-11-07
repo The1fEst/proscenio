@@ -1642,5 +1642,8 @@
   "Create": "צור",
   "No calendar can take events": "אין לוח שנה שיכול לקבל אירועים",
   "Title bars": "שורות כותרת",
-  "Button side": "צד הכפתורים"
+  "Button side": "צד הכפתורים",
+  "Show on": "להציג על",
+  "Floating windows": "חלונות צפים",
+  "All windows": "כל החלונות"
 }

@@ -1642,5 +1642,8 @@
   "Create": "Crear",
   "No calendar can take events": "Ningún calendario admite eventos",
   "Title bars": "Barras de título",
-  "Button side": "Lado de los botones"
+  "Button side": "Lado de los botones",
+  "Show on": "Mostrar en",
+  "Floating windows": "Ventanas flotantes",
+  "All windows": "Todas las ventanas"
 }

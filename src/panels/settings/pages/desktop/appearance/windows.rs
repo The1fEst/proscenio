@@ -236,6 +236,24 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
 
     let title_bars_section = page.subsection(&windows_section, &tr("Title bars"), "");
+    let bar_windows_combo = page.combo_row(&title_bars_section, "select_window", &tr("Show on"));
+    let bar_windows_names = [tr("Floating windows"), tr("All windows")];
+    bar_windows_combo.set_items(
+        &bar_windows_names,
+        i32::from(hyprconfig::are_lines_present(
+            &hyprconfig::TITLE_BARS_ON_ALL_WINDOWS,
+        )),
+    );
+    bar_windows_combo.connect_activated({
+        let bar_windows_combo = Rc::downgrade(&bar_windows_combo);
+        move |index| {
+            let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BARS_ON_ALL_WINDOWS, index == 1);
+            hypr::request("reload");
+            if let Some(bar_windows_combo) = bar_windows_combo.upgrade() {
+                bar_windows_combo.set_items(&bar_windows_names, index as i32);
+            }
+        }
+    });
     let button_side_combo = page.combo_row(&title_bars_section, "swap_horiz", &tr("Button side"));
     let button_side_names = [tr("Right"), tr("Left")];
     button_side_combo.set_items(

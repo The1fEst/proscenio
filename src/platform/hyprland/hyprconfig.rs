@@ -327,6 +327,13 @@ pub const TITLE_BUTTONS_ON_LEFT: Lines = Lines {
     ],
 };
 
+pub const TITLE_BARS_ON_ALL_WINDOWS: Lines = Lines {
+    area: Area::Appearance,
+    lines: &[
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({ plugin = { proscenio_bars = { windows = \"all\" } } }) end end",
+    ],
+};
+
 pub const OPAQUE_FULLSCREEN: Lines = Lines {
     area: Area::Appearance,
     lines: &[

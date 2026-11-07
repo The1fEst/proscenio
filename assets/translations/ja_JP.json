@@ -1642,5 +1642,8 @@
   "Create": "作成",
   "No calendar can take events": "予定を追加できるカレンダーがありません",
   "Title bars": "タイトルバー",
-  "Button side": "ボタンの位置"
+  "Button side": "ボタンの位置",
+  "Show on": "表示する対象",
+  "Floating windows": "フローティングウィンドウ",
+  "All windows": "すべてのウィンドウ"
 }

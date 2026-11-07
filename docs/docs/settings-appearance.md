@@ -180,6 +180,7 @@ Every control here is a Hyprland option or line in `appearance.lua`.
 | Opacity | Focused window (%) | `decoration:active_opacity` | 10–100 %, stored as 0.1–1.0 |
 | Opacity | Other windows (%) | `decoration:inactive_opacity` | 10–100 % |
 | Borders | Border width | `general:border_size` | 0–20 px |
+| Title bars | Show on | `plugin:proscenio_bars:windows` | Floating windows or All windows; All windows is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Floating windows is no line |
 | Title bars | Button side | `plugin:proscenio_bars:button_side` | Right or Left; Left is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Right is no line |
 | Shadows | Drop shadows under windows | `decoration:shadow:enabled` | on or off |
 | Shadows | Size (px) | `decoration:shadow:range` | 0–100 px |

@@ -1642,5 +1642,8 @@
   "Create": "Erstellen",
   "No calendar can take events": "Kein Kalender kann Termine aufnehmen",
   "Title bars": "Titelleisten",
-  "Button side": "Seite der Schaltflächen"
+  "Button side": "Seite der Schaltflächen",
+  "Show on": "Fenster mit Titelleiste",
+  "Floating windows": "Schwebende Fenster",
+  "All windows": "Alle Fenster"
 }

@@ -1642,5 +1642,8 @@
   "Create": "Buat",
   "No calendar can take events": "Tidak ada kalender yang dapat menerima acara",
   "Title bars": "Bilah judul",
-  "Button side": "Sisi tombol"
+  "Button side": "Sisi tombol",
+  "Show on": "Tampilkan pada",
+  "Floating windows": "Jendela mengambang",
+  "All windows": "Semua jendela"
 }

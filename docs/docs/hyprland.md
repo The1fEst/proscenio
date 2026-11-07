@@ -142,7 +142,7 @@ files at start writes nothing while any of them cannot be read.
 
 | File | Holds |
 |---|---|
-| `appearance.lua` | Window options (borders, rounding, blur, shadows, dimming, opacity), the border color lines, the shadow color line, the fullscreen window rules, the title bar button side line, the cursor and icon theme variables, the workspace group rules |
+| `appearance.lua` | Window options (borders, rounding, blur, shadows, dimming, opacity), the border color lines, the shadow color line, the fullscreen window rules, the title bar button side and window lines, the cursor and icon theme variables, the workspace group rules |
 | `displays.lua` | HDR, VRR, tearing and XWayland scaling, the monitor rules and the primary display |
 | `multitasking.lua` | Layout, gap, snapping, focus, workspace and workspace swipe options, and smart gaps |
 | `keyboard.lua` | Layouts, variants, XKB options, Num Lock at start, binds resolved by symbol |
@@ -182,6 +182,7 @@ Some controls add or remove a fixed set of lines, and show as on only when every
 | Keep fullscreen windows opaque (`appearance.lua`) | `hl.window_rule({ name = "opaque-fullscreen", match = { fullscreen = true }, opacity = "1 override 1 override" })` |
 | Keep fullscreen windows undimmed (`appearance.lua`) | `hl.window_rule({ name = "no-dim-fullscreen", match = { fullscreen = true }, no_dim = true })` |
 | Button side set to Left (`appearance.lua`) | `for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_bars" then hl.config({ plugin = { proscenio_bars = { button_side = "left" } } }) end end` |
+| Title bars shown on All windows (`appearance.lua`) | `for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_bars" then hl.config({ plugin = { proscenio_bars = { windows = "all" } } }) end end` |
 
 ### Border colors
 

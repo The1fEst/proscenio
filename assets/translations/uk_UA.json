@@ -1642,5 +1642,8 @@
   "Create": "Створити",
   "No calendar can take events": "Немає календаря для подій",
   "Title bars": "Заголовки вікон",
-  "Button side": "Сторона кнопок"
+  "Button side": "Сторона кнопок",
+  "Show on": "Вікна із заголовком",
+  "Floating windows": "Плаваючі вікна",
+  "All windows": "Усі вікна"
 }

@@ -1,6 +1,6 @@
 use crate::platform::hyprland::hyprconfig::{
-    Area, Lines, NO_DIM_FULLSCREEN, OPAQUE_FULLSCREEN, SMART_GAPS, TITLE_BUTTONS_ON_LEFT,
-    config_dir, prefix_for, read_for_edit, write,
+    Area, Lines, NO_DIM_FULLSCREEN, OPAQUE_FULLSCREEN, SMART_GAPS, TITLE_BARS_ON_ALL_WINDOWS,
+    TITLE_BUTTONS_ON_LEFT, config_dir, prefix_for, read_for_edit, write,
 };
 
 const LEGACY_HEADER: [&str; 2] = [
@@ -75,6 +75,7 @@ fn area_of(statement: &str, option_area: &impl Fn(&str) -> Option<Area>) -> Opti
     } else if is_in(&NO_DIM_FULLSCREEN)
         || is_in(&OPAQUE_FULLSCREEN)
         || is_in(&TITLE_BUTTONS_ON_LEFT)
+        || is_in(&TITLE_BARS_ON_ALL_WINDOWS)
     {
         Area::Appearance
     } else if first.starts_with("hl.window_rule(") {
@@ -313,22 +314,29 @@ mod tests {
     }
 
     #[test]
-    fn the_title_button_side_line_stays_whole_in_the_appearance_file() {
-        let line = TITLE_BUTTONS_ON_LEFT.lines[0];
-        let option_area =
-            |option: &str| (option == "plugin:proscenio_bars:button_side").then_some(Area::Other);
-        let text = format!("{line}\nhl.config({{ general = {{ gaps_in = 2 }} }})\n");
-        assert_eq!(
-            move_lines(vec![(Area::Appearance, text.clone())], &option_area),
-            vec![(Area::Appearance, text.clone())]
-        );
-        assert_eq!(
-            split(&text, &|_| None)
-                .into_iter()
-                .find(|(area, _)| *area == Area::Appearance)
-                .map(|(_, part)| part),
-            Some(format!("{line}\n"))
-        );
+    fn the_title_bar_lines_stay_whole_in_the_appearance_file() {
+        let cases = [
+            (&TITLE_BUTTONS_ON_LEFT, "plugin:proscenio_bars:button_side"),
+            (&TITLE_BARS_ON_ALL_WINDOWS, "plugin:proscenio_bars:windows"),
+        ];
+        for (line_set, plugin_option) in cases {
+            let line = line_set.lines[0];
+            let option_area = |option: &str| (option == plugin_option).then_some(Area::Other);
+            let text = format!("{line}\nhl.config({{ general = {{ gaps_in = 2 }} }})\n");
+            assert_eq!(
+                move_lines(vec![(Area::Appearance, text.clone())], &option_area),
+                vec![(Area::Appearance, text.clone())],
+                "{plugin_option}"
+            );
+            assert_eq!(
+                split(&text, &|_| None)
+                    .into_iter()
+                    .find(|(area, _)| *area == Area::Appearance)
+                    .map(|(_, part)| part),
+                Some(format!("{line}\n")),
+                "{plugin_option}"
+            );
+        }
     }
 
     #[test]

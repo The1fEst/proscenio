@@ -1642,5 +1642,8 @@
   "Create": "Oluştur",
   "No calendar can take events": "Etkinlik kabul eden takvim yok",
   "Title bars": "Başlık çubukları",
-  "Button side": "Düğmelerin tarafı"
+  "Button side": "Düğmelerin tarafı",
+  "Show on": "Gösterildiği yer",
+  "Floating windows": "Yüzen pencereler",
+  "All windows": "Tüm pencereler"
 }
