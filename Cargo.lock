@@ -989,6 +989,7 @@ name = "proscenio-packages"
 version = "0.1.0"
 dependencies = [
  "alpm",
+ "alpm-sys",
  "alpm-utils",
  "pacmanconf",
  "proscenio-protocol",

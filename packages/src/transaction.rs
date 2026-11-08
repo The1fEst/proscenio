@@ -1,7 +1,8 @@
 use alpm::{
-    Alpm, AlpmList, CommitData, CommitError, DepMod, Error, FileConflict, FileConflictType,
-    PrepareData, PrepareError, TransFlag,
+    Alpm, AlpmList, CommitData, CommitError, DepMod, Error, FileConflict, PrepareData,
+    PrepareError, TransFlag,
 };
+use alpm_sys::{alpm_fileconflict_t, alpm_fileconflicttype_t};
 use proscenio_protocol::{Change, Event, Stage};
 use std::ffi::{CStr, c_char};
 use std::fmt::Display;
@@ -21,18 +22,7 @@ use crate::stage::{
     path_to_str, prepare_stage, require_signatures,
 };
 
-// alpm 5.0.2's FileConflict::conflicting_target reads `target`, not `ctarget`.
-#[repr(C)]
-struct FileConflictFields {
-    target: *const c_char,
-    kind: u32,
-    file: *const c_char,
-    conflicting_target: *const c_char,
-}
-
 const MAX_CAUSE_LINES: usize = 100;
-
-const _: () = assert!(size_of::<FileConflictFields>() == size_of::<FileConflict>());
 
 fn run_transaction<T>(
     alpm: &mut Alpm,
@@ -135,13 +125,13 @@ fn describe_commit_error(alpm: &Alpm, error: &CommitError) -> String {
         Some(CommitData::PkgInvalid(files)) => files.iter().map(str::to_owned).collect(),
         Some(CommitData::FileConflict(conflicts)) => {
             // alpm 5.0.2 types this list as Conflict; libalpm fills it with alpm_fileconflict_t.
+            // FileConflict::conflicting_target reads `target`, so the raw struct is read instead.
             let conflicts: AlpmList<&FileConflict> = unsafe { transmute(conflicts) };
             return describe_lines(
                 error,
                 conflicts.len(),
-                conflicts.iter().map(|conflict| {
-                    let fields = (conflict as *const FileConflict).cast::<FileConflictFields>();
-                    unsafe { describe_file_conflict(&*fields) }
+                conflicts.iter().map(|conflict| unsafe {
+                    describe_file_conflict(&*(conflict as *const FileConflict).cast())
                 }),
             );
         }
@@ -175,15 +165,15 @@ unsafe fn read_c_str(text: *const c_char) -> String {
     escaped_text
 }
 
-unsafe fn describe_file_conflict(fields: &FileConflictFields) -> String {
+unsafe fn describe_file_conflict(conflict: &alpm_fileconflict_t) -> String {
     let (target, file, conflicting_target) = unsafe {
         (
-            read_c_str(fields.target),
-            read_c_str(fields.file),
-            read_c_str(fields.conflicting_target),
+            read_c_str(conflict.target),
+            read_c_str(conflict.file),
+            read_c_str(conflict.ctarget),
         )
     };
-    if fields.kind == FileConflictType::Target as u32 {
+    if conflict.type_ == alpm_fileconflicttype_t::ALPM_FILECONFLICT_TARGET {
         format!("{file} exists in both '{target}' and '{conflicting_target}'")
     } else if conflicting_target.is_empty() {
         format!("{target}: {file} exists in filesystem")
@@ -299,6 +289,9 @@ pub fn parse_native_install(args: &[String]) -> Option<(Vec<&str>, TransFlag)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alpm_sys::alpm_fileconflicttype_t::{
+        ALPM_FILECONFLICT_FILESYSTEM, ALPM_FILECONFLICT_TARGET,
+    };
     use std::ffi::CString;
 
     fn strings(items: &[&str]) -> Vec<String> {
@@ -345,25 +338,25 @@ mod tests {
         let owner = CString::new("nvidia-open-utils").unwrap();
         let library = CString::new("/usr/lib/libnvidia-eglcore.so.620.70.06").unwrap();
         let no_owner = CString::new("").unwrap();
-        let describe = |kind: FileConflictType, conflicting_target: &CString| unsafe {
-            describe_file_conflict(&FileConflictFields {
-                target: nvidia.as_ptr(),
-                kind: kind as u32,
-                file: library.as_ptr(),
-                conflicting_target: conflicting_target.as_ptr(),
+        let describe = |kind: alpm_fileconflicttype_t, conflicting_target: &CString| unsafe {
+            describe_file_conflict(&alpm_fileconflict_t {
+                target: nvidia.as_ptr().cast_mut(),
+                type_: kind,
+                file: library.as_ptr().cast_mut(),
+                ctarget: conflicting_target.as_ptr().cast_mut(),
             })
         };
         assert_eq!(
-            describe(FileConflictType::Filesystem, &no_owner),
+            describe(ALPM_FILECONFLICT_FILESYSTEM, &no_owner),
             "nvidia-utils: /usr/lib/libnvidia-eglcore.so.620.70.06 exists in filesystem"
         );
         assert_eq!(
-            describe(FileConflictType::Filesystem, &owner),
+            describe(ALPM_FILECONFLICT_FILESYSTEM, &owner),
             "nvidia-utils: /usr/lib/libnvidia-eglcore.so.620.70.06 exists in filesystem \
              (owned by nvidia-open-utils)"
         );
         assert_eq!(
-            describe(FileConflictType::Target, &owner),
+            describe(ALPM_FILECONFLICT_TARGET, &owner),
             "/usr/lib/libnvidia-eglcore.so.620.70.06 exists in both 'nvidia-utils' and \
              'nvidia-open-utils'"
         );
@@ -371,7 +364,7 @@ mod tests {
             describe_lines(
                 Error::FileConflicts,
                 1,
-                [describe(FileConflictType::Filesystem, &no_owner)].into_iter()
+                [describe(ALPM_FILECONFLICT_FILESYSTEM, &no_owner)].into_iter()
             ),
             "conflicting files\n\
              nvidia-utils: /usr/lib/libnvidia-eglcore.so.620.70.06 exists in filesystem"
