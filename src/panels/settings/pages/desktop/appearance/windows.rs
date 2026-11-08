@@ -1,6 +1,7 @@
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+use crate::core::gsettings;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
@@ -416,6 +417,7 @@ fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
         move |index| {
             let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BARS_ON_ALL_WINDOWS, index == 1);
             hypr::request("reload");
+            gsettings::sync_button_layout();
             if let Some(bar_windows_combo) = bar_windows_combo.upgrade() {
                 bar_windows_combo.set_items(&bar_windows_names, index as i32);
             }
@@ -434,6 +436,7 @@ fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
         move |index| {
             let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BUTTONS_ON_LEFT, index == 1);
             hypr::request("reload");
+            gsettings::sync_button_layout();
             if let Some(button_side_combo) = button_side_combo.upgrade() {
                 button_side_combo.set_items(&button_side_names, index as i32);
             }

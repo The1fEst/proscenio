@@ -27,10 +27,28 @@ bool shouldShowBar(const SBarVisibilityInput& input) {
     if (input.isX11 || input.builtInRule == BUILT_IN_BAR_RULE_FORCE_BAR)
         return true;
 
+    if (input.isGtkClient && input.isFloating && !input.isTiledAllowed)
+        return true;
+
     const bool IS_REQUESTED_BY_XDG = input.xdgDecorationMode && *input.xdgDecorationMode != XDG_DECORATION_MODE_CLIENT_SIDE;
     const bool IS_REQUESTED_BY_KDE = input.kdeDecorationMode == KDE_DECORATION_MODE_SERVER;
 
     return IS_REQUESTED_BY_XDG || IS_REQUESTED_BY_KDE;
+}
+
+bool hasGtkLibrary(std::istream& maps) {
+    std::string line;
+    while (std::getline(maps, line)) {
+        const auto SLASH = line.rfind('/');
+        if (SLASH == std::string::npos)
+            continue;
+
+        const auto FILE_NAME = std::string_view{line}.substr(SLASH + 1);
+        if (FILE_NAME.starts_with("libgtk-3.so") || FILE_NAME.starts_with("libgtk-4.so"))
+            return true;
+    }
+
+    return false;
 }
 
 std::string formatWindowAddresses(const std::vector<uintptr_t>& addresses) {

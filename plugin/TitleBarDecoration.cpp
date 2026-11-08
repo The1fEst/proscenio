@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <fstream>
 #include <ranges>
 
 #include "BarVisibility.hpp"
@@ -148,6 +149,11 @@ CTitleBarDecoration::CTitleBarDecoration(PHLWINDOW window) : IHyprWindowDecorati
     if (const auto MONITOR = window->m_monitor.lock())
         MONITOR->m_scheduledRecalc = true;
 
+    if (const auto PID = window->backend().pid(); PID > 0 && !window->backend().isX11()) {
+        std::ifstream maps{std::format("/proc/{}/maps", PID)};
+        m_isGtkClient = maps && hasGtkLibrary(maps);
+    }
+
     m_isHidden        = shouldHide();
     m_isWindowFocused = Desktop::focusState()->window() == window;
 
@@ -204,6 +210,7 @@ bool CTitleBarDecoration::shouldHide() {
         .isX11              = BACKEND.isX11(),
         .hasNoBarRule       = hasTruthyRule(WINDOW, g_pGlobalState->noBarRuleIdx),
         .hasForceBarRule    = hasTruthyRule(WINDOW, g_pGlobalState->forceBarRuleIdx),
+        .isGtkClient        = m_isGtkClient,
         .builtInRule        = matchBuiltInBarRule(WINDOW->metadata().appID(), WINDOW->metadata().title()),
         .xdgDecorationMode  = readXdgDecorationMode(SURFACE),
         .kdeDecorationMode  = readKdeDecorationMode(SURFACE),

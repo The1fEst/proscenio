@@ -35,7 +35,15 @@ reads those requests.
 | X11 | Not read | Yes |
 | X11 that overrides redirection (menus and tooltips) | Not read | No |
 
-A window with both objects gets a bar when either one asks for it. The plugin reads the requests
+A window with both objects gets a bar when either one asks for it.
+
+A Wayland window whose process has `libgtk-3.so` or `libgtk-4.so` mapped counts as a GTK window;
+libadwaita apps are GTK 4 apps. The plugin reads `/proc/<pid>/maps` once, when the window maps, and
+a window whose entry it cannot read is not a GTK window. A Flatpak app's window carries the pid of
+the app's own process, so it is read the same way. While `windows` is `floating`, a floating GTK
+window gets a bar whatever it asks for, including one that draws its own header bar. While
+`windows` is `all`, a GTK window follows its request as any other window does, so a GTK window
+with a header bar gets no bar there. X11 windows are not checked. The plugin reads the requests
 when the window maps and whenever Hyprland updates the window's rules, such as on a change of focus
 or title.
 
@@ -48,6 +56,7 @@ rules see:
 | Class `dev.fEst.Proscenio`, the shell's own windows | No bar |
 | Class `steam` | No bar |
 | Class starting with `hyprland-`, such as `hyprland-dialog` | A bar, as with `force_bar` |
+| A floating GTK window while `windows` is `floating` | A bar, as with `force_bar` |
 
 Two window rule effects change the result:
 
@@ -178,6 +187,21 @@ end)
 ```
 
 From a shell, `hyprctl eval 'hl.plugin.proscenio_bars.toggle_monocle()'` toggles the active workspace.
+
+### GTK window buttons
+
+GTK apps read the buttons of their own header bar from `button-layout` in
+`org.gnome.desktop.wm.preferences`. The shell sets it when it starts and whenever **Show on** or
+**Button side** changes in the [settings](settings-appearance.md#windows):
+
+| Title bars | `button-layout` |
+|---|---|
+| `windows` is `floating` | `:`, no buttons, since floating GTK windows get a bar and GTK cannot show buttons on tiled windows alone |
+| `windows` is `all`, buttons on the right | `appmenu:minimize,maximize,close` |
+| `windows` is `all`, buttons on the left | `close,minimize,maximize:appmenu` |
+| The plugin not enabled in `hyprpm` | The value for `all`, on the button side set |
+
+With `windows` at `floating`, a tiled GTK window with its own header bar has no buttons.
 
 ## Installing
 

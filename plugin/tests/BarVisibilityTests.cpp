@@ -2,6 +2,7 @@
 #include "Expect.hpp"
 
 #include <format>
+#include <sstream>
 #include <vector>
 
 constexpr uint32_t MODE_UNSET  = 0;
@@ -53,7 +54,40 @@ int main() {
         {"no_bar wins over built-in force_bar", {.hasNoBarRule = true, .builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR}, false},
         {"built-in force_bar on a tiled window", {.isFloating = false, .builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR}, false},
         {"built-in force_bar with decorate off", {.isDecorated = false, .builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR}, false},
+        {"floating GTK with a header bar", {.isGtkClient = true, .xdgDecorationMode = MODE_CLIENT}, true},
+        {"floating GTK that asked for nothing", {.isGtkClient = true}, true},
+        {"no_bar on floating GTK", {.hasNoBarRule = true, .isGtkClient = true}, false},
+        {"built-in no_bar on floating GTK, as the shell's own windows", {.isGtkClient = true, .builtInRule = BUILT_IN_BAR_RULE_NO_BAR}, false},
+        {"tiled GTK", {.isFloating = false, .isGtkClient = true}, false},
+        {"floating GTK with a header bar, all windows", {.isTiledAllowed = true, .isGtkClient = true, .xdgDecorationMode = MODE_CLIENT}, false},
+        {"tiled GTK with a header bar, all windows", {.isFloating = false, .isTiledAllowed = true, .isGtkClient = true, .kdeDecorationMode = MODE_CLIENT}, false},
+        {"GTK without a header bar, all windows", {.isFloating = false, .isTiledAllowed = true, .isGtkClient = true, .kdeDecorationMode = MODE_SERVER}, true},
     };
+
+    struct SMapsCase {
+        const char* name;
+        const char* maps;
+        bool        expected;
+    };
+
+    const std::vector<SMapsCase> MAPS_CASES = {
+        {"GTK 4", "7f1e2c000000-7f1e2c100000 r--p 00000000 103:02 1234 /usr/lib/libgtk-4.so.1.1800.0\n", true},
+        {"GTK 3 after other libraries",
+         "55d0c8a00000-55d0c8a10000 r--p 00000000 103:02 11 /usr/bin/gedit\n7f00-7f10 r-xp 00000000 103:02 12 /usr/lib/libglib-2.0.so.0\n7f20-7f30 r--p 00000000 103:02 13 "
+         "/usr/lib/libgtk-3.so.0.2400.43\n",
+         true},
+        {"GTK 3 inside a Flatpak runtime", "7f20-7f30 r--p 00000000 00:2a 13 /usr/lib/x86_64-linux-gnu/libgtk-3.so.0.2409.32\n", true},
+        {"Qt only", "7f00-7f10 r-xp 00000000 103:02 12 /usr/lib/libQt6Widgets.so.6.9.0\n7f20-7f30 r--p 00000000 00:00 0 [heap]\n", false},
+        {"GTK 2 is not GTK 3", "7f00-7f10 r-xp 00000000 103:02 12 /usr/lib/libgtk-x11-2.0.so.0\n", false},
+        {"gtk-layer-shell is not GTK", "7f00-7f10 r-xp 00000000 103:02 12 /usr/lib/libgtk4-layer-shell.so.1.1.0\n", false},
+        {"a directory named after GTK", "7f00-7f10 r-xp 00000000 103:02 12 /opt/libgtk-4.so/app\n", false},
+        {"empty", "", false},
+    };
+
+    for (const auto& testCase : MAPS_CASES) {
+        std::istringstream maps{testCase.maps};
+        expect(hasGtkLibrary(maps) == testCase.expected, std::format("maps: {}", testCase.name));
+    }
 
     for (const auto& testCase : CASES)
         expect(shouldShowBar(testCase.input) == testCase.expected, std::format("bar visibility: {}", testCase.name));

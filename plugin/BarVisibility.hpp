@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <istream>
 #include <optional>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@ struct SBarVisibilityInput {
     bool                    isX11              = false;
     bool                    hasNoBarRule       = false;
     bool                    hasForceBarRule    = false;
+    bool                    isGtkClient        = false;
     eBuiltInBarRule         builtInRule        = BUILT_IN_BAR_RULE_NONE;
     std::optional<uint32_t> xdgDecorationMode;
     std::optional<uint32_t> kdeDecorationMode;
@@ -29,4 +31,5 @@ struct SBarVisibilityInput {
 
 eBuiltInBarRule matchBuiltInBarRule(const std::string& windowClass, const std::string& title);
 bool            shouldShowBar(const SBarVisibilityInput& input);
+bool            hasGtkLibrary(std::istream& maps);
 std::string     formatWindowAddresses(const std::vector<uintptr_t>& addresses);

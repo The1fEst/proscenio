@@ -65,6 +65,7 @@ class CTitleBarDecoration : public IHyprWindowDecoration {
     bool                           m_isHidden            = false;
     bool                           m_isSizeChanged       = false;
     bool                           m_isWindowFocused     = false;
+    bool                           m_isGtkClient         = false;
 
     bool                           m_isDragPending      = false;
     bool                           m_isDragging         = false;

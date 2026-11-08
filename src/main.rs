@@ -16,6 +16,7 @@ use gtk4::prelude::*;
 
 use crate::core::actions;
 use crate::core::config::Config;
+use crate::core::gsettings;
 use crate::core::paths;
 use crate::panels::overview::launcher;
 use crate::panels::{
@@ -125,6 +126,7 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
         switchwall::refresh_bar_colors();
     });
     hyprpm::load_enabled_plugin();
+    gsettings::sync_button_layout();
     let services = Rc::new(Services::new(&config));
     std::mem::forget(StatusNotifierWatcher::start(services.session_bus.as_ref()));
     readiness::report_when_ready(
