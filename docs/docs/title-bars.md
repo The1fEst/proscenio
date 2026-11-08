@@ -184,10 +184,18 @@ From a shell, `hyprctl eval 'hl.plugin.proscenio_bars.toggle_monocle()'` toggles
 The plugin is built against the headers of the running Hyprland, so `hyprpm` installs it:
 
 ```bash
+sudo pacman -S --needed hyprpm git gcc make pkgconf
 hyprpm update
 hyprpm add https://github.com/The1fEst/proscenio
 hyprpm enable proscenio_bars
 ```
+
+The `hyprpm` package brings `cmake`, `cpio`, `meson`, `glaze`, `hyprwayland-scanner` and the
+Hyprland headers' other build needs; `git` fetches the plugin and the Hyprland source, and `gcc`,
+`make` and `pkgconf` build both. Until `proscenio_bars` is enabled in `hyprpm`,
+**Appearance › Windows › Title bars** in the [settings](settings-appearance.md#windows) shows these
+commands with a copy button each in place of its options; once it is enabled, it shows the options
+and `hyprpm update`.
 
 `hyprpm reload` loads the enabled plugins. The shell runs it when it starts, if the `state.toml` of a
 repository under `/var/cache/hyprpm/<user>/` has `proscenio_bars` enabled and Hyprland has not loaded

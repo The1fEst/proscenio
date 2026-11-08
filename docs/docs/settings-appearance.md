@@ -191,6 +191,10 @@ Every control here is a Hyprland option or line in `appearance.lua`.
 | Dimming | Dim by (%) | `decoration:dim_strength` | 0–100 % |
 | Dimming | Dim around the special workspace by (%) | `decoration:dim_special` | 0–100 % |
 
+The title bar controls and a copyable `hyprpm update` show only while `proscenio_bars` is enabled
+in `hyprpm`; until then the subsection shows the [install commands](title-bars.md#installing), each
+with a copy button.
+
 Radius, passes and X-ray are disabled while blur is off; size, falloff, opacity and the sharp
 edge while shadows are off; and **Dim by** and **Keep fullscreen windows undimmed** while dimming
 is off.

@@ -1643,6 +1643,8 @@
   "No calendar can take events": "No calendar can take events",
   "Title bars": "Title bars",
   "Button side": "Button side",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.",
+  "Run this after every Hyprland update": "Run this after every Hyprland update",
   "Show on": "Show on",
   "Floating windows": "Floating windows",
   "All windows": "All windows"

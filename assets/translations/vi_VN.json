@@ -1643,6 +1643,8 @@
   "No calendar can take events": "Không có lịch nào nhận được sự kiện",
   "Title bars": "Thanh tiêu đề",
   "Button side": "Phía các nút",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Thanh tiêu đề đến từ một plugin của Hyprland. Chạy các lệnh này trong terminal để cài đặt nó.",
+  "Run this after every Hyprland update": "Chạy lệnh này sau mỗi lần cập nhật Hyprland",
   "Show on": "Hiện trên",
   "Floating windows": "Cửa sổ nổi",
   "All windows": "Mọi cửa sổ"

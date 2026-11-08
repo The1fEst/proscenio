@@ -1643,6 +1643,8 @@
   "No calendar can take events": "Немає календаря для подій",
   "Title bars": "Заголовки вікон",
   "Button side": "Сторона кнопок",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Заголовки вікон малює плагін Hyprland. Щоб установити його, виконайте ці команди в терміналі.",
+  "Run this after every Hyprland update": "Виконуйте після кожного оновлення Hyprland",
   "Show on": "Вікна із заголовком",
   "Floating windows": "Плаваючі вікна",
   "All windows": "Усі вікна"

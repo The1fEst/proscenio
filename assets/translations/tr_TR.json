@@ -1643,6 +1643,8 @@
   "No calendar can take events": "Etkinlik kabul eden takvim yok",
   "Title bars": "Başlık çubukları",
   "Button side": "Düğmelerin tarafı",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Başlık çubukları bir Hyprland eklentisinden gelir. Kurmak için bu komutları bir terminalde çalıştırın.",
+  "Run this after every Hyprland update": "Her Hyprland güncellemesinden sonra bunu çalıştırın",
   "Show on": "Gösterildiği yer",
   "Floating windows": "Yüzen pencereler",
   "All windows": "Tüm pencereler"

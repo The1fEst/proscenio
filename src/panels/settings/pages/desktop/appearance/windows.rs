@@ -1,9 +1,13 @@
+use gtk4::prelude::*;
 use std::rc::Rc;
 
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
-use crate::platform::hyprland::{hypr, hyprconfig};
+use crate::panels::settings::pages::administration::system::updates::updatepackages::{
+    card, copy_button,
+};
+use crate::platform::hyprland::{hypr, hyprconfig, hyprpm};
 use crate::services::hyprland::hyproptions::HyprOptions;
 use crate::ui::widgets::input::spinbox::SpinBox;
 
@@ -25,6 +29,15 @@ pub const OPTIONS: [&str; 16] = [
     "decoration:dim_strength",
     "decoration:dim_special",
 ];
+
+const PLUGIN_INSTALL_COMMANDS: [&str; 4] = [
+    "sudo pacman -S --needed hyprpm git gcc make pkgconf",
+    "hyprpm update",
+    "hyprpm add https://github.com/The1fEst/proscenio",
+    "hyprpm enable proscenio_bars",
+];
+
+const PLUGIN_UPDATE_COMMAND: &str = "hyprpm update";
 
 const BORDER_COLORS: [(&str, &str); 5] = [
     ("Outline", "outline"),
@@ -236,42 +249,18 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
 
     let title_bars_section = page.subsection(&windows_section, &tr("Title bars"), "");
-    let bar_windows_combo = page.combo_row(&title_bars_section, "select_window", &tr("Show on"));
-    let bar_windows_names = [tr("Floating windows"), tr("All windows")];
-    bar_windows_combo.set_items(
-        &bar_windows_names,
-        i32::from(hyprconfig::are_lines_present(
-            &hyprconfig::TITLE_BARS_ON_ALL_WINDOWS,
-        )),
-    );
-    bar_windows_combo.connect_activated({
-        let bar_windows_combo = Rc::downgrade(&bar_windows_combo);
-        move |index| {
-            let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BARS_ON_ALL_WINDOWS, index == 1);
-            hypr::request("reload");
-            if let Some(bar_windows_combo) = bar_windows_combo.upgrade() {
-                bar_windows_combo.set_items(&bar_windows_names, index as i32);
-            }
+    if hyprpm::is_plugin_enabled_in_hyprpm() {
+        add_title_bar_controls(&page, &title_bars_section);
+    } else {
+        page.notice(
+            &title_bars_section,
+            "info",
+            &tr("Title bars come from a Hyprland plugin. Run these commands in a terminal to install it."),
+        );
+        for command in PLUGIN_INSTALL_COMMANDS {
+            add_command_row(&page, &title_bars_section, command);
         }
-    });
-    let button_side_combo = page.combo_row(&title_bars_section, "swap_horiz", &tr("Button side"));
-    let button_side_names = [tr("Right"), tr("Left")];
-    button_side_combo.set_items(
-        &button_side_names,
-        i32::from(hyprconfig::are_lines_present(
-            &hyprconfig::TITLE_BUTTONS_ON_LEFT,
-        )),
-    );
-    button_side_combo.connect_activated({
-        let button_side_combo = Rc::downgrade(&button_side_combo);
-        move |index| {
-            let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BUTTONS_ON_LEFT, index == 1);
-            hypr::request("reload");
-            if let Some(button_side_combo) = button_side_combo.upgrade() {
-                button_side_combo.set_items(&button_side_names, index as i32);
-            }
-        }
-    });
+    }
 
     let shadows_section = page.subsection(&windows_section, &tr("Shadows"), "");
     hyprrows::switch(
@@ -404,4 +393,52 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     page.keep(options);
     page
+}
+
+fn add_command_row(page: &Page, section: &gtk4::Box, command: &str) -> gtk4::Box {
+    let (command_card, _) = card("terminal", command, true);
+    command_card.append(&copy_button(&page.theme, command));
+    section.append(&command_card);
+    command_card
+}
+
+fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
+    let bar_windows_combo = page.combo_row(title_bars_section, "select_window", &tr("Show on"));
+    let bar_windows_names = [tr("Floating windows"), tr("All windows")];
+    bar_windows_combo.set_items(
+        &bar_windows_names,
+        i32::from(hyprconfig::are_lines_present(
+            &hyprconfig::TITLE_BARS_ON_ALL_WINDOWS,
+        )),
+    );
+    bar_windows_combo.connect_activated({
+        let bar_windows_combo = Rc::downgrade(&bar_windows_combo);
+        move |index| {
+            let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BARS_ON_ALL_WINDOWS, index == 1);
+            hypr::request("reload");
+            if let Some(bar_windows_combo) = bar_windows_combo.upgrade() {
+                bar_windows_combo.set_items(&bar_windows_names, index as i32);
+            }
+        }
+    });
+    let button_side_combo = page.combo_row(title_bars_section, "swap_horiz", &tr("Button side"));
+    let button_side_names = [tr("Right"), tr("Left")];
+    button_side_combo.set_items(
+        &button_side_names,
+        i32::from(hyprconfig::are_lines_present(
+            &hyprconfig::TITLE_BUTTONS_ON_LEFT,
+        )),
+    );
+    button_side_combo.connect_activated({
+        let button_side_combo = Rc::downgrade(&button_side_combo);
+        move |index| {
+            let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BUTTONS_ON_LEFT, index == 1);
+            hypr::request("reload");
+            if let Some(button_side_combo) = button_side_combo.upgrade() {
+                button_side_combo.set_items(&button_side_names, index as i32);
+            }
+        }
+    });
+    let update_row = add_command_row(page, title_bars_section, PLUGIN_UPDATE_COMMAND);
+    page.tip(&update_row, &tr("Run this after every Hyprland update"));
 }

@@ -1643,6 +1643,8 @@
   "No calendar can take events": "没有可添加事件的日历",
   "Title bars": "标题栏",
   "Button side": "按钮位置",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "标题栏来自一个 Hyprland 插件。在终端中运行以下命令来安装它。",
+  "Run this after every Hyprland update": "每次更新 Hyprland 后运行",
   "Show on": "显示于",
   "Floating windows": "浮动窗口",
   "All windows": "所有窗口"

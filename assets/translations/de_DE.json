@@ -1643,6 +1643,8 @@
   "No calendar can take events": "Kein Kalender kann Termine aufnehmen",
   "Title bars": "Titelleisten",
   "Button side": "Seite der Schaltflächen",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Titelleisten kommen von einem Hyprland-Plugin. Führe diese Befehle in einem Terminal aus, um es zu installieren.",
+  "Run this after every Hyprland update": "Nach jedem Hyprland-Update ausführen",
   "Show on": "Fenster mit Titelleiste",
   "Floating windows": "Schwebende Fenster",
   "All windows": "Alle Fenster"

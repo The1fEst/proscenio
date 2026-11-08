@@ -1643,6 +1643,8 @@
   "No calendar can take events": "予定を追加できるカレンダーがありません",
   "Title bars": "タイトルバー",
   "Button side": "ボタンの位置",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "タイトルバーは Hyprland のプラグインが描画します。インストールするにはターミナルで次のコマンドを実行してください。",
+  "Run this after every Hyprland update": "Hyprland を更新するたびに実行してください",
   "Show on": "表示する対象",
   "Floating windows": "フローティングウィンドウ",
   "All windows": "すべてのウィンドウ"

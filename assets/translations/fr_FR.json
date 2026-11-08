@@ -1643,6 +1643,8 @@
   "No calendar can take events": "Aucun agenda ne peut recevoir d'événements",
   "Title bars": "Barres de titre",
   "Button side": "Côté des boutons",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Les barres de titre viennent d’un plugin Hyprland. Exécutez ces commandes dans un terminal pour l’installer.",
+  "Run this after every Hyprland update": "À exécuter après chaque mise à jour de Hyprland",
   "Show on": "Afficher sur",
   "Floating windows": "Fenêtres flottantes",
   "All windows": "Toutes les fenêtres"

@@ -1643,6 +1643,8 @@
   "No calendar can take events": "Tidak ada kalender yang dapat menerima acara",
   "Title bars": "Bilah judul",
   "Button side": "Sisi tombol",
+  "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Bilah judul berasal dari plugin Hyprland. Jalankan perintah ini di terminal untuk memasangnya.",
+  "Run this after every Hyprland update": "Jalankan ini setelah setiap pembaruan Hyprland",
   "Show on": "Tampilkan pada",
   "Floating windows": "Jendela mengambang",
   "All windows": "Semua jendela"

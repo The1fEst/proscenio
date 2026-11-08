@@ -22,7 +22,7 @@ fn is_plugin_enabled(state_text: &str) -> bool {
     })
 }
 
-fn is_plugin_enabled_in_hyprpm() -> bool {
+pub fn is_plugin_enabled_in_hyprpm() -> bool {
     let Ok(repositories) = std::fs::read_dir(cache_dir()) else {
         return false;
     };

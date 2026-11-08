@@ -16,6 +16,13 @@ depends=(
   'mesa'
   'vulkan-icd-loader'
 )
+optdepends=(
+  'hyprpm: build and load the title bars plugin'
+  'git: fetch the title bars plugin and the Hyprland headers'
+  'gcc: build the title bars plugin'
+  'make: build the title bars plugin'
+  'pkgconf: build the title bars plugin'
+)
 makedepends=(
   'cargo'
   'git'
