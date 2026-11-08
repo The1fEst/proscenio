@@ -149,6 +149,21 @@ rules of the config. The first toggle of a workspace adds the rule, on unless th
 layout that the config itself sets. A config reload drops the rules, so every workspace goes back to
 the layout its config gives it, and unloading the plugin turns them off.
 
+Leaving `monocle` through the toggle puts the tiled windows back where they were before it:
+
+| Layout | Restored |
+|---|---|
+| `dwindle` | The split tree: which windows share each split, its direction and ratio |
+| `master` | The order of the windows, which ones are masters, the master size and each window's size share |
+| `scrolling` | The columns in order, the windows in each column, column widths and window heights |
+
+A window closed during `monocle` leaves the arrangement: in `dwindle` its sibling takes the space of
+their split, in `master` the first window left becomes the master when no master is left, and in
+`scrolling` the rest of its column share its height. A window opened during `monocle` comes after
+the others: in `dwindle` it splits the last window, in `master` it joins the end of the stack, and in
+`scrolling` it gets a column of the default width at the end. After a config reload, or when the
+layout differs from the one before `monocle`, the layout arranges the windows itself.
+
 `hl.plugin.proscenio_bars` exists only while the plugin is loaded, so a bind can fall back to a toggle
 of its own:
 

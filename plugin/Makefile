@@ -13,8 +13,8 @@ PANGOCAIRO_LIBS := $(shell pkg-config --libs pangocairo)
 CAIRO_CFLAGS := $(patsubst -I%,-isystem %,$(filter-out -I/usr/include,$(shell pkg-config --cflags cairo)))
 CAIRO_LIBS := $(shell pkg-config --libs cairo)
 
-SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp DragGeometry.cpp ButtonAppearance.cpp IconRasterizer.cpp BarVisibility.cpp Monocle.cpp
-HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp DragGeometry.hpp ButtonAppearance.hpp IconRasterizer.hpp BarVisibility.hpp Monocle.hpp
+SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp DragGeometry.cpp ButtonAppearance.cpp IconRasterizer.cpp BarVisibility.cpp Monocle.cpp LayoutSnapshot.cpp
+HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp DragGeometry.hpp ButtonAppearance.hpp IconRasterizer.hpp BarVisibility.hpp Monocle.hpp LayoutSnapshot.hpp
 TARGET = proscenio_bars.so
 
 all: $(TARGET)
@@ -46,13 +46,18 @@ build/BarVisibilityTests: tests/BarVisibilityTests.cpp tests/Expect.hpp BarVisib
 	mkdir -p build
 	$(CXX) $(CXXFLAGS) tests/BarVisibilityTests.cpp BarVisibility.cpp -o $@
 
-test: build/ButtonLayoutTests build/ButtonStateMachineTests build/DragGeometryTests build/ButtonAppearanceTests build/IconRasterizerTests build/BarVisibilityTests
+build/LayoutSnapshotTests: tests/LayoutSnapshotTests.cpp tests/Expect.hpp LayoutSnapshot.cpp LayoutSnapshot.hpp
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) tests/LayoutSnapshotTests.cpp LayoutSnapshot.cpp -o $@
+
+test: build/ButtonLayoutTests build/ButtonStateMachineTests build/DragGeometryTests build/ButtonAppearanceTests build/IconRasterizerTests build/BarVisibilityTests build/LayoutSnapshotTests
 	./build/ButtonLayoutTests
 	./build/ButtonStateMachineTests
 	./build/DragGeometryTests
 	./build/ButtonAppearanceTests
 	./build/IconRasterizerTests
 	./build/BarVisibilityTests
+	./build/LayoutSnapshotTests
 
 clean:
 	rm -rf $(TARGET) build
