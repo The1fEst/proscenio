@@ -3,6 +3,7 @@ pub mod flatpak;
 pub mod manager;
 mod output;
 pub mod packages;
+pub mod pluginrebuild;
 mod reboot;
 mod review;
 mod runner;

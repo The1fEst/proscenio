@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 
 use crate::platform::wayland::readable;
 
+pub(super) const MERGED_OUTPUT: &str = "exec 2>&1; exec \"$@\"";
 const OUTPUT_GRACE: Duration = Duration::from_secs(1);
 const OUTPUT_LIMIT: Duration = Duration::from_secs(30);
 const OUTPUT_CHECK_INTERVAL: Duration = Duration::from_millis(100);

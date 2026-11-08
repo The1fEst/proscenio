@@ -31,6 +31,7 @@ pub struct Notification<'a> {
     pub urgency: Urgency,
     pub is_transient: bool,
     pub actions: &'a [(&'a str, &'a str)],
+    pub replaces_id: u32,
 }
 
 fn encode_pixels(image: &Pixbuf) -> Variant {
@@ -67,7 +68,7 @@ fn arguments(notification: &Notification) -> Variant {
     }
     (
         notification.app,
-        0u32,
+        notification.replaces_id,
         notification.icon,
         notification.summary,
         notification.body,

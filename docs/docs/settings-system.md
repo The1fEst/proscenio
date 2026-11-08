@@ -294,6 +294,10 @@ and the progress bar ends with them. A command that fails does not keep the othe
 When only Flatpak updates are pending, no session opens and no `proscenio-packages` password is
 asked for.
 
+When a system update succeeds, the shell checks whether the [title bars](title-bars.md) plugin was built
+for the installed Hyprland and, when it was not, rebuilds it with `hyprpm update`, as
+[Rebuilding after a Hyprland update](title-bars.md#rebuilding-after-a-hyprland-update) describes.
+
 **Update** under System refreshes before it installs anything, without a password.
 `proscenio-packages plan` synchronizes the private copy of the package databases, the one the
 [check](sidebar.md#updates) keeps in `~/.cache/proscenio/pacman`, and plans the upgrade there as the

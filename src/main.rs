@@ -24,7 +24,7 @@ use crate::panels::{
     regionselector, renderercheck, settings, wallpaperselector, welcome,
 };
 use crate::platform::dbus::{dmenu, ipc};
-use crate::platform::hyprland::{hypr, hyprconfig, hyprpm};
+use crate::platform::hyprland::{hypr, hyprconfig};
 use crate::platform::system::{locale, readiness};
 use crate::platform::wayland::shortcuts;
 use crate::screens::{Screens, Surfaces};
@@ -36,6 +36,7 @@ use crate::services::media::{mpris, recording};
 use crate::services::overlay::notifications;
 use crate::services::overlay::statusnotifierwatcher::{self, StatusNotifierWatcher};
 use crate::services::session::{deadlineipc, states};
+use crate::services::updates::pluginrebuild;
 use crate::theming::{colors, switchwall};
 use crate::ui::theme::{self, Theme};
 use crate::ui::{unload, widgets};
@@ -125,9 +126,9 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
         }
         switchwall::refresh_bar_colors();
     });
-    hyprpm::load_enabled_plugin();
     gsettings::sync_button_layout();
     let services = Rc::new(Services::new(&config));
+    pluginrebuild::check();
     std::mem::forget(StatusNotifierWatcher::start(services.session_bus.as_ref()));
     readiness::report_when_ready(
         services.session_bus.as_ref(),

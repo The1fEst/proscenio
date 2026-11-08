@@ -221,12 +221,47 @@ Hyprland headers' other build needs; `git` fetches the plugin and the Hyprland s
 commands with a copy button each in place of its options; once it is enabled, it shows the options
 and `hyprpm update`.
 
-`hyprpm reload` loads the enabled plugins. The shell runs it when it starts, if the `state.toml` of a
-repository under `/var/cache/hyprpm/<user>/` has `proscenio_bars` enabled and Hyprland has not loaded
-the plugin yet. Run `hyprpm update` after every Hyprland update, because
-a plugin built against other headers is refused. The repository's `hyprpm.toml` names the plugin and
-its build command, `make -C plugin`, which needs `pkg-config` entries for `pixman-1`, `libdrm`,
-`hyprland`, `libinput`, `libudev`, `wayland-server`, `xkbcommon` and `pangocairo`.
+The repository's `hyprpm.toml` names the plugin and its build command, `make -C plugin`, which needs
+`pkg-config` entries for `pixman-1`, `libdrm`, `hyprland`, `libinput`, `libudev`, `wayland-server`,
+`xkbcommon` and `pangocairo`.
+
+### Rebuilding after a Hyprland update
+
+`hyprpm` refuses a plugin built against other headers, so the plugin has to be rebuilt after every
+update of Hyprland or of the libraries in its ABI. The shell checks this when it starts and after
+every system update from [Updates](settings-system.md#updates) that succeeds, if the `state.toml`
+of a repository under `/var/cache/hyprpm/<user>/` has `proscenio_bars` enabled. The built hash is
+`hash` under `[state]` in `/var/cache/hyprpm/<user>/state.toml`, and counts as missing while
+`proscenio_bars` is marked `failed`; the installed one is `abiHash` of `Hyprland --version-json`,
+the running one `abiHash` of `hyprctl version -j`.
+
+| Check | Result |
+|---|---|
+| The plugin is not loaded and the built hash equals the running one | `hyprpm reload` |
+| The built hash differs from the installed one | `hyprpm update`, the first time in the session for this installed hash; the failure notification below after that |
+| The built hash equals the installed one, the plugin is not loaded, and the running hash is unknown | `hyprpm reload` |
+| Anything else | Nothing |
+
+The check needs neither a password nor the network. `hyprpm update` runs without a terminal, so it
+asks for the password through `run0` and the shell's [polkit prompt](polkit.md) for each step
+`hyprpm` runs as root: its start, the headers' install and each write under `/var/cache/hyprpm`.
+`hyprpm` takes the first of `sudo`, `doas` and `run0` it finds in `PATH`, so the shell runs it with
+`PATH` set to `~/.cache/proscenio/hyprpm-tools` alone: a directory with a symbolic link to every
+program in `/usr/bin` except `sudo` and `doas`, made again before each rebuild. Without
+`/usr/bin/run0` no rebuild starts. A check asked for while a rebuild runs follows it.
+
+While it runs, a notification titled **Rebuilding the title bars** shows the last line of
+`hyprpm`'s output, at most twice a second. When it ends:
+
+| Result | What follows |
+|---|---|
+| `state.toml` has the installed `abiHash`, the same Hyprland runs | `hyprpm reload`, `hyprctl dismissnotify`, and **Title bars rebuilt** |
+| `state.toml` has the installed `abiHash`, an older Hyprland runs | `hyprctl dismissnotify`, and **Title bars rebuilt** with **They load after you log in again.** |
+| Anything else, a cancelled password prompt included | **Could not rebuild the title bars**, with **Run hyprpm update in a terminal to rebuild them.** |
+
+`hyprpm update` builds against the installed Hyprland, `Hyprland --version-json`, while the session
+keeps the Hyprland it started with, so after a system update the rebuilt plugin loads at the next
+login. The failure notification shows once per installed hash in a session.
 
 ## Options
 

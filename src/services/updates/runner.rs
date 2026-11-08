@@ -8,7 +8,7 @@ use std::rc::Rc;
 use super::flatpak::build_update_commands;
 use super::manager::{aur_query, aur_upgrade, package_manager};
 use super::output::{
-    decode_events, elapsed_text, exit_code, stage_text, visible_text, watch_output,
+    MERGED_OUTPUT, decode_events, elapsed_text, exit_code, stage_text, visible_text, watch_output,
 };
 use super::packages::{private_database_dir, version_change};
 use super::{BRANCH, HELPER, Job, REPOSITORY, Review, Updates};
@@ -17,7 +17,6 @@ use crate::core::{paths, process};
 use crate::services::updates::updateprogress::UpdateProgress;
 
 const FAILED_STATUS: i32 = 1 << 8;
-const MERGED_OUTPUT: &str = "exec 2>&1; exec \"$@\"";
 const SHELL_UPDATE: &str = "exec 2>&1
 set -e
 mkdir -p \"$1\"
@@ -72,7 +71,9 @@ impl Updates {
         self.push_log(&format!("\n{summary}"));
         self.session.take();
         self.review.take();
-        self.job.set(None);
+        if self.job.take() == Some(Job::System) && status == 0 {
+            super::pluginrebuild::check();
+        }
         self.last_job_succeeded.set(Some(status == 0));
         self.listeners.notify();
         self.refresh();
