@@ -280,7 +280,12 @@ builds installs through that session: `paru`, `yay` and `makepkg` get
 which the shell hands them in their environment. The session takes a call only from a process of the
 user who opened it that descends from the `paru`, `yay` or build the shell started for this update,
 and holds at most 8 unanswered connections. An install of package files goes through libalpm; any
-other call runs `/usr/bin/pacman` in the session. The session ends with the update.
+other call runs `/usr/bin/pacman` in the session. The session ends with the update. When libalpm
+refuses the transaction over conflicting files, missing dependencies, conflicting packages or a
+wrong architecture, the log names the error and, below it, each cause in `pacman`'s words, such as
+`<package>: <path> exists in filesystem` or `unable to satisfy dependency '<dependency>' required by
+<package>`, at most 100 of them followed by `and N more`. Every failure the helper reports releases
+the transaction and with it the database lock.
 
 The Flatpak commands run once the session has ended, only when the packages succeeded, as the user:
 `--user` needs no authorization, and `--system` asks polkit through Flatpak's own system helper,

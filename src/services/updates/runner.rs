@@ -222,7 +222,8 @@ impl Updates {
             Event::Done { is_ok, message } => {
                 session.package_index.set(0);
                 if !is_ok {
-                    self.push_log(&message);
+                    let lines: Vec<String> = message.lines().map(visible_text).collect();
+                    self.push_log(&lines.join("\n"));
                     session.is_ok.set(false);
                 }
                 if session.is_forwarding.get() {
