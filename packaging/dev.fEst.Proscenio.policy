@@ -26,5 +26,31 @@
       <allow_active>auth_admin</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/proscenio/proscenio-packages</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">session</annotate>
+  </action>
+  <action id="dev.fEst.Proscenio.hyprpm">
+    <description>Rebuild the window title bars from proscenio</description>
+    <message>Authentication is required to rebuild the window title bars plugin after a Hyprland update</message>
+    <message xml:lang="de">Zum Neubauen des Titelleisten-Plugins nach einem Hyprland-Update ist eine Authentifizierung erforderlich</message>
+    <message xml:lang="es">Se requiere autenticación para recompilar el complemento de barras de título tras una actualización de Hyprland</message>
+    <message xml:lang="fr">Une authentification est requise pour recompiler le module des barres de titre après une mise à jour de Hyprland</message>
+    <message xml:lang="he">נדרש אימות כדי לבנות מחדש את תוסף שורות הכותרת לאחר עדכון של Hyprland</message>
+    <message xml:lang="id">Autentikasi diperlukan untuk membangun ulang plugin bilah judul setelah pembaruan Hyprland</message>
+    <message xml:lang="it">È richiesta l'autenticazione per ricompilare il plugin delle barre del titolo dopo un aggiornamento di Hyprland</message>
+    <message xml:lang="ja">Hyprland の更新後にタイトルバープラグインを再ビルドするには認証が必要です</message>
+    <message xml:lang="pt_BR">É necessária autenticação para recompilar o plugin das barras de título após uma atualização do Hyprland</message>
+    <message xml:lang="ru">Для пересборки плагина заголовков окон после обновления Hyprland требуется аутентификация</message>
+    <message xml:lang="tr">Hyprland güncellemesinden sonra başlık çubuğu eklentisini yeniden derlemek için kimlik doğrulama gerekiyor</message>
+    <message xml:lang="uk">Для перезбирання плагіна заголовків вікон після оновлення Hyprland потрібна автентифікація</message>
+    <message xml:lang="vi">Cần xác thực để dựng lại phần bổ trợ thanh tiêu đề sau khi cập nhật Hyprland</message>
+    <message xml:lang="zh_CN">在 Hyprland 更新后重新构建标题栏插件需要身份验证</message>
+    <icon_name>system-software-update</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/proscenio/proscenio-packages</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">hyprpm</annotate>
   </action>
 </policyconfig>

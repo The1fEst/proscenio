@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::io;
-use std::os::unix::fs::{DirBuilderExt, symlink};
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, symlink};
 use std::path::{Path, PathBuf};
 
 use gtk4::glib;
@@ -12,9 +12,9 @@ use crate::platform::hyprland::hypr;
 
 const PLUGIN_NAME: &str = "proscenio_bars";
 pub const HYPRPM: &str = "/usr/bin/hyprpm";
-pub const RUN0: &str = "/usr/bin/run0";
 pub const SYSTEM_TOOLS: &str = "/usr/bin";
-const ESCALATORS: [&str; 2] = ["sudo", "doas"];
+const ESCALATORS: [&str; 3] = ["sudo", "doas", "run0"];
+const FORWARDER_NAME: &str = "run0";
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum PluginAction {
@@ -154,11 +154,16 @@ pub fn check_rebuild() -> RebuildOutcome {
     )
 }
 
+pub fn expected_runtime_dir() -> Option<String> {
+    let uid = std::fs::metadata("/proc/self").ok()?.uid();
+    Some(format!("/run/user/{uid}"))
+}
+
 fn is_tool_allowed(name: &OsStr) -> bool {
     !ESCALATORS.iter().any(|escalator| name == *escalator)
 }
 
-pub fn prepare_tool_dir(source: &Path, target: &Path) -> io::Result<()> {
+pub fn prepare_tool_dir(source: &Path, target: &Path, forwarder: &Path) -> io::Result<()> {
     match std::fs::symlink_metadata(target) {
         Ok(metadata) if metadata.is_dir() => std::fs::remove_dir_all(target)?,
         Ok(_) => std::fs::remove_file(target)?,
@@ -175,7 +180,7 @@ pub fn prepare_tool_dir(source: &Path, target: &Path) -> io::Result<()> {
             symlink(source.join(&name), target.join(&name))?;
         }
     }
-    Ok(())
+    symlink(forwarder, target.join(FORWARDER_NAME))
 }
 
 #[cfg(test)]
@@ -401,10 +406,11 @@ mod tests {
     }
 
     #[test]
-    fn the_tool_dir_links_every_tool_but_sudo_and_doas() {
+    fn the_tool_dir_links_every_tool_but_the_escalators_and_run0_to_the_forwarder() {
         let root = std::env::temp_dir().join(format!("proscenio-tools-{}", std::process::id()));
         let source = root.join("bin");
         let target = root.join("cache").join("tools");
+        let forwarder = root.join("helper");
         std::fs::create_dir_all(&source).unwrap();
         for name in ["git", "cmake", "run0", "sudo", "doas", "sudoedit"] {
             std::fs::write(source.join(name), "").unwrap();
@@ -412,7 +418,7 @@ mod tests {
         std::fs::create_dir_all(&target).unwrap();
         std::fs::write(target.join("stale"), "").unwrap();
 
-        prepare_tool_dir(&source, &target).unwrap();
+        prepare_tool_dir(&source, &target, &forwarder).unwrap();
 
         let mut names: Vec<String> = std::fs::read_dir(&target)
             .unwrap()
@@ -424,6 +430,7 @@ mod tests {
             std::fs::read_link(target.join("git")).unwrap(),
             source.join("git")
         );
+        assert_eq!(std::fs::read_link(target.join("run0")).unwrap(), forwarder);
         std::fs::remove_dir_all(&root).unwrap();
     }
 
@@ -439,7 +446,7 @@ mod tests {
         std::fs::write(elsewhere.join("kept"), "").unwrap();
         symlink(&elsewhere, &target).unwrap();
 
-        prepare_tool_dir(&source, &target).unwrap();
+        prepare_tool_dir(&source, &target, &root.join("helper")).unwrap();
 
         assert!(elsewhere.join("kept").exists());
         assert!(std::fs::symlink_metadata(&target).unwrap().is_dir());

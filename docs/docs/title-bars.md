@@ -242,22 +242,54 @@ the running one `abiHash` of `hyprctl version -j`.
 | The built hash equals the installed one, the plugin is not loaded, and the running hash is unknown | `hyprpm reload` |
 | Anything else | Nothing |
 
-The check needs neither a password nor the network. `hyprpm update` runs without a terminal, so it
-asks for the password through `run0` and the shell's [polkit prompt](polkit.md) for each step
-`hyprpm` runs as root: its start, the headers' install and each write under `/var/cache/hyprpm`.
-`hyprpm` takes the first of `sudo`, `doas` and `run0` it finds in `PATH`, so the shell runs it with
-`PATH` set to `~/.cache/proscenio/hyprpm-tools` alone: a directory with a symbolic link to every
-program in `/usr/bin` except `sudo` and `doas`, made again before each rebuild. Without
-`/usr/bin/run0` no rebuild starts. A check asked for while a rebuild runs follows it.
+The check needs neither a password nor the network. A rebuild asks for the password once, in the
+shell's [polkit prompt](polkit.md) for the action `dev.fEst.Proscenio.hyprpm`, with the message
+"Authentication is required to rebuild the window title bars plugin after a Hyprland update":
+`pkexec /usr/lib/proscenio/proscenio-packages hyprpm` opens a root session that lasts for the
+rebuild. Then `hyprpm update` runs as the user with `PATH` set to `~/.cache/proscenio/hyprpm-tools`
+alone, a directory made again before each rebuild with a symbolic link to every program in
+`/usr/bin` except `sudo`, `doas` and `run0`, and a link named `run0` to `proscenio-packages`.
+`hyprpm` takes the first of `sudo`, `doas` and `run0` it finds in `PATH`, so each step it runs as
+root goes to `proscenio-packages`, which passes it to the session over the same token-guarded
+abstract socket a system update uses: the session takes it only from a process of the same user
+whose parent is this `hyprpm update`, with the session's random token, and closes the socket when
+the rebuild ends. `hyprpm` runs a plugin's build step through `/bin/sh -c`, a child of its own with
+the token in its environment, so a step that runs `run0` itself in that shell can ask for the same
+root steps, and only for those in the table below; a process the build starts below that shell is
+refused. Without `pkexec` or `proscenio-packages`,
+or with `XDG_RUNTIME_DIR` other than `/run/user/<uid>`, no rebuild starts. A check asked for while a
+rebuild runs follows it.
 
-While it runs, a notification titled **Rebuilding the title bars** shows the last line of
-`hyprpm`'s output, at most twice a second. When it ends:
+The session runs only the root steps of `hyprpm update`, with `<user>` the name of the account
+that opened it and `<uid>` its uid, and refuses every other command:
+
+| Step from `hyprpm` | What the session does |
+|---|---|
+| `echo hyprland` | Nothing |
+| `mkdir -p -m 755` `/var/cache/hyprpm`, `/var/cache/hyprpm/<user>`, `…/<user>/headersRoot` or `…/<user>/<repository>` | Creates the missing directories, mode 755, refusing a path through a symbolic link |
+| `rm -fr /var/cache/hyprpm/<user>/<repository>` | Removes that directory; refuses a file there |
+| `install -m644 -o 0 -g 0 /run/user/<uid>/hyprpm/.temp-state` to `…/<user>/state.toml` or `…/<user>/<repository>/state.toml` | Writes the file, mode 644 |
+| `install -m0755 -o 0 -g 0 /run/user/<uid>/hyprpm/<user>/…` to `…/<user>/<repository>/<name>.so` | Writes the file, mode 755 |
+| `/bin/sh -c` with hyprpm's exact `make -C '…/hyprland-<user>' installheaders && chmod … && find …` | Runs `make installheaders` as the user into `/run/user/<uid>/hyprpm/hyprland-<user>/proscenio-headers`, then copies `include/hyprland/` and `share/pkgconfig/hyprland.pc` from there into `…/<user>/headersRoot`, files 644 and directories 755 |
+
+A repository name is letters, digits, `.`, `_` and `-`, not starting with `.`, and neither
+`headersRoot` nor `state.toml`. Every file the
+session copies is read by `proscenio-packages export` running as the user, so a symbolic link in the
+user's directories reaches only what the user can read; the session refuses entries that are not
+regular files or directories. `make installheaders` does not copy `hyprland.pc` to
+`/usr/share/pkgconfig` in this way. The session reads at most 64 MiB from a file or the headers'
+stage and passes on the first 4 MiB of `make`'s output. It accepts the stage only when every entry
+sits in a directory the stage also lists, writes it into `…/<user>/headersRoot/.proscenio-new`, and
+only when that succeeds replaces `include/hyprland` and `share/pkgconfig/hyprland.pc` with it.
+
+Once the password is accepted, a notification titled **Rebuilding the title bars** shows the last line of
+`hyprpm`'s output or the session's, at most twice a second. When it ends:
 
 | Result | What follows |
 |---|---|
 | `state.toml` has the installed `abiHash`, the same Hyprland runs | `hyprpm reload`, `hyprctl dismissnotify`, and **Title bars rebuilt** |
 | `state.toml` has the installed `abiHash`, an older Hyprland runs | `hyprctl dismissnotify`, and **Title bars rebuilt** with **They load after you log in again.** |
-| Anything else, a cancelled password prompt included | **Could not rebuild the title bars**, with **Run hyprpm update in a terminal to rebuild them.** |
+| Anything else | **Could not rebuild the title bars**, with **Run hyprpm update in a terminal to rebuild them.** below the reason: the session's last error, **The authentication was canceled or failed.** when the session never started, **A rebuild needs pkexec, … and XDG_RUNTIME_DIR set to …** when it could not start, or else the last output line |
 
 `hyprpm update` builds against the installed Hyprland, `Hyprland --version-json`, while the session
 keeps the Hyprland it started with, so after a system update the rebuilt plugin loads at the next

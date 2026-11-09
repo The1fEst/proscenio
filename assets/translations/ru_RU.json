@@ -1647,6 +1647,8 @@
   "Could not rebuild the title bars": "Не удалось пересобрать заголовки окон",
   "Run hyprpm update in a terminal to rebuild them.": "Чтобы пересобрать их, выполните hyprpm update в терминале.",
   "They load after you log in again.": "Они загрузятся после повторного входа.",
+  "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.": "Для пересборки нужны pkexec, %1 и XDG_RUNTIME_DIR со значением %2.",
+  "The authentication was canceled or failed.": "Аутентификация отменена или не удалась.",
   "Button side": "Сторона кнопок",
   "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Заголовки окон рисует плагин Hyprland. Чтобы установить его, выполните эти команды в терминале.",
   "Run this after every Hyprland update": "Выполняйте после каждого обновления Hyprland",

@@ -1647,6 +1647,8 @@
   "Could not rebuild the title bars": "Không dựng lại được thanh tiêu đề",
   "Run hyprpm update in a terminal to rebuild them.": "Chạy hyprpm update trong terminal để dựng lại.",
   "They load after you log in again.": "Chúng sẽ được tải sau khi bạn đăng nhập lại.",
+  "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.": "Để dựng lại cần pkexec, %1 và XDG_RUNTIME_DIR có giá trị %2.",
+  "The authentication was canceled or failed.": "Xác thực đã bị hủy hoặc thất bại.",
   "Button side": "Phía các nút",
   "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Thanh tiêu đề đến từ một plugin của Hyprland. Chạy các lệnh này trong terminal để cài đặt nó.",
   "Run this after every Hyprland update": "Chạy lệnh này sau mỗi lần cập nhật Hyprland",

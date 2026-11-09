@@ -1647,6 +1647,8 @@
   "Could not rebuild the title bars": "タイトルバーを再ビルドできませんでした",
   "Run hyprpm update in a terminal to rebuild them.": "再ビルドするには、ターミナルで hyprpm update を実行してください。",
   "They load after you log in again.": "次回のログイン後に読み込まれます。",
+  "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.": "再ビルドには pkexec、%1、および %2 に設定された XDG_RUNTIME_DIR が必要です。",
+  "The authentication was canceled or failed.": "認証がキャンセルされたか、失敗しました。",
   "Button side": "ボタンの位置",
   "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "タイトルバーは Hyprland のプラグインが描画します。インストールするにはターミナルで次のコマンドを実行してください。",
   "Run this after every Hyprland update": "Hyprland を更新するたびに実行してください",

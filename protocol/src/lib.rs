@@ -2,6 +2,7 @@ pub const VERSION: u32 = 5;
 pub const TOKEN_LENGTH: usize = 32;
 pub const SOCKET_VARIABLE: &str = "PROSCENIO_PACKAGES_SOCKET";
 pub const TOKEN_VARIABLE: &str = "PROSCENIO_PACKAGES_TOKEN";
+pub const ERROR_PREFIX: &str = "proscenio-packages: ";
 const MAX_FRAME_LENGTH: usize = 1 << 20;
 const MIN_CHANGE_BYTES: usize = 16;
 

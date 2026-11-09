@@ -58,7 +58,7 @@ fn summarize_exit(status: ExitStatus) -> (i32, Result<(), String>) {
     (exit_code, result)
 }
 
-fn relay(stream: impl Read, mut on_line: impl FnMut(String)) {
+pub fn relay(stream: impl Read, mut on_line: impl FnMut(String)) {
     for line in BufReader::new(stream).split(b'\n').map_while(Result::ok) {
         let line = line.strip_suffix(b"\r").unwrap_or(&line);
         on_line(String::from_utf8_lossy(line).into_owned());

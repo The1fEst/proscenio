@@ -8,7 +8,7 @@ use std::os::linux::net::SocketAddrExt;
 use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, Condvar, Mutex, mpsc};
 use std::time::Duration;
 
 use crate::errors::format_error;
@@ -19,6 +19,7 @@ use crate::transaction::upgrade;
 
 const FORWARD_TIMEOUT: Duration = Duration::from_secs(5);
 const ACCEPT_RETRY_DELAY: Duration = Duration::from_millis(100);
+const TRUST_TIMEOUT: Duration = Duration::from_secs(2);
 const MAX_PENDING_FORWARDS: usize = 8;
 const MAX_PROCESS_DEPTH: usize = 256;
 const SOL_SOCKET: c_int = 1;
@@ -42,19 +43,69 @@ unsafe extern "C" {
     ) -> c_int;
 }
 
-enum Work {
+pub enum Work {
     Request(Request),
     Forward(Forward, UnixStream),
     Closed,
 }
 
+#[derive(Clone, Copy)]
+pub enum TrustScope {
+    Descendants,
+    Children,
+}
+
+pub struct Session {
+    pub uid: u32,
+    token: Vec<u8>,
+    pub receiver: mpsc::Receiver<Work>,
+}
+
+impl Session {
+    pub fn answer(
+        &self,
+        forward: Forward,
+        mut stream: UnixStream,
+        on_forward: impl FnOnce(&[String]) -> i32,
+    ) {
+        let exit_code = if tokens_match(&forward.token, &self.token) {
+            on_forward(&forward.args)
+        } else {
+            1
+        };
+        let _ = stream.write_all(&Exit(exit_code).encode());
+    }
+}
+
 pub fn run_session() -> Result<(), String> {
-    let session_uid = std::env::var("PKEXEC_UID")
+    let session = open_session(read_session_uid()?, TrustScope::Descendants)?;
+    for work in &session.receiver {
+        match work {
+            Work::Request(Request::Upgrade {
+                changes,
+                private_path,
+            }) => {
+                finish(upgrade(&changes, Path::new(&private_path), session.uid));
+                discard_stage();
+            }
+            Work::Request(Request::Quit) | Work::Closed => break,
+            Work::Request(Request::Allow(_)) => {}
+            Work::Forward(forward, stream) => session.answer(forward, stream, run),
+        }
+    }
+    discard_stage();
+    Ok(())
+}
+
+pub fn read_session_uid() -> Result<u32, String> {
+    std::env::var("PKEXEC_UID")
         .ok()
-        .and_then(|uid| uid.parse::<u32>().ok());
-    let Some(session_uid) = session_uid.filter(|_| is_effective_root()) else {
-        return Err("the session runs as root, through pkexec".to_owned());
-    };
+        .and_then(|uid| uid.parse::<u32>().ok())
+        .filter(|_| is_effective_root())
+        .ok_or_else(|| "the session runs as root, through pkexec".to_owned())
+}
+
+pub fn open_session(session_uid: u32, scope: TrustScope) -> Result<Session, String> {
     let token = read_random_bytes(TOKEN_LENGTH)?;
     let name = format!("proscenio-packages-{}", hex(&read_random_bytes(8)?));
     let address = SocketAddr::from_abstract_name(name.as_bytes()).map_err(format_error)?;
@@ -66,7 +117,7 @@ pub fn run_session() -> Result<(), String> {
     });
 
     let (sender, receiver) = mpsc::channel::<Work>();
-    let allowed_pids: Arc<Mutex<Vec<u32>>> = Arc::default();
+    let allowed_pids: Arc<(Mutex<Vec<u32>>, Condvar)> = Arc::default();
     std::thread::spawn({
         let (requests, allowed_pids) = (sender.clone(), allowed_pids.clone());
         move || {
@@ -74,8 +125,10 @@ pub fn run_session() -> Result<(), String> {
             loop {
                 match read_one::<Request>(&mut input) {
                     Ok(Some(Request::Allow(pid))) => {
-                        if let Ok(mut pids) = allowed_pids.lock() {
+                        let (pids, change) = &*allowed_pids;
+                        if let Ok(mut pids) = pids.lock() {
                             pids.push(pid);
+                            change.notify_all();
                         }
                     }
                     Ok(Some(request)) => {
@@ -111,16 +164,12 @@ pub fn run_session() -> Result<(), String> {
                 move || {
                     let _ = stream.set_read_timeout(Some(FORWARD_TIMEOUT));
                     let forward = read_one::<Forward>(&mut stream);
+                    let is_trusted = matches!(forward, Ok(Some(_)))
+                        && wait_for_trust(pid, scope, &allowed_pids, TRUST_TIMEOUT);
                     pending_count.fetch_sub(1, Ordering::SeqCst);
-                    let Ok(Some(forward)) = forward else {
+                    let (true, Ok(Some(forward))) = (is_trusted, forward) else {
                         return;
                     };
-                    let is_trusted = allowed_pids.lock().is_ok_and(|pids| {
-                        is_self_or_descendant_of(pid, &pids, read_process_parent)
-                    });
-                    if !is_trusted {
-                        return;
-                    }
                     let _ = stream.set_read_timeout(None);
                     let _ = sender.send(Work::Forward(forward, stream));
                 }
@@ -131,29 +180,40 @@ pub fn run_session() -> Result<(), String> {
         }
     });
 
-    for work in receiver {
-        match work {
-            Work::Request(Request::Upgrade {
-                changes,
-                private_path,
-            }) => {
-                finish(upgrade(&changes, Path::new(&private_path), session_uid));
-                discard_stage();
-            }
-            Work::Request(Request::Quit) | Work::Closed => break,
-            Work::Request(Request::Allow(_)) => {}
-            Work::Forward(forward, mut stream) => {
-                let exit_code = if tokens_match(&forward.token, &token) {
-                    run(&forward.args)
-                } else {
-                    1
-                };
-                let _ = stream.write_all(&Exit(exit_code).encode());
-            }
-        }
+    Ok(Session {
+        uid: session_uid,
+        token,
+        receiver,
+    })
+}
+
+fn wait_for_trust(
+    pid: u32,
+    scope: TrustScope,
+    allowed_pids: &(Mutex<Vec<u32>>, Condvar),
+    timeout: Duration,
+) -> bool {
+    let (pids, change) = allowed_pids;
+    let Ok(pids) = pids.lock() else {
+        return false;
+    };
+    change
+        .wait_timeout_while(pids, timeout, |pids| {
+            !is_trusted(pid, scope, pids, read_process_parent)
+        })
+        .is_ok_and(|(_, timeout)| !timeout.timed_out())
+}
+
+fn is_trusted(
+    pid: u32,
+    scope: TrustScope,
+    allowed_pids: &[u32],
+    parent: impl Fn(u32) -> Option<u32>,
+) -> bool {
+    match scope {
+        TrustScope::Descendants => is_self_or_descendant_of(pid, allowed_pids, parent),
+        TrustScope::Children => parent(pid).is_some_and(|parent| allowed_pids.contains(&parent)),
     }
-    discard_stage();
-    Ok(())
 }
 
 fn read_peer_credentials(stream: &UnixStream) -> Option<(u32, u32)> {
@@ -247,6 +307,51 @@ mod tests {
         assert!(!is_self_or_descendant_of(40, &[20], parent));
         assert!(!is_self_or_descendant_of(10, &[20], parent));
         assert!(!is_self_or_descendant_of(30, &[], parent));
+    }
+
+    #[test]
+    fn a_children_scope_trusts_only_direct_children_of_an_allowed_process() {
+        let parents = HashMap::from([(40, 30), (30, 20), (20, 10), (10, 1), (1, 0)]);
+        let parent = |pid| parents.get(&pid).copied();
+        let cases = [
+            (30, TrustScope::Children, true),
+            (40, TrustScope::Children, false),
+            (40, TrustScope::Descendants, true),
+            (20, TrustScope::Children, false),
+            (20, TrustScope::Descendants, true),
+            (10, TrustScope::Children, false),
+            (10, TrustScope::Descendants, false),
+        ];
+        for (pid, scope, expected) in cases {
+            assert_eq!(is_trusted(pid, scope, &[20], parent), expected, "{pid}");
+        }
+    }
+
+    #[test]
+    fn a_forward_waits_for_its_process_to_be_allowed() {
+        let own_pid = std::process::id();
+        let allowed_pids: Arc<(Mutex<Vec<u32>>, Condvar)> = Arc::default();
+        assert!(!wait_for_trust(
+            own_pid,
+            TrustScope::Descendants,
+            &allowed_pids,
+            Duration::ZERO
+        ));
+        let waiter = std::thread::spawn({
+            let allowed_pids = allowed_pids.clone();
+            move || {
+                wait_for_trust(
+                    own_pid,
+                    TrustScope::Descendants,
+                    &allowed_pids,
+                    TRUST_TIMEOUT,
+                )
+            }
+        });
+        let (pids, change) = &*allowed_pids;
+        pids.lock().unwrap().push(own_pid);
+        change.notify_all();
+        assert!(waiter.join().unwrap());
     }
 
     #[test]

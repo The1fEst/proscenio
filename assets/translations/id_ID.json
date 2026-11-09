@@ -1647,6 +1647,8 @@
   "Could not rebuild the title bars": "Tidak dapat membangun ulang bilah judul",
   "Run hyprpm update in a terminal to rebuild them.": "Jalankan hyprpm update di terminal untuk membangunnya ulang.",
   "They load after you log in again.": "Bilah dimuat setelah Anda masuk lagi.",
+  "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.": "Pembangunan ulang memerlukan pkexec, %1, dan XDG_RUNTIME_DIR bernilai %2.",
+  "The authentication was canceled or failed.": "Autentikasi dibatalkan atau gagal.",
   "Button side": "Sisi tombol",
   "Title bars come from a Hyprland plugin. Run these commands in a terminal to install it.": "Bilah judul berasal dari plugin Hyprland. Jalankan perintah ini di terminal untuk memasangnya.",
   "Run this after every Hyprland update": "Jalankan ini setelah setiap pembaruan Hyprland",

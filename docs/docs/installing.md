@@ -53,8 +53,10 @@ its program. The settings that change the system run that binary as root through
 firewall rules, the power button and lid actions, the battery charge limit and the system language.
 With the policy installed, an active session authenticates once and the authorization is kept for
 five minutes, so several changes in a row ask once. Without it, or with the binary somewhere else,
-`pkexec` asks every time. A second action, `dev.fEst.Proscenio.packages`, names
-`/usr/lib/proscenio/proscenio-packages`, which a system update runs as root; it asks every time.
+`pkexec` asks every time. Two more actions name `/usr/lib/proscenio/proscenio-packages` and tell
+its modes apart by the first argument, and both ask every time: `dev.fEst.Proscenio.packages` for
+`session`, which a system update runs as root, and `dev.fEst.Proscenio.hyprpm` for `hyprpm`, which
+[rebuilds the title bars](title-bars.md#rebuilding-after-a-hyprland-update).
 
 :::note
 

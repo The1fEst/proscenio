@@ -1,12 +1,20 @@
 use proscenio_protocol::{
-    Exit, Forward, Message, SOCKET_VARIABLE, TOKEN_VARIABLE, read_one, unhex,
+    ERROR_PREFIX, Exit, Forward, Message, SOCKET_VARIABLE, TOKEN_VARIABLE, read_one, unhex,
 };
 use std::io::Write;
 use std::os::linux::net::SocketAddrExt;
 use std::os::unix::net::{SocketAddr, UnixStream};
 
+fn is_program(program: &str, name: &str) -> bool {
+    program.rsplit('/').next() == Some(name)
+}
+
 pub fn is_pacman(program: &str) -> bool {
-    program == "pacman" || program.ends_with("/pacman")
+    is_program(program, "pacman")
+}
+
+pub fn is_run0(program: &str) -> bool {
+    is_program(program, "run0")
 }
 
 pub fn forward(args: &[String]) -> i32 {
@@ -16,13 +24,13 @@ pub fn forward(args: &[String]) -> i32 {
             .ok()
             .and_then(|token| unhex(&token)),
     ) else {
-        eprintln!("proscenio-packages: no update session to forward to");
+        eprintln!("{ERROR_PREFIX}no update session to forward to");
         return 1;
     };
     let connect_result = SocketAddr::from_abstract_name(name.as_bytes())
         .and_then(|address| UnixStream::connect_addr(&address));
     let Ok(mut stream) = connect_result else {
-        eprintln!("proscenio-packages: the update session is gone");
+        eprintln!("{ERROR_PREFIX}the update session is gone");
         return 1;
     };
     let request = Forward {
@@ -49,5 +57,14 @@ mod tests {
         assert!(!is_pacman("pacman-key"));
         assert!(!is_pacman("/usr/bin/pacmanx"));
         assert!(!is_pacman("session"));
+    }
+
+    #[test]
+    fn the_helper_forwards_when_hyprpm_runs_it_as_run0() {
+        assert!(is_run0("run0"));
+        assert!(is_run0("/home/user/.cache/proscenio/hyprpm-tools/run0"));
+        assert!(!is_run0("/usr/lib/proscenio/proscenio-packages"));
+        assert!(!is_run0("xrun0x"));
+        assert!(!is_run0("srun0"));
     }
 }

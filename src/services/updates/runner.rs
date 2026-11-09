@@ -39,16 +39,24 @@ pub(super) struct Session {
     package_index: Cell<u32>,
 }
 
+pub(super) fn send_request(stdin: &RefCell<Option<ChildStdin>>, request: Request) {
+    if let Some(stdin) = stdin.borrow_mut().as_mut() {
+        let _ = stdin.write_all(&request.encode());
+    }
+}
+
+pub(super) fn close_input(stdin: &RefCell<Option<ChildStdin>>) {
+    send_request(stdin, Request::Quit);
+    stdin.borrow_mut().take();
+}
+
 impl Session {
     fn send(&self, request: Request) {
-        if let Some(stdin) = self.stdin.borrow_mut().as_mut() {
-            let _ = stdin.write_all(&request.encode());
-        }
+        send_request(&self.stdin, request);
     }
 
     fn close(&self) {
-        self.send(Request::Quit);
-        self.stdin.borrow_mut().take();
+        close_input(&self.stdin);
     }
 }
 
