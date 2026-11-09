@@ -95,7 +95,7 @@ mod imp {
             let mut children = Vec::new();
             let mut child = self.obj().first_child();
             while let Some(widget) = child {
-                if widget.is_visible() {
+                if widget.get_visible() && !widget.is::<gtk4::Popover>() {
                     children.push(widget.clone());
                 }
                 child = widget.next_sibling();
