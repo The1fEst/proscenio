@@ -1646,7 +1646,7 @@
   "Rebuilding the title bars": "Başlık çubukları yeniden derleniyor",
   "Could not rebuild the title bars": "Başlık çubukları yeniden derlenemedi",
   "Run hyprpm update in a terminal to rebuild them.": "Yeniden derlemek için bir terminalde hyprpm update çalıştırın.",
-  "They load after you log in again.": "Yeniden oturum açtıktan sonra yüklenirler.",
+  "Hyprland was updated. The title bars come back after you log in again.": "Hyprland güncellendi. Başlık çubukları yeniden oturum açtıktan sonra geri gelir.",
   "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.": "Yeniden derleme için pkexec, %1 ve %2 değerinde XDG_RUNTIME_DIR gerekir.",
   "The authentication was canceled or failed.": "Kimlik doğrulama iptal edildi veya başarısız oldu.",
   "Button side": "Düğmelerin tarafı",

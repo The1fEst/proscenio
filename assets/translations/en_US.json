@@ -1646,7 +1646,7 @@
   "Rebuilding the title bars": "Rebuilding the title bars",
   "Could not rebuild the title bars": "Could not rebuild the title bars",
   "Run hyprpm update in a terminal to rebuild them.": "Run hyprpm update in a terminal to rebuild them.",
-  "They load after you log in again.": "They load after you log in again.",
+  "Hyprland was updated. The title bars come back after you log in again.": "Hyprland was updated. The title bars come back after you log in again.",
   "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.": "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.",
   "The authentication was canceled or failed.": "The authentication was canceled or failed.",
   "Button side": "Button side",

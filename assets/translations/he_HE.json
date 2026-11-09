@@ -1646,7 +1646,7 @@
   "Rebuilding the title bars": "בונה מחדש את שורות הכותרת",
   "Could not rebuild the title bars": "לא ניתן היה לבנות מחדש את שורות הכותרת",
   "Run hyprpm update in a terminal to rebuild them.": "הריצו hyprpm update במסוף כדי לבנות אותן מחדש.",
-  "They load after you log in again.": "הן ייטענו אחרי הכניסה הבאה.",
+  "Hyprland was updated. The title bars come back after you log in again.": "Hyprland עודכן. סרגלי הכותרת יחזרו אחרי שתתחברו שוב.",
   "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.": "בנייה מחדש דורשת את pkexec, את %1 ואת XDG_RUNTIME_DIR עם הערך %2.",
   "The authentication was canceled or failed.": "האימות בוטל או נכשל.",
   "Button side": "צד הכפתורים",

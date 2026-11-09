@@ -298,7 +298,9 @@ async fn finish(abi_hash: &str, reason: &str) {
             return;
         }
         RebuildOutcome::Loadable => String::new(),
-        RebuildOutcome::LoadableAfterLogin => tr("They load after you log in again."),
+        RebuildOutcome::LoadableAfterLogin => {
+            tr("Hyprland was updated. The title bars come back after you log in again.")
+        }
     };
     let is_loadable = outcome == RebuildOutcome::Loadable;
     let _ = gio::spawn_blocking(move || {

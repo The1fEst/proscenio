@@ -1646,7 +1646,7 @@
   "Rebuilding the title bars": "Titelleisten werden neu gebaut",
   "Could not rebuild the title bars": "Titelleisten konnten nicht neu gebaut werden",
   "Run hyprpm update in a terminal to rebuild them.": "Zum Neubauen hyprpm update in einem Terminal ausführen.",
-  "They load after you log in again.": "Sie werden nach der nächsten Anmeldung geladen.",
+  "Hyprland was updated. The title bars come back after you log in again.": "Hyprland wurde aktualisiert. Die Titelleisten kehren nach der nächsten Anmeldung zurück.",
   "A rebuild needs pkexec, %1 and XDG_RUNTIME_DIR set to %2.": "Zum Neubauen werden pkexec, %1 und XDG_RUNTIME_DIR mit dem Wert %2 benötigt.",
   "The authentication was canceled or failed.": "Die Authentifizierung wurde abgebrochen oder ist fehlgeschlagen.",
   "Button side": "Seite der Schaltflächen",

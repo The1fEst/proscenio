@@ -288,7 +288,7 @@ Once the password is accepted, a notification titled **Rebuilding the title bars
 | Result | What follows |
 |---|---|
 | `state.toml` has the installed `abiHash`, the same Hyprland runs | `hyprpm reload`, `hyprctl dismissnotify`, and **Title bars rebuilt** |
-| `state.toml` has the installed `abiHash`, an older Hyprland runs | `hyprctl dismissnotify`, and **Title bars rebuilt** with **They load after you log in again.** |
+| `state.toml` has the installed `abiHash`, an older Hyprland runs | `hyprctl dismissnotify`, and **Title bars rebuilt** with **Hyprland was updated. The title bars come back after you log in again.** |
 | Anything else | **Could not rebuild the title bars**, with **Run hyprpm update in a terminal to rebuild them.** below the reason: the session's last error, **The authentication was canceled or failed.** when the session never started, **A rebuild needs pkexec, … and XDG_RUNTIME_DIR set to …** when it could not start, or else the last output line |
 
 `hyprpm update` builds against the installed Hyprland, `Hyprland --version-json`, while the session
