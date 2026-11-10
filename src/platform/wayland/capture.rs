@@ -331,10 +331,27 @@ impl Dispatch<WlRegistry, GlobalListContents> for State {
 thread_local! {
     static SHARED: RefCell<Option<Option<Rc<Shared>>>> = const { RefCell::new(None) };
     static REQUESTS: RefCell<HashMap<u32, Instant>> = RefCell::new(HashMap::new());
+    static FIRST_TITLES: RefCell<HashMap<u32, Vec<String>>> = RefCell::new(HashMap::new());
 }
 
 pub fn list_requested_windows(period: Duration) -> Vec<u32> {
     REQUESTS.with_borrow(|requests| list_recent_windows(requests, Instant::now(), period))
+}
+
+pub fn list_first_titles() -> Vec<(u32, String)> {
+    FIRST_TITLES.with_borrow(|titles| {
+        titles
+            .iter()
+            .flat_map(|(window, titles)| titles.iter().map(|title| (*window, title.clone())))
+            .collect()
+    })
+}
+
+fn remember_title(titles: &mut HashMap<u32, Vec<String>>, window: u32, title: &str) {
+    let window_titles = titles.entry(window).or_default();
+    if !window_titles.iter().any(|entry| entry == title) {
+        window_titles.push(title.to_owned());
+    }
 }
 
 fn list_recent_windows(
@@ -551,19 +568,21 @@ impl Capture {
     pub fn grab(
         self: &Rc<Self>,
         address: &str,
+        title: &str,
         limit: (u32, u32),
         on_done: impl FnOnce(Option<gdk::Texture>) + 'static,
     ) {
-        self.request(address, limit, true, on_done);
+        self.request(address, title, limit, true, on_done);
     }
 
     pub fn next_frame(
         self: &Rc<Self>,
         address: &str,
+        title: &str,
         limit: (u32, u32),
         on_done: impl FnOnce(Option<gdk::Texture>) + 'static,
     ) {
-        self.request(address, limit, false, on_done);
+        self.request(address, title, limit, false, on_done);
     }
 
     pub fn stop(&self) {
@@ -591,6 +610,7 @@ impl Capture {
     fn request(
         self: &Rc<Self>,
         address: &str,
+        title: &str,
         limit: (u32, u32),
         ignores_damage: bool,
         on_done: impl FnOnce(Option<gdk::Texture>) + 'static,
@@ -606,11 +626,12 @@ impl Capture {
         if !delay.is_zero() {
             let capture = self.clone();
             let address = address.to_owned();
+            let title = title.to_owned();
             let generation = self.generation.get();
             let delay_millis = delay.as_nanos().div_ceil(1_000_000) as u64;
             glib::timeout_add_local_once(Duration::from_millis(delay_millis), move || {
                 if capture.generation.get() == generation {
-                    capture.request(&address, limit, ignores_damage, on_done);
+                    capture.request(&address, &title, limit, ignores_damage, on_done);
                 }
             });
             return;
@@ -619,11 +640,14 @@ impl Capture {
             address.to_owned(),
             calculate_next_slot(previous_slot, now, FRAME),
         );
-        REQUESTS.with_borrow_mut(|requests| {
+        let is_first_request = REQUESTS.with_borrow_mut(|requests| {
             requests
                 .retain(|_, moment| now.saturating_duration_since(*moment) <= REQUEST_RETENTION);
-            requests.insert(window, now);
+            requests.insert(window, now).is_none()
         });
+        if is_first_request {
+            FIRST_TITLES.with_borrow_mut(|titles| remember_title(titles, window, title));
+        }
         let shared = &self.shared;
         let id = shared.next_id.get();
         shared.next_id.set(id + 1);
@@ -935,6 +959,17 @@ mod tests {
         ids.sort();
         assert_eq!(ids, [10, 12]);
         assert!(ids_owned_by(entries.into_iter(), 5).is_empty());
+    }
+
+    #[test]
+    fn a_window_keeps_each_distinct_title_it_was_first_requested_with() {
+        let mut titles = HashMap::new();
+        remember_title(&mut titles, 1, "Old");
+        remember_title(&mut titles, 1, "Old");
+        remember_title(&mut titles, 1, "New");
+        remember_title(&mut titles, 2, "Other");
+        assert_eq!(titles[&1], ["Old", "New"]);
+        assert_eq!(titles[&2], ["Other"]);
     }
 
     #[test]

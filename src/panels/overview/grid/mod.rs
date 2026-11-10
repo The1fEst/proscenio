@@ -255,7 +255,7 @@ impl Grid {
             return;
         };
         let scale = self.paint.scale_factor().max(1) as f64;
-        let Some(limit) = self
+        let Some((limit, title)) = self
             .state
             .borrow()
             .thumbs
@@ -263,8 +263,11 @@ impl Grid {
             .find(|thumb| thumb.client.address == address)
             .map(|thumb| {
                 (
-                    (thumb.target[2] * scale).ceil().max(1.0) as u32,
-                    (thumb.target[3] * scale).ceil().max(1.0) as u32,
+                    (
+                        (thumb.target[2] * scale).ceil().max(1.0) as u32,
+                        (thumb.target[3] * scale).ceil().max(1.0) as u32,
+                    ),
+                    thumb.client.title.clone(),
                 )
             })
         else {
@@ -303,9 +306,9 @@ impl Grid {
             }
         };
         if is_first_frame {
-            capture.grab(&address, limit, on_frame);
+            capture.grab(&address, &title, limit, on_frame);
         } else {
-            capture.next_frame(&address, limit, on_frame);
+            capture.next_frame(&address, &title, limit, on_frame);
         }
     }
 

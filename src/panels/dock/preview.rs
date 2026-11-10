@@ -255,10 +255,15 @@ impl Preview {
                 self.popover.popup();
             }
         }
-        let mut opacity = self.opacity.get();
-        opacity.retarget(if should_show { 1.0 } else { 0.0 }, now(&self.popover));
-        self.opacity.set(opacity);
-        self.run();
+        if !should_show && !self.popover.is_mapped() {
+            self.hold();
+            self.clear_cards();
+        } else {
+            let mut opacity = self.opacity.get();
+            opacity.retarget(if should_show { 1.0 } else { 0.0 }, now(&self.popover));
+            self.opacity.set(opacity);
+            self.run();
+        }
         if was_requested != should_show
             && let Some(on_changed) = self.on_changed.borrow().as_ref()
         {
@@ -436,6 +441,7 @@ fn follow(capture: &Rc<Capture>, card: Rc<Card>, preview: std::rc::Weak<Preview>
     let scale = card.picture.scale_factor().max(1) as f64;
     let limit = ((MAX_WIDTH * scale) as u32, (MAX_HEIGHT * scale) as u32);
     let address = card.address.clone();
+    let title = card.title.text();
     let has_texture = card.texture.borrow().is_some();
     let on_capture = move |texture: Option<gdk::Texture>| {
         if !card.is_alive.get() {
@@ -464,9 +470,9 @@ fn follow(capture: &Rc<Capture>, card: Rc<Card>, preview: std::rc::Weak<Preview>
         });
     };
     if has_texture {
-        capture.next_frame(&address, limit, on_capture);
+        capture.next_frame(&address, &title, limit, on_capture);
     } else {
-        capture.grab(&address, limit, on_capture);
+        capture.grab(&address, &title, limit, on_capture);
     }
 }
 

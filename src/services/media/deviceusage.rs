@@ -204,19 +204,19 @@ impl DeviceUsage {
             return false;
         }
         let snapshot = self.inner.hypr.snapshot();
-        let titles = read_window_titles(snapshot.clients.as_deref().unwrap_or_default());
+        let first_titles = capture::list_first_titles();
+        let titles = merge_titles(
+            read_window_titles(snapshot.clients.as_deref().unwrap_or_default()),
+            &first_titles,
+        );
         let (mut requested_count, titled_count) =
             count_windows(&target.name, &requested_windows, &titles);
         if titled_count == 0 {
             let Some(Value::Array(clients)) = hypr::json("clients") else {
                 return false;
             };
-            requested_count = count_windows(
-                &target.name,
-                &requested_windows,
-                &read_window_titles(&clients),
-            )
-            .0;
+            let titles = merge_titles(read_window_titles(&clients), &first_titles);
+            requested_count = count_windows(&target.name, &requested_windows, &titles).0;
         }
         own_count < requested_count
     }
@@ -423,6 +423,18 @@ fn read_window_titles(clients: &[Value]) -> Vec<(u32, String)> {
         .collect()
 }
 
+fn merge_titles(
+    mut titles: Vec<(u32, String)>,
+    first_titles: &[(u32, String)],
+) -> Vec<(u32, String)> {
+    for first_title in first_titles {
+        if !titles.contains(first_title) {
+            titles.push(first_title.clone());
+        }
+    }
+    titles
+}
+
 fn count_windows(
     title: &str,
     requested_windows: &[u32],
@@ -551,6 +563,17 @@ mod tests {
                 "{title} {requested_windows:?}"
             );
         }
+    }
+
+    #[test]
+    fn a_renamed_window_still_matches_the_title_it_was_first_requested_with() {
+        let current = vec![(1, "New title".to_owned()), (2, "Browser".to_owned())];
+        let first_titles = [(1, "Old title".to_owned()), (2, "Browser".to_owned())];
+        let titles = merge_titles(current.clone(), &first_titles);
+        assert_eq!(count_windows("Old title", &[1], &current), (0, 0));
+        assert_eq!(count_windows("Old title", &[1], &titles), (1, 1));
+        assert_eq!(count_windows("New title", &[1], &titles), (1, 1));
+        assert_eq!(count_windows("Browser", &[2], &titles), (1, 1));
     }
 
     #[test]
