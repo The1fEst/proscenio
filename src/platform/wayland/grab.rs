@@ -269,6 +269,10 @@ impl Grab {
         self.generation.get() == generation
     }
 
+    pub fn is_held(&self) -> bool {
+        self.active_grab.borrow().is_some()
+    }
+
     pub fn release(&self) {
         self.generation.set(self.generation.get().wrapping_add(1));
         self.disconnect_pending_frame();
@@ -382,6 +386,26 @@ mod tests {
         assert!(grab.is_current(generation));
         grab.release();
         assert!(!grab.is_current(generation));
+    }
+
+    #[test]
+    fn a_grab_is_held_until_it_is_released() {
+        let (shared, _compositor) = connect();
+        let active_grab = shared.manager.create_grab(
+            &shared.queue.borrow().handle(),
+            Arc::new(AtomicBool::new(false)),
+        );
+        let grab = Grab {
+            shared,
+            is_cleared: Arc::new(AtomicBool::new(false)),
+            on_cleared: RefCell::new(None),
+            active_grab: RefCell::new(Some(active_grab)),
+            generation: Cell::new(0),
+            pending_frame: RefCell::new(None),
+        };
+        assert!(grab.is_held());
+        grab.release();
+        assert!(!grab.is_held());
     }
 
     #[test]

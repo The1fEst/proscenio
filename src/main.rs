@@ -99,6 +99,7 @@ fn main() -> glib::ExitCode {
 
 fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
     std::mem::forget(app.hold());
+    panels::overview::focuslog::log_start();
     let config = Rc::new(Config::load());
     widgets::display::text::init(&config);
     let theme = Rc::new(RefCell::new(Theme::load(&config)));

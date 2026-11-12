@@ -76,6 +76,7 @@ array of its plural forms. Where both have a string, the catalog's wins.
 | `~/.local/state/proscenio/shaders/<filter>.frag` | The color filter shaders the accessibility settings hand to Hyprland's `decoration:screen_shader` |
 | `~/.local/state/proscenio/first_run.txt` | Present once the welcome window has been shown |
 | `~/.local/state/proscenio/defaults_applied.txt` | Present once the first-run defaults have been applied |
+| `~/.local/state/proscenio/launcher-focus.log` | Written only when `PROSCENIO_FOCUS_LOG=1` is set in the shell's environment: one line per shell start and one multi-line report whenever the open launcher does not get or loses the keyboard focus, with the events around it; past 1 MiB it moves to `launcher-focus.log.1` |
 
 At start, a missing `first_run.txt` opens the [welcome window](first-run.md) and writes the file;
 when `defaults_applied.txt` is missing too, the first-run defaults are applied first. Deleting

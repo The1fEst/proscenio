@@ -1,4 +1,5 @@
 mod dmenu;
+pub mod focuslog;
 pub mod grid;
 pub mod launcher;
 mod rows;
@@ -25,6 +26,7 @@ use crate::ui::theme::{SharedTheme, pixel_size};
 use crate::ui::widgets::display::text::{self, Family};
 use crate::ui::widgets::input::ripple::RippleButton;
 use crate::ui::widgets::layout::centered::Centered;
+use focuslog::FocusLog;
 use grid::Grid;
 use rows::Row;
 
@@ -45,6 +47,7 @@ const GRID_GAP: i32 = ELEVATION * 2 + BAR_PADDING * 2 - 8;
 pub struct Overview {
     pub window: gtk4::ApplicationWindow,
     grab: Option<Rc<grab::Grab>>,
+    focus_log: Rc<FocusLog>,
     launcher: Launcher,
     config: Rc<Config>,
     theme: SharedTheme,
@@ -92,6 +95,7 @@ impl Overview {
         }
         self.launcher.load();
         self.read_clipboard();
+        self.focus_log.start();
         self.window.set_visible(true);
         self.show_grid(self.query().is_empty());
         self.focus_entry();
@@ -114,6 +118,7 @@ impl Overview {
     pub fn hide(&self) {
         self.should_animate_width.set(false);
         self.is_opened_with_prefix.set(false);
+        self.focus_log.stop();
         if let Some(grab) = self.grab.as_ref() {
             grab.release();
         }
@@ -662,9 +667,11 @@ pub fn build(
     window.set_keyboard_mode(KeyboardMode::OnDemand);
     window.set_visible(false);
 
+    let grab = grab::Grab::new(&monitor.display());
     let overview = Rc::new(Overview {
         window: window.clone(),
-        grab: grab::Grab::new(&monitor.display()),
+        focus_log: FocusLog::new(events, &window, grab.clone(), launcher),
+        grab,
         launcher: launcher.clone(),
         config: config.clone(),
         theme: theme.clone(),

@@ -9,6 +9,7 @@ pub mod i18n;
 pub mod icalendar;
 pub mod levenshtein;
 pub mod listeners;
+pub mod logfile;
 pub mod paths;
 pub mod persistent;
 pub mod process;
