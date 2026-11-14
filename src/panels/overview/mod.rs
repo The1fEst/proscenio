@@ -104,7 +104,7 @@ impl Overview {
             return;
         };
         let overview = Rc::downgrade(self);
-        grab.hold(&surface, move || {
+        grab.hold_after_frame(&surface, move || {
             if let Some(overview) = overview.upgrade() {
                 overview.hide();
             }

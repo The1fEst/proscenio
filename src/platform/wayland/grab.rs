@@ -2,7 +2,7 @@ use gdk4_wayland::prelude::*;
 use gtk4::gdk;
 use gtk4::glib;
 use gtk4::prelude::Cast;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::os::fd::AsRawFd;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
@@ -190,6 +190,8 @@ pub struct Grab {
     is_cleared: Arc<AtomicBool>,
     on_cleared: RefCell<Option<Box<dyn Fn()>>>,
     active_grab: RefCell<Option<HyprlandFocusGrabV1>>,
+    generation: Cell<u32>,
+    pending_frame: RefCell<Option<(gdk::FrameClock, glib::SignalHandlerId)>>,
 }
 
 impl Grab {
@@ -199,6 +201,8 @@ impl Grab {
             is_cleared: Arc::new(AtomicBool::new(false)),
             on_cleared: RefCell::new(None),
             active_grab: RefCell::new(None),
+            generation: Cell::new(0),
+            pending_frame: RefCell::new(None),
         });
         GRABS.with(|list| list.borrow_mut().push(Rc::downgrade(&grab)));
         Some(grab)
@@ -228,7 +232,46 @@ impl Grab {
         self.shared.start_watch();
     }
 
+    pub fn hold_after_frame(
+        self: &Rc<Self>,
+        surface: &gdk::Surface,
+        on_cleared: impl Fn() + 'static,
+    ) {
+        self.release();
+        let generation = self.generation.get();
+        let grab = Rc::downgrade(self);
+        let surface = surface.clone();
+        let on_cleared = Cell::new(Some(on_cleared));
+        let clock = surface.frame_clock();
+        let handler = clock.connect_after_paint(move |_| {
+            let (Some(grab), Some(on_cleared)) = (grab.upgrade(), on_cleared.take()) else {
+                return;
+            };
+            grab.disconnect_pending_frame();
+            let surface = surface.clone();
+            glib::idle_add_local_once(move || {
+                if grab.is_current(generation) {
+                    grab.hold(&surface, on_cleared);
+                }
+            });
+        });
+        self.pending_frame.replace(Some((clock.clone(), handler)));
+        clock.request_phase(gdk::FrameClockPhase::PAINT);
+    }
+
+    fn disconnect_pending_frame(&self) {
+        if let Some((clock, handler)) = self.pending_frame.take() {
+            clock.disconnect(handler);
+        }
+    }
+
+    fn is_current(&self, generation: u32) -> bool {
+        self.generation.get() == generation
+    }
+
     pub fn release(&self) {
+        self.generation.set(self.generation.get().wrapping_add(1));
+        self.disconnect_pending_frame();
         self.on_cleared.take();
         self.destroy_active_grab();
     }
@@ -325,6 +368,23 @@ mod tests {
     }
 
     #[test]
+    fn releasing_invalidates_a_pending_hold() {
+        let (shared, _compositor) = connect();
+        let grab = Grab {
+            shared,
+            is_cleared: Arc::new(AtomicBool::new(false)),
+            on_cleared: RefCell::new(None),
+            active_grab: RefCell::new(None),
+            generation: Cell::new(0),
+            pending_frame: RefCell::new(None),
+        };
+        let generation = grab.generation.get();
+        assert!(grab.is_current(generation));
+        grab.release();
+        assert!(!grab.is_current(generation));
+    }
+
+    #[test]
     fn every_way_of_letting_go_of_a_grab_destroys_it() {
         let actions: [fn(Grab) -> Option<Grab>; 3] = [
             |grab| {
@@ -353,6 +413,8 @@ mod tests {
                 is_cleared,
                 on_cleared: RefCell::new(None),
                 active_grab: RefCell::new(Some(active_grab)),
+                generation: Cell::new(0),
+                pending_frame: RefCell::new(None),
             });
             shared.flush();
             let destroy_request = (id, u32::from(hyprland_focus_grab_v1::REQ_DESTROY_OPCODE));
