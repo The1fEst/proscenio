@@ -38,6 +38,7 @@ pub struct Item {
     pub kind: String,
     pub is_monospace: bool,
     pub name: String,
+    pub highlight: Option<String>,
     pub raw_entry: String,
     pub icon: String,
     pub icon_type: IconType,
@@ -53,6 +54,7 @@ impl Item {
             kind: String::new(),
             is_monospace: false,
             name: name.to_owned(),
+            highlight: None,
             raw_entry: String::new(),
             icon: String::new(),
             icon_type: IconType::None,
@@ -426,6 +428,7 @@ impl Launcher {
                 }
                 .to_owned(),
                 icon_type: IconType::Material,
+                highlight: Some(candidates.typed_name.clone()),
                 ..Item::new(
                     &format!("{}{}", entry.name, if entry.is_dir { "/" } else { "" }),
                     Run::Complete(entry.to_completion(&candidates.base)),

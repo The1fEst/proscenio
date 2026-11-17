@@ -19,6 +19,7 @@ impl PathEntry {
 
 pub struct PathCandidates {
     pub base: String,
+    pub typed_name: String,
     pub entries: Vec<PathEntry>,
 }
 
@@ -69,9 +70,11 @@ fn is_quoted(token: &str) -> bool {
 fn read_candidates(head: &str, token: &str) -> PathCandidates {
     let (typed_dir, typed_name) = token.split_at(last_slash(token) + 1);
     let directory = PathBuf::from(expand_home(&unescape(typed_dir)));
+    let typed_name = unescape(typed_name);
     PathCandidates {
         base: format!("{head}{typed_dir}"),
-        entries: list_matches(&directory, &unescape(typed_name)),
+        entries: list_matches(&directory, &typed_name),
+        typed_name,
     }
 }
 
@@ -135,13 +138,14 @@ fn list_matches(directory: &Path, prefix: &str) -> Vec<PathEntry> {
         return Vec::new();
     };
     let wants_hidden = prefix.starts_with('.');
+    let lowercase_prefix = prefix.to_lowercase();
     let mut matches: Vec<PathEntry> = entries
         .take(SCAN_LIMIT)
         .filter_map(|entry| {
             let entry = entry.ok()?;
             let name = entry.file_name().into_string().ok()?;
             if name.chars().any(char::is_control)
-                || !name.starts_with(prefix)
+                || !name.to_lowercase().starts_with(&lowercase_prefix)
                 || (!wants_hidden && name.starts_with('.'))
             {
                 return None;
@@ -152,7 +156,14 @@ fn list_matches(directory: &Path, prefix: &str) -> Vec<PathEntry> {
             })
         })
         .collect();
-    matches.sort_by_cached_key(|entry| (!entry.is_dir, entry.name.to_lowercase()));
+    matches.sort_by_cached_key(|entry| {
+        (
+            !entry.is_dir,
+            !entry.name.starts_with(prefix),
+            entry.name.to_lowercase(),
+            entry.name.clone(),
+        )
+    });
     matches
 }
 
@@ -163,7 +174,7 @@ fn common_prefix(names: &[&str]) -> Option<String> {
         let shared = first
             .chars()
             .zip(name.chars())
-            .take_while(|(left, right)| left == right)
+            .take_while(|(left, right)| left.to_lowercase().eq(right.to_lowercase()))
             .map(|(left, _)| left.len_utf8())
             .sum::<usize>();
         length = length.min(shared);
@@ -248,6 +259,48 @@ mod tests {
         assert_eq!(names(&format!("run {base}Z")), ["Zeta/"]);
         assert!(find_candidates("run plain").is_none());
         assert!(find_candidates(&format!("run \"{base}")).is_none());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn matches_names_ignoring_case() {
+        let root = std::env::temp_dir().join("proscenio-pathcomplete-case");
+        let _ = fs::remove_dir_all(&root);
+        for name in ["Git", "git", "Gitea", "ÄB", "äbc", "Other"] {
+            fs::create_dir_all(root.join(name)).unwrap();
+        }
+        let base = root.display().to_string();
+        let names = |typed: &str| -> Vec<String> {
+            find_candidates(&format!("{base}/{typed}"))
+                .unwrap()
+                .entries
+                .into_iter()
+                .map(|entry| entry.name)
+                .collect()
+        };
+        assert_eq!(names("Gi"), ["Git", "Gitea", "git"]);
+        assert_eq!(names("gi"), ["git", "Git", "Gitea"]);
+        assert_eq!(names("äb"), ["äbc", "ÄB"]);
+        assert_eq!(names("ÄB"), ["ÄB", "äbc"]);
+        let cases = [
+            ("git", "git"),
+            ("GIT", "Git"),
+            ("Gite", "Gitea/"),
+            ("äb", "äb"),
+            ("Äb", "ÄB"),
+            ("oth", "Other/"),
+        ];
+        for (typed, completed) in cases {
+            assert_eq!(
+                complete_path(&format!("{base}/{typed}")),
+                Some(format!("{base}/{completed}")),
+                "{typed}"
+            );
+        }
+        assert_eq!(
+            find_candidates(&format!("{base}/gi")).unwrap().typed_name,
+            "gi"
+        );
         let _ = fs::remove_dir_all(&root);
     }
 

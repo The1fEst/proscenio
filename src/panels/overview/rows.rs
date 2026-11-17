@@ -170,7 +170,11 @@ impl Overview {
         let highlighted_markup = if is_monospace {
             plain_markup.clone()
         } else {
-            highlight(&item.name, query, &self.theme)
+            highlight(
+                &item.name,
+                item.highlight.as_deref().unwrap_or(query),
+                &self.theme,
+            )
         };
         name.set_visible(!is_image);
 
