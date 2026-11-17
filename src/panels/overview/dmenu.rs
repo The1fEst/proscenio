@@ -53,6 +53,10 @@ impl Overview {
     }
 
     pub(super) fn choose(&self, run: &Run) {
+        if let Run::Complete(text) = run {
+            self.replace_text(text);
+            return;
+        }
         if matches!(run, Run::Dmenu(..)) {
             self.launcher.execute(run);
             self.hide();

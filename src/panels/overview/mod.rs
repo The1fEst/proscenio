@@ -2,6 +2,7 @@ mod dmenu;
 pub mod focuslog;
 pub mod grid;
 pub mod launcher;
+mod pathcomplete;
 mod rows;
 
 use gtk4::gdk;
@@ -17,7 +18,7 @@ use std::rc::Rc;
 use crate::core::config::{self, Config};
 use crate::core::i18n::tr;
 use crate::core::scope::Scope;
-use crate::panels::overview::launcher::{Item, Launcher};
+use crate::panels::overview::launcher::{Item, Launcher, Run};
 use crate::platform::hyprland::hypr::Events;
 use crate::platform::wayland::grab;
 use crate::ui::anim::{EXPRESSIVE_DEFAULT, Tween};
@@ -282,17 +283,29 @@ impl Overview {
     }
 
     fn complete(&self, index: usize) {
-        let name = self
-            .rows
-            .borrow()
-            .get(index)
-            .map(|row| row.item.name.clone());
-        if let Some(name) = name {
-            self.launcher.set_query(&name);
-            self.entry.set_text(&name);
-            self.entry.set_position(-1);
-            self.focus_entry();
+        let item = self.rows.borrow().get(index).map(|row| row.item.clone());
+        if let Some(Item {
+            run: Run::Complete(text),
+            ..
+        }) = &item
+        {
+            self.replace_text(text);
+            return;
         }
+        if let Some(text) = pathcomplete::complete_path(&self.entry.text()) {
+            self.replace_text(&text);
+            return;
+        }
+        if let Some(item) = item {
+            self.replace_text(&item.name);
+        }
+    }
+
+    fn replace_text(&self, text: &str) {
+        self.launcher.set_query(text);
+        self.entry.set_text(text);
+        self.entry.set_position(-1);
+        self.focus_entry();
     }
 
     fn delete_current(&self) {

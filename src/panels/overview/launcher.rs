@@ -18,6 +18,9 @@ use crate::platform::system::desktop::{self, DesktopAction, DesktopEntry};
 use crate::services::files::cliphist::{self, Cliphist};
 use crate::services::network::net::Net;
 
+use super::pathcomplete;
+
+const PATH_ROW_LIMIT: usize = 50;
 const EMOJI_DATA: &str = "### DATA ###";
 const FUZZY_BONUS: f64 = 10.0;
 const LEVENSHTEIN_BONUS: f64 = 0.1;
@@ -66,6 +69,7 @@ pub enum Run {
     App(Rc<App>),
     AppAction(Rc<App>, usize),
     Shell(String),
+    Complete(String),
     Clipboard(String),
     CopyEntry(String),
     DeleteEntry(String),
@@ -383,16 +387,20 @@ impl Launcher {
         let has_math_prefix = query.starts_with(config.search_math.as_str());
         let has_shell_prefix = query.starts_with(config.search_shell.as_str());
 
+        let paths = self.path_results(&query);
+        let leads_with_command =
+            !(starts_with_number || has_math_prefix) && (has_shell_prefix || !paths.is_empty());
         let mut results = Vec::new();
         if starts_with_number || has_math_prefix {
             results.push(math.clone());
-        } else if has_shell_prefix {
+        } else if leads_with_command {
             results.push(command.clone());
         }
+        results.extend(paths);
         results.extend(apps);
         results.extend(actions);
         if config.search_default_actions {
-            if !has_shell_prefix {
+            if !has_shell_prefix && !leads_with_command {
                 results.push(command);
             }
             if !starts_with_number && !has_math_prefix {
@@ -400,6 +408,30 @@ impl Launcher {
             }
         }
         results
+    }
+
+    fn path_results(&self, query: &str) -> Vec<Item> {
+        let Some(candidates) = pathcomplete::find_candidates(query) else {
+            return Vec::new();
+        };
+        candidates
+            .entries
+            .iter()
+            .take(PATH_ROW_LIMIT)
+            .map(|entry| Item {
+                icon: if entry.is_dir {
+                    "folder"
+                } else {
+                    "description"
+                }
+                .to_owned(),
+                icon_type: IconType::Material,
+                ..Item::new(
+                    &format!("{}{}", entry.name, if entry.is_dir { "/" } else { "" }),
+                    Run::Complete(entry.to_completion(&candidates.base)),
+                )
+            })
+            .collect()
     }
 
     fn command_line(&self, query: &str) -> String {
@@ -593,6 +625,7 @@ impl Launcher {
                 }
             }
             Run::Shell(line) => desktop::run_shell(line),
+            Run::Complete(_) => {}
             Run::Clipboard(text) => {
                 if let Some(display) = gtk4::gdk::Display::default() {
                     display.clipboard().set_text(text);

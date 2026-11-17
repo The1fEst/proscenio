@@ -92,6 +92,11 @@ The command row runs the query, without the command prefix, through `bash -c`. A
 becomes `pkexec`, so the command asks for the password through polkit and runs as root in `/root`,
 with the clean environment `pkexec` gives.
 
+While the last word of the query is a path (`~/…`, `/…`, `./…` or any word with a `/`), the rows
+after the command list the matching files and folders, folders first, up to 50; hidden ones only
+when the typed name starts with a dot. Choosing one writes it into the word and keeps the overview
+open.
+
 ### Actions
 
 An action is shown while its name, with the action prefix in front, starts with the query or the
@@ -135,7 +140,7 @@ file it finds nothing. Choosing an emoji copies it.
 | Down in the field | Moves into the list, to the second result |
 | Up and Down in the list | Move the selection; Up on the first result goes back to the field |
 | Enter in the list | Runs the selected result |
-| Tab | Writes the selected result's name into the field (the first one, from the field) |
+| Tab | Writes the selected result's name into the field (the first one, from the field). On a path row it writes the path into the field's last word; from the field, when that word is a path, it completes the longest common prefix of the matching files |
 | Shift+Delete | Deletes the selected clipboard entry |
 | Any other typing | Goes to the field, wherever the selection is; Backspace and Ctrl+Backspace delete from it |
 | Escape | Closes the overview |
