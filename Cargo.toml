@@ -39,6 +39,3 @@ strip = true
 inherits = "release"
 debug = "line-tables-only"
 strip = false
-
-[build-dependencies]
-wayland-scanner = "0.31"
