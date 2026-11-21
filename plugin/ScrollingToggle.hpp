@@ -14,11 +14,14 @@ namespace Layout {
 }
 
 struct SArrangementSnapshot {
-    std::vector<WP<Layout::ITarget>>                                    targets;
+    std::vector<WP<Layout::ITarget>>                                     targets;
     std::variant<std::monostate, SDwindleTree, std::vector<SMasterSlot>> arrangement;
 };
 
 bool isScrollingToggled(const PHLWORKSPACE& workspace);
 void toggleScrollingLayout(const PHLWORKSPACE& workspace);
+void resizeScrollingColumns(const PHLWORKSPACE& workspace);
+void centerFocusedColumn(const PHLWORKSPACE& workspace);
+void centerClickedColumn(const PHLWINDOW& window);
 void disableScrollingRules();
 int  toggleScrollingFromLua(lua_State* state);

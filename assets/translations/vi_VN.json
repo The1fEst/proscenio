@@ -1654,5 +1654,6 @@
   "Run this after every Hyprland update": "Chạy lệnh này sau mỗi lần cập nhật Hyprland",
   "Show on": "Hiện trên",
   "Floating windows": "Cửa sổ nổi",
-  "All windows": "Mọi cửa sổ"
+  "All windows": "Mọi cửa sổ",
+  "Neighboring windows shown while scrolling (px)": "Phần cửa sổ bên cạnh hiển thị khi cuộn (px)"
 }

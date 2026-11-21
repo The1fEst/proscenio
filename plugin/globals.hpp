@@ -5,6 +5,7 @@
 #include <hyprland/src/config/values/types/StringValue.hpp>
 #include <hyprland/src/config/values/types/ColorValue.hpp>
 #include <hyprland/src/config/values/types/FontWeightValue.hpp>
+#include <hyprland/src/managers/eventLoop/EventLoopManager.hpp>
 #include <hyprland/src/render/Texture.hpp>
 #include <hyprutils/animation/AnimationConfig.hpp>
 
@@ -41,9 +42,10 @@ struct SGlobalState {
     SP<Hyprutils::Animation::SAnimationPropertyConfig> animationConfig;
     uint32_t                                           noBarRuleIdx    = 0;
     uint32_t                                           forceBarRuleIdx = 0;
+    UP<SEventLoopDoLaterLock>                          clickCenterLock;
 
     struct {
-        SP<Config::Values::CIntValue>        barHeight, titleSize;
+        SP<Config::Values::CIntValue>        barHeight, titleSize, scrollingPeek;
         SP<Config::Values::CFontWeightValue> titleWeight;
         SP<Config::Values::CStringValue>     titleFont, buttonSide, windows;
         SP<Config::Values::CColorValue>      barColor, inactiveBarColor, titleColor, inactiveTitleColor;

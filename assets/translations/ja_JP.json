@@ -1654,5 +1654,6 @@
   "Run this after every Hyprland update": "Hyprland を更新するたびに実行してください",
   "Show on": "表示する対象",
   "Floating windows": "フローティングウィンドウ",
-  "All windows": "すべてのウィンドウ"
+  "All windows": "すべてのウィンドウ",
+  "Neighboring windows shown while scrolling (px)": "スクロール中に見える隣のウィンドウの幅（px）"
 }

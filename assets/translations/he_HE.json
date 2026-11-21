@@ -1654,5 +1654,6 @@
   "Run this after every Hyprland update": "הריצו זאת אחרי כל עדכון של Hyprland",
   "Show on": "להציג על",
   "Floating windows": "חלונות צפים",
-  "All windows": "כל החלונות"
+  "All windows": "כל החלונות",
+  "Neighboring windows shown while scrolling (px)": "החלק הגלוי של החלונות השכנים בגלילה (פיקסלים)"
 }

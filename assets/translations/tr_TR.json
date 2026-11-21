@@ -1654,5 +1654,6 @@
   "Run this after every Hyprland update": "Her Hyprland güncellemesinden sonra bunu çalıştırın",
   "Show on": "Gösterildiği yer",
   "Floating windows": "Yüzen pencereler",
-  "All windows": "Tüm pencereler"
+  "All windows": "Tüm pencereler",
+  "Neighboring windows shown while scrolling (px)": "Kaydırırken komşu pencerelerin görünen kısmı (px)"
 }

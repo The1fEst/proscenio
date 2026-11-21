@@ -1654,5 +1654,6 @@
   "Run this after every Hyprland update": "Ejecútalo después de cada actualización de Hyprland",
   "Show on": "Mostrar en",
   "Floating windows": "Ventanas flotantes",
-  "All windows": "Todas las ventanas"
+  "All windows": "Todas las ventanas",
+  "Neighboring windows shown while scrolling (px)": "Parte visible de las ventanas vecinas al desplazar (px)"
 }

@@ -2,19 +2,28 @@
 
 #include "ScrollingToggle.hpp"
 
+#include <hyprland/src/config/ConfigValue.hpp>
 #include <hyprland/src/config/lua/bindings/LuaBindingsInternal.hpp>
+#include <hyprland/src/config/shared/complex/ComplexDataTypes.hpp>
 #include <hyprland/src/config/shared/workspace/WorkspaceRuleManager.hpp>
 #include <hyprland/src/config/supplementary/propRefresher/PropRefresher.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/desktop/view/window/Window.hpp>
 #include <hyprland/src/output/Monitor.hpp>
+#include <hyprland/src/layout/LayoutManager.hpp>
 #include <hyprland/src/layout/algorithm/Algorithm.hpp>
 #include <hyprland/src/layout/algorithm/tiled/dwindle/DwindleAlgorithm.hpp>
 #include <hyprland/src/layout/algorithm/tiled/master/MasterAlgorithm.hpp>
+#include <hyprland/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp>
 #include <hyprland/src/layout/space/Space.hpp>
+#include <hyprland/src/layout/supplementary/DragController.hpp>
 #include <hyprland/src/layout/supplementary/WorkspaceAlgoMatcher.hpp>
 #include <hyprland/src/layout/target/Target.hpp>
+#include <hyprland/src/managers/fullscreen/FullscreenController.hpp>
+#include <hyprland/src/managers/input/InputManager.hpp>
+#include <hyprland/src/pointer/PointerController.hpp>
+#include <hyprland/src/pointer/PointerManager.hpp>
 #include <hyprland/src/workspace/HLWorkspace.hpp>
 
 #include <algorithm>
@@ -22,6 +31,7 @@
 #include <set>
 #include <utility>
 
+#include "ColumnWidth.hpp"
 #include "globals.hpp"
 
 constexpr auto SCROLLING_LAYOUT = "scrolling";
@@ -29,7 +39,10 @@ constexpr auto SCROLLING_LAYOUT = "scrolling";
 using Layout::ITarget;
 using Layout::Tiled::CDwindleAlgorithm;
 using Layout::Tiled::CMasterAlgorithm;
+using Layout::Tiled::CScrollingAlgorithm;
+using Layout::Tiled::SColumnData;
 using Layout::Tiled::SDwindleNodeData;
+using Layout::Tiled::SScrollingData;
 
 static std::string formatWorkspaceSelector(const PHLWORKSPACE& workspace) {
     const auto ID = workspace->id();
@@ -290,6 +303,97 @@ static void restoreArrangement(const PHLWORKSPACE& workspace, const SArrangement
     }
 }
 
+static Config::CCssGapData resolveGaps(const std::optional<Config::CCssGapData>& ruleGaps, const CConfigValue<Config::IComplexConfigValue>& configGaps) {
+    return ruleGaps.value_or(*sc<Config::CCssGapData*>(configGaps.ptr()));
+}
+
+static SP<SScrollingData> findScrollingData(CScrollingAlgorithm& scrolling, const PHLWORKSPACE& workspace) {
+    for (const auto& TARGET : collectTiledTargets(workspace)) {
+        const auto DATA   = scrolling.dataFor(TARGET);
+        const auto COLUMN = DATA ? DATA->column.lock() : nullptr;
+        if (const auto SCROLLING_DATA = COLUMN ? COLUMN->scrollingData.lock() : nullptr)
+            return SCROLLING_DATA;
+    }
+    return nullptr;
+}
+
+static bool isFullscreenColumn(const SP<SColumnData>& column) {
+    const auto TARGET = column->targetDatas.size() == 1 && column->targetDatas.front() ? column->targetDatas.front()->target.lock() : nullptr;
+    return TARGET && Fullscreen::controller()->isFullscreen(TARGET->window());
+}
+
+static SP<SScrollingData> applyPeekWidths(const PHLWORKSPACE& workspace) {
+    if (!isScrollingToggled(workspace) || !workspace->m_monitor)
+        return nullptr;
+
+    auto*      scrolling      = dynamic_cast<CScrollingAlgorithm*>(findTiledAlgorithm(workspace));
+    const auto SCROLLING_DATA = scrolling ? findScrollingData(*scrolling, workspace) : nullptr;
+    if (!SCROLLING_DATA)
+        return nullptr;
+
+    static const auto CONFIG_GAPS_IN  = CConfigValue<Config::IComplexConfigValue>("general:gaps_in");
+    static const auto CONFIG_GAPS_OUT = CConfigValue<Config::IComplexConfigValue>("general:gaps_out");
+    const auto        RULE            = Config::workspaceRuleMgr()->getWorkspaceRuleFor(workspace).value_or(Config::CWorkspaceRule{});
+    const auto        GAPS_IN         = resolveGaps(RULE.m_gapsIn, CONFIG_GAPS_IN);
+    const auto        GAPS_OUT        = resolveGaps(RULE.m_gapsOut, CONFIG_GAPS_OUT);
+    const auto        VIEWPORT        = workspace->m_monitor->logicalBoxMinusReserved();
+    const bool        IS_HORIZONTAL   = SCROLLING_DATA->controller->isPrimaryHorizontal();
+    const float       WIDTH           = computePeekColumnWidth({
+        .viewportSize = IS_HORIZONTAL ? VIEWPORT.w : VIEWPORT.h,
+        .outerGaps    = sc<double>(IS_HORIZONTAL ? GAPS_OUT.m_left + GAPS_OUT.m_right : GAPS_OUT.m_top + GAPS_OUT.m_bottom),
+        .innerGaps    = sc<double>(IS_HORIZONTAL ? GAPS_IN.m_left + GAPS_IN.m_right : GAPS_IN.m_top + GAPS_IN.m_bottom),
+        .peek         = sc<double>(g_pGlobalState->config.scrollingPeek->value()),
+    });
+
+    for (const auto& column : SCROLLING_DATA->columns) {
+        if (column && !isFullscreenColumn(column))
+            column->setColumnWidth(WIDTH);
+    }
+    return SCROLLING_DATA;
+}
+
+void resizeScrollingColumns(const PHLWORKSPACE& workspace) {
+    if (const auto SCROLLING_DATA = applyPeekWidths(workspace))
+        SCROLLING_DATA->recalculate();
+}
+
+void centerFocusedColumn(const PHLWORKSPACE& workspace) {
+    const auto SCROLLING_DATA = applyPeekWidths(workspace);
+    if (!SCROLLING_DATA)
+        return;
+
+    const auto FOCUSED_WINDOW = workspace->getLastFocusedWindow();
+    if (const auto FOCUSED_DATA = FOCUSED_WINDOW && !FOCUSED_WINDOW->isFloating() ? SCROLLING_DATA->algorithm->dataFor(FOCUSED_WINDOW->layoutTarget()) : nullptr)
+        SCROLLING_DATA->centerCol(FOCUSED_DATA->column.lock());
+
+    SCROLLING_DATA->recalculate();
+}
+
+static bool isColumnOffCenter(const PHLWINDOW& window) {
+    if (!validMapped(window) || window->isFloating() || !isScrollingToggled(window->m_workspace))
+        return false;
+
+    auto*      scrolling = dynamic_cast<CScrollingAlgorithm*>(findTiledAlgorithm(window->m_workspace));
+    const auto DATA      = scrolling ? scrolling->dataFor(window->layoutTarget()) : nullptr;
+    const auto COLUMN    = DATA ? DATA->column.lock() : nullptr;
+    return COLUMN && scrolling->getColumnAtViewportCenter() != COLUMN;
+}
+
+void centerClickedColumn(const PHLWINDOW& window) {
+    if (g_layoutManager->dragController()->target() || g_pInputManager->m_lastFocusOnLS || !isColumnOffCenter(window) ||
+        !Pointer::mgr()->getCursorBoxGlobal().overlaps(window->layoutTarget()->position()))
+        return;
+
+    g_pGlobalState->clickCenterLock = g_pEventLoopManager->doLaterLock([CLICKED_WINDOW = PHLWINDOWREF{window}] {
+        const auto WINDOW = CLICKED_WINDOW.lock();
+        if (WINDOW != Desktop::focusState()->window() || !isColumnOffCenter(WINDOW))
+            return;
+
+        centerFocusedColumn(WINDOW->m_workspace);
+        Pointer::pointerController()->warpTo(WINDOW->middle());
+    });
+}
+
 void toggleScrollingLayout(const PHLWORKSPACE& workspace) {
     if (!workspace)
         return;
@@ -315,11 +419,11 @@ void toggleScrollingLayout(const PHLWORKSPACE& workspace) {
 
     Layout::Supplementary::algoMatcher()->updateWorkspaceLayouts();
 
-    if (!IS_ENTERING) {
-        if (const auto SNAPSHOT = g_pGlobalState->scrollingSnapshots.find(SELECTOR); SNAPSHOT != g_pGlobalState->scrollingSnapshots.end()) {
-            restoreArrangement(workspace, SNAPSHOT->second);
-            g_pGlobalState->scrollingSnapshots.erase(SNAPSHOT);
-        }
+    if (IS_ENTERING)
+        centerFocusedColumn(workspace);
+    else if (const auto SNAPSHOT = g_pGlobalState->scrollingSnapshots.find(SELECTOR); SNAPSHOT != g_pGlobalState->scrollingSnapshots.end()) {
+        restoreArrangement(workspace, SNAPSHOT->second);
+        g_pGlobalState->scrollingSnapshots.erase(SNAPSHOT);
     }
 
     Config::Supplementary::refresher()->scheduleRefresh(Config::Supplementary::REFRESH_MONITOR_STATES | Config::Supplementary::REFRESH_WINDOW_STATES);

@@ -369,6 +369,8 @@ const BORDER_GUARD: &str = "if border_colors";
 const SHADOW_MARKER: &str = "hl.config({ decoration = { shadow = { color = \"rgba(000000";
 const SHADOW_DEFAULT_ALPHA: u8 = 0x20;
 const BAR_COLOR_MARKER: &str = "proscenio_bars = { bar_color = ";
+const SCROLLING_PEEK_MARKER: &str = "proscenio_bars = { scrolling_peek = ";
+const SCROLLING_PEEK_DEFAULT: i64 = 20;
 
 fn parse_alpha(text: &str) -> Option<u8> {
     proscenio_protocol::unhex(text.get(..2)?)?.first().copied()
@@ -469,6 +471,38 @@ pub fn set_shadow_alpha(alpha: u8) -> std::io::Result<()> {
     write(
         Area::Appearance,
         &with_shadow_alpha(&read_for_edit(Area::Appearance)?, alpha),
+    )
+}
+
+fn scrolling_peek_in(text: &str) -> i64 {
+    text.lines()
+        .find_map(|line| {
+            let value = line.split_once(SCROLLING_PEEK_MARKER)?.1;
+            let digit_count = value.chars().take_while(char::is_ascii_digit).count();
+            value[..digit_count].parse().ok()
+        })
+        .unwrap_or(SCROLLING_PEEK_DEFAULT)
+}
+
+fn with_scrolling_peek(text: &str, peek: i64) -> String {
+    let line = format!(
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ {SCROLLING_PEEK_MARKER}{peek} }} }} }}) end end"
+    );
+    with_line(
+        text,
+        |current_line| current_line.contains(SCROLLING_PEEK_MARKER),
+        &line,
+    )
+}
+
+pub fn scrolling_peek() -> i64 {
+    scrolling_peek_in(&read(Area::Appearance))
+}
+
+pub fn set_scrolling_peek(peek: i64) -> std::io::Result<()> {
+    write(
+        Area::Appearance,
+        &with_scrolling_peek(&read_for_edit(Area::Appearance)?, peek),
     )
 }
 
@@ -765,6 +799,30 @@ mod tests {
             ),
             0xFF
         );
+    }
+
+    #[test]
+    fn the_scrolling_peek_is_one_guarded_line_that_stores_its_pixels() {
+        let build_line = |peek: i64| {
+            format!(
+                "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ proscenio_bars = {{ scrolling_peek = {peek} }} }} }}) end end"
+            )
+        };
+        let other_line = TITLE_BUTTONS_ON_LEFT.lines[0];
+        let text = format!("{other_line}\n");
+        assert_eq!(scrolling_peek_in(&text), SCROLLING_PEEK_DEFAULT);
+        let text_with_peek = with_scrolling_peek(&text, 48);
+        assert_eq!(
+            text_with_peek,
+            format!("{other_line}\n{}\n", build_line(48))
+        );
+        assert_eq!(scrolling_peek_in(&text_with_peek), 48);
+        let text_with_new_peek = with_scrolling_peek(&text_with_peek, 0);
+        assert_eq!(
+            text_with_new_peek,
+            format!("{other_line}\n{}\n", build_line(0))
+        );
+        assert_eq!(scrolling_peek_in(&text_with_new_peek), 0);
     }
 
     #[test]

@@ -3,6 +3,7 @@
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/desktop/view/window/Window.hpp>
 #include <hyprland/src/desktop/view/window/WindowPresentation.hpp>
+#include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/config/ConfigManager.hpp>
 #include <hyprland/src/config/shared/animation/AnimationTree.hpp>
@@ -12,6 +13,7 @@
 #include <hyprland/src/state/MonitorState.hpp>
 
 #include <algorithm>
+#include <linux/input-event-codes.h>
 
 #include "BarVisibility.hpp"
 #include "ScrollingToggle.hpp"
@@ -71,6 +73,9 @@ static void onMouseButton(IPointer::SButtonEvent event, Event::SCallbackInfo& in
         if (bar)
             bar->updatePointer();
     }
+
+    if (event.button == BTN_LEFT && event.state == WL_POINTER_BUTTON_STATE_RELEASED && !info.cancelled)
+        centerClickedColumn(Desktop::focusState()->window());
 }
 
 static IPC::Socket1::SResponse listWindowsWithBar(const IPC::Socket1::SRequest&) {
@@ -84,13 +89,23 @@ static IPC::Socket1::SResponse listWindowsWithBar(const IPC::Socket1::SRequest&)
     return formatWindowAddresses(addresses);
 }
 
-static void onWindowActive() {
+static void onWindowActive(PHLWINDOW window, Desktop::eFocusReason reason) {
     for (const auto& bar : g_pGlobalState->bars) {
         if (!bar)
             continue;
 
         bar->updateFocus();
         bar->updatePointer();
+    }
+
+    if (validMapped(window) && reason != Desktop::FOCUS_REASON_FFM && !(reason & Desktop::FOCUS_REASON_CLICK))
+        centerFocusedColumn(window->m_workspace);
+}
+
+static void onMonitorLayoutChanged() {
+    for (const auto& monitor : State::monitorState()->monitors()) {
+        resizeScrollingColumns(monitor->m_activeWorkspace);
+        resizeScrollingColumns(monitor->m_activeSpecialWorkspace);
     }
 }
 
@@ -120,7 +135,15 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     static auto CONFIG_RELOAD_LISTENER = Event::bus()->m_events.config.reloaded.listen([] { onConfigReloaded(); });
     static auto MOUSE_BUTTON_LISTENER =
         Event::bus()->m_events.input.mouse.button.listen([](IPointer::SButtonEvent event, Event::SCallbackInfo& info) { onMouseButton(event, info); });
-    static auto WINDOW_ACTIVE_LISTENER = Event::bus()->m_events.window.active.listen([] { onWindowActive(); });
+    static auto WINDOW_ACTIVE_LISTENER = Event::bus()->m_events.window.active.listen([](PHLWINDOW window, Desktop::eFocusReason reason) { onWindowActive(window, reason); });
+
+    static auto SCROLLING_OPEN_LISTENER      = Event::bus()->m_events.window.open.listen([](PHLWINDOW window) { resizeScrollingColumns(window->m_workspace); });
+    static auto SCROLLING_FLOATING_LISTENER  = Event::bus()->m_events.window.floating.listen([](PHLWINDOW window) {
+        if (window)
+            resizeScrollingColumns(window->m_workspace);
+    });
+    static auto SCROLLING_MONITOR_LISTENER   = Event::bus()->m_events.monitor.layoutChanged.listen([] { onMonitorLayoutChanged(); });
+    static auto SCROLLING_WORKSPACE_LISTENER = Event::bus()->m_events.workspace.moveToMonitor.listen([](PHLWORKSPACE workspace, PHLMONITOR) { resizeScrollingColumns(workspace); });
 
     auto&       config = g_pGlobalState->config;
 
@@ -141,6 +164,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     config.maximizeColor       = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_color", "Color of the maximize button", 0xFFD0BCFF);
     config.maximizeIconColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_icon_color", "Color of the maximize icon and its state layer", 0xFF381E72);
     config.inactiveButtonColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_button_color", "Color of the buttons on an unfocused window", 0xFF36343B);
+    config.scrollingPeek       = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:scrolling_peek", "Pixels of the neighboring columns shown while scrolling", 20,
+                                                                       Config::Values::SIntValueOptions{.min = 0, .max = 400});
 
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barHeight);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barColor);
@@ -159,6 +184,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addConfigValueV2(PHANDLE, config.maximizeColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.maximizeIconColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveButtonColor);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.scrollingPeek);
 
     HyprlandAPI::registerHyprCtlCommand(PHANDLE, {.name = BAR_DISPLAY_NAME, .handler = listWindowsWithBar});
     HyprlandAPI::addLuaFunction(PHANDLE, BAR_DISPLAY_NAME, "toggle_scrolling", toggleScrollingFromLua);
@@ -181,6 +207,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
 
     g_pGlobalState->iconTextures.clear();
     disableScrollingRules();
+    g_pGlobalState->clickCenterLock.reset();
 
     Desktop::Rule::windowEffects()->unregisterEffect(g_pGlobalState->noBarRuleIdx);
     Desktop::Rule::windowEffects()->unregisterEffect(g_pGlobalState->forceBarRuleIdx);

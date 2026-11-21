@@ -1654,5 +1654,6 @@
   "Run this after every Hyprland update": "Run this after every Hyprland update",
   "Show on": "Show on",
   "Floating windows": "Floating windows",
-  "All windows": "All windows"
+  "All windows": "All windows",
+  "Neighboring windows shown while scrolling (px)": "Neighboring windows shown while scrolling (px)"
 }

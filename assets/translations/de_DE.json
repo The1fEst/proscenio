@@ -1654,5 +1654,6 @@
   "Run this after every Hyprland update": "Nach jedem Hyprland-Update ausführen",
   "Show on": "Fenster mit Titelleiste",
   "Floating windows": "Schwebende Fenster",
-  "All windows": "Alle Fenster"
+  "All windows": "Alle Fenster",
+  "Neighboring windows shown while scrolling (px)": "Sichtbarer Teil der Nachbarfenster beim Scrollen (px)"
 }

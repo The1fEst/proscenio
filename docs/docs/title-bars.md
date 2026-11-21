@@ -148,10 +148,25 @@ stroke is 2 px wide on a 16 px disc and scales with it.
 
 The plugin adds the Lua function `hl.plugin.proscenio_bars.toggle_scrolling(workspace)`. It switches a
 workspace between its tiled layout and Hyprland's `scrolling` layout, which gives every tiled window a
-column of its own on a strip that scrolls. The `scrolling:` options of the config, such as
-`column_width` and `direction`, apply to it. `workspace` is a workspace object or selector, such as
+column of its own on a strip that scrolls. `workspace` is a workspace object or selector, such as
 `3` or `"special:magic"`; without it, the function takes the special workspace open on the focused
 monitor, or else that monitor's active workspace.
+
+Every column of a toggled workspace is as wide as leaves `scrolling_peek` px (20 by default) of the
+columns on either side showing at the screen edges while the focused column sits in the middle,
+counting `gaps_in` between the columns and `gaps_out` at the edges. The plugin sets the widths again
+when a window opens or turns tiled, when the focus changes and when the monitors change, so a column
+resized by hand keeps its width only until then; a column with a maximized or fullscreen window keeps
+the width Hyprland gives it. A window moved there from another workspace gets the width at the next
+focus change on it.
+
+A focus change from the keyboard, a new window or a workspace switch centers the focused column; a
+focus that follows the pointer does not. A left click on the focused window centers its column after
+the button is released, unless the column is in the middle already or the click was on the title bar,
+and the pointer moves to the middle of the window unless `cursor:no_warps` is set. While `scrolling:focus_fit_method` is 1, its default, Hyprland keeps the first
+column at the left edge instead of the middle. A lone window fills the width while
+`scrolling:fullscreen_on_one_column` is on, as it is by default, and keeps the column width in the
+middle while it is off. The other `scrolling:` options, such as `direction`, apply as configured.
 
 The plugin keeps one workspace rule with `layout = "scrolling"` per workspace it toggled, apart from
 the rules of the config. The first toggle of a workspace adds the rule, and every later toggle turns
@@ -318,10 +333,11 @@ Every option lives under `plugin:proscenio_bars:`.
 | `maximize_color` | `#D0BCFF` | The Maximize disc |
 | `maximize_icon_color` | `#381E72` | The Maximize icon and its state layer |
 | `inactive_button_color` | `#36343B` | All three discs on an unfocused window |
+| `scrolling_peek` | 20 | The px of the neighboring columns that show at each screen edge on a [toggled scrolling workspace](#scrolling-toggle), 0 to 400 |
 
 The [region selector](region-selector.md#picking-a-window) reads `bar_height` and the
 [window list](#listing-the-windows-with-a-bar) to take a window together with its bar. **Appearance › Windows › Title bars** in the
-[settings](settings-appearance.md#windows) sets `windows` and `button_side`.
+[settings](settings-appearance.md#windows) sets `windows`, `button_side` and `scrolling_peek`.
 
 ### Setting them
 
