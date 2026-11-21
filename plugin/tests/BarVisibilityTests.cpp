@@ -62,6 +62,9 @@ int main() {
         {"floating GTK with a header bar, all windows", {.isTiledAllowed = true, .isGtkClient = true, .xdgDecorationMode = MODE_CLIENT}, false},
         {"tiled GTK with a header bar, all windows", {.isFloating = false, .isTiledAllowed = true, .isGtkClient = true, .kdeDecorationMode = MODE_CLIENT}, false},
         {"GTK without a header bar, all windows", {.isFloating = false, .isTiledAllowed = true, .isGtkClient = true, .kdeDecorationMode = MODE_SERVER}, true},
+        {"pinned window that asked for a bar", {.isPinned = true, .xdgDecorationMode = MODE_SERVER}, false},
+        {"force_bar on a pinned window", {.isPinned = true, .hasForceBarRule = true}, false},
+        {"pinned X11", {.isPinned = true, .isX11 = true}, false},
     };
 
     struct SMapsCase {

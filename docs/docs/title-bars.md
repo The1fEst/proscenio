@@ -66,8 +66,8 @@ Two window rule effects change the result:
 | `proscenio_bars:force_bar` | A bar on a window that did not ask for one or that a built-in rule leaves without one |
 
 `no_bar` wins over `force_bar` and over every built-in rule, and `force_bar` wins over a built-in
-no bar. A tiled window while `windows` is `floating`, a window with the `decorate` rule off and a
-window that overrides redirection get no bar with any of them.
+no bar. A tiled window while `windows` is `floating`, a window with the `decorate` rule off, a window
+while it is pinned and a window that overrides redirection get no bar with any of them.
 
 ```lua
 hl.window_rule({ match = { class = "^(steam)$" }, ["proscenio_bars:force_bar"] = true })

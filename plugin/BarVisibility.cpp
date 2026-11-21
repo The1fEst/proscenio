@@ -15,7 +15,7 @@ eBuiltInBarRule matchBuiltInBarRule(const std::string& windowClass, const std::s
 bool shouldShowBar(const SBarVisibilityInput& input) {
     const bool IS_PLACEMENT_ALLOWED = input.isFloating || input.isTiledAllowed;
 
-    if (!IS_PLACEMENT_ALLOWED || !input.isDecorated || input.isOverrideRedirect || input.hasNoBarRule)
+    if (!IS_PLACEMENT_ALLOWED || !input.isDecorated || input.isPinned || input.isOverrideRedirect || input.hasNoBarRule)
         return false;
 
     if (input.hasForceBarRule)

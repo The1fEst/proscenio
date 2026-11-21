@@ -19,6 +19,7 @@ struct SBarVisibilityInput {
     bool                    isFloating         = true;
     bool                    isTiledAllowed     = false;
     bool                    isDecorated        = true;
+    bool                    isPinned           = false;
     bool                    isOverrideRedirect = false;
     bool                    isX11              = false;
     bool                    hasNoBarRule       = false;

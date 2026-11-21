@@ -206,6 +206,7 @@ bool CTitleBarDecoration::shouldHide() {
         .isFloating         = WINDOW->isFloating(),
         .isTiledAllowed     = g_pGlobalState->config.windows->value() == "all",
         .isDecorated        = sc<bool>(WINDOW->m_ruleApplicator->decorate().valueOrDefault()),
+        .isPinned           = sc<bool>(WINDOW->m_state & Desktop::View::WINDOW_STATE_PINNED),
         .isOverrideRedirect = BACKEND.traits().overrideRedirect,
         .isX11              = BACKEND.isX11(),
         .hasNoBarRule       = hasTruthyRule(WINDOW, g_pGlobalState->noBarRuleIdx),
