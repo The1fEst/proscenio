@@ -83,6 +83,12 @@ hl.window_rule({ name = "no-gaps-f1", match = { float = false, workspace = "f[1]
 | When the view scrolls to a window | `scrolling:follow_focus` | only for new windows and the like, not when the focus moves (`0`); to the focused window and to any window clicked (`1`); to the focused window, and to a clicked window only when it is partly in view (`2`) |
 | A single column fills the screen | `scrolling:fullscreen_on_one_column` | on or off |
 
+proscenio's default for `scrolling:focus_fit_method` is centered (`0`). At every start, while
+Hyprland reports the option as not set, its config loaded without errors and `multitasking.lua` has
+no line for it, the shell adds that line and reloads Hyprland; a value already set in the Hyprland
+config or on this page stays. Once written, the line counts as a choice made on this page, and like
+any such choice it wins over a value the Hyprland config sets later.
+
 ### Snapping
 
 Snapping applies to floating windows being dragged.

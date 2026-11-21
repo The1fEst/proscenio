@@ -378,6 +378,14 @@ Before anything else reads them, the shell tidies the files:
 2. An option line found in a file other than its page's moves to that page's file, unless that file
    already sets the option.
 
+Then each option that proscenio gives a default of its own gets its line when Hyprland reports the
+option as not set, its config loaded without errors and the area's file has no line for it. One
+reload follows when a default was written or the settings loader was added:
+
+| Option | Default | File |
+|---|---|---|
+| `scrolling:focus_fit_method` | `0`, centered | `multitasking.lua` |
+
 ## hypridle.conf
 
 Idle timeouts go to `~/.config/hypr/hypridle.conf`, the file `hypridle` reads. The shell edits that

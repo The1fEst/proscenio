@@ -303,6 +303,48 @@ pub fn set_option(text: &str, option: &str, value: &str) -> String {
     )
 }
 
+const DEFAULT_OPTIONS: [(Area, &str, &str); 1] =
+    [(Area::Multitasking, "scrolling:focus_fit_method", "0")];
+
+fn add_default_option(
+    text: &str,
+    option: &str,
+    value: &str,
+    may_be_set_in_hyprland: impl FnOnce(&str) -> bool,
+) -> Option<String> {
+    let prefix = prefix_for(option);
+    if text.lines().any(|line| line.starts_with(&prefix)) || may_be_set_in_hyprland(option) {
+        return None;
+    }
+    Some(set_option(text, option, value))
+}
+
+fn may_be_set_in_hyprland(option: &str) -> bool {
+    let has_config_errors =
+        hypr::request("configerrors").is_none_or(|reply| !reply.trim().is_empty());
+    has_config_errors
+        || hypr::json(&format!("getoption {option}"))
+            .and_then(|reply| reply.get("set").and_then(Value::as_bool))
+            .unwrap_or(true)
+}
+
+pub fn apply_default_options() -> bool {
+    let mut is_written = false;
+    for (area, option, value) in DEFAULT_OPTIONS {
+        let result = read_for_edit(area).and_then(|text| {
+            match add_default_option(&text, option, value, may_be_set_in_hyprland) {
+                Some(new_text) => write(area, &new_text).map(|()| true),
+                None => Ok(false),
+            }
+        });
+        match result {
+            Ok(is_option_written) => is_written |= is_option_written,
+            Err(error) => eprintln!("{}.lua: {error}", area.name()),
+        }
+    }
+    is_written
+}
+
 pub const SMART_GAPS: Lines = Lines {
     area: Area::Multitasking,
     lines: &[
@@ -370,7 +412,7 @@ const SHADOW_MARKER: &str = "hl.config({ decoration = { shadow = { color = \"rgb
 const SHADOW_DEFAULT_ALPHA: u8 = 0x20;
 const BAR_COLOR_MARKER: &str = "proscenio_bars = { bar_color = ";
 const SCROLLING_PEEK_MARKER: &str = "proscenio_bars = { scrolling_peek = ";
-const SCROLLING_PEEK_DEFAULT: i64 = 20;
+const SCROLLING_PEEK_DEFAULT: i64 = 40;
 
 fn parse_alpha(text: &str) -> Option<u8> {
     proscenio_protocol::unhex(text.get(..2)?)?.first().copied()
@@ -799,6 +841,33 @@ mod tests {
             ),
             0xFF
         );
+    }
+
+    #[test]
+    fn a_default_option_is_added_only_when_nothing_sets_it() {
+        let text = "hl.config({ general = { gaps_in = 4 } })\n";
+        let text_with_choice = "hl.config({ scrolling = { focus_fit_method = 1 } })\n";
+        let cases = [
+            (
+                "nothing sets it",
+                text,
+                false,
+                Some(format!(
+                    "{text}hl.config({{ scrolling = {{ focus_fit_method = 0 }} }})\n"
+                )),
+            ),
+            ("Hyprland reports it set", text, true, None),
+            ("the file has a line for it", text_with_choice, false, None),
+        ];
+        for (name, text, is_set_in_hyprland, expected) in cases {
+            assert_eq!(
+                add_default_option(text, "scrolling:focus_fit_method", "0", |_| {
+                    is_set_in_hyprland
+                }),
+                expected,
+                "{name}"
+            );
+        }
     }
 
     #[test]

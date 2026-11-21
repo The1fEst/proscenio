@@ -164,7 +164,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     config.maximizeColor       = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_color", "Color of the maximize button", 0xFFD0BCFF);
     config.maximizeIconColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_icon_color", "Color of the maximize icon and its state layer", 0xFF381E72);
     config.inactiveButtonColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_button_color", "Color of the buttons on an unfocused window", 0xFF36343B);
-    config.scrollingPeek       = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:scrolling_peek", "Pixels of the neighboring columns shown while scrolling", 20,
+    config.scrollingPeek       = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:scrolling_peek", "Pixels of the neighboring columns shown while scrolling", 40,
                                                                        Config::Values::SIntValueOptions{.min = 0, .max = 400});
 
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barHeight);

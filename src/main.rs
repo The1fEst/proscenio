@@ -118,12 +118,13 @@ fn build(app: &gtk4::Application, ipc: &Rc<ipc::Ipc>) {
 
     let _ = settings::pages::migrate_settings_files();
     std::thread::spawn(|| {
-        match hyprconfig::add_settings_loader() {
-            Ok(true) => {
-                hypr::request("reload");
-            }
-            Ok(false) => {}
-            Err(error) => eprintln!("hyprland.lua: {error}"),
+        let are_defaults_written = hyprconfig::apply_default_options();
+        let is_loader_added = hyprconfig::add_settings_loader().unwrap_or_else(|error| {
+            eprintln!("hyprland.lua: {error}");
+            false
+        });
+        if is_loader_added || are_defaults_written {
+            hypr::request("reload");
         }
         switchwall::refresh_bar_colors();
     });
