@@ -1,6 +1,6 @@
 #define WLR_USE_UNSTABLE
 
-#include "Monocle.hpp"
+#include "ScrollingToggle.hpp"
 
 #include <hyprland/src/config/lua/bindings/LuaBindingsInternal.hpp>
 #include <hyprland/src/config/shared/workspace/WorkspaceRuleManager.hpp>
@@ -12,7 +12,6 @@
 #include <hyprland/src/layout/algorithm/Algorithm.hpp>
 #include <hyprland/src/layout/algorithm/tiled/dwindle/DwindleAlgorithm.hpp>
 #include <hyprland/src/layout/algorithm/tiled/master/MasterAlgorithm.hpp>
-#include <hyprland/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp>
 #include <hyprland/src/layout/space/Space.hpp>
 #include <hyprland/src/layout/supplementary/WorkspaceAlgoMatcher.hpp>
 #include <hyprland/src/layout/target/Target.hpp>
@@ -25,12 +24,11 @@
 
 #include "globals.hpp"
 
-constexpr auto MONOCLE_LAYOUT = "monocle";
+constexpr auto SCROLLING_LAYOUT = "scrolling";
 
 using Layout::ITarget;
 using Layout::Tiled::CDwindleAlgorithm;
 using Layout::Tiled::CMasterAlgorithm;
-using Layout::Tiled::CScrollingAlgorithm;
 using Layout::Tiled::SDwindleNodeData;
 
 static std::string formatWorkspaceSelector(const PHLWORKSPACE& workspace) {
@@ -55,9 +53,22 @@ static Layout::ITiledAlgorithm* findTiledAlgorithm(const PHLWORKSPACE& workspace
     return SPACE->algorithm()->tiledAlgo().get();
 }
 
-bool isMonocleLayout(const PHLWORKSPACE& workspace) {
+static bool isScrollingLayout(const PHLWORKSPACE& workspace) {
     const auto* ALGORITHM = findTiledAlgorithm(workspace);
-    return ALGORITHM && Layout::Supplementary::algoMatcher()->getNameForTiledAlgo(ALGORITHM) == MONOCLE_LAYOUT;
+    return ALGORITHM && Layout::Supplementary::algoMatcher()->getNameForTiledAlgo(ALGORITHM) == SCROLLING_LAYOUT;
+}
+
+static SP<Config::CWorkspaceRule> findScrollingRule(const std::string& selector) {
+    const auto ENTRY = g_pGlobalState->scrollingRules.find(selector);
+    return ENTRY != g_pGlobalState->scrollingRules.end() ? ENTRY->second.lock() : nullptr;
+}
+
+bool isScrollingToggled(const PHLWORKSPACE& workspace) {
+    if (!workspace || g_pGlobalState->scrollingRules.empty() || !isScrollingLayout(workspace))
+        return false;
+
+    const auto RULE = findScrollingRule(formatWorkspaceSelector(workspace));
+    return RULE && RULE->isEnabled();
 }
 
 static std::vector<SP<ITarget>> collectTiledTargets(const PHLWORKSPACE& workspace) {
@@ -120,6 +131,9 @@ static std::optional<SDwindleTree> captureDwindleTree(CDwindleAlgorithm& dwindle
 }
 
 static void applyDwindleTree(CDwindleAlgorithm& dwindle, const SDwindleTree& plan, const std::vector<SP<ITarget>>& keyedTargets) {
+    if (plan.root >= plan.nodes.size())
+        return;
+
     std::vector<SP<SDwindleNodeData>> leaves;
     std::set<SP<SDwindleNodeData>>    internalNodes;
     for (const auto& PLAN_NODE : plan.nodes) {
@@ -225,75 +239,10 @@ static void applyMasterSlots(CMasterAlgorithm& master, const std::vector<SMaster
     master.recalculate();
 }
 
-static SP<Layout::Tiled::SScrollingData> findScrollingData(CScrollingAlgorithm& scrolling, const std::vector<SP<ITarget>>& targets) {
-    const auto DATA   = targets.empty() ? nullptr : scrolling.dataFor(targets.front());
-    const auto COLUMN = DATA ? DATA->column.lock() : nullptr;
-    return COLUMN ? COLUMN->scrollingData.lock() : nullptr;
-}
-
-static std::optional<std::vector<SScrollingColumn>> captureScrollingColumns(CScrollingAlgorithm& scrolling, const std::vector<SP<ITarget>>& targets) {
-    const auto SCROLLING_DATA = findScrollingData(scrolling, targets);
-    if (!SCROLLING_DATA)
-        return std::nullopt;
-
-    std::vector<SScrollingColumn> columns;
-    for (const auto& COLUMN : SCROLLING_DATA->columns) {
-        if (!COLUMN)
-            continue;
-
-        SScrollingColumn column = {.width = COLUMN->getColumnWidth()};
-        for (size_t i = 0; i < COLUMN->targetDatas.size(); ++i) {
-            const auto TARGET = COLUMN->targetDatas[i] ? COLUMN->targetDatas[i]->target.lock() : nullptr;
-            const auto KEY    = std::ranges::find(targets, TARGET);
-            if (!TARGET || KEY == targets.end())
-                continue;
-
-            column.targets.push_back(KEY - targets.begin());
-            column.sizes.push_back(COLUMN->getTargetSize(i));
-        }
-        columns.push_back(std::move(column));
-    }
-    return columns;
-}
-
-static void applyScrollingColumns(CScrollingAlgorithm& scrolling, const std::vector<SScrollingColumn>& plan, const std::vector<SP<ITarget>>& keyedTargets) {
-    std::vector<std::vector<SP<Layout::Tiled::SScrollingTargetData>>> targetDataByColumn;
-    std::vector<SP<ITarget>>                                          targets;
-    for (const auto& COLUMN : plan) {
-        auto& columnTargetData = targetDataByColumn.emplace_back();
-        for (const auto KEY : COLUMN.targets) {
-            const auto TARGET = KEY < keyedTargets.size() ? keyedTargets[KEY] : nullptr;
-            const auto DATA   = TARGET ? scrolling.dataFor(TARGET) : nullptr;
-            if (!DATA || !DATA->column.lock())
-                return;
-            columnTargetData.push_back(DATA);
-            targets.push_back(TARGET);
-        }
-    }
-
-    const auto SCROLLING_DATA = findScrollingData(scrolling, targets);
-    if (!SCROLLING_DATA)
-        return;
-
-    for (size_t i = 0; i < plan.size(); ++i) {
-        const auto COLUMN = SCROLLING_DATA->add(plan[i].width);
-        for (const auto& DATA : targetDataByColumn[i]) {
-            if (const auto OLD_COLUMN = DATA->column.lock())
-                OLD_COLUMN->remove(DATA->target.lock());
-            COLUMN->add(DATA);
-        }
-
-        for (size_t row = 0; row < plan[i].sizes.size(); ++row)
-            COLUMN->setTargetSize(row, plan[i].sizes[row]);
-    }
-
-    scrolling.recalculate();
-}
-
-static SMonocleSnapshot captureArrangement(const PHLWORKSPACE& workspace) {
-    SMonocleSnapshot snapshot;
-    auto*            algorithm = findTiledAlgorithm(workspace);
-    const auto       TARGETS   = collectTiledTargets(workspace);
+static SArrangementSnapshot captureArrangement(const PHLWORKSPACE& workspace) {
+    SArrangementSnapshot snapshot;
+    auto*                algorithm = findTiledAlgorithm(workspace);
+    const auto           TARGETS   = collectTiledTargets(workspace);
     if (!algorithm || TARGETS.empty())
         return snapshot;
 
@@ -306,15 +255,12 @@ static SMonocleSnapshot captureArrangement(const PHLWORKSPACE& workspace) {
     } else if (auto* master = dynamic_cast<CMasterAlgorithm*>(algorithm)) {
         if (auto slots = captureMasterSlots(*master, TARGETS))
             snapshot.arrangement = std::move(*slots);
-    } else if (auto* scrolling = dynamic_cast<CScrollingAlgorithm*>(algorithm)) {
-        if (auto columns = captureScrollingColumns(*scrolling, TARGETS))
-            snapshot.arrangement = std::move(*columns);
     }
 
     return snapshot;
 }
 
-static void restoreArrangement(const PHLWORKSPACE& workspace, const SMonocleSnapshot& snapshot) {
+static void restoreArrangement(const PHLWORKSPACE& workspace, const SArrangementSnapshot& snapshot) {
     auto* algorithm = findTiledAlgorithm(workspace);
     if (!algorithm || std::holds_alternative<std::monostate>(snapshot.arrangement))
         return;
@@ -341,58 +287,56 @@ static void restoreArrangement(const PHLWORKSPACE& workspace, const SMonocleSnap
     } else if (const auto* SLOTS = std::get_if<std::vector<SMasterSlot>>(&snapshot.arrangement)) {
         if (auto* master = dynamic_cast<CMasterAlgorithm*>(algorithm))
             applyMasterSlots(*master, planMasterSlots(*SLOTS, isPresent, newTargets), keyedTargets);
-    } else if (const auto* COLUMNS = std::get_if<std::vector<SScrollingColumn>>(&snapshot.arrangement)) {
-        if (auto* scrolling = dynamic_cast<CScrollingAlgorithm*>(algorithm))
-            applyScrollingColumns(*scrolling, planScrollingColumns(*COLUMNS, isPresent, newTargets), keyedTargets);
     }
 }
 
-void toggleMonocleLayout(const PHLWORKSPACE& workspace) {
+void toggleScrollingLayout(const PHLWORKSPACE& workspace) {
     if (!workspace)
         return;
 
     const auto SELECTOR    = formatWorkspaceSelector(workspace);
-    const auto RULE        = g_pGlobalState->monocleRules[SELECTOR].lock();
-    const bool IS_ENTERING =RULE ? !RULE->isEnabled() : !isMonocleLayout(workspace);
+    const auto RULE        = findScrollingRule(SELECTOR);
+    const bool IS_ENTERING = !RULE || !RULE->isEnabled();
+    if (IS_ENTERING && isScrollingLayout(workspace))
+        return;
 
     if (IS_ENTERING)
-        g_pGlobalState->monocleSnapshots[SELECTOR] = captureArrangement(workspace);
+        g_pGlobalState->scrollingSnapshots[SELECTOR] = captureArrangement(workspace);
 
     if (RULE)
         RULE->setEnabled(IS_ENTERING);
     else {
-        Config::CWorkspaceRule monocleRule;
-        monocleRule.m_workspaceString = SELECTOR;
-        monocleRule.m_layout          = MONOCLE_LAYOUT;
-        monocleRule.setEnabled(IS_ENTERING);
+        Config::CWorkspaceRule scrollingRule;
+        scrollingRule.m_workspaceString = SELECTOR;
+        scrollingRule.m_layout          = SCROLLING_LAYOUT;
 
-        g_pGlobalState->monocleRules[SELECTOR] = Config::workspaceRuleMgr()->add(std::move(monocleRule));
+        g_pGlobalState->scrollingRules[SELECTOR] = Config::workspaceRuleMgr()->add(std::move(scrollingRule));
     }
 
     Layout::Supplementary::algoMatcher()->updateWorkspaceLayouts();
 
     if (!IS_ENTERING) {
-        if (const auto SNAPSHOT = g_pGlobalState->monocleSnapshots.find(SELECTOR); SNAPSHOT != g_pGlobalState->monocleSnapshots.end()) {
+        if (const auto SNAPSHOT = g_pGlobalState->scrollingSnapshots.find(SELECTOR); SNAPSHOT != g_pGlobalState->scrollingSnapshots.end()) {
             restoreArrangement(workspace, SNAPSHOT->second);
-            g_pGlobalState->monocleSnapshots.erase(SNAPSHOT);
+            g_pGlobalState->scrollingSnapshots.erase(SNAPSHOT);
         }
     }
 
     Config::Supplementary::refresher()->scheduleRefresh(Config::Supplementary::REFRESH_MONITOR_STATES | Config::Supplementary::REFRESH_WINDOW_STATES);
 }
 
-void disableMonocleRules() {
-    for (const auto& [selector, rule] : g_pGlobalState->monocleRules) {
+void disableScrollingRules() {
+    for (const auto& [selector, rule] : g_pGlobalState->scrollingRules) {
         if (const auto RULE = rule.lock())
             RULE->setEnabled(false);
     }
 
-    g_pGlobalState->monocleRules.clear();
-    g_pGlobalState->monocleSnapshots.clear();
+    g_pGlobalState->scrollingRules.clear();
+    g_pGlobalState->scrollingSnapshots.clear();
     Config::Supplementary::refresher()->scheduleRefresh(Config::Supplementary::REFRESH_MONITOR_STATES | Config::Supplementary::REFRESH_WINDOW_STATES);
 }
 
-int toggleMonocleFromLua(lua_State* state) {
+int toggleScrollingFromLua(lua_State* state) {
     PHLWORKSPACE workspace;
 
     if (lua_isnoneornil(state, 1)) {
@@ -400,11 +344,11 @@ int toggleMonocleFromLua(lua_State* state) {
         if (MONITOR)
             workspace = MONITOR->m_activeSpecialWorkspace ? MONITOR->m_activeSpecialWorkspace : MONITOR->m_activeWorkspace;
     } else
-        workspace = Config::Lua::Bindings::Internal::workspaceFromLuaSelectorOrObject(state, 1, "toggle_monocle");
+        workspace = Config::Lua::Bindings::Internal::workspaceFromLuaSelectorOrObject(state, 1, "toggle_scrolling");
 
     if (!workspace)
-        return Config::Lua::Bindings::Internal::configError(state, "toggle_monocle: no such workspace");
+        return Config::Lua::Bindings::Internal::configError(state, "toggle_scrolling: no such workspace");
 
-    toggleMonocleLayout(workspace);
+    toggleScrollingLayout(workspace);
     return 0;
 }

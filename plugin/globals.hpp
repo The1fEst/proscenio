@@ -9,7 +9,7 @@
 #include <hyprutils/animation/AnimationConfig.hpp>
 
 #include "ButtonLayout.hpp"
-#include "Monocle.hpp"
+#include "ScrollingToggle.hpp"
 
 #include <compare>
 #include <map>
@@ -36,8 +36,8 @@ struct SIconKey {
 struct SGlobalState {
     std::vector<WP<CTitleBarDecoration>>               bars;
     std::map<SIconKey, SP<Render::ITexture>>           iconTextures;
-    std::map<std::string, WP<Config::CWorkspaceRule>>  monocleRules;
-    std::map<std::string, SMonocleSnapshot>            monocleSnapshots;
+    std::map<std::string, WP<Config::CWorkspaceRule>>  scrollingRules;
+    std::map<std::string, SArrangementSnapshot>        scrollingSnapshots;
     SP<Hyprutils::Animation::SAnimationPropertyConfig> animationConfig;
     uint32_t                                           noBarRuleIdx    = 0;
     uint32_t                                           forceBarRuleIdx = 0;

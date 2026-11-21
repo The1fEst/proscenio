@@ -89,33 +89,3 @@ std::vector<SMasterSlot> planMasterSlots(const std::vector<SMasterSlot>& snapsho
 
     return plan;
 }
-
-std::vector<SScrollingColumn> planScrollingColumns(const std::vector<SScrollingColumn>& snapshot, const std::vector<bool>& isPresent, const std::vector<size_t>& newTargets) {
-    std::vector<SScrollingColumn> plan;
-    for (const auto& COLUMN : snapshot) {
-        SScrollingColumn column = {.width = COLUMN.width};
-        float            total  = 0;
-        for (size_t i = 0; i < COLUMN.targets.size(); ++i) {
-            if (!isPresentTarget(isPresent, COLUMN.targets[i]))
-                continue;
-
-            const float SIZE = i < COLUMN.sizes.size() ? COLUMN.sizes[i] : 1.F;
-            column.targets.push_back(COLUMN.targets[i]);
-            column.sizes.push_back(SIZE);
-            total += SIZE;
-        }
-
-        if (column.targets.empty())
-            continue;
-
-        for (auto& size : column.sizes)
-            size = total > 0 ? size / total : 1.F / column.sizes.size();
-
-        plan.push_back(std::move(column));
-    }
-
-    for (const auto TARGET : newTargets)
-        plan.push_back({.targets = {TARGET}, .sizes = {1.F}});
-
-    return plan;
-}
