@@ -1,4 +1,5 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::core::listeners::{Listeners, Subscription};
@@ -16,6 +17,7 @@ pub struct States {
     pub is_sidebar_open: Rc<Cell<bool>>,
     pub is_screen_locked: Rc<Cell<bool>>,
     pub is_osk_open: Rc<Cell<bool>>,
+    covered_monitors: Rc<RefCell<HashSet<String>>>,
     open_sidebar_count: Rc<Cell<usize>>,
     listeners: Rc<Listeners>,
     osd_close_listeners: Rc<Listeners<Osd>>,
@@ -29,6 +31,7 @@ impl States {
             is_sidebar_open: Rc::new(Cell::new(false)),
             is_screen_locked: Rc::new(Cell::new(false)),
             is_osk_open: Rc::new(Cell::new(false)),
+            covered_monitors: Rc::default(),
             open_sidebar_count: Rc::default(),
             listeners: Rc::default(),
             osd_close_listeners: Rc::default(),
@@ -82,6 +85,23 @@ impl States {
         }
     }
 
+    pub fn is_monitor_covered(&self, monitor: &str) -> bool {
+        self.covered_monitors.borrow().contains(monitor)
+    }
+
+    pub fn set_monitor_covered(&self, monitor: &str, is_covered: bool) {
+        let has_changed = if is_covered {
+            self.covered_monitors
+                .borrow_mut()
+                .insert(monitor.to_owned())
+        } else {
+            self.covered_monitors.borrow_mut().remove(monitor)
+        };
+        if has_changed {
+            self.announce();
+        }
+    }
+
     pub fn set_osk_open(&self, is_open: bool) {
         if self.is_osk_open.replace(is_open) != is_open {
             self.announce();
@@ -106,5 +126,22 @@ mod tests {
         assert!(states.is_sidebar_open.get());
         states.remove_open_sidebar();
         assert!(!states.is_sidebar_open.get());
+    }
+
+    #[test]
+    fn a_monitor_counts_as_covered_only_between_its_reports() {
+        let states = States::new();
+        let announcement_count = Rc::new(Cell::new(0));
+        let _subscription = states.subscribe({
+            let announcement_count = announcement_count.clone();
+            move || announcement_count.set(announcement_count.get() + 1)
+        });
+        states.set_monitor_covered("DP-1", true);
+        states.set_monitor_covered("DP-1", true);
+        assert!(states.is_monitor_covered("DP-1"));
+        assert!(!states.is_monitor_covered("DP-2"));
+        states.set_monitor_covered("DP-1", false);
+        assert!(!states.is_monitor_covered("DP-1"));
+        assert_eq!(announcement_count.get(), 2);
     }
 }

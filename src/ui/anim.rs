@@ -273,6 +273,10 @@ impl Motion {
         self.at.get()
     }
 
+    pub fn target(&self) -> f64 {
+        self.to.get()
+    }
+
     pub fn is_running(&self) -> bool {
         self.is_ticking.get()
     }

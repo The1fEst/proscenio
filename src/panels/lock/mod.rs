@@ -1,5 +1,6 @@
 mod keyring;
 mod surfaces;
+mod workspaces;
 
 use gtk4::gdk;
 use gtk4::gio;
@@ -10,7 +11,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::core::listeners::Listeners;
+use crate::core::listeners::{Listeners, Subscription};
 use crate::core::{config, persistent};
 use crate::platform::dbus::fprint::Reader;
 use crate::platform::dbus::lockhint;
@@ -23,6 +24,7 @@ use crate::services::Services;
 use crate::ui::theme::SharedTheme;
 use keyring::unlock_keyring;
 use surfaces::Surface;
+use workspaces::{needs_hiding, parse_active_workspaces, plan_hiding};
 
 const PAM_SERVICE: &str = "login";
 const CLEAR_AFTER: Duration = Duration::from_secs(10);
@@ -33,7 +35,6 @@ const SLEEP_DELAY_LIMIT: Duration = Duration::from_secs(2);
 const DRAW_TIMEOUT: Duration = Duration::from_secs(2);
 const MAX_REPLACEMENTS: u32 = 2;
 const STALL_LIMIT: Duration = Duration::from_secs(1);
-const HIDDEN_WORKSPACE: i64 = 2_147_483_647;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Target {
@@ -121,6 +122,8 @@ pub struct Lock {
     retired_surfaces: RefCell<Vec<Rc<Surface>>>,
     replacement_counts: RefCell<HashMap<String, u32>>,
     workspaces_to_restore: RefCell<Vec<(String, i64)>>,
+    monitor_names: RefCell<Vec<String>>,
+    monitor_subscription: RefCell<Option<Subscription>>,
     notifier: RefCell<Option<Rc<LockNotifier>>>,
     reader: RefCell<Option<Rc<Reader>>>,
     is_session_locked: Cell<bool>,
@@ -167,13 +170,6 @@ fn should_lock_at_start(
     is_compositor_locked.is_none() && is_locked_hint_set
 }
 
-fn resolve_original_workspace(active_workspace: i64) -> i64 {
-    if active_workspace > HIDDEN_WORKSPACE / 2 {
-        return HIDDEN_WORKSPACE - active_workspace;
-    }
-    active_workspace
-}
-
 impl Lock {
     pub fn new(theme: &SharedTheme, services: &Rc<Services>) -> Rc<Self> {
         let lock = Rc::new(Lock {
@@ -185,6 +181,8 @@ impl Lock {
             retired_surfaces: RefCell::new(Vec::new()),
             replacement_counts: RefCell::new(HashMap::new()),
             workspaces_to_restore: RefCell::new(Vec::new()),
+            monitor_names: RefCell::new(Vec::new()),
+            monitor_subscription: RefCell::new(None),
             notifier: RefCell::new(None),
             reader: RefCell::new(None),
             is_session_locked: Cell::new(false),
@@ -517,9 +515,26 @@ impl Lock {
         self.has_seen_session_lock.set(self.is_session_locked.get());
         if !self.services.states.is_screen_locked.get() {
             self.services.states.set_screen_locked(true);
-            self.hide_windows();
             self.watch_finger();
         }
+        self.hide_windows();
+        let monitor_names = self
+            .read_active_workspaces()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect();
+        self.monitor_names.replace(monitor_names);
+        let monitor_subscription = self.services.hypr.subscribe({
+            let lock = Rc::downgrade(self);
+            move || {
+                if let Some(lock) = lock.upgrade() {
+                    lock.hide_new_monitors();
+                }
+            }
+        });
+        self.monitor_subscription
+            .replace(Some(monitor_subscription));
         let surfaces = self.surfaces.borrow().clone();
         for surface in &surfaces {
             self.watch_frames(surface);
@@ -577,37 +592,53 @@ impl Lock {
         let monitors = hypr::json("monitors")
             .and_then(|monitors| monitors.as_array().cloned())
             .unwrap_or_default();
-        let mut workspaces = Vec::new();
-        for monitor in &monitors {
-            let Some(name) = monitor.get("name").and_then(|name| name.as_str()) else {
-                return;
-            };
-            let Some(active_workspace) = monitor
-                .get("activeWorkspace")
-                .and_then(|workspace| workspace.get("id"))
-                .and_then(|id| id.as_i64())
-            else {
-                return;
-            };
-            workspaces.push((
-                name.to_owned(),
-                resolve_original_workspace(active_workspace),
-            ));
-        }
-        for (name, workspace) in &workspaces {
+        let active_workspaces = parse_active_workspaces(&monitors);
+        let hidden_workspaces = plan_hiding(
+            &mut self.workspaces_to_restore.borrow_mut(),
+            &active_workspaces,
+        );
+        for (name, workspace) in hidden_workspaces {
             hypr::request(&format!("dispatch hl.dsp.focus({{monitor=\"{name}\"}})"));
-            hypr::request(&format!(
-                "dispatch hl.dsp.focus({{workspace={}}})",
-                HIDDEN_WORKSPACE - workspace
-            ));
+            hypr::request(&format!("dispatch hl.dsp.focus({{workspace={workspace}}})"));
         }
-        self.workspaces_to_restore.replace(workspaces);
+    }
+
+    fn read_active_workspaces(&self) -> Option<Vec<(String, i64)>> {
+        let snapshot = self.services.hypr.snapshot();
+        Some(parse_active_workspaces(snapshot.monitors.as_ref()?))
+    }
+
+    fn hide_new_monitors(&self) {
+        let Some(active_workspaces) = self.read_active_workspaces() else {
+            return;
+        };
+        let monitor_names = active_workspaces
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect();
+        let previous_names = self.monitor_names.replace(monitor_names);
+        if needs_hiding(
+            &active_workspaces,
+            &previous_names,
+            &self.workspaces_to_restore.borrow(),
+        ) {
+            self.hide_windows();
+        }
     }
 
     fn restore_windows(&self) {
         let workspaces = self.workspaces_to_restore.take();
         glib::timeout_add_local_once(RESTORE_DELAY, move || {
+            let monitors = hypr::json("monitors").and_then(|monitors| monitors.as_array().cloned());
             for (name, workspace) in workspaces {
+                let is_connected = monitors.as_ref().is_none_or(|monitors| {
+                    monitors.iter().any(|monitor| {
+                        monitor.get("name").and_then(|name| name.as_str()) == Some(&name)
+                    })
+                });
+                if !is_connected {
+                    continue;
+                }
                 hypr::request(&format!("dispatch hl.dsp.focus({{monitor=\"{name}\"}})"));
                 hypr::request(&format!("dispatch hl.dsp.focus({{workspace={workspace}}})"));
             }
@@ -623,6 +654,7 @@ impl Lock {
         }
         self.has_seen_session_lock.set(false);
         self.instance.replace(None);
+        self.monitor_subscription.take();
         self.stop_finger();
         self.surfaces.borrow_mut().clear();
         self.replacement_counts.borrow_mut().clear();
@@ -758,6 +790,7 @@ impl Lock {
         self.watch_settled(&surface);
         if was_granted {
             self.watch_frames(&surface);
+            self.hide_windows();
         }
     }
 
@@ -843,23 +876,6 @@ mod tests {
                 ),
                 should_lock,
                 "{is_locked_hint_set} {is_compositor_locked:?} {is_new_instance} {should_launch_on_startup}"
-            );
-        }
-    }
-
-    #[test]
-    fn a_workspace_hidden_by_an_earlier_lock_resolves_to_the_original_one() {
-        let cases = [
-            (1, 1),
-            (-98, -98),
-            (HIDDEN_WORKSPACE - 3, 3),
-            (HIDDEN_WORKSPACE + 98, -98),
-        ];
-        for (active_workspace, original_workspace) in cases {
-            assert_eq!(
-                resolve_original_workspace(active_workspace),
-                original_workspace,
-                "{active_workspace}"
             );
         }
     }

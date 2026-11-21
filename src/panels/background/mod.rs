@@ -17,6 +17,7 @@ use crate::services::Services;
 use crate::services::hyprland::fullscreen::Fullscreen;
 use crate::services::hyprland::hyprstate::{HyprState, Snapshot};
 use crate::services::network::net::Net;
+use crate::services::session::states::States;
 use crate::ui::anim;
 use crate::ui::theme::{SharedTheme, mix};
 use crate::ui::widgets::display::paint::Paint;
@@ -34,6 +35,7 @@ const LOCK_ZOOM: f64 = 1.1;
 const LOCK_ZOOM_MILLIS: f64 = 400.0;
 const LOCK_BLUR_RADIUS: f64 = 100.0;
 const LOCK_WASH: f32 = 0.3;
+const ROUNDING_TOLERANCE_PX: f64 = 1.0;
 const VIDEOS: [&str; 5] = [".mp4", ".webm", ".mkv", ".avi", ".mov"];
 
 struct Image {
@@ -58,6 +60,7 @@ struct Background {
     image: RefCell<Option<Image>>,
     blur_texture: RefCell<Option<gdk::Texture>>,
     is_blur_enabled: Cell<bool>,
+    cover_tick_id: RefCell<Option<gtk4::TickCallbackId>>,
     x: Rc<anim::Motion>,
     y: Rc<anim::Motion>,
     margins: Cell<[i32; 4]>,
@@ -70,6 +73,7 @@ struct Background {
     net: Net,
     fullscreen: Fullscreen,
     hypr: HyprState,
+    states: States,
     theme: SharedTheme,
 }
 
@@ -127,6 +131,7 @@ pub fn open(
         image: RefCell::new(None),
         blur_texture: RefCell::new(None),
         is_blur_enabled: Cell::new(config::value_bool("/lock/blur/enable", true)),
+        cover_tick_id: RefCell::new(None),
         is_placed: Cell::new(false),
         is_sidebar_open: Cell::new(false),
         is_locked: Cell::new(false),
@@ -135,6 +140,7 @@ pub fn open(
         net: services.net.clone(),
         fullscreen: services.fullscreen.clone(),
         hypr: services.hypr.clone(),
+        states: services.states.clone(),
         theme: theme.clone(),
     });
 
@@ -256,6 +262,11 @@ pub fn open(
             if background.is_locked.replace(is_locked) != is_locked {
                 background.follow_lock();
             }
+            let is_cover_reported =
+                background.covers_monitor() == states.is_monitor_covered(&background.monitor);
+            if !is_cover_reported && background.cover_tick_id.borrow().is_none() {
+                background.report_cover();
+            }
         }
     }));
     for pointer in ["/background/wallpaperPath", "/background/perMonitor"] {
@@ -294,6 +305,15 @@ pub fn open(
         }
     }));
     background.check_safety();
+    scope.defer({
+        let states = services.states.clone();
+        let monitor = background.monitor.clone();
+        move || states.set_monitor_covered(&monitor, false)
+    });
+    if services.states.is_screen_locked.get() {
+        background.is_locked.set(true);
+        background.follow_lock();
+    }
 
     window.present();
     window
@@ -353,7 +373,12 @@ impl Background {
             1.0
         };
         self.zoom.to(zoom);
-        self.window.set_layer(Layer::Bottom);
+        let layer = if is_locked {
+            Layer::Overlay
+        } else {
+            Layer::Bottom
+        };
+        self.window.set_layer(layer);
         self.place();
         let background = Rc::downgrade(self);
         self.paint.add_tick_callback(move |paint, _| {
@@ -364,14 +389,54 @@ impl Background {
             if background.zoom.is_running() {
                 return glib::ControlFlow::Continue;
             }
-            if background.is_locked.get() {
-                background.window.set_layer(Layer::Overlay);
-            }
             glib::ControlFlow::Break
         });
+        self.report_cover();
     }
 
-    fn check_safety(&self) {
+    fn covers_monitor(&self) -> bool {
+        let (screen_width, screen_height) = self.screen;
+        let is_image_covering = self.image.borrow().as_ref().is_some_and(|image| {
+            image.width + ROUNDING_TOLERANCE_PX >= screen_width
+                && image.height + ROUNDING_TOLERANCE_PX >= screen_height
+        });
+        let is_zoom_covering =
+            !self.is_blur_enabled.get() || self.zoom.get().min(self.zoom.target()) >= 1.0;
+        self.is_locked.get()
+            && !self.is_safety_enforced.get()
+            && is_image_covering
+            && is_zoom_covering
+    }
+
+    fn report_cover(self: &Rc<Self>) {
+        if let Some(cover_tick_id) = self.cover_tick_id.take() {
+            cover_tick_id.remove();
+        }
+        if !self.covers_monitor() {
+            self.states.set_monitor_covered(&self.monitor, false);
+            return;
+        }
+        self.paint.queue_draw();
+        let background = Rc::downgrade(self);
+        let has_drawn = Cell::new(false);
+        let cover_tick_id = self.paint.add_tick_callback(move |_, _| {
+            let Some(background) = background.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            if !has_drawn.replace(true) {
+                return glib::ControlFlow::Continue;
+            }
+            background.cover_tick_id.take();
+            let is_covered = background.covers_monitor();
+            background
+                .states
+                .set_monitor_covered(&background.monitor, is_covered);
+            glib::ControlFlow::Break
+        });
+        self.cover_tick_id.replace(Some(cover_tick_id));
+    }
+
+    fn check_safety(self: &Rc<Self>) {
         let config = config::current();
         let wallpaper = config.wallpaper_for(&self.monitor).to_lowercase();
         let network = self.net.name.borrow().to_lowercase();
@@ -383,6 +448,7 @@ impl Background {
         if self.is_safety_enforced.replace(is_safety_enforced) != is_safety_enforced {
             self.follow_margins();
             self.paint.queue_draw();
+            self.report_cover();
         }
         self.clock.set_safety_enforced(is_safety_enforced);
     }
@@ -400,6 +466,7 @@ impl Background {
             self.blur_texture.replace(None);
             self.follow_margins();
             self.paint.queue_draw();
+            self.report_cover();
             if had_image && self.window.is_visible() {
                 self.window.set_visible(false);
                 self.window.set_visible(true);
@@ -449,6 +516,7 @@ impl Background {
         self.blur_texture.replace(None);
         self.is_blur_enabled
             .set(config::value_bool("/lock/blur/enable", true));
+        self.report_cover();
         let wallpaper = self.source.borrow().clone();
         let Some(size) = self
             .image

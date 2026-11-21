@@ -78,13 +78,24 @@ The lock surfaces are transparent, and what shows through is the desktop, change
 
 - Every monitor moves to an empty workspace, numbered 2147483647 minus its current one, so no window
   shows. 150 ms after unlocking, each monitor goes back to the workspace it was on.
-- With `lock.blur.enable` on (the default), the [background](background.md) zooms in by
-  `lock.blur.extraZoom` (110 %) over 400 ms and draws the wallpaper blurred by `lock.blur.radius`
-  (100), washed with the background color. Then it moves above the other layers.
+- The [background](background.md) moves above the other layers. With `lock.blur.enable` on (the
+  default), it zooms in by `lock.blur.extraZoom` (110 %) over 400 ms and draws the wallpaper blurred
+  by `lock.blur.radius` (100), washed with the background color.
 - The background's clock moves to the center of the screen with `lock.centerClock` and carries a
   "Locked" badge with `lock.showLockedText`. Both are on by default.
 - The bar, the dock, the notification popups and the on-screen keyboard hide, and the session screen
   closes. Keyring prompts wait until the screen unlocks.
+
+A monitor connected while the screen is locked gets the same treatment: it moves to its own empty
+workspace, and its background starts out locked. A monitor that disconnects and comes back keeps
+the workspace it had when it was first hidden during this lock, and unlocking returns it there.
+Unlocking skips monitors that are no longer connected.
+
+Each lock surface paints the opaque background color until that monitor's background, above the
+other layers, has drawn a wallpaper that fills the screen; then the color fades out over 200 ms. A
+monitor whose background is off, shows a video, has the work safety veil, or draws a wallpaper
+smaller than the screen (`background.parallax.workspaceZoom` below 1, or `lock.blur.extraZoom`
+below 1 with the blur on) keeps the opaque color for as long as the screen is locked.
 
 Along the bottom edge, three groups grow into place:
 

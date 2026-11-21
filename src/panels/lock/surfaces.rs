@@ -739,6 +739,26 @@ impl Lock {
                     }
                 }
             }));
+        let follow_cover = {
+            let window = window.downgrade();
+            let states = self.services.states.clone();
+            let connector = crate::connector(monitor);
+            move || {
+                let Some(window) = window.upgrade() else {
+                    return;
+                };
+                if states.is_monitor_covered(&connector) {
+                    window.remove_css_class("opaque");
+                } else {
+                    window.add_css_class("opaque");
+                }
+            }
+        };
+        follow_cover();
+        surface
+            .subscriptions
+            .borrow_mut()
+            .push(self.services.states.subscribe(follow_cover));
         if let Some(keyboard) = keyboard {
             let handler = keyboard.connect_caps_lock_state_notify({
                 let refresh = Rc::downgrade(&refresh);
