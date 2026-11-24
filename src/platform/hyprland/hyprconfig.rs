@@ -413,6 +413,9 @@ const SHADOW_DEFAULT_ALPHA: u8 = 0x20;
 const BAR_COLOR_MARKER: &str = "proscenio_bars = { bar_color = ";
 const SCROLLING_PEEK_MARKER: &str = "proscenio_bars = { scrolling_peek = ";
 const SCROLLING_PEEK_DEFAULT: i64 = 40;
+const TOGGLED_LAYOUT_MARKER: &str = "proscenio_bars = { toggle_layout = ";
+pub const SCROLLING_LAYOUT: &str = "scrolling";
+pub const TOGGLED_LAYOUTS: [&str; 2] = [SCROLLING_LAYOUT, "monocle"];
 
 fn parse_alpha(text: &str) -> Option<u8> {
     proscenio_protocol::unhex(text.get(..2)?)?.first().copied()
@@ -545,6 +548,41 @@ pub fn set_scrolling_peek(peek: i64) -> std::io::Result<()> {
     write(
         Area::Appearance,
         &with_scrolling_peek(&read_for_edit(Area::Appearance)?, peek),
+    )
+}
+
+fn toggled_layout_in(text: &str) -> &'static str {
+    text.lines()
+        .find_map(|line| {
+            let value = line
+                .split_once(TOGGLED_LAYOUT_MARKER)?
+                .1
+                .strip_prefix('"')?;
+            let layout = value.split_once('"')?.0;
+            TOGGLED_LAYOUTS.into_iter().find(|name| *name == layout)
+        })
+        .unwrap_or(SCROLLING_LAYOUT)
+}
+
+fn with_toggled_layout(text: &str, layout: &str) -> String {
+    let line = format!(
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ {TOGGLED_LAYOUT_MARKER}\"{layout}\" }} }} }}) end end"
+    );
+    with_line(
+        text,
+        |current_line| current_line.contains(TOGGLED_LAYOUT_MARKER),
+        &line,
+    )
+}
+
+pub fn toggled_layout() -> &'static str {
+    toggled_layout_in(&read(Area::Appearance))
+}
+
+pub fn set_toggled_layout(layout: &str) -> std::io::Result<()> {
+    write(
+        Area::Appearance,
+        &with_toggled_layout(&read_for_edit(Area::Appearance)?, layout),
     )
 }
 
@@ -892,6 +930,34 @@ mod tests {
             format!("{other_line}\n{}\n", build_line(0))
         );
         assert_eq!(scrolling_peek_in(&text_with_new_peek), 0);
+    }
+
+    #[test]
+    fn the_toggled_layout_is_one_guarded_line_that_stores_its_name() {
+        let build_line = |layout: &str| {
+            format!(
+                "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ proscenio_bars = {{ toggle_layout = \"{layout}\" }} }} }}) end end"
+            )
+        };
+        let other_line = TITLE_BUTTONS_ON_LEFT.lines[0];
+        let text = format!("{other_line}\n");
+        assert_eq!(toggled_layout_in(&text), "scrolling");
+        let text_with_monocle = with_toggled_layout(&text, "monocle");
+        assert_eq!(
+            text_with_monocle,
+            format!("{other_line}\n{}\n", build_line("monocle"))
+        );
+        assert_eq!(toggled_layout_in(&text_with_monocle), "monocle");
+        let text_with_scrolling = with_toggled_layout(&text_with_monocle, "scrolling");
+        assert_eq!(
+            text_with_scrolling,
+            format!("{other_line}\n{}\n", build_line("scrolling"))
+        );
+        assert_eq!(toggled_layout_in(&text_with_scrolling), "scrolling");
+        assert_eq!(
+            toggled_layout_in(&format!("{}\n", build_line("dwindle"))),
+            "scrolling"
+        );
     }
 
     #[test]

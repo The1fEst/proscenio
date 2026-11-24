@@ -1655,5 +1655,7 @@
   "Show on": "Mostrar en",
   "Floating windows": "Ventanas flotantes",
   "All windows": "Todas las ventanas",
-  "Neighboring windows shown while scrolling (px)": "Parte visible de las ventanas vecinas al desplazar (px)"
+  "Neighboring windows shown while scrolling (px)": "Parte visible de las ventanas vecinas al desplazar (px)",
+  "Fullscreen behavior": "Comportamiento de pantalla completa",
+  "Scroll": "Desplazar"
 }

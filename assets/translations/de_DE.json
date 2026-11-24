@@ -1655,5 +1655,7 @@
   "Show on": "Fenster mit Titelleiste",
   "Floating windows": "Schwebende Fenster",
   "All windows": "Alle Fenster",
-  "Neighboring windows shown while scrolling (px)": "Sichtbarer Teil der Nachbarfenster beim Scrollen (px)"
+  "Neighboring windows shown while scrolling (px)": "Sichtbarer Teil der Nachbarfenster beim Scrollen (px)",
+  "Fullscreen behavior": "Vollbildverhalten",
+  "Scroll": "Scrollen"
 }

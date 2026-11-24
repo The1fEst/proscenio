@@ -1655,5 +1655,7 @@
   "Show on": "להציג על",
   "Floating windows": "חלונות צפים",
   "All windows": "כל החלונות",
-  "Neighboring windows shown while scrolling (px)": "החלק הגלוי של החלונות השכנים בגלילה (פיקסלים)"
+  "Neighboring windows shown while scrolling (px)": "החלק הגלוי של החלונות השכנים בגלילה (פיקסלים)",
+  "Fullscreen behavior": "התנהגות מסך מלא",
+  "Scroll": "גלילה"
 }

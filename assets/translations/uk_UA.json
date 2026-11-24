@@ -1655,5 +1655,7 @@
   "Show on": "Вікна із заголовком",
   "Floating windows": "Плаваючі вікна",
   "All windows": "Усі вікна",
-  "Neighboring windows shown while scrolling (px)": "Видима частина сусідніх вікон під час прокручування (пікс)"
+  "Neighboring windows shown while scrolling (px)": "Видима частина сусідніх вікон під час прокручування (пікс)",
+  "Fullscreen behavior": "Поведінка на весь екран",
+  "Scroll": "Прокручування"
 }

@@ -1655,5 +1655,7 @@
   "Show on": "Окна с заголовком",
   "Floating windows": "Плавающие окна",
   "All windows": "Все окна",
-  "Neighboring windows shown while scrolling (px)": "Видимая часть соседних окон при прокрутке (пикс)"
+  "Neighboring windows shown while scrolling (px)": "Видимая часть соседних окон при прокрутке (пикс)",
+  "Fullscreen behavior": "Поведение во весь экран",
+  "Scroll": "Прокрутка"
 }

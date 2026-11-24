@@ -1655,5 +1655,7 @@
   "Show on": "Mostra su",
   "Floating windows": "Finestre fluttuanti",
   "All windows": "Tutte le finestre",
-  "Neighboring windows shown while scrolling (px)": "Parte visibile delle finestre vicine durante lo scorrimento (px)"
+  "Neighboring windows shown while scrolling (px)": "Parte visibile delle finestre vicine durante lo scorrimento (px)",
+  "Fullscreen behavior": "Comportamento a schermo intero",
+  "Scroll": "Scorrimento"
 }

@@ -1655,5 +1655,7 @@
   "Show on": "显示于",
   "Floating windows": "浮动窗口",
   "All windows": "所有窗口",
-  "Neighboring windows shown while scrolling (px)": "滚动时相邻窗口的可见宽度（像素）"
+  "Neighboring windows shown while scrolling (px)": "滚动时相邻窗口的可见宽度（像素）",
+  "Fullscreen behavior": "全屏行为",
+  "Scroll": "滚动"
 }

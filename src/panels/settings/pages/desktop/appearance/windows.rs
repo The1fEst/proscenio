@@ -442,6 +442,15 @@ fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
             }
         }
     });
+    let toggled_layout_combo =
+        page.combo_row(title_bars_section, "fullscreen", &tr("Fullscreen behavior"));
+    let toggled_layout_names = [tr("Scroll"), tr("Monocle")];
+    let toggled_layout = hyprconfig::toggled_layout();
+    let toggled_layout_index = hyprconfig::TOGGLED_LAYOUTS
+        .iter()
+        .position(|layout| *layout == toggled_layout)
+        .unwrap_or(0);
+    toggled_layout_combo.set_items(&toggled_layout_names, toggled_layout_index as i32);
     let peek_spin = SpinBox::new(&page.theme, 0, 400, 1, 0);
     peek_spin.set_value(hyprconfig::scrolling_peek());
     peek_spin.connect_changed(|peek| {
@@ -451,12 +460,37 @@ fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
         let _ = hyprconfig::set_scrolling_peek(peek);
         hypr::request("reload");
     });
-    page.spin_row(
+    let peek_row = page.spin_row(
         title_bars_section,
         "view_column",
         &tr("Neighboring windows shown while scrolling (px)"),
         &peek_spin,
     );
+    Page::set_spin_row_enabled(
+        &peek_row,
+        &peek_spin,
+        toggled_layout == hyprconfig::SCROLLING_LAYOUT,
+    );
+    toggled_layout_combo.connect_activated({
+        let toggled_layout_combo = Rc::downgrade(&toggled_layout_combo);
+        let peek_spin = Rc::downgrade(&peek_spin);
+        let peek_row = peek_row.downgrade();
+        move |index| {
+            let layout = hyprconfig::TOGGLED_LAYOUTS[index];
+            let _ = hyprconfig::set_toggled_layout(layout);
+            hypr::request("reload");
+            if let Some(toggled_layout_combo) = toggled_layout_combo.upgrade() {
+                toggled_layout_combo.set_items(&toggled_layout_names, index as i32);
+            }
+            if let (Some(peek_row), Some(peek_spin)) = (peek_row.upgrade(), peek_spin.upgrade()) {
+                Page::set_spin_row_enabled(
+                    &peek_row,
+                    &peek_spin,
+                    layout == hyprconfig::SCROLLING_LAYOUT,
+                );
+            }
+        }
+    });
     let update_row = add_command_row(page, title_bars_section, PLUGIN_UPDATE_COMMAND);
     page.tip(&update_row, &tr("Run this after every Hyprland update"));
 }

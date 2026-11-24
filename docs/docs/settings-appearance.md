@@ -182,7 +182,8 @@ Every control here is a Hyprland option or line in `appearance.lua`.
 | Borders | Border width | `general:border_size` | 0–20 px |
 | Title bars | Show on | `plugin:proscenio_bars:windows` | Floating windows or All windows; All windows is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Floating windows is no line |
 | Title bars | Button side | `plugin:proscenio_bars:button_side` | Right or Left; Left is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Right is no line |
-| Title bars | Neighboring windows shown while scrolling (px) | `plugin:proscenio_bars:scrolling_peek` | 0–400 px, 40 until the line exists; one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded. The reload that follows a change turns off the [scrolling toggle](title-bars.md#scrolling-toggle), so the new width shows from the next toggle |
+| Title bars | Fullscreen behavior | `plugin:proscenio_bars:toggle_layout` | Scroll or Monocle, Scroll until the line exists; the layout of the [layout toggle](title-bars.md#layout-toggle), one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded. The reload that follows a change turns the toggle off, so the new layout shows from the next toggle |
+| Title bars | Neighboring windows shown while scrolling (px) | `plugin:proscenio_bars:scrolling_peek` | 0–400 px, 40 until the line exists; one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded. The reload that follows a change turns off the [layout toggle](title-bars.md#layout-toggle), so the new width shows from the next toggle |
 | Shadows | Drop shadows under windows | `decoration:shadow:enabled` | on or off |
 | Shadows | Size (px) | `decoration:shadow:range` | 0–100 px |
 | Shadows | Falloff | `decoration:shadow:render_power` | 1–4 |
@@ -197,8 +198,8 @@ in `hyprpm`; until then the subsection shows the [install commands](title-bars.m
 with a copy button.
 
 Radius, passes and X-ray are disabled while blur is off; size, falloff, opacity and the sharp
-edge while shadows are off; and **Dim by** and **Keep fullscreen windows undimmed** while dimming
-is off.
+edge while shadows are off; **Dim by** and **Keep fullscreen windows undimmed** while dimming
+is off; and **Neighboring windows shown while scrolling** while **Fullscreen behavior** is Monocle.
 
 ### Fullscreen windows
 

@@ -24,6 +24,17 @@ static std::string describeMasterSlots(const std::vector<SMasterSlot>& slots) {
     return text;
 }
 
+static std::string describeScrollingColumns(const std::vector<SScrollingColumn>& columns) {
+    std::string text;
+    for (const auto& COLUMN : columns) {
+        text += COLUMN.width ? std::format("[{:.2f}", *COLUMN.width) : "[default";
+        for (size_t i = 0; i < COLUMN.targets.size(); ++i)
+            text += std::format(" {}:{:.2f}", COLUMN.targets[i], COLUMN.sizes[i]);
+        text += "]";
+    }
+    return text;
+}
+
 static void checkDwindle() {
     const SDwindleTree REMEMBERED = {
         .nodes =
@@ -98,8 +109,35 @@ static void checkMaster() {
     }
 }
 
+static void checkScrolling() {
+    const std::vector<SScrollingColumn> REMEMBERED = {
+        {.width = 0.5F, .targets = {0}, .sizes = {1.F}},
+        {.width = 0.8F, .targets = {1, 2}, .sizes = {0.25F, 0.75F}},
+    };
+
+    struct SCase {
+        const char*         name;
+        std::vector<bool>   isPresent;
+        std::vector<size_t> newTargets;
+        std::string         expected;
+    };
+
+    const std::vector<SCase> CASES = {
+        {"every target present keeps columns, widths and sizes", {true, true, true}, {}, "[0.50 0:1.00][0.80 1:0.25 2:0.75]"},
+        {"a closed target gives its height to the column", {true, true, false}, {}, "[0.50 0:1.00][0.80 1:1.00]"},
+        {"an emptied column drops out", {false, true, true}, {}, "[0.80 1:0.25 2:0.75]"},
+        {"a new target gets a column at the end", {true, true, true}, {3}, "[0.50 0:1.00][0.80 1:0.25 2:0.75][default 3:1.00]"},
+    };
+
+    for (const auto& CASE : CASES) {
+        const auto PLAN = planScrollingColumns(REMEMBERED, CASE.isPresent, CASE.newTargets);
+        expect(describeScrollingColumns(PLAN) == CASE.expected, std::format("scrolling: {}: {}", CASE.name, describeScrollingColumns(PLAN)));
+    }
+}
+
 int main() {
     checkDwindle();
     checkMaster();
+    checkScrolling();
     return reportResult("LayoutSnapshotTests");
 }

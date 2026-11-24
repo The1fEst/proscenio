@@ -13,8 +13,8 @@ PANGOCAIRO_LIBS := $(shell pkg-config --libs pangocairo)
 CAIRO_CFLAGS := $(patsubst -I%,-isystem %,$(filter-out -I/usr/include,$(shell pkg-config --cflags cairo)))
 CAIRO_LIBS := $(shell pkg-config --libs cairo)
 
-SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp DragGeometry.cpp ButtonAppearance.cpp IconRasterizer.cpp BarVisibility.cpp ScrollingToggle.cpp LayoutSnapshot.cpp ColumnWidth.cpp
-HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp DragGeometry.hpp ButtonAppearance.hpp IconRasterizer.hpp BarVisibility.hpp ScrollingToggle.hpp LayoutSnapshot.hpp ColumnWidth.hpp
+SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp DragGeometry.cpp ButtonAppearance.cpp IconRasterizer.cpp BarVisibility.cpp LayoutToggle.cpp LayoutSnapshot.cpp ColumnWidth.cpp ToggleLayoutOption.cpp
+HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp DragGeometry.hpp ButtonAppearance.hpp IconRasterizer.hpp BarVisibility.hpp LayoutToggle.hpp LayoutSnapshot.hpp ColumnWidth.hpp ToggleLayoutOption.hpp
 TARGET = proscenio_bars.so
 
 all: $(TARGET)
@@ -54,7 +54,11 @@ build/ColumnWidthTests: tests/ColumnWidthTests.cpp tests/Expect.hpp ColumnWidth.
 	mkdir -p build
 	$(CXX) $(CXXFLAGS) tests/ColumnWidthTests.cpp ColumnWidth.cpp -o $@
 
-test: build/ButtonLayoutTests build/ButtonStateMachineTests build/DragGeometryTests build/ButtonAppearanceTests build/IconRasterizerTests build/BarVisibilityTests build/LayoutSnapshotTests build/ColumnWidthTests
+build/ToggleLayoutOptionTests: tests/ToggleLayoutOptionTests.cpp tests/Expect.hpp ToggleLayoutOption.cpp ToggleLayoutOption.hpp
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) tests/ToggleLayoutOptionTests.cpp ToggleLayoutOption.cpp -o $@
+
+test: build/ButtonLayoutTests build/ButtonStateMachineTests build/DragGeometryTests build/ButtonAppearanceTests build/IconRasterizerTests build/BarVisibilityTests build/LayoutSnapshotTests build/ColumnWidthTests build/ToggleLayoutOptionTests
 	./build/ButtonLayoutTests
 	./build/ButtonStateMachineTests
 	./build/DragGeometryTests
@@ -63,6 +67,7 @@ test: build/ButtonLayoutTests build/ButtonStateMachineTests build/DragGeometryTe
 	./build/BarVisibilityTests
 	./build/LayoutSnapshotTests
 	./build/ColumnWidthTests
+	./build/ToggleLayoutOptionTests
 
 clean:
 	rm -rf $(TARGET) build

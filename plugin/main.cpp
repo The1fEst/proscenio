@@ -16,7 +16,7 @@
 #include <linux/input-event-codes.h>
 
 #include "BarVisibility.hpp"
-#include "ScrollingToggle.hpp"
+#include "LayoutToggle.hpp"
 #include "TitleBarDecoration.hpp"
 #include "globals.hpp"
 
@@ -166,6 +166,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     config.inactiveButtonColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_button_color", "Color of the buttons on an unfocused window", 0xFF36343B);
     config.scrollingPeek       = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:scrolling_peek", "Pixels of the neighboring columns shown while scrolling", 40,
                                                                        Config::Values::SIntValueOptions{.min = 0, .max = 400});
+    config.toggledLayout       = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:toggle_layout", "Layout of the toggle: scrolling or monocle", "scrolling");
 
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barHeight);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barColor);
@@ -185,9 +186,10 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addConfigValueV2(PHANDLE, config.maximizeIconColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveButtonColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.scrollingPeek);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.toggledLayout);
 
     HyprlandAPI::registerHyprCtlCommand(PHANDLE, {.name = BAR_DISPLAY_NAME, .handler = listWindowsWithBar});
-    HyprlandAPI::addLuaFunction(PHANDLE, BAR_DISPLAY_NAME, "toggle_scrolling", toggleScrollingFromLua);
+    HyprlandAPI::addLuaFunction(PHANDLE, BAR_DISPLAY_NAME, "toggle_layout", toggleLayoutFromLua);
 
     for (const auto& window : Desktop::windowState()->windows()) {
         if (validMapped(window))
@@ -206,7 +208,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
     g_pHyprRenderer->context().m_pass.removeAllOfType("CTitleBarPassElement");
 
     g_pGlobalState->iconTextures.clear();
-    disableScrollingRules();
+    disableLayoutToggleRules();
     g_pGlobalState->clickCenterLock.reset();
 
     Desktop::Rule::windowEffects()->unregisterEffect(g_pGlobalState->noBarRuleIdx);

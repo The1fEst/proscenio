@@ -41,7 +41,7 @@
 #include "ButtonAppearance.hpp"
 #include "DragGeometry.hpp"
 #include "IconRasterizer.hpp"
-#include "ScrollingToggle.hpp"
+#include "LayoutToggle.hpp"
 #include "TitleBarPassElement.hpp"
 
 using namespace Render::GL;
@@ -500,7 +500,7 @@ void CTitleBarDecoration::toggleMaximized() {
         return;
     }
 
-    toggleScrollingLayout(WINDOW->m_workspace);
+    toggleLayout(WINDOW->m_workspace);
 }
 
 bool CTitleBarDecoration::isMaximized() {
@@ -512,7 +512,7 @@ bool CTitleBarDecoration::isMaximized() {
     if (Fullscreen::controller()->isFullscreen(WINDOW, Fullscreen::FSMODE_MAXIMIZED))
         return true;
 
-    return !WINDOW->isFloating() && isScrollingToggled(WINDOW->m_workspace);
+    return !WINDOW->isFloating() && isLayoutToggled(WINDOW->m_workspace);
 }
 
 void CTitleBarDecoration::fireButton(eBarButton button) {

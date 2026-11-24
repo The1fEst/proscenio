@@ -1655,5 +1655,7 @@
   "Show on": "Gösterildiği yer",
   "Floating windows": "Yüzen pencereler",
   "All windows": "Tüm pencereler",
-  "Neighboring windows shown while scrolling (px)": "Kaydırırken komşu pencerelerin görünen kısmı (px)"
+  "Neighboring windows shown while scrolling (px)": "Kaydırırken komşu pencerelerin görünen kısmı (px)",
+  "Fullscreen behavior": "Tam ekran davranışı",
+  "Scroll": "Kaydırma"
 }

@@ -30,6 +30,13 @@ struct SMasterSlotPosition {
     double y        = 0;
 };
 
-SDwindleTree             planDwindleTree(const SDwindleTree& snapshot, const std::vector<bool>& isPresent, const std::vector<size_t>& newTargets);
-std::vector<size_t>      sortMasterSlots(const std::vector<SMasterSlotPosition>& positions);
-std::vector<SMasterSlot> planMasterSlots(const std::vector<SMasterSlot>& snapshot, const std::vector<bool>& isPresent, const std::vector<size_t>& newTargets);
+struct SScrollingColumn {
+    std::optional<float> width;
+    std::vector<size_t>  targets;
+    std::vector<float>   sizes;
+};
+
+SDwindleTree                  planDwindleTree(const SDwindleTree& snapshot, const std::vector<bool>& isPresent, const std::vector<size_t>& newTargets);
+std::vector<size_t>           sortMasterSlots(const std::vector<SMasterSlotPosition>& positions);
+std::vector<SMasterSlot>      planMasterSlots(const std::vector<SMasterSlot>& snapshot, const std::vector<bool>& isPresent, const std::vector<size_t>& newTargets);
+std::vector<SScrollingColumn> planScrollingColumns(const std::vector<SScrollingColumn>& snapshot, const std::vector<bool>& isPresent, const std::vector<size_t>& newTargets);

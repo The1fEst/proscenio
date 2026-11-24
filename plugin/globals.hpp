@@ -10,7 +10,7 @@
 #include <hyprutils/animation/AnimationConfig.hpp>
 
 #include "ButtonLayout.hpp"
-#include "ScrollingToggle.hpp"
+#include "LayoutToggle.hpp"
 
 #include <compare>
 #include <map>
@@ -37,8 +37,8 @@ struct SIconKey {
 struct SGlobalState {
     std::vector<WP<CTitleBarDecoration>>               bars;
     std::map<SIconKey, SP<Render::ITexture>>           iconTextures;
-    std::map<std::string, WP<Config::CWorkspaceRule>>  scrollingRules;
-    std::map<std::string, SArrangementSnapshot>        scrollingSnapshots;
+    std::map<std::string, WP<Config::CWorkspaceRule>>  layoutToggleRules;
+    std::map<std::string, SArrangementSnapshot>        arrangementSnapshots;
     SP<Hyprutils::Animation::SAnimationPropertyConfig> animationConfig;
     uint32_t                                           noBarRuleIdx    = 0;
     uint32_t                                           forceBarRuleIdx = 0;
@@ -47,7 +47,7 @@ struct SGlobalState {
     struct {
         SP<Config::Values::CIntValue>        barHeight, titleSize, scrollingPeek;
         SP<Config::Values::CFontWeightValue> titleWeight;
-        SP<Config::Values::CStringValue>     titleFont, buttonSide, windows;
+        SP<Config::Values::CStringValue>     titleFont, buttonSide, windows, toggledLayout;
         SP<Config::Values::CColorValue>      barColor, inactiveBarColor, titleColor, inactiveTitleColor;
         SP<Config::Values::CColorValue>      closeColor, closeIconColor, minimizeColor, minimizeIconColor, maximizeColor, maximizeIconColor, inactiveButtonColor;
     } config;

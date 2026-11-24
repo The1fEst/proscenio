@@ -1655,5 +1655,7 @@
   "Show on": "Tampilkan pada",
   "Floating windows": "Jendela mengambang",
   "All windows": "Semua jendela",
-  "Neighboring windows shown while scrolling (px)": "Bagian jendela tetangga yang terlihat saat menggulir (px)"
+  "Neighboring windows shown while scrolling (px)": "Bagian jendela tetangga yang terlihat saat menggulir (px)",
+  "Fullscreen behavior": "Perilaku layar penuh",
+  "Scroll": "Gulir"
 }

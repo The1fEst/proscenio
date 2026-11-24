@@ -1655,5 +1655,7 @@
   "Show on": "Hiện trên",
   "Floating windows": "Cửa sổ nổi",
   "All windows": "Mọi cửa sổ",
-  "Neighboring windows shown while scrolling (px)": "Phần cửa sổ bên cạnh hiển thị khi cuộn (px)"
+  "Neighboring windows shown while scrolling (px)": "Phần cửa sổ bên cạnh hiển thị khi cuộn (px)",
+  "Fullscreen behavior": "Hành vi toàn màn hình",
+  "Scroll": "Cuộn"
 }

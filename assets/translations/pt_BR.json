@@ -1655,5 +1655,7 @@
   "Show on": "Mostrar em",
   "Floating windows": "Janelas flutuantes",
   "All windows": "Todas as janelas",
-  "Neighboring windows shown while scrolling (px)": "Parte visível das janelas vizinhas ao rolar (px)"
+  "Neighboring windows shown while scrolling (px)": "Parte visível das janelas vizinhas ao rolar (px)",
+  "Fullscreen behavior": "Comportamento em tela cheia",
+  "Scroll": "Rolagem"
 }
