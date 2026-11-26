@@ -1,7 +1,7 @@
 ---
 title: Title bars
 sidebar_label: Title bars
-description: The proscenio_hyprland plugin that draws a Material 3 title bar on floating or all windows that ask for one, its buttons, the fullscreen toggle, the hyprpm install, every option and the rules that turn a bar on or off.
+description: The proscenio_hyprland plugin that draws a Material 3 title bar on floating or all windows that ask for one, its buttons, the fullscreen toggle, installing and updating it through hyprpm from the settings, every option and the rules that turn a bar on or off.
 ---
 
 # Title bars
@@ -199,8 +199,9 @@ workspace.
 ### GTK window buttons
 
 GTK apps read the buttons of their own header bar from `button-layout` in
-`org.gnome.desktop.wm.preferences`. The shell sets it when it starts and whenever **Title bars**,
-**Show on** or **Button side** changes in the [settings](settings-appearance.md#windows):
+`org.gnome.desktop.wm.preferences`. The shell sets it when it starts, whenever **Title bars**,
+**Show on** or **Button side** changes in the [settings](settings-appearance.md#windows), and when a
+[root session](#the-root-session) ends:
 
 | Title bars | `button-layout` |
 |---|---|
@@ -214,21 +215,37 @@ With `bars:behavior` at `float`, a tiled GTK window with its own header bar has 
 
 ## Installing
 
-The plugin is built against the headers of the running Hyprland, so `hyprpm` installs it:
+The plugin is built against the headers of the running Hyprland, so `hyprpm` builds and loads it.
+The shell's package depends on `hyprpm`, which brings `cmake`, `cpio`, `meson`, `glaze`,
+`hyprwayland-scanner` and the Hyprland headers' other build needs, on `git`, which fetches the
+plugin and the Hyprland source, and on `gcc`, `make` and `pkgconf`, which build both.
 
-```bash
-sudo pacman -S --needed hyprpm git gcc make pkgconf
-hyprpm update
-hyprpm add https://github.com/The1fEst/proscenio
-hyprpm enable proscenio_hyprland
-```
+Until `proscenio_hyprland` is enabled in `hyprpm`, **Appearance › Windows › Title bars** in the
+[settings](settings-appearance.md#windows) shows **Title bars come from a Hyprland plugin that is not
+enabled in hyprpm. Install builds and enables it.** and an **Install** button in place of its
+options. Once it is enabled, the subsection shows the options and an **Update** button.
 
-The `hyprpm` package brings `cmake`, `cpio`, `meson`, `glaze`, `hyprwayland-scanner` and the
-Hyprland headers' other build needs; `git` fetches the plugin and the Hyprland source, and `gcc`,
-`make` and `pkgconf` build both. Until `proscenio_hyprland` is enabled in `hyprpm`,
-**Appearance › Windows › Title bars** in the [settings](settings-appearance.md#windows) shows these
-commands with a copy button each in place of its options; once it is enabled, it shows the options
-and `hyprpm update`.
+| Button | Commands, in one [root session](#the-root-session) |
+|---|---|
+| Install | `hyprpm update`; then `hyprpm add https://github.com/The1fEst/proscenio`, unless the `state.toml` of a repository under `/var/cache/hyprpm/<user>/` has this `url` under `[repository]`; then `hyprpm enable proscenio_hyprland` |
+| Update | `hyprpm update` |
+
+`hyprpm update` builds the Hyprland headers when they do not match the installed Hyprland, fetches
+every repository, rebuilds the ones with new commits and loads the enabled plugins. `hyprpm add`
+builds the plugins of the repository and adds them disabled, and `hyprpm enable` enables
+`proscenio_hyprland` and loads it. `hyprpm update` exits with an error whenever a repository fails
+to update or a plugin waits for the next login, so the commands after it run either way; any other
+command that exits with an error ends the session, and the commands after it do not run. When the
+session ends, the shell checks the result and loads the plugin as after a
+[rebuild](#rebuilding-after-a-hyprland-update).
+
+Both buttons are disabled while a session or a rebuild check runs, and only one runs at a time.
+Under the plugin's name, the row shows **Installing the title bars** or **Rebuilding the title
+bars** until the session starts, then each `hyprpm` command as it starts and its last output line,
+at most twice a second, and at the end the outcome: the summary of the notification that follows,
+the login message, or the failure's reason in the error color. The row shows the automatic rebuild
+the same way. When a session leaves `proscenio_hyprland` enabled, the subsection switches to the
+options, and back when it is no longer enabled.
 
 The repository's `hyprpm.toml` names the plugin and its build command, `make -C plugin`, which needs
 `pkg-config` entries for `pixman-1`, `libdrm`, `hyprland`, `libinput`, `libudev`, `wayland-server`,
@@ -251,26 +268,46 @@ the running one `abiHash` of `hyprctl version -j`.
 | The built hash equals the installed one, the plugin is not loaded, and the running hash is unknown | `hyprpm reload` |
 | Anything else | Nothing |
 
-The check needs neither a password nor the network. A rebuild asks for the password once, in the
-shell's [polkit prompt](polkit.md) for the action `dev.fEst.Proscenio.hyprpm`, with the message
-"Authentication is required to rebuild the window title bars plugin after a Hyprland update":
-`pkexec /usr/lib/proscenio/proscenio-packages hyprpm` opens a root session that lasts for the
-rebuild. Then `hyprpm update` runs as the user with `PATH` set to `~/.cache/proscenio/hyprpm-tools`
-alone, a directory made again before each rebuild with a symbolic link to every program in
-`/usr/bin` except `sudo`, `doas` and `run0`, and a link named `run0` to `proscenio-packages`.
-`hyprpm` takes the first of `sudo`, `doas` and `run0` it finds in `PATH`, so each step it runs as
-root goes to `proscenio-packages`, which passes it to the session over the same token-guarded
-abstract socket a system update uses: the session takes it only from a process of the same user
-whose parent is this `hyprpm update`, with the session's random token, and closes the socket when
-the rebuild ends. `hyprpm` runs a plugin's build step through `/bin/sh -c`, a child of its own with
-the token in its environment, so a step that runs `run0` itself in that shell can ask for the same
-root steps, and only for those in the table below; a process the build starts below that shell is
-refused. Without `pkexec` or `proscenio-packages`,
-or with `XDG_RUNTIME_DIR` other than `/run/user/<uid>`, no rebuild starts. A check asked for while a
-rebuild runs follows it.
+The check needs neither a password nor the network. A rebuild runs `hyprpm update` in a
+[root session](#the-root-session), as the **Update** button does. A check asked for while a session
+runs follows it.
 
-The session runs only the root steps of `hyprpm update`, with `<user>` the name of the account
-that opened it and `<uid>` its uid, and refuses every other command:
+Once the password is accepted, a notification shows each `hyprpm` command as it starts and the last
+line of its output or the session's, at most twice a second, titled **Installing the title bars** for **Install** and
+**Rebuilding the title bars** for **Update** and a rebuild. When the session ends:
+
+| Result | What follows |
+|---|---|
+| The session ran all of its commands, the last one did not exit with an error, `proscenio_hyprland` is enabled, `state.toml` has the installed `abiHash`, the same Hyprland runs | `hyprpm reload`, `hyprctl dismissnotify`, and **Title bars installed** or **Title bars rebuilt** |
+| The session started, `proscenio_hyprland` is enabled, `state.toml` has the installed `abiHash`, an older Hyprland runs, whatever the commands' exit codes | `hyprctl dismissnotify`, and **Title bars installed** or **Title bars rebuilt** with **Hyprland was updated. The title bars come back after you log in again.** |
+| Anything else | **Could not install the title bars** or **Could not rebuild the title bars**, with **Try again from the title bar settings.** below the reason: the session's last error, **The authentication was canceled or failed.** when the session never started, **A rebuild needs pkexec, … and XDG_RUNTIME_DIR set to …** when it could not start, or else the last output line |
+
+`hyprpm update` builds against the installed Hyprland, `Hyprland --version-json`, while the session
+keeps the Hyprland it started with, so after a system update the rebuilt plugin loads at the next
+login. The failure notification of a rebuild shows once per installed hash in a session; that of a
+button every time.
+
+### The root session
+
+A session asks for the password once, in the shell's [polkit prompt](polkit.md) for the action
+`dev.fEst.Proscenio.hyprpm`, with the message "Authentication is required to install or update the
+window title bars plugin": `pkexec /usr/lib/proscenio/proscenio-packages hyprpm` opens a root
+session that lasts for all of its `hyprpm` commands. Each one runs as the user, one after another,
+with `PATH` set to `~/.cache/proscenio/hyprpm-tools` alone, a directory made again before each
+session with a symbolic link to every program in `/usr/bin` except `sudo`, `doas` and `run0`, and a
+link named `run0` to `proscenio-packages`. `hyprpm` takes the first of `sudo`, `doas` and `run0` it
+finds in `PATH`, so each step it runs as root goes to `proscenio-packages`, which passes it to the
+session over the same token-guarded abstract socket a system update uses: the session takes it only
+from a process of the same user whose parent is one of the session's `hyprpm` commands, with the
+session's random token, and closes the socket when the session ends. `hyprpm` runs a plugin's build
+step through `/bin/sh -c`, a child of its own with the token in its environment, so a step that runs
+`run0` itself in that shell can ask for the same root steps, and only for those in the table below;
+a process the build starts below that shell is refused. Without `pkexec` or `proscenio-packages`,
+or with `XDG_RUNTIME_DIR` other than `/run/user/<uid>`, no session starts.
+
+The session runs only the root steps of `hyprpm update`, which include every root step of
+`hyprpm add` and `hyprpm enable`, with `<user>` the name of the account that opened it and `<uid>`
+its uid, and refuses every other command:
 
 | Step from `hyprpm` | What the session does |
 |---|---|
@@ -290,19 +327,6 @@ regular files or directories. `make installheaders` does not copy `hyprland.pc` 
 stage and passes on the first 4 MiB of `make`'s output. It accepts the stage only when every entry
 sits in a directory the stage also lists, writes it into `…/<user>/headersRoot/.proscenio-new`, and
 only when that succeeds replaces `include/hyprland` and `share/pkgconfig/hyprland.pc` with it.
-
-Once the password is accepted, a notification titled **Rebuilding the title bars** shows the last line of
-`hyprpm`'s output or the session's, at most twice a second. When it ends:
-
-| Result | What follows |
-|---|---|
-| `state.toml` has the installed `abiHash`, the same Hyprland runs | `hyprpm reload`, `hyprctl dismissnotify`, and **Title bars rebuilt** |
-| `state.toml` has the installed `abiHash`, an older Hyprland runs | `hyprctl dismissnotify`, and **Title bars rebuilt** with **Hyprland was updated. The title bars come back after you log in again.** |
-| Anything else | **Could not rebuild the title bars**, with **Run hyprpm update in a terminal to rebuild them.** below the reason: the session's last error, **The authentication was canceled or failed.** when the session never started, **A rebuild needs pkexec, … and XDG_RUNTIME_DIR set to …** when it could not start, or else the last output line |
-
-`hyprpm update` builds against the installed Hyprland, `Hyprland --version-json`, while the session
-keeps the Hyprland it started with, so after a system update the rebuilt plugin loads at the next
-login. The failure notification shows once per installed hash in a session.
 
 ## Options
 

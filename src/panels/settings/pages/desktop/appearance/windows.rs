@@ -1,16 +1,19 @@
 use gtk4::prelude::*;
+use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::core::gsettings;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
-use crate::panels::settings::pages::administration::system::updates::updatepackages::{
-    card, copy_button,
-};
+use crate::panels::settings::pages::administration::system::updates::updatepackages::card;
 use crate::platform::hyprland::{hypr, hyprconfig, hyprpm};
 use crate::services::hyprland::hyproptions::HyprOptions;
+use crate::services::updates::pluginrebuild::{self, Status};
+use crate::ui::theme::pixel_size;
+use crate::ui::widgets::display::text;
 use crate::ui::widgets::input::spinbox::SpinBox;
+use crate::ui::widgets::layout::centered::Centered;
 
 pub const OPTIONS: [&str; 16] = [
     "general:border_size",
@@ -31,14 +34,7 @@ pub const OPTIONS: [&str; 16] = [
     "decoration:dim_special",
 ];
 
-const PLUGIN_INSTALL_COMMANDS: [&str; 4] = [
-    "sudo pacman -S --needed hyprpm git gcc make pkgconf",
-    "hyprpm update",
-    "hyprpm add https://github.com/The1fEst/proscenio",
-    "hyprpm enable proscenio_hyprland",
-];
-
-const PLUGIN_UPDATE_COMMAND: &str = "hyprpm update";
+const PLUGIN_BUTTON_END_MARGIN_PX: i32 = 12;
 
 const BORDER_COLORS: [(&str, &str); 5] = [
     ("Outline", "outline"),
@@ -250,18 +246,26 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
 
     let title_bars_section = page.subsection(&windows_section, &tr("Title bars"), "");
-    if hyprpm::is_plugin_enabled_in_hyprpm() {
-        add_title_bar_controls(&page, &title_bars_section);
-    } else {
-        page.notice(
-            &title_bars_section,
-            "info",
-            &tr("Title bars come from a Hyprland plugin. Run these commands in a terminal to install it."),
-        );
-        for command in PLUGIN_INSTALL_COMMANDS {
-            add_command_row(&page, &title_bars_section, command);
+    let is_plugin_shown_enabled = Cell::new(hyprpm::is_plugin_enabled_in_hyprpm());
+    fill_title_bars(&page, &title_bars_section, is_plugin_shown_enabled.get());
+    page.keep(pluginrebuild::subscribe({
+        let page = Rc::downgrade(&page);
+        let title_bars_section = title_bars_section.downgrade();
+        move || {
+            if pluginrebuild::is_running() {
+                return;
+            }
+            let is_enabled = hyprpm::is_plugin_enabled_in_hyprpm();
+            if is_plugin_shown_enabled.replace(is_enabled) == is_enabled {
+                return;
+            }
+            if let (Some(page), Some(title_bars_section)) =
+                (page.upgrade(), title_bars_section.upgrade())
+            {
+                fill_title_bars(&page, &title_bars_section, is_enabled);
+            }
         }
-    }
+    }));
 
     let shadows_section = page.subsection(&windows_section, &tr("Shadows"), "");
     hyprrows::switch(
@@ -396,11 +400,75 @@ pub fn build(context: &Context) -> Rc<Page> {
     page
 }
 
-fn add_command_row(page: &Page, section: &gtk4::Box, command: &str) -> gtk4::Box {
-    let (command_card, _) = card("terminal", command, true);
-    command_card.append(&copy_button(&page.theme, command));
-    section.append(&command_card);
-    command_card
+fn fill_title_bars(page: &Page, title_bars_section: &gtk4::Box, is_plugin_enabled: bool) {
+    while let Some(child) = title_bars_section.last_child() {
+        title_bars_section.remove(&child);
+    }
+    if is_plugin_enabled {
+        add_title_bar_controls(page, title_bars_section);
+        add_plugin_row(
+            page,
+            title_bars_section,
+            "upgrade",
+            &tr("Update"),
+            pluginrebuild::update,
+        );
+        return;
+    }
+    page.notice(
+        title_bars_section,
+        "info",
+        &tr("Title bars come from a Hyprland plugin that is not enabled in hyprpm. Install builds and enables it."),
+    );
+    add_plugin_row(
+        page,
+        title_bars_section,
+        "download",
+        &tr("Install"),
+        pluginrebuild::install,
+    );
+}
+
+fn add_plugin_row(page: &Page, section: &gtk4::Box, icon: &str, label: &str, on_clicked: fn()) {
+    let (plugin_card, lines) = card("extension", hyprpm::PLUGIN_NAME, false);
+    let status_label = text::styled_sized("", pixel_size::SMALLER);
+    status_label.set_xalign(0.0);
+    status_label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+    lines.append(&Centered::filling_width(&status_label));
+    let (button, _) = page.icon_button(icon, true, label, on_clicked);
+    button.set_margin_end(PLUGIN_BUTTON_END_MARGIN_PX);
+    plugin_card.append(&button);
+    section.append(&plugin_card);
+    let show_status = {
+        let status_label = status_label.downgrade();
+        let button = button.downgrade();
+        move || {
+            let (Some(status_label), Some(button)) = (status_label.upgrade(), button.upgrade())
+            else {
+                return;
+            };
+            button.set_sensitive(!pluginrebuild::is_running());
+            let status = pluginrebuild::status();
+            text::set_color(
+                &status_label,
+                if matches!(status, Status::Failure(_)) {
+                    "colError"
+                } else {
+                    "colSubtext"
+                },
+            );
+            let status_text = match status {
+                Status::Idle => String::new(),
+                Status::Busy(message) | Status::Success(message) | Status::Failure(message) => {
+                    message
+                }
+            };
+            status_label.set_visible(!status_text.is_empty());
+            status_label.set_text(&status_text);
+        }
+    };
+    show_status();
+    page.keep(pluginrebuild::subscribe(show_status));
 }
 
 fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
@@ -452,6 +520,4 @@ fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
             }
         }
     });
-    let update_row = add_command_row(page, title_bars_section, PLUGIN_UPDATE_COMMAND);
-    page.tip(&update_row, &tr("Run this after every Hyprland update"));
 }

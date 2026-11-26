@@ -57,7 +57,7 @@ five minutes, so several changes in a row ask once. Without it, or with the bina
 `pkexec` asks every time. Two more actions name `/usr/lib/proscenio/proscenio-packages` and tell
 its modes apart by the first argument, and both ask every time: `dev.fEst.Proscenio.packages` for
 `session`, which a system update runs as root, and `dev.fEst.Proscenio.hyprpm` for `hyprpm`, which
-[rebuilds the title bars](title-bars.md#rebuilding-after-a-hyprland-update).
+[installs, updates and rebuilds the title bars](title-bars.md#the-root-session).
 
 :::note
 

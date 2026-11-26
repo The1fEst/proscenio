@@ -10,7 +10,8 @@ use toml_edit::DocumentMut;
 use crate::core::{paths, process};
 use crate::platform::hyprland::hypr;
 
-const PLUGIN_NAME: &str = "proscenio_hyprland";
+pub const PLUGIN_NAME: &str = "proscenio_hyprland";
+pub const REPOSITORY_URL: &str = "https://github.com/The1fEst/proscenio";
 pub const HYPRPM: &str = "/usr/bin/hyprpm";
 pub const SYSTEM_TOOLS: &str = "/usr/bin";
 const ESCALATORS: [&str; 3] = ["sudo", "doas", "run0"];
@@ -48,18 +49,36 @@ fn has_plugin_flag(state_text: &str, key: &str) -> bool {
     })
 }
 
-fn has_plugin_flag_in_hyprpm(key: &str) -> bool {
+fn has_repository_url(state_text: &str, url: &str) -> bool {
+    state_text.parse::<DocumentMut>().is_ok_and(|state| {
+        state
+            .get("repository")
+            .and_then(|repository| repository.get("url"))
+            .and_then(|item| item.as_str())
+            == Some(url)
+    })
+}
+
+fn has_repository_state(predicate: impl Fn(&str) -> bool) -> bool {
     let Ok(repositories) = std::fs::read_dir(cache_dir()) else {
         return false;
     };
     repositories.flatten().any(|repository| {
         std::fs::read_to_string(repository.path().join("state.toml"))
-            .is_ok_and(|state_text| has_plugin_flag(&state_text, key))
+            .is_ok_and(|state_text| predicate(&state_text))
     })
+}
+
+fn has_plugin_flag_in_hyprpm(key: &str) -> bool {
+    has_repository_state(|state_text| has_plugin_flag(state_text, key))
 }
 
 pub fn is_plugin_enabled_in_hyprpm() -> bool {
     has_plugin_flag_in_hyprpm("enabled")
+}
+
+pub fn is_repository_in_hyprpm() -> bool {
+    has_repository_state(|state_text| has_repository_url(state_text, REPOSITORY_URL))
 }
 
 fn is_plugin_loaded() -> bool {
@@ -130,12 +149,13 @@ pub fn check_plugin(attempted_hash: Option<&str>) -> Option<PluginAction> {
 }
 
 fn judge_rebuild(
+    is_enabled: bool,
     built_hash: Option<&str>,
     installed_hash: Option<&str>,
     running_hash: Option<&str>,
 ) -> RebuildOutcome {
     match (built_hash, installed_hash) {
-        (Some(built_hash), Some(installed_hash)) if built_hash == installed_hash => {
+        (Some(built_hash), Some(installed_hash)) if is_enabled && built_hash == installed_hash => {
             if running_hash == Some(installed_hash) {
                 RebuildOutcome::Loadable
             } else {
@@ -148,6 +168,7 @@ fn judge_rebuild(
 
 pub fn check_rebuild() -> RebuildOutcome {
     judge_rebuild(
+        is_plugin_enabled_in_hyprpm(),
         built_abi_hash().as_deref(),
         installed_abi_hash().as_deref(),
         running_abi_hash().as_deref(),
@@ -218,6 +239,45 @@ mod tests {
             "[proscenio_hyprland]\nenabled = true\nfailed = true\n",
             "failed"
         ));
+    }
+
+    #[test]
+    fn the_repository_counts_as_added_only_with_its_own_url() {
+        let cases = [
+            (
+                "added",
+                "[proscenio_hyprland]\nenabled = false\n\n[repository]\nname = 'proscenio'\nurl = 'https://github.com/The1fEst/proscenio'\n",
+                true,
+            ),
+            (
+                "another url",
+                "[repository]\nname = 'proscenio'\nurl = 'https://github.com/someone/proscenio'\n",
+                false,
+            ),
+            (
+                "the url with .git",
+                "[repository]\nurl = 'https://github.com/The1fEst/proscenio.git'\n",
+                false,
+            ),
+            (
+                "the url outside the repository table",
+                "url = 'https://github.com/The1fEst/proscenio'\n",
+                false,
+            ),
+            ("no url", "[repository]\nname = 'proscenio'\n", false),
+            (
+                "not TOML",
+                "[repository\nurl = 'https://github.com/The1fEst/proscenio'\n",
+                false,
+            ),
+        ];
+        for (name, state_text, expected) in cases {
+            assert_eq!(
+                has_repository_url(state_text, REPOSITORY_URL),
+                expected,
+                "{name}"
+            );
+        }
     }
 
     #[test]
@@ -373,34 +433,56 @@ mod tests {
     }
 
     #[test]
-    fn a_rebuild_loads_now_only_when_the_running_hyprland_is_the_installed_one() {
+    fn a_rebuild_loads_only_an_enabled_plugin_and_now_only_on_the_installed_hyprland() {
         let cases = [
             (
+                true,
                 Some("new"),
                 Some("new"),
                 Some("new"),
                 RebuildOutcome::Loadable,
             ),
             (
+                true,
                 Some("new"),
                 Some("new"),
                 Some("old"),
                 RebuildOutcome::LoadableAfterLogin,
             ),
             (
+                false,
+                Some("new"),
+                Some("new"),
+                Some("new"),
+                RebuildOutcome::Failure,
+            ),
+            (
+                true,
                 Some("old"),
                 Some("new"),
                 Some("new"),
                 RebuildOutcome::Failure,
             ),
-            (None, Some("new"), Some("new"), RebuildOutcome::Failure),
-            (Some("new"), None, Some("new"), RebuildOutcome::Failure),
+            (
+                true,
+                None,
+                Some("new"),
+                Some("new"),
+                RebuildOutcome::Failure,
+            ),
+            (
+                true,
+                Some("new"),
+                None,
+                Some("new"),
+                RebuildOutcome::Failure,
+            ),
         ];
-        for (built_hash, installed_hash, running_hash, expected) in cases {
+        for (is_enabled, built_hash, installed_hash, running_hash, expected) in cases {
             assert_eq!(
-                judge_rebuild(built_hash, installed_hash, running_hash),
+                judge_rebuild(is_enabled, built_hash, installed_hash, running_hash),
                 expected,
-                "{built_hash:?} {installed_hash:?} {running_hash:?}"
+                "{is_enabled} {built_hash:?} {installed_hash:?} {running_hash:?}"
             );
         }
     }
