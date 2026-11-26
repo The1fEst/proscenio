@@ -46,22 +46,24 @@ enum PluginJob {
 impl PluginJob {
     fn progress_summary(&self) -> String {
         match self {
-            PluginJob::Install => tr("Installing the title bars"),
-            PluginJob::Rebuild { .. } | PluginJob::Update => tr("Rebuilding the title bars"),
+            PluginJob::Install => tr("Installing the Hyprland plugin"),
+            PluginJob::Rebuild { .. } | PluginJob::Update => tr("Rebuilding the Hyprland plugin"),
         }
     }
 
     fn success_summary(&self) -> String {
         match self {
-            PluginJob::Install => tr("Title bars installed"),
-            PluginJob::Rebuild { .. } | PluginJob::Update => tr("Title bars rebuilt"),
+            PluginJob::Install => tr("Hyprland plugin installed"),
+            PluginJob::Rebuild { .. } | PluginJob::Update => tr("Hyprland plugin rebuilt"),
         }
     }
 
     fn failure_summary(&self) -> String {
         match self {
-            PluginJob::Install => tr("Could not install the title bars"),
-            PluginJob::Rebuild { .. } | PluginJob::Update => tr("Could not rebuild the title bars"),
+            PluginJob::Install => tr("Could not install the Hyprland plugin"),
+            PluginJob::Rebuild { .. } | PluginJob::Update => {
+                tr("Could not rebuild the Hyprland plugin")
+            }
         }
     }
 }
@@ -488,7 +490,7 @@ async fn finish(job: &PluginJob, reason: &str, has_session: bool, has_failed: bo
         }
         RebuildOutcome::Loadable => String::new(),
         RebuildOutcome::LoadableAfterLogin => {
-            tr("Hyprland was updated. The title bars come back after you log in again.")
+            tr("Hyprland was updated. The plugin comes back after you log in again.")
         }
     };
     let is_loadable = outcome == RebuildOutcome::Loadable;
@@ -533,7 +535,7 @@ fn notify_failure(job: &PluginJob, reason: &str) {
             return;
         }
     }
-    let advice = tr("Try again from the title bar settings.");
+    let advice = tr("Try again from Settings → System → Updates.");
     let body = if reason.is_empty() {
         advice
     } else {

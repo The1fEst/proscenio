@@ -4,6 +4,7 @@ pub mod gestures;
 pub mod hyprrows;
 mod index;
 pub mod pages;
+pub mod pluginrow;
 mod rail;
 #[cfg(test)]
 mod scan;

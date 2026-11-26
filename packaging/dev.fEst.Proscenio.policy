@@ -29,21 +29,21 @@
     <annotate key="org.freedesktop.policykit.exec.argv1">session</annotate>
   </action>
   <action id="dev.fEst.Proscenio.hyprpm">
-    <description>Install or update the window title bars from proscenio</description>
-    <message>Authentication is required to install or update the window title bars plugin</message>
-    <message xml:lang="de">Zum Installieren oder Aktualisieren des Titelleisten-Plugins ist eine Authentifizierung erforderlich</message>
-    <message xml:lang="es">Se requiere autenticación para instalar o actualizar el complemento de barras de título</message>
-    <message xml:lang="fr">Une authentification est requise pour installer ou mettre à jour le module des barres de titre</message>
-    <message xml:lang="he">נדרש אימות כדי להתקין או לעדכן את תוסף שורות הכותרת</message>
-    <message xml:lang="id">Autentikasi diperlukan untuk memasang atau memperbarui plugin bilah judul</message>
-    <message xml:lang="it">È richiesta l'autenticazione per installare o aggiornare il plugin delle barre del titolo</message>
-    <message xml:lang="ja">タイトルバープラグインをインストールまたは更新するには認証が必要です</message>
-    <message xml:lang="pt_BR">É necessária autenticação para instalar ou atualizar o plugin das barras de título</message>
-    <message xml:lang="ru">Для установки или обновления плагина заголовков окон требуется аутентификация</message>
-    <message xml:lang="tr">Başlık çubuğu eklentisini kurmak veya güncellemek için kimlik doğrulama gerekiyor</message>
-    <message xml:lang="uk">Для встановлення або оновлення плагіна заголовків вікон потрібна автентифікація</message>
-    <message xml:lang="vi">Cần xác thực để cài đặt hoặc cập nhật phần bổ trợ thanh tiêu đề</message>
-    <message xml:lang="zh_CN">安装或更新标题栏插件需要身份验证</message>
+    <description>Install or update the proscenio Hyprland plugin</description>
+    <message>Authentication is required to install or update the Hyprland plugin</message>
+    <message xml:lang="de">Zum Installieren oder Aktualisieren des Hyprland-Plugins ist eine Authentifizierung erforderlich</message>
+    <message xml:lang="es">Se requiere autenticación para instalar o actualizar el plugin de Hyprland</message>
+    <message xml:lang="fr">Une authentification est requise pour installer ou mettre à jour le plugin Hyprland</message>
+    <message xml:lang="he">נדרש אימות כדי להתקין או לעדכן את תוסף Hyprland</message>
+    <message xml:lang="id">Autentikasi diperlukan untuk memasang atau memperbarui plugin Hyprland</message>
+    <message xml:lang="it">È richiesta l'autenticazione per installare o aggiornare il plugin di Hyprland</message>
+    <message xml:lang="ja">Hyprland プラグインをインストールまたは更新するには認証が必要です</message>
+    <message xml:lang="pt_BR">É necessária autenticação para instalar ou atualizar o plugin do Hyprland</message>
+    <message xml:lang="ru">Для установки или обновления плагина Hyprland требуется аутентификация</message>
+    <message xml:lang="tr">Hyprland eklentisini kurmak veya güncellemek için kimlik doğrulama gerekiyor</message>
+    <message xml:lang="uk">Для встановлення або оновлення плагіна Hyprland потрібна автентифікація</message>
+    <message xml:lang="vi">Cần xác thực để cài đặt hoặc cập nhật plugin Hyprland</message>
+    <message xml:lang="zh_CN">安装或更新 Hyprland 插件需要身份验证</message>
     <icon_name>system-software-update</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>

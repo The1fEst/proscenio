@@ -221,9 +221,12 @@ The shell's package depends on `hyprpm`, which brings `cmake`, `cpio`, `meson`, 
 plugin and the Hyprland source, and on `gcc`, `make` and `pkgconf`, which build both.
 
 Until `proscenio_hyprland` is enabled in `hyprpm`, **Appearance › Windows › Title bars** in the
-[settings](settings-appearance.md#windows) shows **Title bars come from a Hyprland plugin that is not
-enabled in hyprpm. Install builds and enables it.** and an **Install** button in place of its
-options. Once it is enabled, the subsection shows the options and an **Update** button.
+[settings](settings-appearance.md#windows) shows **Title bars and the fullscreen toggle come from the
+proscenio_hyprland Hyprland plugin, which is not enabled in hyprpm. Install builds and enables it.**
+and an **Install** button in place of its options. Once it is enabled, the subsection shows the
+options and an **Update** button. The **Hyprland plugin** section of
+[Settings › System › Updates](settings-system.md#updates) holds the same row, with the same notice
+and **Install** button until the plugin is enabled and the **Update** button after.
 
 | Button | Commands, in one [root session](#the-root-session) |
 |---|---|
@@ -240,12 +243,12 @@ session ends, the shell checks the result and loads the plugin as after a
 [rebuild](#rebuilding-after-a-hyprland-update).
 
 Both buttons are disabled while a session or a rebuild check runs, and only one runs at a time.
-Under the plugin's name, the row shows **Installing the title bars** or **Rebuilding the title
-bars** until the session starts, then each `hyprpm` command as it starts and its last output line,
+Under the plugin's name, the row shows **Installing the Hyprland plugin** or **Rebuilding the
+Hyprland plugin** until the session starts, then each `hyprpm` command as it starts and its last output line,
 at most twice a second, and at the end the outcome: the summary of the notification that follows,
 the login message, or the failure's reason in the error color. The row shows the automatic rebuild
-the same way. When a session leaves `proscenio_hyprland` enabled, the subsection switches to the
-options, and back when it is no longer enabled.
+the same way. When a session leaves `proscenio_hyprland` enabled, the row and the subsection switch to the
+options and **Update**, and back when it is no longer enabled.
 
 The repository's `hyprpm.toml` names the plugin and its build command, `make -C plugin`, which needs
 `pkg-config` entries for `pixman-1`, `libdrm`, `hyprland`, `libinput`, `libudev`, `wayland-server`,
@@ -273,14 +276,14 @@ The check needs neither a password nor the network. A rebuild runs `hyprpm updat
 runs follows it.
 
 Once the password is accepted, a notification shows each `hyprpm` command as it starts and the last
-line of its output or the session's, at most twice a second, titled **Installing the title bars** for **Install** and
-**Rebuilding the title bars** for **Update** and a rebuild. When the session ends:
+line of its output or the session's, at most twice a second, titled **Installing the Hyprland plugin** for **Install** and
+**Rebuilding the Hyprland plugin** for **Update** and a rebuild. When the session ends:
 
 | Result | What follows |
 |---|---|
-| The session ran all of its commands, the last one did not exit with an error, `proscenio_hyprland` is enabled, `state.toml` has the installed `abiHash`, the same Hyprland runs | `hyprpm reload`, `hyprctl dismissnotify`, and **Title bars installed** or **Title bars rebuilt** |
-| The session started, `proscenio_hyprland` is enabled, `state.toml` has the installed `abiHash`, an older Hyprland runs, whatever the commands' exit codes | `hyprctl dismissnotify`, and **Title bars installed** or **Title bars rebuilt** with **Hyprland was updated. The title bars come back after you log in again.** |
-| Anything else | **Could not install the title bars** or **Could not rebuild the title bars**, with **Try again from the title bar settings.** below the reason: the session's last error, **The authentication was canceled or failed.** when the session never started, **A rebuild needs pkexec, … and XDG_RUNTIME_DIR set to …** when it could not start, or else the last output line |
+| The session ran all of its commands, the last one did not exit with an error, `proscenio_hyprland` is enabled, `state.toml` has the installed `abiHash`, the same Hyprland runs | `hyprpm reload`, `hyprctl dismissnotify`, and **Hyprland plugin installed** or **Hyprland plugin rebuilt** |
+| The session started, `proscenio_hyprland` is enabled, `state.toml` has the installed `abiHash`, an older Hyprland runs, whatever the commands' exit codes | `hyprctl dismissnotify`, and **Hyprland plugin installed** or **Hyprland plugin rebuilt** with **Hyprland was updated. The plugin comes back after you log in again.** |
+| Anything else | **Could not install the Hyprland plugin** or **Could not rebuild the Hyprland plugin**, with **Try again from Settings → System → Updates.** below the reason: the session's last error, **The authentication was canceled or failed.** when the session never started, **A rebuild needs pkexec, … and XDG_RUNTIME_DIR set to …** when it could not start, or else the last output line |
 
 `hyprpm update` builds against the installed Hyprland, `Hyprland --version-json`, while the session
 keeps the Hyprland it started with, so after a system update the rebuilt plugin loads at the next
@@ -291,7 +294,7 @@ button every time.
 
 A session asks for the password once, in the shell's [polkit prompt](polkit.md) for the action
 `dev.fEst.Proscenio.hyprpm`, with the message "Authentication is required to install or update the
-window title bars plugin": `pkexec /usr/lib/proscenio/proscenio-packages hyprpm` opens a root
+Hyprland plugin": `pkexec /usr/lib/proscenio/proscenio-packages hyprpm` opens a root
 session that lasts for all of its `hyprpm` commands. Each one runs as the user, one after another,
 with `PATH` set to `~/.cache/proscenio/hyprpm-tools` alone, a directory made again before each
 session with a symbolic link to every program in `/usr/bin` except `sudo`, `doas` and `run0`, and a
