@@ -1,12 +1,14 @@
+use gtk4::prelude::*;
+use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::core::gsettings;
 use crate::core::i18n::tr;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::hyprrows::{self, Spin};
-use crate::panels::settings::pluginrow;
-use crate::platform::hyprland::{hypr, hyprconfig};
+use crate::platform::hyprland::{hypr, hyprconfig, hyprpm};
 use crate::services::hyprland::hyproptions::HyprOptions;
+use crate::services::updates::pluginrebuild;
 use crate::ui::widgets::input::spinbox::SpinBox;
 
 pub const OPTIONS: [&str; 16] = [
@@ -238,7 +240,11 @@ pub fn build(context: &Context) -> Rc<Page> {
     }
 
     let title_bars_section = page.subsection(&windows_section, &tr("Title bars"), "");
-    pluginrow::follow(&page, &title_bars_section, add_title_bar_controls);
+    follow_plugin(
+        &page,
+        &title_bars_section,
+        Rc::new(context.subpage_opener("updates")),
+    );
 
     let shadows_section = page.subsection(&windows_section, &tr("Shadows"), "");
     hyprrows::switch(
@@ -371,6 +377,54 @@ pub fn build(context: &Context) -> Rc<Page> {
 
     page.keep(options);
     page
+}
+
+fn follow_plugin(page: &Rc<Page>, section: &gtk4::Box, open_updates: Rc<dyn Fn()>) {
+    let is_shown_enabled = Cell::new(hyprpm::is_plugin_enabled_in_hyprpm());
+    fill_plugin(page, section, is_shown_enabled.get(), &open_updates);
+    page.keep(pluginrebuild::subscribe({
+        let page = Rc::downgrade(page);
+        let section = section.downgrade();
+        move || {
+            if pluginrebuild::is_running() {
+                return;
+            }
+            let is_enabled = hyprpm::is_plugin_enabled_in_hyprpm();
+            if is_shown_enabled.replace(is_enabled) == is_enabled {
+                return;
+            }
+            if let (Some(page), Some(section)) = (page.upgrade(), section.upgrade()) {
+                fill_plugin(&page, &section, is_enabled, &open_updates);
+            }
+        }
+    }));
+}
+
+fn fill_plugin(page: &Page, section: &gtk4::Box, is_enabled: bool, open_updates: &Rc<dyn Fn()>) {
+    while let Some(child) = section.last_child() {
+        section.remove(&child);
+    }
+    if is_enabled {
+        add_title_bar_controls(page, section);
+    } else {
+        page.notice(
+            section,
+            "info",
+            &tr("Title bars and the fullscreen toggle come from the proscenio_hyprland Hyprland plugin, which is not enabled in hyprpm. Install builds and enables it."),
+        );
+    }
+    let open_updates = open_updates.clone();
+    page.link_row(
+        section,
+        "extension",
+        &tr("Hyprland plugin"),
+        &if is_enabled {
+            tr("Enabled")
+        } else {
+            tr("Not installed")
+        },
+        move || open_updates(),
+    );
 }
 
 fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {

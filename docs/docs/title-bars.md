@@ -223,10 +223,11 @@ plugin and the Hyprland source, and on `gcc`, `make` and `pkgconf`, which build 
 Until `proscenio_hyprland` is enabled in `hyprpm`, **Appearance › Windows › Title bars** in the
 [settings](settings-appearance.md#windows) shows **Title bars and the fullscreen toggle come from the
 proscenio_hyprland Hyprland plugin, which is not enabled in hyprpm. Install builds and enables it.**
-and an **Install** button in place of its options. Once it is enabled, the subsection shows the
-options and an **Update** button. The **Hyprland plugin** section of
-[Settings › System › Updates](settings-system.md#updates) holds the same row, with the same notice
-and **Install** button until the plugin is enabled and the **Update** button after.
+in place of its options. Once it is enabled, the subsection shows the options. In both states it ends
+with a **Hyprland plugin** row, **Not installed** or **Enabled**, that opens
+[Settings › System › Updates](settings-system.md#updates). Its **Hyprland plugin** section holds the
+plugin's card, the same notice until the plugin is enabled, and in the section's header an
+**Install** button until the plugin is enabled and an **Update** button after.
 
 | Button | Commands, in one [root session](#the-root-session) |
 |---|---|
@@ -243,11 +244,12 @@ session ends, the shell checks the result and loads the plugin as after a
 [rebuild](#rebuilding-after-a-hyprland-update).
 
 Both buttons are disabled while a session or a rebuild check runs, and only one runs at a time.
-Under the plugin's name, the row shows **Installing the Hyprland plugin** or **Rebuilding the
+Under the plugin's name, the card shows **Installing the Hyprland plugin** or **Rebuilding the
 Hyprland plugin** until the session starts, then each `hyprpm` command as it starts and its last output line,
 at most twice a second, and at the end the outcome: the summary of the notification that follows,
-the login message, or the failure's reason in the error color. The row shows the automatic rebuild
-the same way. When a session leaves `proscenio_hyprland` enabled, the row and the subsection switch to the
+the login message, or the failure's reason in the error color. A wavy progress bar with no fixed
+length moves under the card while a session or a rebuild runs. The card shows the automatic rebuild
+the same way. When a session leaves `proscenio_hyprland` enabled, the section and the Windows subsection switch to the
 options and **Update**, and back when it is no longer enabled.
 
 The repository's `hyprpm.toml` names the plugin and its build command, `make -C plugin`, which needs

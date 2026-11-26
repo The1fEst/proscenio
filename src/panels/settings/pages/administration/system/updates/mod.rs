@@ -1,4 +1,5 @@
 mod confirmation;
+mod hyprlandplugin;
 pub mod shellcommits;
 pub mod updatepackages;
 
@@ -11,7 +12,6 @@ use crate::core::i18n::{tr, trf, trn};
 use crate::core::listeners::Subscription;
 use crate::panels::settings::content::{Context, Page};
 use crate::panels::settings::pages::administration::system::about;
-use crate::panels::settings::pluginrow;
 use crate::services::updates::updateprogress::Step;
 use crate::services::updates::{Job, Notice, Updates};
 use crate::ui::theme::pixel_size;
@@ -54,8 +54,7 @@ pub fn build(context: &Context) -> Rc<Page> {
         context.subpage_opener("shellcommits"),
     );
 
-    let plugin_section = page.section("extension", &tr("Hyprland plugin"));
-    pluginrow::follow(&page, &plugin_section, |_, _| {});
+    hyprlandplugin::add_section(&page);
 
     let (output_section, loading_indicator) = page.busy_section("downloading", &tr("Update"));
     let outcome_label = text::styled("");

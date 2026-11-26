@@ -246,11 +246,12 @@ behind under Shell. While a section's check runs, a loading indicator turns besi
 | System | **Packages**: how many packages can be upgraded, from the repositories, from AUR and, with Flatpak installed, from Flatpak; when part of the last check failed, the count it did find, if any, and **Could not check for updates** | `/usr/lib/proscenio/proscenio-packages plan ~/.cache/proscenio/pacman` lists the upgrade without a password; after the list is confirmed, `pkexec /usr/lib/proscenio/proscenio-packages session` upgrades the repositories through libalpm (see below); then, when AUR packages are pending, `paru -Sa` or `yay -Sa` with the names of the AUR packages listed, without questions, `--noconfirm` and no PKGBUILD review, with `proscenio-packages` in place of `sudo`; then, when Flatpak updates are pending, `flatpak update --noninteractive --assumeyes --user` and `flatpak update --noninteractive --assumeyes --system`, each only when its installation has an update, as the user (see below) |
 | Shell | **Commits**: how many commits `main` is ahead | after the commits are listed and confirmed, downloads `packaging/PKGBUILD` from `main` into `~/.cache/proscenio/package`, builds and installs it with `makepkg -Acfsi --noconfirm` in a root session of `proscenio-packages`, then restarts `proscenio.service` |
 
-The **Hyprland plugin** section after Shell holds the row of the [title bars](title-bars.md#installing)
-plugin: its name, a status line with the progress or outcome of an install, an update or a rebuild,
-and an **Install** button while `proscenio_hyprland` is not enabled in `hyprpm`, with the notice that
-says so above it, or an **Update** button once it is. The row switches between the two when a session
-enables the plugin. It is the same row as under **Appearance › Windows › Title bars**.
+The **Hyprland plugin** section after Shell holds the [title bars](title-bars.md#installing)
+plugin: its card, with a status line showing the progress or outcome of an install, an update or a
+rebuild, and a wavy progress bar of no fixed length while one runs. The section's header has an
+**Install** button while `proscenio_hyprland` is not enabled in `hyprpm`, with the notice that says so
+above the card, or an **Update** button once it is. The section switches between the two when a
+session enables the plugin. **Appearance › Windows › Title bars** ends with a row that opens this page.
 
 ![The Packages subpage listing the pending packages with their old and new versions](/img/screenshots/settings-system-update-packages.webp)
 
