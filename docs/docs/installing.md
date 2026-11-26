@@ -32,7 +32,8 @@ code with line tables kept, for a profiler.
 ## Installing
 
 On Arch Linux, `packaging/PKGBUILD` builds the package `fEst-proscenio` from `main` on GitHub; it
-installs both binaries and the polkit policy:
+installs both binaries and the polkit policy, and depends on `hyprpm`, `git`, `gcc`, `make` and
+`pkgconf`, which build the [title bars](title-bars.md#installing) plugin:
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/The1fEst/proscenio/main/packaging/PKGBUILD
