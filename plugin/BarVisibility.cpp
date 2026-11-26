@@ -1,6 +1,8 @@
 #include "BarVisibility.hpp"
 
 #include <format>
+#include <iterator>
+#include <sstream>
 
 eBuiltInBarRule matchBuiltInBarRule(const std::string& windowClass, const std::string& title) {
     if ((windowClass.empty() && title.empty()) || windowClass == "dev.fEst.Proscenio" || windowClass == "steam")
@@ -12,10 +14,20 @@ eBuiltInBarRule matchBuiltInBarRule(const std::string& windowClass, const std::s
     return BUILT_IN_BAR_RULE_NONE;
 }
 
+std::optional<eBarBehavior> parseBarBehavior(std::string_view value) {
+    if (value == "float")
+        return BAR_BEHAVIOR_FLOAT;
+
+    if (value == "all")
+        return BAR_BEHAVIOR_ALL;
+
+    return std::nullopt;
+}
+
 bool shouldShowBar(const SBarVisibilityInput& input) {
     const bool IS_PLACEMENT_ALLOWED = input.isFloating || input.isTiledAllowed;
 
-    if (!IS_PLACEMENT_ALLOWED || !input.isDecorated || input.isPinned || input.isOverrideRedirect || input.hasNoBarRule)
+    if (!input.areBarsEnabled || !IS_PLACEMENT_ALLOWED || !input.isDecorated || input.isPinned || input.isOverrideRedirect || input.hasNoBarRule)
         return false;
 
     if (input.hasForceBarRule)
@@ -49,6 +61,13 @@ bool hasGtkLibrary(std::istream& maps) {
     }
 
     return false;
+}
+
+bool isBarsRequest(std::string_view command, std::string_view commandName) {
+    std::istringstream             stream{std::string{command}};
+    const std::vector<std::string> WORDS{std::istream_iterator<std::string>{stream}, std::istream_iterator<std::string>{}};
+
+    return WORDS.size() == 2 && WORDS[0] == commandName && WORDS[1] == "bars";
 }
 
 std::string formatWindowAddresses(const std::vector<uintptr_t>& addresses) {

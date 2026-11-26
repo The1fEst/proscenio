@@ -395,7 +395,7 @@ void disableMonocleRules() {
     Config::Supplementary::refresher()->scheduleRefresh(Config::Supplementary::REFRESH_MONITOR_STATES | Config::Supplementary::REFRESH_WINDOW_STATES);
 }
 
-int toggleMonocleFromLua(lua_State* state) {
+int toggleFullscreenFromLua(lua_State* state) {
     PHLWORKSPACE workspace;
 
     if (lua_isnoneornil(state, 1)) {
@@ -403,10 +403,10 @@ int toggleMonocleFromLua(lua_State* state) {
         if (MONITOR)
             workspace = MONITOR->m_activeSpecialWorkspace ? MONITOR->m_activeSpecialWorkspace : MONITOR->m_activeWorkspace;
     } else
-        workspace = Config::Lua::Bindings::Internal::workspaceFromLuaSelectorOrObject(state, 1, "toggle_monocle");
+        workspace = Config::Lua::Bindings::Internal::workspaceFromLuaSelectorOrObject(state, 1, "toggle_fullscreen");
 
     if (!workspace)
-        return Config::Lua::Bindings::Internal::configError(state, "toggle_monocle: no such workspace");
+        return Config::Lua::Bindings::Internal::configError(state, "toggle_fullscreen: no such workspace");
 
     toggleMonocleLayout(workspace);
     return 0;

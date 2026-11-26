@@ -194,7 +194,7 @@ void CTitleBarDecoration::onPositioningReply(const SDecorationPositioningReply& 
 }
 
 std::string CTitleBarDecoration::getDisplayName() {
-    return BAR_DISPLAY_NAME;
+    return PLUGIN_NAME;
 }
 
 bool CTitleBarDecoration::shouldHide() {
@@ -203,8 +203,9 @@ bool CTitleBarDecoration::shouldHide() {
     const auto  SURFACE = BACKEND.surface();
 
     return !shouldShowBar({
+        .areBarsEnabled     = sc<bool>(g_pGlobalState->config.barsEnabled->value()),
         .isFloating         = WINDOW->isFloating(),
-        .isTiledAllowed     = g_pGlobalState->config.windows->value() == "all",
+        .isTiledAllowed     = parseBarBehavior(g_pGlobalState->config.barBehavior->value()) == BAR_BEHAVIOR_ALL,
         .isDecorated        = sc<bool>(WINDOW->m_ruleApplicator->decorate().valueOrDefault()),
         .isPinned           = sc<bool>(WINDOW->m_state & Desktop::View::WINDOW_STATE_PINNED),
         .isOverrideRedirect = BACKEND.traits().overrideRedirect,

@@ -65,6 +65,12 @@ int main() {
         {"pinned window that asked for a bar", {.isPinned = true, .xdgDecorationMode = MODE_SERVER}, false},
         {"force_bar on a pinned window", {.isPinned = true, .hasForceBarRule = true}, false},
         {"pinned X11", {.isPinned = true, .isX11 = true}, false},
+        {"bars off, window that asked for a bar", {.areBarsEnabled = false, .xdgDecorationMode = MODE_SERVER}, false},
+        {"bars off, X11", {.areBarsEnabled = false, .isX11 = true}, false},
+        {"bars off, force_bar", {.areBarsEnabled = false, .hasForceBarRule = true}, false},
+        {"bars off, built-in force_bar", {.areBarsEnabled = false, .builtInRule = BUILT_IN_BAR_RULE_FORCE_BAR}, false},
+        {"bars off, floating GTK", {.areBarsEnabled = false, .isGtkClient = true}, false},
+        {"bars off, force_bar on a tiled window, all windows", {.areBarsEnabled = false, .isFloating = false, .isTiledAllowed = true, .hasForceBarRule = true}, false},
     };
 
     struct SMapsCase {
@@ -119,6 +125,39 @@ int main() {
 
     for (const auto& testCase : RULE_CASES)
         expect(matchBuiltInBarRule(testCase.windowClass, testCase.title) == testCase.expected, std::format("built-in rule: {}", testCase.name));
+
+    struct SBehaviorCase {
+        const char*                 value;
+        std::optional<eBarBehavior> behavior;
+    };
+
+    const std::vector<SBehaviorCase> BEHAVIOR_CASES = {
+        {"float", BAR_BEHAVIOR_FLOAT}, {"all", BAR_BEHAVIOR_ALL}, {"floating", std::nullopt}, {"none", std::nullopt}, {"", std::nullopt}, {"All", std::nullopt},
+    };
+
+    for (const auto& testCase : BEHAVIOR_CASES)
+        expect(parseBarBehavior(testCase.value) == testCase.behavior, std::format("behavior: \"{}\"", testCase.value));
+
+    struct SRequestCase {
+        const char* command;
+        bool        isAccepted;
+    };
+
+    const std::vector<SRequestCase> REQUEST_CASES = {
+        {"proscenio_hyprland bars", true},
+        {"proscenio_hyprland  bars ", true},
+        {"proscenio_hyprland\tbars\n", true},
+        {"proscenio_hyprland", false},
+        {"proscenio_hyprland ", false},
+        {"proscenio_hyprland monocle", false},
+        {"proscenio_hyprland bars extra", false},
+        {"proscenio_hyprlandbars", false},
+        {"proscenio_hyprland_x bars", false},
+        {"proscenio_hyprland Bars", false},
+    };
+
+    for (const auto& testCase : REQUEST_CASES)
+        expect(isBarsRequest(testCase.command, "proscenio_hyprland") == testCase.isAccepted, std::format("hyprctl request: \"{}\"", testCase.command));
 
     expect(formatWindowAddresses({}) == "[]", "window addresses: none");
     expect(formatWindowAddresses({0x55aa01}) == R"(["0x55aa01"])", "window addresses: one");

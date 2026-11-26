@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
+#include <hyprland/src/config/values/types/BoolValue.hpp>
 #include <hyprland/src/config/values/types/IntValue.hpp>
 #include <hyprland/src/config/values/types/StringValue.hpp>
 #include <hyprland/src/config/values/types/ColorValue.hpp>
@@ -15,8 +16,8 @@
 #include <map>
 #include <vector>
 
-inline HANDLE         PHANDLE          = nullptr;
-inline constexpr auto BAR_DISPLAY_NAME = "proscenio_bars";
+inline HANDLE         PHANDLE     = nullptr;
+inline constexpr auto PLUGIN_NAME = "proscenio_hyprland";
 
 class CTitleBarDecoration;
 
@@ -43,9 +44,10 @@ struct SGlobalState {
     uint32_t                                           forceBarRuleIdx = 0;
 
     struct {
+        SP<Config::Values::CBoolValue>       barsEnabled;
         SP<Config::Values::CIntValue>        barHeight, titleSize;
         SP<Config::Values::CFontWeightValue> titleWeight;
-        SP<Config::Values::CStringValue>     titleFont, buttonSide, windows;
+        SP<Config::Values::CStringValue>     titleFont, buttonSide, barBehavior;
         SP<Config::Values::CColorValue>      barColor, inactiveBarColor, titleColor, inactiveTitleColor;
         SP<Config::Values::CColorValue>      closeColor, closeIconColor, minimizeColor, minimizeIconColor, maximizeColor, maximizeIconColor, inactiveButtonColor;
     } config;

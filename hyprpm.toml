@@ -2,8 +2,8 @@
 name = "proscenio"
 authors = ["fEst"]
 
-[proscenio_bars]
-description = "Material 3 title bars for floating windows"
+[proscenio_hyprland]
+description = "Material 3 title bars and the fullscreen toggle for proscenio"
 authors = ["fEst"]
-output = "plugin/proscenio_bars.so"
+output = "plugin/proscenio_hyprland.so"
 build = ["make -C plugin"]

@@ -21,4 +21,4 @@ struct SMonocleSnapshot {
 bool isMonocleLayout(const PHLWORKSPACE& workspace);
 void toggleMonocleLayout(const PHLWORKSPACE& workspace);
 void disableMonocleRules();
-int  toggleMonocleFromLua(lua_State* state);
+int  toggleFullscreenFromLua(lua_State* state);

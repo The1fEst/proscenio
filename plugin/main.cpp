@@ -25,7 +25,7 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 }
 
 static void onNewWindow(PHLWINDOW window) {
-    if (std::ranges::any_of(window->presentation().decorations(), [](const auto& decoration) { return decoration->getDisplayName() == BAR_DISPLAY_NAME; }))
+    if (std::ranges::any_of(window->presentation().decorations(), [](const auto& decoration) { return decoration->getDisplayName() == PLUGIN_NAME; }))
         return;
 
     auto bar = Hyprutils::Memory::makeShared<CTitleBarDecoration>(window);
@@ -73,7 +73,10 @@ static void onMouseButton(IPointer::SButtonEvent event, Event::SCallbackInfo& in
     }
 }
 
-static IPC::Socket1::SResponse listWindowsWithBar(const IPC::Socket1::SRequest&) {
+static IPC::Socket1::SResponse listWindowsWithBar(const IPC::Socket1::SRequest& request) {
+    if (!isBarsRequest(request.command, PLUGIN_NAME))
+        return std::format("usage: hyprctl {} bars", PLUGIN_NAME);
+
     std::vector<uintptr_t> addresses;
 
     for (const auto& bar : g_pGlobalState->bars) {
@@ -82,6 +85,13 @@ static IPC::Socket1::SResponse listWindowsWithBar(const IPC::Socket1::SRequest&)
     }
 
     return formatWindowAddresses(addresses);
+}
+
+static std::expected<void, std::string> validateBarBehavior(const Config::STRING& value) {
+    if (!parseBarBehavior(value))
+        return std::unexpected("expected float or all");
+
+    return {};
 }
 
 static void onWindowActive() {
@@ -101,13 +111,13 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     const std::string CLIENT_HASH = __hyprland_api_get_client_hash();
 
     if (HASH != CLIENT_HASH) {
-        HyprlandAPI::addNotification(PHANDLE, "[proscenio_bars] Version mismatch: the headers do not match the running Hyprland", CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
-        throw std::runtime_error("[proscenio_bars] Version mismatch");
+        HyprlandAPI::addNotification(PHANDLE, "[proscenio_hyprland] Version mismatch: the headers do not match the running Hyprland", CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
+        throw std::runtime_error("[proscenio_hyprland] Version mismatch");
     }
 
     g_pGlobalState                  = makeUnique<SGlobalState>();
-    g_pGlobalState->noBarRuleIdx    = Desktop::Rule::windowEffects()->registerEffect("proscenio_bars:no_bar");
-    g_pGlobalState->forceBarRuleIdx = Desktop::Rule::windowEffects()->registerEffect("proscenio_bars:force_bar");
+    g_pGlobalState->noBarRuleIdx    = Desktop::Rule::windowEffects()->registerEffect("proscenio_hyprland:no_bar");
+    g_pGlobalState->forceBarRuleIdx = Desktop::Rule::windowEffects()->registerEffect("proscenio_hyprland:force_bar");
 
     g_pGlobalState->animationConfig                  = makeShared<Hyprutils::Animation::SAnimationPropertyConfig>();
     g_pGlobalState->animationConfig->internalEnabled = 1;
@@ -124,24 +134,32 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     auto&       config = g_pGlobalState->config;
 
-    config.barHeight          = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:bar_height", "Height of the bar", 40, Config::Values::SIntValueOptions{.min = 1});
-    config.barColor           = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:bar_color", "Color of the bar", 0xFF211F26);
-    config.inactiveBarColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_bar_color", "Color of the bar on an unfocused window", 0xFF211F26);
-    config.titleColor         = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:title_color", "Color of the title", 0xFFE6E0E9);
-    config.inactiveTitleColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_title_color", "Color of the title on an unfocused window", 0xFFCAC4D0);
-    config.titleFont          = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:title_font", "Font of the title", "Google Sans");
-    config.titleSize          = makeShared<Config::Values::CIntValue>("plugin:proscenio_bars:title_size", "Size of the title", 14, Config::Values::SIntValueOptions{.min = 1});
-    config.titleWeight    = makeShared<Config::Values::CFontWeightValue>("plugin:proscenio_bars:title_weight", "Weight of the title (e.g. \"bold\" or an integer 100-1000)", 500);
-    config.buttonSide     = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:button_side", "Side of the bar the buttons sit on: right or left", "right");
-    config.windows        = makeShared<Config::Values::CStringValue>("plugin:proscenio_bars:windows", "Windows that get a bar: floating or all", "floating");
-    config.closeColor     = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:close_color", "Color of the close button", 0xFFF2B8B5);
-    config.closeIconColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:close_icon_color", "Color of the close icon and its state layer", 0xFF601410);
-    config.minimizeColor  = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:minimize_color", "Color of the minimize button", 0xFFEFB8C8);
-    config.minimizeIconColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:minimize_icon_color", "Color of the minimize icon and its state layer", 0xFF492532);
-    config.maximizeColor       = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_color", "Color of the maximize button", 0xFFD0BCFF);
-    config.maximizeIconColor   = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:maximize_icon_color", "Color of the maximize icon and its state layer", 0xFF381E72);
-    config.inactiveButtonColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_bars:inactive_button_color", "Color of the buttons on an unfocused window", 0xFF36343B);
+    config.barsEnabled      = makeShared<Config::Values::CBoolValue>("plugin:proscenio_hyprland:bars:enabled", "Whether any window gets a bar", true);
+    config.barHeight        = makeShared<Config::Values::CIntValue>("plugin:proscenio_hyprland:bars:height", "Height of the bar", 40, Config::Values::SIntValueOptions{.min = 1});
+    config.barColor         = makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:color", "Color of the bar", 0xFF211F26);
+    config.inactiveBarColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:inactive_color", "Color of the bar on an unfocused window", 0xFF211F26);
+    config.titleColor       = makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:title_color", "Color of the title", 0xFFE6E0E9);
+    config.inactiveTitleColor =
+        makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:inactive_title_color", "Color of the title on an unfocused window", 0xFFCAC4D0);
+    config.titleFont = makeShared<Config::Values::CStringValue>("plugin:proscenio_hyprland:bars:title_font", "Font of the title", "Google Sans");
+    config.titleSize = makeShared<Config::Values::CIntValue>("plugin:proscenio_hyprland:bars:title_size", "Size of the title", 14, Config::Values::SIntValueOptions{.min = 1});
+    config.titleWeight =
+        makeShared<Config::Values::CFontWeightValue>("plugin:proscenio_hyprland:bars:title_weight", "Weight of the title (e.g. \"bold\" or an integer 100-1000)", 500);
+    config.buttonSide     = makeShared<Config::Values::CStringValue>("plugin:proscenio_hyprland:bars:button_side", "Side of the bar the buttons sit on: right or left", "right");
+    config.barBehavior    = makeShared<Config::Values::CStringValue>("plugin:proscenio_hyprland:bars:behavior", "Windows that get a bar: float or all", "float",
+                                                                     Config::Values::SStringValueOptions{.validator = validateBarBehavior});
+    config.closeColor     = makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:close_color", "Color of the close button", 0xFFF2B8B5);
+    config.closeIconColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:close_icon_color", "Color of the close icon and its state layer", 0xFF601410);
+    config.minimizeColor  = makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:minimize_color", "Color of the minimize button", 0xFFEFB8C8);
+    config.minimizeIconColor =
+        makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:minimize_icon_color", "Color of the minimize icon and its state layer", 0xFF492532);
+    config.maximizeColor = makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:maximize_color", "Color of the maximize button", 0xFFD0BCFF);
+    config.maximizeIconColor =
+        makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:maximize_icon_color", "Color of the maximize icon and its state layer", 0xFF381E72);
+    config.inactiveButtonColor =
+        makeShared<Config::Values::CColorValue>("plugin:proscenio_hyprland:bars:inactive_button_color", "Color of the buttons on an unfocused window", 0xFF36343B);
 
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.barsEnabled);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barHeight);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.barColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveBarColor);
@@ -151,7 +169,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addConfigValueV2(PHANDLE, config.titleSize);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.titleWeight);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.buttonSide);
-    HyprlandAPI::addConfigValueV2(PHANDLE, config.windows);
+    HyprlandAPI::addConfigValueV2(PHANDLE, config.barBehavior);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.closeColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.closeIconColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.minimizeColor);
@@ -160,8 +178,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addConfigValueV2(PHANDLE, config.maximizeIconColor);
     HyprlandAPI::addConfigValueV2(PHANDLE, config.inactiveButtonColor);
 
-    HyprlandAPI::registerHyprCtlCommand(PHANDLE, {.name = BAR_DISPLAY_NAME, .handler = listWindowsWithBar});
-    HyprlandAPI::addLuaFunction(PHANDLE, BAR_DISPLAY_NAME, "toggle_monocle", toggleMonocleFromLua);
+    HyprlandAPI::registerHyprCtlCommand(PHANDLE, {.name = PLUGIN_NAME, .match = IPC::Socket1::COMMAND_MATCH_PREFIX, .handler = listWindowsWithBar});
+    HyprlandAPI::addLuaFunction(PHANDLE, PLUGIN_NAME, "toggle_fullscreen", toggleFullscreenFromLua);
 
     for (const auto& window : Desktop::windowState()->windows()) {
         if (validMapped(window))
@@ -170,7 +188,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     HyprlandAPI::reloadConfig();
 
-    return {"proscenio_bars", "Title bars for windows that ask for one.", "fEst", "1.0"};
+    return {PLUGIN_NAME, "Title bars for windows that ask for one and the fullscreen toggle.", "fEst", "1.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

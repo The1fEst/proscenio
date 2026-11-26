@@ -15,7 +15,7 @@ CAIRO_LIBS := $(shell pkg-config --libs cairo)
 
 SRC = main.cpp TitleBarDecoration.cpp TitleBarPassElement.cpp ButtonLayout.cpp ButtonStateMachine.cpp DragGeometry.cpp ButtonAppearance.cpp IconRasterizer.cpp BarVisibility.cpp Monocle.cpp LayoutSnapshot.cpp
 HDR = globals.hpp TitleBarDecoration.hpp TitleBarPassElement.hpp ButtonLayout.hpp ButtonStateMachine.hpp DragGeometry.hpp ButtonAppearance.hpp IconRasterizer.hpp BarVisibility.hpp Monocle.hpp LayoutSnapshot.hpp
-TARGET = proscenio_bars.so
+TARGET = proscenio_hyprland.so
 
 all: $(TARGET)
 
