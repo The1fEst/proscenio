@@ -323,14 +323,21 @@ pub const NO_DIM_FULLSCREEN: Lines = Lines {
 pub const TITLE_BUTTONS_ON_LEFT: Lines = Lines {
     area: Area::Appearance,
     lines: &[
-        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({ plugin = { proscenio_bars = { button_side = \"left\" } } }) end end",
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_hyprland\" then hl.config({ plugin = { proscenio_hyprland = { bars = { button_side = \"left\" } } } }) end end",
     ],
 };
 
 pub const TITLE_BARS_ON_ALL_WINDOWS: Lines = Lines {
     area: Area::Appearance,
     lines: &[
-        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({ plugin = { proscenio_bars = { windows = \"all\" } } }) end end",
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_hyprland\" then hl.config({ plugin = { proscenio_hyprland = { bars = { behavior = \"all\" } } } }) end end",
+    ],
+};
+
+pub const TITLE_BARS_OFF: Lines = Lines {
+    area: Area::Appearance,
+    lines: &[
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_hyprland\" then hl.config({ plugin = { proscenio_hyprland = { bars = { enabled = false } } } }) end end",
     ],
 };
 
@@ -368,7 +375,7 @@ pub struct BorderColor {
 const BORDER_GUARD: &str = "if border_colors";
 const SHADOW_MARKER: &str = "hl.config({ decoration = { shadow = { color = \"rgba(000000";
 const SHADOW_DEFAULT_ALPHA: u8 = 0x20;
-const BAR_COLOR_MARKER: &str = "proscenio_bars = { bar_color = ";
+const BAR_COLOR_MARKER: &str = "proscenio_hyprland = { bars = { color = ";
 
 fn parse_alpha(text: &str) -> Option<u8> {
     proscenio_protocol::unhex(text.get(..2)?)?.first().copied()
@@ -480,12 +487,12 @@ fn with_bar_colors(text: &str, bar_color: &str, other_colors: &[(&str, String)])
         )
     };
     let bar_color = format_color(bar_color);
-    let mut options = format!("{bar_color}, inactive_bar_color = {bar_color}");
+    let mut options = format!("{bar_color}, inactive_color = {bar_color}");
     for (option, color) in other_colors {
         options.push_str(&format!(", {option} = {}", format_color(color)));
     }
     let line = format!(
-        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ {BAR_COLOR_MARKER}{options} }} }} }}) end end"
+        "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_hyprland\" then hl.config({{ plugin = {{ {BAR_COLOR_MARKER}{options} }} }} }} }}) end end"
     );
     with_line(text, |line| line.contains(BAR_COLOR_MARKER), &line)
 }
@@ -771,13 +778,12 @@ mod tests {
     fn the_bar_colors_are_one_guarded_line_that_replaces_the_last_one() {
         let build_line = |options: &str| {
             format!(
-                "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ proscenio_bars = {{ {options} }} }} }}) end end"
+                "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_hyprland\" then hl.config({{ plugin = {{ proscenio_hyprland = {{ bars = {{ {options} }} }} }} }}) end end"
             )
         };
-        let bar_only_line =
-            build_line("bar_color = \"rgb(111111)\", inactive_bar_color = \"rgb(111111)\"");
+        let bar_only_line = build_line("color = \"rgb(111111)\", inactive_color = \"rgb(111111)\"");
         let full_line = build_line(
-            "bar_color = \"rgb(1b1d27)\", inactive_bar_color = \"rgb(1b1d27)\", title_color = \"rgb(e6e0e9)\", close_color = \"rgb(f2b8b5)\"",
+            "color = \"rgb(1b1d27)\", inactive_color = \"rgb(1b1d27)\", title_color = \"rgb(e6e0e9)\", close_color = \"rgb(f2b8b5)\"",
         );
         let other_lines = format!("-- mine\n{}\n", TITLE_BUTTONS_ON_LEFT.lines[0]);
         let text_with_bar_only = format!("{other_lines}{bar_only_line}\n");

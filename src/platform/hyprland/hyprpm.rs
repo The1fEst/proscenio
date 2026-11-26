@@ -10,7 +10,7 @@ use toml_edit::DocumentMut;
 use crate::core::{paths, process};
 use crate::platform::hyprland::hypr;
 
-const PLUGIN_NAME: &str = "proscenio_bars";
+const PLUGIN_NAME: &str = "proscenio_hyprland";
 pub const HYPRPM: &str = "/usr/bin/hyprpm";
 pub const SYSTEM_TOOLS: &str = "/usr/bin";
 const ESCALATORS: [&str; 3] = ["sudo", "doas", "run0"];
@@ -63,7 +63,7 @@ pub fn is_plugin_enabled_in_hyprpm() -> bool {
 }
 
 fn is_plugin_loaded() -> bool {
-    hypr::option_int(&format!("plugin:{PLUGIN_NAME}:bar_height")).is_some()
+    hypr::option_int(&format!("plugin:{PLUGIN_NAME}:bars:height")).is_some()
 }
 
 fn parse_built_abi_hash(state_text: &str) -> Option<String> {
@@ -193,29 +193,29 @@ mod tests {
         let cases = [
             (
                 "enabled",
-                "[proscenio_bars]\nenabled = true\nfailed = false\nfilename = 'proscenio_bars.so'\n\n[repository]\nname = 'proscenio'\n",
+                "[proscenio_hyprland]\nenabled = true\nfailed = false\nfilename = 'proscenio_hyprland.so'\n\n[repository]\nname = 'proscenio'\n",
                 true,
             ),
-            ("disabled", "[proscenio_bars]\nenabled = false\n", false),
+            ("disabled", "[proscenio_hyprland]\nenabled = false\n", false),
             ("another plugin", "[hyprbars]\nenabled = true\n", false),
             (
                 "no enabled key",
-                "[proscenio_bars]\nfailed = false\n",
+                "[proscenio_hyprland]\nfailed = false\n",
                 false,
             ),
             (
                 "a string, not a boolean",
-                "[proscenio_bars]\nenabled = 'true'\n",
+                "[proscenio_hyprland]\nenabled = 'true'\n",
                 false,
             ),
-            ("not TOML", "[proscenio_bars\nenabled = true\n", false),
+            ("not TOML", "[proscenio_hyprland\nenabled = true\n", false),
             ("empty", "", false),
         ];
         for (name, state_text, expected) in cases {
             assert_eq!(has_plugin_flag(state_text, "enabled"), expected, "{name}");
         }
         assert!(has_plugin_flag(
-            "[proscenio_bars]\nenabled = true\nfailed = true\n",
+            "[proscenio_hyprland]\nenabled = true\nfailed = true\n",
             "failed"
         ));
     }

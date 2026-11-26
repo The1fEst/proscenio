@@ -35,7 +35,7 @@ const PLUGIN_INSTALL_COMMANDS: [&str; 4] = [
     "sudo pacman -S --needed hyprpm git gcc make pkgconf",
     "hyprpm update",
     "hyprpm add https://github.com/The1fEst/proscenio",
-    "hyprpm enable proscenio_bars",
+    "hyprpm enable proscenio_hyprland",
 ];
 
 const PLUGIN_UPDATE_COMMAND: &str = "hyprpm update";
@@ -404,6 +404,16 @@ fn add_command_row(page: &Page, section: &gtk4::Box, command: &str) -> gtk4::Box
 }
 
 fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
+    let bars_switch = page.switch(title_bars_section, "toolbar", &tr("Title bars"), |is_on| {
+        let is_off = !is_on;
+        if hyprconfig::are_lines_present(&hyprconfig::TITLE_BARS_OFF) == is_off {
+            return;
+        }
+        let _ = hyprconfig::set_lines(&hyprconfig::TITLE_BARS_OFF, is_off);
+        hypr::request("reload");
+        gsettings::sync_button_layout();
+    });
+    bars_switch.bind(|| !hyprconfig::are_lines_present(&hyprconfig::TITLE_BARS_OFF));
     let bar_windows_combo = page.combo_row(title_bars_section, "select_window", &tr("Show on"));
     let bar_windows_names = [tr("Floating windows"), tr("All windows")];
     bar_windows_combo.set_items(

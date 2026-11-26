@@ -465,12 +465,12 @@ mod tests {
                     "0",
                     "-g",
                     "0",
-                    "/run/user/1000/hyprpm/fest/plugin/proscenio_bars.so",
-                    "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                    "/run/user/1000/hyprpm/fest/plugin/proscenio_hyprland.so",
+                    "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
                 ],
                 Step::Install {
-                    source: "/run/user/1000/hyprpm/fest/plugin/proscenio_bars.so".into(),
-                    target: "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so".into(),
+                    source: "/run/user/1000/hyprpm/fest/plugin/proscenio_hyprland.so".into(),
+                    target: "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so".into(),
                     mode: 0o755,
                 },
             ),
@@ -511,7 +511,7 @@ mod tests {
         let chained = format!("{headers_command}; rm -rf /");
         let other_build = headers_command.replace("hyprland-fest", "hyprland-root");
         let state = "/run/user/1000/hyprpm/.temp-state";
-        let plugin = "/run/user/1000/hyprpm/fest/plugin/proscenio_bars.so";
+        let plugin = "/run/user/1000/hyprpm/fest/plugin/proscenio_hyprland.so";
         let refused: Vec<Vec<&str>> = vec![
             vec![],
             vec!["echo"],
@@ -592,7 +592,7 @@ mod tests {
                 "-g",
                 "0",
                 plugin,
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
             ],
             vec![
                 "install",
@@ -602,7 +602,7 @@ mod tests {
                 "-g",
                 "0",
                 plugin,
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
             ],
             vec![
                 "install",
@@ -622,7 +622,7 @@ mod tests {
                 "-g",
                 "0",
                 plugin,
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
             ],
             vec![
                 "install",
@@ -632,7 +632,7 @@ mod tests {
                 "-g",
                 "0",
                 "/run/user/1000/hyprpm/fest/../../../../etc/shadow",
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
             ],
             vec![
                 "install",
@@ -642,7 +642,7 @@ mod tests {
                 "-g",
                 "0",
                 "/run/user/1000/hyprpm/fest/./build/../../x.so",
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
             ],
             vec![
                 "install",
@@ -652,7 +652,7 @@ mod tests {
                 "-g",
                 "0",
                 "/run/user/1000/hyprpm/fest/.//",
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
             ],
             vec![
                 "install",
@@ -662,7 +662,7 @@ mod tests {
                 "-g",
                 "0",
                 "/run/user/1000/hyprpm/festival/x.so",
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
             ],
             vec![
                 "install",
@@ -671,8 +671,8 @@ mod tests {
                 "0",
                 "-g",
                 "0",
-                "/run/user/1001/hyprpm/fest/plugin/proscenio_bars.so",
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.so",
+                "/run/user/1001/hyprpm/fest/plugin/proscenio_hyprland.so",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.so",
             ],
             vec![
                 "install",
@@ -702,7 +702,7 @@ mod tests {
                 "-g",
                 "0",
                 plugin,
-                "/var/cache/hyprpm/fest/proscenio/proscenio_bars.sh",
+                "/var/cache/hyprpm/fest/proscenio/proscenio_hyprland.sh",
             ],
             vec![
                 "install",
@@ -712,7 +712,7 @@ mod tests {
                 "-g",
                 "0",
                 plugin,
-                "/var/cache/hyprpm/fest/proscenio/sub/proscenio_bars.so",
+                "/var/cache/hyprpm/fest/proscenio/sub/proscenio_hyprland.so",
             ],
             vec!["pacman", "-S", "anything"],
             vec!["bash"],

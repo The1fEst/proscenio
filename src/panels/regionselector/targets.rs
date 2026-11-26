@@ -43,12 +43,12 @@ pub(super) struct TitleBars {
 
 impl TitleBars {
     pub(super) fn read() -> Self {
-        let Some(height) = hypr::option_int("plugin:proscenio_bars:bar_height") else {
+        let Some(height) = hypr::option_int("plugin:proscenio_hyprland:bars:height") else {
             return Self::default();
         };
         Self {
             height: height as f64,
-            addresses: hypr::json("proscenio_bars")
+            addresses: hypr::json("proscenio_hyprland bars")
                 .and_then(|reply| serde_json::from_value(reply).ok())
                 .unwrap_or_default(),
         }

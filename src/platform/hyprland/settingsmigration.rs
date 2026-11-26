@@ -13,6 +13,30 @@ const REMOVED_SCROLLING_LINES: [&str; 2] = [
     "hl.config({ scrolling = { focus_fit_method = 0 } })",
 ];
 
+const OLD_BAR_LINE_START: &str = "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({ plugin = { proscenio_bars = { ";
+const OLD_BAR_LINE_END: &str = " } } }) end end";
+const BAR_LINE_START: &str = "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_hyprland\" then hl.config({ plugin = { proscenio_hyprland = { bars = { ";
+const BAR_LINE_END: &str = " } } } }) end end";
+
+const BAR_OPTION_NAMES: [(&str, &str); 16] = [
+    ("bar_height", "height"),
+    ("bar_color", "color"),
+    ("inactive_bar_color", "inactive_color"),
+    ("title_color", "title_color"),
+    ("inactive_title_color", "inactive_title_color"),
+    ("title_font", "title_font"),
+    ("title_size", "title_size"),
+    ("title_weight", "title_weight"),
+    ("button_side", "button_side"),
+    ("close_color", "close_color"),
+    ("close_icon_color", "close_icon_color"),
+    ("minimize_color", "minimize_color"),
+    ("minimize_icon_color", "minimize_icon_color"),
+    ("maximize_color", "maximize_color"),
+    ("maximize_icon_color", "maximize_icon_color"),
+    ("inactive_button_color", "inactive_button_color"),
+];
+
 const AREAS: [Area; 10] = [
     Area::Appearance,
     Area::Displays,
@@ -133,6 +157,36 @@ pub fn split_legacy(option_area: impl Fn(&str) -> Option<Area>) -> std::io::Resu
     std::fs::rename(&legacy_path, config_dir().join("settings.lua.bak"))
 }
 
+fn rename_bar_option(option: &str) -> Option<String> {
+    let (name, value) = option.split_once(" = ")?;
+    let new_option = match (name, value) {
+        ("windows", "\"floating\"") => "behavior = \"float\"".to_owned(),
+        ("windows", "\"all\"") => "behavior = \"all\"".to_owned(),
+        ("windows", "\"none\"") => "enabled = false".to_owned(),
+        _ => {
+            let (_, new_name) = BAR_OPTION_NAMES
+                .iter()
+                .find(|(old_name, _)| *old_name == name)?;
+            format!("{new_name} = {value}")
+        }
+    };
+    Some(new_option)
+}
+
+fn rename_bar_line(statement: &str) -> Option<String> {
+    let options = statement
+        .strip_prefix(OLD_BAR_LINE_START)?
+        .strip_suffix(OLD_BAR_LINE_END)?;
+    let new_options = options
+        .split(", ")
+        .map(rename_bar_option)
+        .collect::<Option<Vec<String>>>()?;
+    Some(format!(
+        "{BAR_LINE_START}{}{BAR_LINE_END}",
+        new_options.join(", ")
+    ))
+}
+
 fn move_lines(
     mut files: Vec<(Area, String)>,
     option_area: &impl Fn(&str) -> Option<Area>,
@@ -146,6 +200,12 @@ fn move_lines(
                 .iter()
                 .any(|pattern| statement.contains(pattern))
             {
+                continue;
+            }
+            let code = statement.trim_end();
+            if let Some(bar_line) = rename_bar_line(code) {
+                remainder.push_str(&bar_line);
+                remainder.push_str(&line[code.len()..]);
                 continue;
             }
             match option_of(statement).and_then(|option| Some((option_area(&option)?, option))) {
@@ -195,6 +255,7 @@ pub fn move_misplaced(option_area: impl Fn(&str) -> Option<Area>) -> std::io::Re
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::platform::hyprland::hyprconfig::TITLE_BARS_OFF;
 
     #[test]
     fn the_single_settings_file_splits_into_its_areas() {
@@ -327,8 +388,14 @@ mod tests {
     #[test]
     fn the_title_bar_lines_stay_whole_in_the_appearance_file() {
         let cases = [
-            (&TITLE_BUTTONS_ON_LEFT, "plugin:proscenio_bars:button_side"),
-            (&TITLE_BARS_ON_ALL_WINDOWS, "plugin:proscenio_bars:windows"),
+            (
+                &TITLE_BUTTONS_ON_LEFT,
+                "plugin:proscenio_hyprland:bars:button_side",
+            ),
+            (
+                &TITLE_BARS_ON_ALL_WINDOWS,
+                "plugin:proscenio_hyprland:bars:behavior",
+            ),
         ];
         for (line_set, plugin_option) in cases {
             let line = line_set.lines[0];
@@ -400,5 +467,93 @@ mod tests {
                 ),
             ]
         );
+    }
+
+    #[test]
+    fn the_title_bar_lines_of_the_old_plugin_name_take_the_new_names() {
+        let build_old_line = |options: &str| {
+            format!(
+                "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({{ plugin = {{ proscenio_bars = {{ {options} }} }} }}) end end"
+            )
+        };
+        let build_new_line = |options: &str| {
+            format!(
+                "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_hyprland\" then hl.config({{ plugin = {{ proscenio_hyprland = {{ bars = {{ {options} }} }} }} }}) end end"
+            )
+        };
+        let toggle_layout_line = build_old_line("toggle_layout = \"monocle\"");
+        let cases = [
+            (
+                "buttons on the left",
+                build_old_line("button_side = \"left\""),
+                TITLE_BUTTONS_ON_LEFT.lines[0].to_owned(),
+            ),
+            (
+                "bars on all windows",
+                build_old_line("windows = \"all\""),
+                TITLE_BARS_ON_ALL_WINDOWS.lines[0].to_owned(),
+            ),
+            (
+                "bars on floating windows",
+                build_old_line("windows = \"floating\""),
+                build_new_line("behavior = \"float\""),
+            ),
+            (
+                "bars on no windows",
+                build_old_line("windows = \"none\""),
+                TITLE_BARS_OFF.lines[0].to_owned(),
+            ),
+            (
+                "the bar color alone",
+                build_old_line("bar_color = \"rgb(111111)\", inactive_bar_color = \"rgb(111111)\""),
+                build_new_line("color = \"rgb(111111)\", inactive_color = \"rgb(111111)\""),
+            ),
+            (
+                "every color",
+                build_old_line(
+                    "bar_color = \"rgb(211f26)\", inactive_bar_color = \"rgb(211f26)\", title_color = \"rgb(e6e0e9)\", inactive_title_color = \"rgb(cac4d0)\", inactive_button_color = \"rgb(36343b)\", close_color = \"rgb(f2b8b5)\", close_icon_color = \"rgb(601410)\", minimize_color = \"rgb(efb8c8)\", minimize_icon_color = \"rgb(492532)\", maximize_color = \"rgb(d0bcff)\", maximize_icon_color = \"rgb(381e72)\"",
+                ),
+                build_new_line(
+                    "color = \"rgb(211f26)\", inactive_color = \"rgb(211f26)\", title_color = \"rgb(e6e0e9)\", inactive_title_color = \"rgb(cac4d0)\", inactive_button_color = \"rgb(36343b)\", close_color = \"rgb(f2b8b5)\", close_icon_color = \"rgb(601410)\", minimize_color = \"rgb(efb8c8)\", minimize_icon_color = \"rgb(492532)\", maximize_color = \"rgb(d0bcff)\", maximize_icon_color = \"rgb(381e72)\"",
+                ),
+            ),
+            (
+                "height, font and title",
+                build_old_line(
+                    "bar_height = 36, title_font = \"Inter\", title_size = 13, title_weight = \"bold\"",
+                ),
+                build_new_line(
+                    "height = 36, title_font = \"Inter\", title_size = 13, title_weight = \"bold\"",
+                ),
+            ),
+            (
+                "an option the plugin no longer has",
+                toggle_layout_line.clone(),
+                toggle_layout_line,
+            ),
+        ];
+        for (name, old_text, new_text) in cases {
+            let other_line = "hl.config({ decoration = { rounding = 10 } })";
+            assert_eq!(
+                move_lines(
+                    vec![(Area::Appearance, format!("{other_line}\n{old_text}\n"))],
+                    &|_| None
+                ),
+                vec![(Area::Appearance, format!("{other_line}\n{new_text}\n"))],
+                "{name}"
+            );
+            assert_eq!(
+                move_lines(vec![(Area::Appearance, format!("{old_text}\r\n"))], &|_| {
+                    None
+                }),
+                vec![(Area::Appearance, format!("{new_text}\r\n"))],
+                "{name}, with a carriage return"
+            );
+            assert_eq!(
+                move_lines(vec![(Area::Appearance, old_text)], &|_| None),
+                vec![(Area::Appearance, new_text)],
+                "{name}, without a final newline"
+            );
+        }
     }
 }
