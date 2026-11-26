@@ -182,8 +182,9 @@ Some controls add or remove a fixed set of lines, and show as on only when every
 | Smart gaps (`multitasking.lua`) | Workspace rules that set no gaps on the workspaces matching `w[tv1]` and `f[1]`, and window rules that take the border and rounding off tiled windows there |
 | Keep fullscreen windows opaque (`appearance.lua`) | `hl.window_rule({ name = "opaque-fullscreen", match = { fullscreen = true }, opacity = "1 override 1 override" })` |
 | Keep fullscreen windows undimmed (`appearance.lua`) | `hl.window_rule({ name = "no-dim-fullscreen", match = { fullscreen = true }, no_dim = true })` |
-| Button side set to Left (`appearance.lua`) | `for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_bars" then hl.config({ plugin = { proscenio_bars = { button_side = "left" } } }) end end` |
-| Title bars shown on All windows (`appearance.lua`) | `for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_bars" then hl.config({ plugin = { proscenio_bars = { windows = "all" } } }) end end` |
+| Title bars, shown as off while the line is present (`appearance.lua`) | `for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_hyprland" then hl.config({ plugin = { proscenio_hyprland = { bars = { enabled = false } } } }) end end` |
+| Button side set to Left (`appearance.lua`) | `for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_hyprland" then hl.config({ plugin = { proscenio_hyprland = { bars = { button_side = "left" } } } }) end end` |
+| Title bars shown on All windows (`appearance.lua`) | `for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_hyprland" then hl.config({ plugin = { proscenio_hyprland = { bars = { behavior = "all" } } } }) end end` |
 
 ### Border colors
 
@@ -218,7 +219,7 @@ The [color run](colors.md#gtk-and-qt) and the shell's start write the
 colors differ from the line already there:
 
 ```lua
-for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_bars" then hl.config({ plugin = { proscenio_bars = { bar_color = "rgb(211f26)", inactive_bar_color = "rgb(211f26)", title_color = "rgb(e6e0e9)", inactive_title_color = "rgb(cac4d0)", inactive_button_color = "rgb(36343b)", close_color = "rgb(f2b8b5)", close_icon_color = "rgb(601410)", minimize_color = "rgb(efb8c8)", minimize_icon_color = "rgb(492532)", maximize_color = "rgb(d0bcff)", maximize_icon_color = "rgb(381e72)" } } }) end end
+for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == "proscenio_hyprland" then hl.config({ plugin = { proscenio_hyprland = { bars = { color = "rgb(211f26)", inactive_color = "rgb(211f26)", title_color = "rgb(e6e0e9)", inactive_title_color = "rgb(cac4d0)", inactive_button_color = "rgb(36343b)", close_color = "rgb(f2b8b5)", close_icon_color = "rgb(601410)", minimize_color = "rgb(efb8c8)", minimize_icon_color = "rgb(492532)", maximize_color = "rgb(d0bcff)", maximize_icon_color = "rgb(381e72)" } } } }) end end
 ```
 
 ### Workspace groups

@@ -180,8 +180,9 @@ Every control here is a Hyprland option or line in `appearance.lua`.
 | Opacity | Focused window (%) | `decoration:active_opacity` | 10–100 %, stored as 0.1–1.0 |
 | Opacity | Other windows (%) | `decoration:inactive_opacity` | 10–100 % |
 | Borders | Border width | `general:border_size` | 0–20 px |
-| Title bars | Show on | `plugin:proscenio_bars:windows` | Floating windows or All windows; All windows is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Floating windows is no line |
-| Title bars | Button side | `plugin:proscenio_bars:button_side` | Right or Left; Left is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Right is no line |
+| Title bars | Title bars | `plugin:proscenio_hyprland:bars:enabled` | on or off; off is one line in `appearance.lua` that sets the option only while the `proscenio_hyprland` plugin is loaded, and on is no line |
+| Title bars | Show on | `plugin:proscenio_hyprland:bars:behavior` | Floating windows (`float`) or All windows (`all`); All windows is one line in `appearance.lua` that sets the option only while the `proscenio_hyprland` plugin is loaded, and Floating windows is no line |
+| Title bars | Button side | `plugin:proscenio_hyprland:bars:button_side` | Right or Left; Left is one line in `appearance.lua` that sets the option only while the `proscenio_hyprland` plugin is loaded, and Right is no line |
 | Shadows | Drop shadows under windows | `decoration:shadow:enabled` | on or off |
 | Shadows | Size (px) | `decoration:shadow:range` | 0–100 px |
 | Shadows | Falloff | `decoration:shadow:render_power` | 1–4 |
@@ -191,7 +192,7 @@ Every control here is a Hyprland option or line in `appearance.lua`.
 | Dimming | Dim by (%) | `decoration:dim_strength` | 0–100 % |
 | Dimming | Dim around the special workspace by (%) | `decoration:dim_special` | 0–100 % |
 
-The title bar controls and a copyable `hyprpm update` show only while `proscenio_bars` is enabled
+The title bar controls and a copyable `hyprpm update` show only while `proscenio_hyprland` is enabled
 in `hyprpm`; until then the subsection shows the [install commands](title-bars.md#installing), each
 with a copy button.
 
