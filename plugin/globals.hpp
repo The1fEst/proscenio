@@ -5,12 +5,11 @@
 #include <hyprland/src/config/values/types/StringValue.hpp>
 #include <hyprland/src/config/values/types/ColorValue.hpp>
 #include <hyprland/src/config/values/types/FontWeightValue.hpp>
-#include <hyprland/src/managers/eventLoop/EventLoopManager.hpp>
 #include <hyprland/src/render/Texture.hpp>
 #include <hyprutils/animation/AnimationConfig.hpp>
 
 #include "ButtonLayout.hpp"
-#include "ScrollingToggle.hpp"
+#include "Monocle.hpp"
 
 #include <compare>
 #include <map>
@@ -37,15 +36,14 @@ struct SIconKey {
 struct SGlobalState {
     std::vector<WP<CTitleBarDecoration>>               bars;
     std::map<SIconKey, SP<Render::ITexture>>           iconTextures;
-    std::map<std::string, WP<Config::CWorkspaceRule>>  scrollingRules;
-    std::map<std::string, SArrangementSnapshot>        scrollingSnapshots;
+    std::map<std::string, WP<Config::CWorkspaceRule>>  monocleRules;
+    std::map<std::string, SMonocleSnapshot>            monocleSnapshots;
     SP<Hyprutils::Animation::SAnimationPropertyConfig> animationConfig;
     uint32_t                                           noBarRuleIdx    = 0;
     uint32_t                                           forceBarRuleIdx = 0;
-    UP<SEventLoopDoLaterLock>                          clickCenterLock;
 
     struct {
-        SP<Config::Values::CIntValue>        barHeight, titleSize, scrollingPeek;
+        SP<Config::Values::CIntValue>        barHeight, titleSize;
         SP<Config::Values::CFontWeightValue> titleWeight;
         SP<Config::Values::CStringValue>     titleFont, buttonSide, windows;
         SP<Config::Values::CColorValue>      barColor, inactiveBarColor, titleColor, inactiveTitleColor;

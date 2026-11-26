@@ -108,9 +108,9 @@ A button that does not fit in a narrow bar is left out, last one first.
 |---|---|---|
 | Close | Cross | Closes the window |
 | Minimize | Chevron pointing down | Moves the window to `special:minimized` without showing that workspace |
-| Maximize | Chevron pointing up, or a diamond while the window is maximized | On a floating window or a maximized one, toggles Hyprland's maximized state; on any other tiled window, [toggles scrolling](#scrolling-toggle) on the window's workspace |
+| Maximize | Chevron pointing up, or a diamond while the window is maximized | On a floating window or a maximized one, toggles Hyprland's maximized state; on any other tiled window, [toggles monocle](#monocle) on the window's workspace |
 
-A tiled window also counts as maximized while the toggle has its workspace in `scrolling`.
+A tiled window also counts as maximized while its workspace's tiled layout is `monocle`.
 
 Hyprland has no minimized state. The [dock](dock.md) shows a window on `special:minimized` as
 minimized, and focusing it there moves it back to the active workspace.
@@ -144,53 +144,34 @@ stroke is 2 px wide on a 16 px disc and scales with it.
 - Two left clicks within 400 ms on the bar, away from the buttons, do what Maximize does.
 - The bar does not react while the window is fullscreen.
 
-### Scrolling toggle
+### Monocle
 
-The plugin adds the Lua function `hl.plugin.proscenio_bars.toggle_scrolling(workspace)`. It switches a
-workspace between its tiled layout and Hyprland's `scrolling` layout, which gives every tiled window a
-column of its own on a strip that scrolls. `workspace` is a workspace object or selector, such as
+The plugin adds the Lua function `hl.plugin.proscenio_bars.toggle_monocle(workspace)`. It switches a
+workspace between its tiled layout and Hyprland's `monocle` layout, in which every tiled window fills
+the workspace and only the focused one shows. `workspace` is a workspace object or selector, such as
 `3` or `"special:magic"`; without it, the function takes the special workspace open on the focused
 monitor, or else that monitor's active workspace.
 
-Every column of a toggled workspace is as wide as leaves `scrolling_peek` px (40 by default) of the
-columns on either side showing at the screen edges while the focused column sits in the middle,
-counting `gaps_in` between the columns and `gaps_out` at the edges. The plugin sets the widths again
-when a window opens or turns tiled, when the focus changes and when the monitors change, so a column
-resized by hand keeps its width only until then; a column with a maximized or fullscreen window keeps
-the width Hyprland gives it. A window moved there from another workspace gets the width at the next
-focus change on it.
+The plugin keeps one workspace rule with `layout = "monocle"` per workspace it toggled, apart from the
+rules of the config. The first toggle of a workspace adds the rule, on unless the workspace is in
+`monocle` already, and every later toggle turns it on or off. The toggle cannot leave a `monocle`
+layout that the config itself sets. A config reload drops the rules, so every workspace goes back to
+the layout its config gives it, and unloading the plugin turns them off.
 
-A focus change from the keyboard, a new window or a workspace switch centers the focused column; a
-focus that follows the pointer does not. A left click on the focused window centers its column after
-the button is released, unless the column is in the middle already or the click was on the title bar,
-and the pointer moves to the middle of the window unless `cursor:no_warps` is set.
-
-The first and the last column sit in the middle too, with an empty strip on their outer side, while
-`scrolling:focus_fit_method` is 0, as proscenio
-[sets it by default](settings-multitasking.md#scrolling); at 1, Hyprland keeps the first column at
-the left edge. A lone window fills the width while `scrolling:fullscreen_on_one_column` is on, as it
-is by default, and keeps the column width in the middle while it is off. The other `scrolling:`
-options, such as `direction`, apply as configured.
-
-The plugin keeps one workspace rule with `layout = "scrolling"` per workspace it toggled, apart from
-the rules of the config. The first toggle of a workspace adds the rule, and every later toggle turns
-it on or off. The toggle does nothing on a workspace that is in `scrolling` without it, so it cannot
-leave a `scrolling` layout that the config itself sets. A config reload drops the rules, so every
-workspace goes back to the layout its config gives it, and unloading the plugin turns them off.
-
-Leaving `scrolling` through the toggle puts the tiled windows back where they were before it, so
-columns moved or resized in the meantime do not carry over:
+Leaving `monocle` through the toggle puts the tiled windows back where they were before it:
 
 | Layout | Restored |
 |---|---|
 | `dwindle` | The split tree: which windows share each split, its direction and ratio |
 | `master` | The order of the windows, which ones are masters, the master size and each window's size share |
+| `scrolling` | The columns in order, the windows in each column, column widths and window heights |
 
-A window closed while the toggle has the workspace in `scrolling` leaves the arrangement: in `dwindle`
-its sibling takes the space of their split, and in `master` the first window left becomes the master
-when no master is left. A window opened in that time comes after the others: in `dwindle` it splits
-the last window, and in `master` it joins the end of the stack. After a config reload, or when the
-layout differs from the one before the toggle, the layout arranges the windows itself.
+A window closed during `monocle` leaves the arrangement: in `dwindle` its sibling takes the space of
+their split, in `master` the first window left becomes the master when no master is left, and in
+`scrolling` the rest of its column share its height. A window opened during `monocle` comes after
+the others: in `dwindle` it splits the last window, in `master` it joins the end of the stack, and in
+`scrolling` it gets a column of the default width at the end. After a config reload, or when the
+layout differs from the one before `monocle`, the layout arranges the windows itself.
 
 `hl.plugin.proscenio_bars` exists only while the plugin is loaded, so a bind can fall back to a toggle
 of its own:
@@ -198,14 +179,14 @@ of its own:
 ```lua
 hl.bind("SUPER + F", function()
     if hl.plugin.proscenio_bars then
-        hl.plugin.proscenio_bars.toggle_scrolling()
+        hl.plugin.proscenio_bars.toggle_monocle()
     else
-        my_scrolling_toggle()
+        my_monocle_toggle()
     end
 end)
 ```
 
-From a shell, `hyprctl eval 'hl.plugin.proscenio_bars.toggle_scrolling()'` toggles the active workspace.
+From a shell, `hyprctl eval 'hl.plugin.proscenio_bars.toggle_monocle()'` toggles the active workspace.
 
 ### GTK window buttons
 
@@ -337,11 +318,10 @@ Every option lives under `plugin:proscenio_bars:`.
 | `maximize_color` | `#D0BCFF` | The Maximize disc |
 | `maximize_icon_color` | `#381E72` | The Maximize icon and its state layer |
 | `inactive_button_color` | `#36343B` | All three discs on an unfocused window |
-| `scrolling_peek` | 40 | The px of the neighboring columns that show at each screen edge on a [toggled scrolling workspace](#scrolling-toggle), 0 to 400 |
 
 The [region selector](region-selector.md#picking-a-window) reads `bar_height` and the
 [window list](#listing-the-windows-with-a-bar) to take a window together with its bar. **Appearance › Windows › Title bars** in the
-[settings](settings-appearance.md#windows) sets `windows`, `button_side` and `scrolling_peek`.
+[settings](settings-appearance.md#windows) sets `windows` and `button_side`.
 
 ### Setting them
 

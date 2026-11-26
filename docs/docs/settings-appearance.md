@@ -182,7 +182,6 @@ Every control here is a Hyprland option or line in `appearance.lua`.
 | Borders | Border width | `general:border_size` | 0–20 px |
 | Title bars | Show on | `plugin:proscenio_bars:windows` | Floating windows or All windows; All windows is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Floating windows is no line |
 | Title bars | Button side | `plugin:proscenio_bars:button_side` | Right or Left; Left is one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded, and Right is no line |
-| Title bars | Neighboring windows shown while scrolling (px) | `plugin:proscenio_bars:scrolling_peek` | 0–400 px, 40 until the line exists; one line in `appearance.lua` that sets the option only while the `proscenio_bars` plugin is loaded. The reload that follows a change turns off the [scrolling toggle](title-bars.md#scrolling-toggle), so the new width shows from the next toggle |
 | Shadows | Drop shadows under windows | `decoration:shadow:enabled` | on or off |
 | Shadows | Size (px) | `decoration:shadow:range` | 0–100 px |
 | Shadows | Falloff | `decoration:shadow:render_power` | 1–4 |

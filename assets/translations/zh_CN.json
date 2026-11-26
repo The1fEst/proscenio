@@ -1654,6 +1654,5 @@
   "Run this after every Hyprland update": "每次更新 Hyprland 后运行",
   "Show on": "显示于",
   "Floating windows": "浮动窗口",
-  "All windows": "所有窗口",
-  "Neighboring windows shown while scrolling (px)": "滚动时相邻窗口的可见宽度（像素）"
+  "All windows": "所有窗口"
 }

@@ -1654,6 +1654,5 @@
   "Run this after every Hyprland update": "Виконуйте після кожного оновлення Hyprland",
   "Show on": "Вікна із заголовком",
   "Floating windows": "Плаваючі вікна",
-  "All windows": "Усі вікна",
-  "Neighboring windows shown while scrolling (px)": "Видима частина сусідніх вікон під час прокручування (пікс)"
+  "All windows": "Усі вікна"
 }

@@ -8,6 +8,11 @@ const LEGACY_HEADER: [&str; 2] = [
     "-- before the files in custom/,",
 ];
 
+const REMOVED_SCROLLING_LINES: [&str; 2] = [
+    "proscenio_bars = { scrolling_peek = ",
+    "hl.config({ scrolling = { focus_fit_method = 0 } })",
+];
+
 const AREAS: [Area; 10] = [
     Area::Appearance,
     Area::Displays,
@@ -137,6 +142,12 @@ fn move_lines(
         let mut remainder = String::new();
         for line in text.split_inclusive('\n') {
             let statement = line.trim_end_matches('\n');
+            if REMOVED_SCROLLING_LINES
+                .iter()
+                .any(|pattern| statement.contains(pattern))
+            {
+                continue;
+            }
             match option_of(statement).and_then(|option| Some((option_area(&option)?, option))) {
                 Some((owner, option)) if owner != *area => {
                     misplaced_lines.push((owner, option, statement.to_owned()));
@@ -358,6 +369,34 @@ mod tests {
                 (
                     Area::Multitasking,
                     "hl.config({ general = { gaps_in = 2 } })\n".to_owned()
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_lines_of_the_removed_scrolling_toggle_are_dropped() {
+        let peek_line = "for _, plugin in ipairs(hl.get_loaded_plugins()) do if plugin.name == \"proscenio_bars\" then hl.config({ plugin = { proscenio_bars = { scrolling_peek = 40 } } }) end end";
+        let files = vec![
+            (
+                Area::Appearance,
+                format!("hl.config({{ decoration = {{ rounding = 10 }} }})\n{peek_line}\n"),
+            ),
+            (
+                Area::Multitasking,
+                "hl.config({ scrolling = { focus_fit_method = 0 } })\nhl.config({ scrolling = { focus_fit_method = 1 } })\n".to_owned(),
+            ),
+        ];
+        assert_eq!(
+            move_lines(files, &|_| None),
+            vec![
+                (
+                    Area::Appearance,
+                    "hl.config({ decoration = { rounding = 10 } })\n".to_owned()
+                ),
+                (
+                    Area::Multitasking,
+                    "hl.config({ scrolling = { focus_fit_method = 1 } })\n".to_owned()
                 ),
             ]
         );

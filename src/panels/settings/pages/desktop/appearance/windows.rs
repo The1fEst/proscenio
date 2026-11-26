@@ -442,21 +442,6 @@ fn add_title_bar_controls(page: &Page, title_bars_section: &gtk4::Box) {
             }
         }
     });
-    let peek_spin = SpinBox::new(&page.theme, 0, 400, 1, 0);
-    peek_spin.set_value(hyprconfig::scrolling_peek());
-    peek_spin.connect_changed(|peek| {
-        if hyprconfig::scrolling_peek() == peek {
-            return;
-        }
-        let _ = hyprconfig::set_scrolling_peek(peek);
-        hypr::request("reload");
-    });
-    page.spin_row(
-        title_bars_section,
-        "view_column",
-        &tr("Neighboring windows shown while scrolling (px)"),
-        &peek_spin,
-    );
     let update_row = add_command_row(page, title_bars_section, PLUGIN_UPDATE_COMMAND);
     page.tip(&update_row, &tr("Run this after every Hyprland update"));
 }
